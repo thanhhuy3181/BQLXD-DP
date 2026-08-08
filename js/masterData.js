@@ -1,0 +1,410 @@
+/**
+ * MASTER DATA & SYSTEM STATE MANAGEMENT
+ * BQLDA Enterprise All-in-One Platform
+ */
+
+const MASTER_DATA = {
+  // Custom Level Names Configuration (User can rename levels freely)
+  levelCustomNames: {
+    1: "Cấp 1: Ban QLDA / Dự Án",
+    2: "Cấp 2: Bộ Phận / Phòng Ban",
+    3: "Cấp 3: Tổ / Đội Phụ Trách",
+    4: "Cấp 4: Nhóm Chuyên Môn",
+    5: "Cấp 5: Phân Khu Thi Công"
+  },
+
+  // Master Organizational Hierarchy Tree (Multi-level Departments & Teams)
+  orgStructure: [
+    {
+      id: "ORG-100",
+      name: "BQLXD Vinhomes Đan Phượng",
+      level: 1,
+      children: [
+        {
+          id: "ORG-110",
+          name: "Bộ Phận Giám Sát Hiện Trường",
+          level: 2,
+          children: [
+            { id: "ORG-111", name: "Đội Giám Sát Khối TTTM (Tầng 1 & L2)", level: 3 },
+            { id: "ORG-112", name: "Đội Giám Sát Phân Khu Thấp Tầng SB5", level: 3 },
+            { id: "ORG-113", name: "Tổ Thi Công Hạ Tầng Kỹ Thuật D1", level: 3 }
+          ]
+        },
+        {
+          id: "ORG-120",
+          name: "Bộ Phận Nội Nghiệp & HSMT",
+          level: 2,
+          children: [
+            { id: "ORG-121", name: "Tổ Thẩm Định HSMT & Hợp Đồng", level: 3 },
+            { id: "ORG-122", name: "Tổ Bóc Tách Khối Lượng & Báo Cáo Giải Trình", level: 3 }
+          ]
+        },
+        {
+          id: "ORG-130",
+          name: "Bộ Phận Cơ Điện (M&E)",
+          level: 2,
+          children: [
+            { id: "ORG-131", name: "Tổ Nghiệm Thu Trạm Biến Áp & PCCC", level: 3 }
+          ]
+        },
+        {
+          id: "ORG-140",
+          name: "Bộ Phận Hành Chính - Tổng Hợp",
+          level: 2,
+          children: [
+            { id: "ORG-141", name: "Tổ Văn Thư Công Văn & Giao Ban Sáng", level: 3 }
+          ]
+        }
+      ]
+    }
+  ],
+
+  // Department paths flat list
+  departments: [
+    "BQLXD Vinhomes Đan Phượng",
+    "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Giám Sát Hiện Trường",
+    "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Giám Sát Hiện Trường ➔ Đội Giám Sát Khối TTTM (Tầng 1 & L2)",
+    "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Giám Sát Hiện Trường ➔ Đội Giám Sát Phân Khu Thấp Tầng SB5",
+    "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Nội Nghiệp & HSMT",
+    "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Cơ Điện (M&E)",
+    "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Hành Chính - Tổng Hợp"
+  ],
+
+  // Master Titles / Positions List
+  titles: [
+    "Trưởng Ban QLDA",
+    "Phó Ban QLDA",
+    "Thư ký Tổng hợp Giao ban",
+    "Đội trưởng Giám sát TMB",
+    "CBGS Xây dựng",
+    "CBGS Điện Nước (M&E)",
+    "Cán bộ Nội nghiệp & HSMT",
+    "System Admin Studio"
+  ],
+
+  // Staff Directory (~60 personnel mapped to Gmail, Password, Phone, Avatar & RBAC roles)
+  staffList: [
+    {
+      id: "NV001",
+      name: "Nguyễn Văn Lãnh Đạo",
+      email: "lanhdao.bql@gmail.com",
+      password: "123",
+      phone: "0912 345 678",
+      role: "leader",
+      title: "Trưởng Ban QLDA",
+      dept: "BQLXD Vinhomes Đan Phượng",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=lanhdao",
+      gmailConnected: true,
+      address: "Quận 1, TP. Hồ Chí Minh",
+      status: "active"
+    },
+    {
+      id: "NV002",
+      name: "Trần Thị Thư Ký",
+      email: "thukybql@gmail.com",
+      password: "123",
+      phone: "0908 765 432",
+      role: "secretary",
+      title: "Thư ký Tổng hợp Giao ban",
+      dept: "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Hành Chính - Tổng Hợp",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=thuky",
+      gmailConnected: true,
+      address: "Quận 3, TP. Hồ Chí Minh",
+      status: "active"
+    },
+    {
+      id: "NV003",
+      name: "Lê Văn Đội Trưởng",
+      email: "doitruong.gs@gmail.com",
+      password: "123",
+      phone: "0934 112 233",
+      role: "team_lead",
+      title: "Đội trưởng Giám sát TMB",
+      dept: "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Giám Sát Hiện Trường",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=doitruong",
+      gmailConnected: true,
+      address: "Quận 7, TP. Hồ Chí Minh",
+      status: "active"
+    },
+    {
+      id: "NV004",
+      name: "Phạm Văn Giám Sát",
+      email: "cbgs.xaydung@gmail.com",
+      password: "123",
+      phone: "0977 445 566",
+      role: "inspector",
+      title: "CBGS Xây dựng",
+      dept: "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Giám Sát Hiện Trường ➔ Đội Giám Sát Khối TTTM (Tầng 1 & L2)",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=cbgs1",
+      gmailConnected: true,
+      address: "TP. Thủ Đức",
+      status: "active"
+    },
+    {
+      id: "NV005",
+      name: "Hoàng Thị M&E",
+      email: "cbgs.me@gmail.com",
+      password: "123",
+      phone: "0988 990 011",
+      role: "inspector",
+      title: "CBGS Điện Nước (M&E)",
+      dept: "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Cơ Điện (M&E)",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=cbgs2",
+      gmailConnected: true,
+      address: "Quận Bình Thạnh",
+      status: "active"
+    },
+    {
+      id: "NV006",
+      name: "Vũ Văn Nội Nghiệp",
+      email: "noinghiep.bql@gmail.com",
+      password: "123",
+      phone: "0966 223 344",
+      role: "internal_ops",
+      title: "Cán bộ Nội nghiệp & HSMT",
+      dept: "BQLXD Vinhomes Đan Phượng ➔ Bộ Phận Nội Nghiệp & HSMT",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=noinghiep",
+      gmailConnected: true,
+      address: "Quận Tân Bình",
+      status: "active"
+    },
+    {
+      id: "NV000",
+      name: "Quản Trị Viên (Admin)",
+      email: "admin.bql@gmail.com",
+      password: "admin",
+      phone: "0909 000 999",
+      role: "admin",
+      title: "System Admin Studio",
+      dept: "BQLXD Vinhomes Đan Phượng",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=admin",
+      gmailConnected: true,
+      address: "Ban Quản Lý Dự Án Master",
+      status: "active"
+    }
+  ],
+
+  // ====================================================
+  // PHÂN HỆ QUẢN LÝ DỮ LIỆU DỰ ÁN (DATA MANAGEMENT)
+  // ====================================================
+  dataManagement: {
+    // 1. Quản lý Kế hoạch, Tiến độ
+    progressPlans: [
+      { id: "KH-001", task: "Thi công cống hộp đường D1", category: "Hạ tầng", startDate: "2026-07-01", endDate: "2026-07-30", progress: 85, assignee: "Phạm Văn Giám Sát", status: "in_progress", note: "Đang thi công mũi đêm 02" },
+      { id: "KH-002", task: "Hoàn thiện trần louver TTTM L2", category: "TTTM", startDate: "2026-07-10", endDate: "2026-08-15", progress: 60, assignee: "Hoàng Thị M&E", status: "in_progress", note: "Chờ điều chỉnh HSMT" },
+      { id: "KH-003", task: "Nghiệm thu bàn giao căn LK05-12", category: "Thấp tầng", startDate: "2026-07-20", endDate: "2026-07-26", progress: 100, assignee: "Lê Văn Đội Trưởng", status: "completed", note: "Đã xong nghiệm thu" }
+    ],
+    // 2. Quản lý Thiết kế
+    designDocs: [
+      { id: "TK-01", code: "CAD-TTTM-L2-09", title: "Bản vẽ chi tiết louver & trụ khung thép TTTM Tầng 2", rev: "Rev.02", author: "KTS. Trần Văn Thiết Kế", date: "2026-07-24", filePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\02_NoiNghiep_HoSo\\BanVe_CAD_TTTM_L2.dwg", status: "Approved" },
+      { id: "TK-02", code: "CAD-HT-D1-04", title: "Bản vẽ trắc dọc & mặt cắt cống D1", rev: "Rev.01", author: "KTS. Lê Anh Tuấn", date: "2026-07-15", filePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\02_NoiNghiep_HoSo\\TracDoc_CongD1.dwg", status: "Approved" }
+    ],
+    // 3. Quản lý Hồ sơ mời thầu (HSMT)
+    biddingDocs: [
+      { id: "TB-101", code: "HSMT-2026/ME-05", title: "Gói thầu Cung cấp & Lắp đặt Hệ thống TBA & PCCC", budget: "12.5 Tỷ VNĐ", dept: "Cơ Điện (M&E)", publishDate: "2026-07-05", endDate: "2026-07-28", status: "Evaluating" },
+      { id: "TB-102", code: "HSMT-2026/HT-02", title: "Gói thầu Thi công Hạ tầng Kỹ thuật & Đường D1", budget: "8.2 Tỷ VNĐ", dept: "Nội Nghiệp & HSMT", publishDate: "2026-06-20", endDate: "2026-07-10", status: "Awarded" }
+    ],
+    // 4. Quản lý Hợp đồng
+    contracts: [
+      { id: "HD-001", code: "HĐ-2026/VIC-NTB", partner: "Công ty Cổ phần Xây dựng Nhà thầu B", scope: "Thi công cống D1 & Thấp tầng SB5", value: "18.5 Tỷ VNĐ", paid: "12.0 Tỷ VNĐ", signDate: "2026-02-15", status: "Active" },
+      { id: "HD-002", code: "HĐ-2026/VIC-SIMCO", partner: "Công ty Cơ điện Simco", scope: "Lắp đặt Trạm biến áp TTTM", value: "9.8 Tỷ VNĐ", paid: "9.8 Tỷ VNĐ", signDate: "2026-03-01", status: "Completed" }
+    ],
+    // 5. Quản lý Nhà thầu
+    contractors: [
+      { id: "NT-01", name: "Nhà thầu Thi công B", taxCode: "0102938475", representative: "Nguyễn Văn Thầu", phone: "0911 222 333", rating: "⭐⭐⭐⭐ (4/5)", status: "Active" },
+      { id: "NT-02", name: "Công ty Cơ điện Simco", taxCode: "0309876543", representative: "Trần Anh Đức", phone: "0944 555 666", rating: "⭐⭐⭐⭐⭐ (5/5)", status: "Active" }
+    ],
+    // 6. Quản lý Khối lượng (BOQ)
+    quantityBoqs: [
+      { id: "KL-01", item: "Cống tròn bê tông D1000", unit: "Mét", planQty: 850, actualQty: 720, diffQty: -130, unitPrice: "2,400,000 VNĐ", totalAmount: "1.728 Tỷ VNĐ" },
+      { id: "KL-02", item: "Khung sắt louver TTTM L2", unit: "Tấn", planQty: 45, actualQty: 48.5, diffQty: +3.5, unitPrice: "38,000,000 VNĐ", totalAmount: "1.843 Tỷ VNĐ" }
+    ]
+  },
+
+  // ID Tagging System Master Codes
+  spaces: [
+    { id: "TTTM-L1-GH01", type: "TTTM", category: "Gian hàng Nike", level: "Tầng 1", dtgs: "Lê Văn Đội Trưởng", cbgs: "Phạm Văn Giám Sát", area: 180, status: "pending" },
+    { id: "TTTM-L1-GH02", type: "TTTM", category: "Gian hàng Adidas", level: "Tầng 1", dtgs: "Lê Văn Đội Trưởng", cbgs: "Phạm Văn Giám Sát", area: 210, status: "passed" },
+    { id: "TTTM-L2-KT05", type: "TTTM", category: "Phòng Kỹ thuật Điện L2", level: "Tầng 2", dtgs: "Lê Văn Đội Trưởng", cbgs: "Hoàng Thị M&E", area: 45, status: "failed" },
+    { id: "TTTM-L2-GH10", type: "TTTM", category: "Gian hàng Uniqlo", level: "Tầng 2", dtgs: "Lê Văn Đội Trưởng", cbgs: "Phạm Văn Giám Sát", area: 350, status: "scheduled" },
+    { id: "TT-LK05-12", type: "Thấp tầng", category: "Căn Liền kề SB5-12", level: "Phân khu Shophouse", dtgs: "Lê Văn Đội Trưởng", cbgs: "Phạm Văn Giám Sát", area: 120, status: "scheduled" },
+    { id: "TT-LK05-14", type: "Thấp tầng", category: "Căn Liền kề SB5-14", level: "Phân khu Shophouse", dtgs: "Lê Văn Đội Trưởng", cbgs: "Phạm Văn Giám Sát", area: 120, status: "passed" },
+    { id: "TT-BT02-01", type: "Thấp tầng", category: "Biệt thự Đơn lập 01", level: "Phân khu Biệt thự", dtgs: "Lê Văn Đội Trưởng", cbgs: "Hoàng Thị M&E", area: 300, status: "failed" },
+    { id: "HT-D1-CONG", type: "Hạ tầng", category: "Cống hộp Đường D1", level: "Hạ tầng kỹ thuật TMB", dtgs: "Lê Văn Đội Trưởng", cbgs: "Phạm Văn Giám Sát", area: 850, status: "pending" },
+    { id: "HT-CV-TRAM", type: "Hạ tầng", category: "Trạm biến áp Công viên", level: "Công viên trung tâm", dtgs: "Lê Văn Đội Trưởng", cbgs: "Hoàng Thị M&E", area: 60, status: "passed" }
+  ],
+
+  // Flagged Emails (Newsfeed)
+  flaggedEmails: [
+    {
+      id: "EML-260725-01",
+      date: "2026-07-25 08:15",
+      sender: "Chủ Đầu Tư (Mr. Tuấn)",
+      subject: "Yêu cầu đẩy nhanh tiến độ cống D1 & Hoàn thiện hạ tầng trước 30/07",
+      aiSummary: "Chủ đầu tư yêu cầu bổ sung 01 mũi thi công đêm cống hộp D1. Hạn hoàn thành dứt điểm trước ngày 30/07/2026.",
+      drivePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\04_Email_Luu_Tru\\2026\\Thang_07\\260725_ChuDauTu_YeuCauThietKe.pdf",
+      flagged: true,
+      priority: "high"
+    },
+    {
+      id: "EML-260725-02",
+      date: "2026-07-25 07:45",
+      sender: "Nhà Thầu Thi Công B",
+      subject: "Báo cáo sự cố máy đào A2 tại Phân khu Thấp tầng SB5",
+      aiSummary: "Máy đào A2 hỏng thủy lực từ 22h đêm qua. Nhà thầu đã điều động máy thay thế, dự kiến khắc phục trong 24h.",
+      drivePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\04_Email_Luu_Tru\\2026\\Thang_07\\260725_NhaThauB_SuCoMayDao.pdf",
+      flagged: true,
+      priority: "medium"
+    },
+    {
+      id: "EML-260724-03",
+      date: "2026-07-24 16:30",
+      sender: "Bộ Phận Thiết Kế & HSMT",
+      subject: "Cập nhật bản vẽ CAD điều chỉnh louver & khung thép TTTM Tầng 2",
+      aiSummary: "Đã hoàn thành bóc tách HSMT điều chỉnh trụ sắt & louver TTTM-L2. Yêu cầu BQL kiểm tra phương án ngân sách.",
+      drivePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\02_NoiNghiep_HoSo\\BanVe_CAD_TTTM_L2.dwg",
+      flagged: true,
+      priority: "normal"
+    }
+  ],
+
+  // Morning Directives Minutes
+  directives: [
+    {
+      id: 1,
+      item: "Thi công Cống D1",
+      content: "Bổ sung 1 mũi thi công đêm cống D1, tập kết vật tư trước 20h tối nay.",
+      assignee: "Phạm Văn Giám Sát",
+      assigneeEmail: "cbgs.xaydung@gmail.com",
+      deadline: "2026-07-28",
+      status: "in_progress",
+      reportText: "🟢 Đã tập kết 5 thợ & 10 cống tròn tại hiện trường.",
+      photoProof: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=400&q=80"
+    },
+    {
+      id: 2,
+      item: "Nghiệm thu TTTM L1",
+      content: "Chủ trì đoàn nghiệm thu bàn giao Gian hàng Nike (TTTM-L1-GH01) với CĐT.",
+      assignee: "Hoàng Thị M&E",
+      assigneeEmail: "cbgs.me@gmail.com",
+      deadline: "2026-07-26",
+      status: "completed",
+      reportText: "🟢 Đã bàn giao xong phần cơ điện. Hồ sơ nghiệm thu đầy đủ.",
+      photoProof: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=80"
+    },
+    {
+      id: 3,
+      item: "Giải trình HSMT TTTM L2",
+      content: "Lập bảng giải trình khối lượng phát sinh khung thép louver TTTM L2 gửi KSCL.",
+      assignee: "Vũ Văn Nội Nghiệp",
+      assigneeEmail: "noinghiep.bql@gmail.com",
+      deadline: "2026-07-27",
+      status: "pending",
+      reportText: "🔴 Đang chờ hiện trường đo đạc lại khối lượng sắt thực tế.",
+      photoProof: null
+    }
+  ],
+
+  // Handover Plan & Cumulative Status
+  handoverPlans: [
+    { id: "HO-01", spaceId: "TT-LK05-12", date: "2026-07-26", inviteTime: "09:00", inviteCount: 2, status: "scheduled", note: "Mời đại diện CĐT & Đơn vị Giám sát" },
+    { id: "HO-02", spaceId: "TTTM-L2-GH10", date: "2026-07-26", inviteTime: "14:30", inviteCount: 1, status: "scheduled", note: "Mời đại diện Uniqlo" },
+    { id: "HO-03", spaceId: "TTTM-L1-GH02", date: "2026-07-25", inviteTime: "10:00", inviteCount: 3, status: "passed", note: "Đạt chuẩn bàn giao", photo: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=80" },
+    { id: "HO-04", spaceId: "TTTM-L2-KT05", date: "2026-07-25", inviteTime: "15:00", inviteCount: 2, status: "failed", note: "Lỗi thấm trần kỹ thuật", photo: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=400&q=80" }
+  ],
+
+  // Sticky Notes (Enriched with Inline Edit & Multi-person Comments/Responses)
+  stickyNotes: [
+    {
+      id: "NOTE-101",
+      color: "#fef08a",
+      date: "25/07/2026 08:30",
+      title: "📌 TỒN TẠI CHƯA XỬ LÝ GIAO BAN",
+      content: "1. Rà soát HSMT TTTM: trụ sắt, louver L2\n2. NTHT ĐVSD: đòi hồ sơ thẩm duyệt PCCC còn thiếu từ Nhà thầu C.",
+      status: "active",
+      source: "Outlook Email",
+      isPinned: true,
+      assignedTo: ["Phạm Văn Giám Sát", "Vũ Văn Nội Nghiệp"],
+      comments: [
+        { sender: "Phạm Văn Giám Sát", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=cbgs1", text: "@noinghiep.bql Anh đã đo xong louver L2, em cập nhật vào HSMT nhé!", time: "25/07 10:15" },
+        { sender: "Vũ Văn Nội Nghiệp", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=noinghiep", text: "Dạ em nhận thông tin rồi ạ, đang ghép vào hồ sơ gửi KSCL.", time: "25/07 10:30" }
+      ]
+    },
+    {
+      id: "NOTE-102",
+      color: "#fbcfe8",
+      date: "24/07/2026 14:20",
+      title: "🌸 KẾ HOẠCH BÀN GIAO THẤP TẦNG",
+      content: "~~Thanh toán Simco~~ (🟢 Đã xong)\n• Chuẩn bị bảng mẫu nghiệm thu căn LK05-12 cho đoàn CĐT ngày mai.",
+      status: "done",
+      source: "Excel Master",
+      isPinned: false,
+      assignedTo: ["Lê Văn Đội Trưởng"],
+      comments: [
+        { sender: "Lê Văn Đội Trưởng", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=doitruong", text: "Đã chuẩn bị 3 bộ hồ sơ bản cứng sẵn sàng cho đoàn CĐT.", time: "24/07 16:00" }
+      ]
+    }
+  ],
+
+  // Internal Chat Messages
+  chatMessages: [
+    { id: "MSG-1", sender: "Vũ Văn Nội Nghiệp", email: "noinghiep.bql@gmail.com", text: " @cbgs.xaydung Anh Giám sát ơi, kiểm tra giúp em khối lượng cống D1 thực tế để ghép vào hồ sơ giải trình thanh tra với ạ!", time: "09:30", fileLink: "Z:\\My Drive\\BQL_PROJECT_MASTER\\02_NoiNghiep_HoSo\\Bang_Giai_Trinh_D1.xlsx" },
+    { id: "MSG-2", sender: "Phạm Văn Giám Sát", email: "cbgs.xaydung@gmail.com", text: "Đã nhận lệnh! Chiều nay 15h anh ra đếm cống và chụp ảnh gửi ngay vào app nhé @noinghiep.bql", time: "09:42", fileLink: null }
+  ],
+
+  // Admin Docs
+  adminDocs: [
+    { code: "CVD-2026/089", type: "Công văn đến", title: "Thông báo kiểm tra công tác an toàn lao động PCCC đợt 2", date: "24/07/2026", status: "Đã xử lý" },
+    { code: "CVD-2026/090", type: "Công văn đi", title: "Tờ trình phê duyệt điều chỉnh tiến độ thi công cống D1", date: "25/07/2026", status: "Đang chờ Lãnh đạo ký" }
+  ],
+
+  // Drive Z:\ Virtual Folder Hierarchy
+  driveZTree: {
+    name: "Z:\\My Drive\\BQL_PROJECT_MASTER",
+    type: "root",
+    children: [
+      { name: "01_HanhChinh_CongVan", type: "folder", count: 42 },
+      { name: "02_NoiNghiep_HoSo", type: "folder", count: 128 },
+      { name: "03_HienTruong_NhatKy", type: "folder", count: 350 },
+      { name: "04_Email_Luu_Tru", type: "folder", count: 89 },
+      { name: "05_Kho_Ca_Nhan", type: "folder", children: [
+        { name: "[NV001_NguyenVanLanhDao]", type: "folder", count: 12 },
+        { name: "[NV002_TranThiThuKy]", type: "folder", count: 8 },
+        { name: "[NV004_PhamVanGiamSat]", type: "folder", count: 19 }
+      ]},
+      { name: "06_Master_Data", type: "folder", children: [
+        { name: "Master_MaCan_GianHang.xlsx", type: "file", size: "2.4 MB" },
+        { name: "Master_NhanSu_RBAC.xlsx", type: "file", size: "1.1 MB" },
+        { name: "BanDo_TMB_ToanDuAn.dwg", type: "file", size: "48.5 MB" }
+      ]}
+    ]
+  },
+
+  // Admin Studio Config
+  adminConfig: {
+    primaryColor: "#2563eb",
+    darkTheme: true,
+    glassmorphism: true,
+    moduleOrder: [
+      "newsfeedModule",
+      "directivesModule",
+      "handoverModule",
+      "gisMapModule",
+      "dataManagementModule",
+      "deptTracksModule",
+      "personalAppsModule",
+      "chatModule",
+      "stickyNotesWidget"
+    ],
+    rolePermissions: {
+      leader: ["all"],
+      secretary: ["newsfeedModule", "directivesModule", "handoverModule", "dataManagementModule", "chatModule", "stickyNotesWidget"],
+      team_lead: ["directivesModule", "handoverModule", "gisMapModule", "dataManagementModule", "deptTracksModule", "chatModule"],
+      inspector: ["directivesModule", "handoverModule", "gisMapModule", "dataManagementModule", "deptTracksModule"],
+      internal_ops: ["directivesModule", "dataManagementModule", "deptTracksModule", "chatModule"],
+      admin: ["all", "adminStudio"]
+    }
+  }
+};
+
+window.MASTER_DATA = MASTER_DATA;

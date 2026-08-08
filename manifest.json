@@ -1,0 +1,21 @@
+{
+  "name": "Super App BQLDA - Điều Hành Thi Công Thông Minh",
+  "short_name": "Web QLDA",
+  "description": "Hệ thống Siêu Ứng dụng Quản lý Dự án BQL & Điều hành Thi công Thông minh",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1089/1089129.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1089/1089129.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

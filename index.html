@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super App BQLDA - Điều Hành Thi Công Thông Minh</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="stylesheet" href="./style.css?v=11">
+</head>
+<body class="glass-active">
+
+  <!-- LEFT SIDEBAR OVERLAY & DRAWER -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleAppSidebar()"></div>
+  <aside class="app-sidebar" id="appSidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <span style="font-size:1.5rem;">🏗️</span>
+        <h2>MENU QUẢN TRỊ BQL</h2>
+      </div>
+      <button class="btn-close-note" onclick="toggleAppSidebar()">✕</button>
+    </div>
+
+    <div class="sidebar-body">
+      <!-- GROUP 1: MAIN DASHBOARD -->
+      <div class="sidebar-group">
+        <div class="sidebar-group-title">📌 ĐIỀU HÀNH CHÍNH</div>
+        <a class="sidebar-item" onclick="scrollToModule('newsfeedModule'); toggleAppSidebar();">📢 Bảng Tin Giao Ban</a>
+        <a class="sidebar-item" onclick="scrollToModule('directivesModule'); toggleAppSidebar();">📋 Chỉ Đạo Giao Ban</a>
+        <a class="sidebar-item" onclick="scrollToModule('handoverModule'); toggleAppSidebar();">📊 Đảo Bàn Giao</a>
+        <a class="sidebar-item" onclick="scrollToModule('gisMapModule'); toggleAppSidebar();">🗺️ Bản Đồ GIS Real-time</a>
+        <a class="sidebar-item" onclick="openDeptManagementModal(); toggleAppSidebar();">🏢 Sơ Đồ Cây Tổ Chức</a>
+        <a class="sidebar-item" onclick="scrollToModule('stickyNotesWidget'); toggleAppSidebar();">📌 Ghi Chú Sticky Notes</a>
+      </div>
+
+      <!-- GROUP 2: DATA MANAGEMENT -->
+      <div class="sidebar-group">
+        <div class="sidebar-group-title">📊 PHÂN HỆ QUẢN LÝ DỮ LIỆU</div>
+        <a class="sidebar-item" onclick="switchDataTab('progress'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📅 Tiến Độ & Kế Hoạch</a>
+        <a class="sidebar-item" onclick="switchDataTab('design'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📐 Hồ Sơ Thiết Kế</a>
+        <a class="sidebar-item" onclick="switchDataTab('bidding'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📑 Hồ Sơ Mời Thầu (HSMT)</a>
+        <a class="sidebar-item" onclick="switchDataTab('contracts'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📜 Quản Lý Hợp Đồng</a>
+        <a class="sidebar-item" onclick="switchDataTab('contractors'); scrollToModule('dataManagementModule'); toggleAppSidebar();">🏗️ Quản Lý Nhà Thầu</a>
+        <a class="sidebar-item" onclick="switchDataTab('quantity'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📊 Quản Lý Khối Lượng</a>
+      </div>
+
+      <!-- GROUP 3: SYSTEM SETTINGS & ADMIN -->
+      <div class="sidebar-group">
+        <div class="sidebar-group-title">⚙️ MENU CÀI ĐẶT & QUẢN TRỊ</div>
+        <a class="sidebar-item" onclick="openUserManagementModal(); toggleAppSidebar();">👥 Quản Lý Accounts</a>
+        <a class="sidebar-item" onclick="adminStudio.toggleEditMode(); toggleAppSidebar();">🛠️ Customizer Studio</a>
+        <a class="sidebar-item" onclick="openDeptManagementModal(); toggleAppSidebar();">🏢 Quản Lý Phòng Ban</a>
+        <a class="sidebar-item" onclick="openTitleManagementModal(); toggleAppSidebar();">💼 Quản Lý Chức Danh</a>
+        <a class="sidebar-item" onclick="openDriveZExplorer(); toggleAppSidebar();">📂 Ổ Z:\ Master Drive</a>
+        <a class="sidebar-item" onclick="openGASCodeModal(); toggleAppSidebar();">⚡ Mã Google Apps Script</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- TOP HEADER & NAVBAR -->
+  <header class="app-header">
+    <div class="brand-box">
+      <button class="btn-primary btn-sm" onclick="toggleAppSidebar()" style="padding:6px 12px; font-weight:700;">
+        ☰ MENU
+      </button>
+      <div class="brand-logo">🏗️</div>
+      <div class="brand-text">
+        <h1>SUPER APP BQLDA</h1>
+        <span>Hệ thống Điều hành Thi công Thông minh Enterprise</span>
+      </div>
+    </div>
+
+    <!-- AI SEARCH BAR -->
+    <div class="search-ai-box">
+      <span>🔍</span>
+      <input type="text" id="globalAiSearchInput" placeholder="Hỏi AI tra cứu HSMT, CAD, Hợp đồng, Công văn..." onkeydown="if(event.key==='Enter') triggerGlobalAISearch()">
+    </div>
+
+    <!-- HEADER USER & ACTIONS -->
+    <div class="header-actions">
+      <button class="btn-outline btn-sm" onclick="openDriveZExplorer()">📂 Ổ Z:\ Drive</button>
+      <button class="btn-outline btn-sm" onclick="openGASCodeModal()">⚡ Mã GAS</button>
+
+      <div class="user-badge" id="currentUserBadge" onclick="openGmailLoginModal()">
+        <!-- Rendered by authEngine -->
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN APP MODULES CONTAINER -->
+  <main class="main-container" id="mainModulesContainer">
+
+    <!-- MODULE 1: NEWSFEED & FLAGGED EMAILS -->
+    <section class="card-glass" id="newsfeedModule">
+      <div class="section-title">
+        <h3>📢 BẢNG TIN TỨC GIAO BAN SÁNG (FLAGGED EMAILS)</h3>
+        <button class="btn-sm btn-outline" onclick="renderNewsfeed()">🔄 Cập nhật Email</button>
+      </div>
+      <div class="newsfeed-grid" id="newsfeedList">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- MODULE 2: DIRECTIVES & MINUTES -->
+    <section class="card-glass" id="directivesModule">
+      <div class="section-title">
+        <h3>📋 CHỈ ĐẠO GIAO BAN SÁNG & TIẾN ĐỘ THỰC HIỆN</h3>
+        <button class="btn-sm btn-primary" onclick="addNewDirective()">➕ Thêm Lệnh Chỉ Đạo</button>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Hạng mục</th>
+              <th>Nội dung Công việc</th>
+              <th>Người TH (Gmail)</th>
+              <th>Hạn TH</th>
+              <th>Báo cáo Real-time (Hiện trường)</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="directivesTableBody">
+            <!-- Rendered by app.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- MODULE 3: HANDOVER PLAN & CUMULATIVE DASHBOARD -->
+    <section class="card-glass" id="handoverModule">
+      <div class="section-title">
+        <h3>📊 ĐẢO BÀN GIAO & KẾ HOẠCH BÁO CÁO (TTTM / THẤP TẦNG)</h3>
+        <button class="btn-sm btn-primary" onclick="registerNewHandover()">➕ Đăng ký Lịch Mời</button>
+      </div>
+      <div class="stats-bar" id="handoverStatsBar">
+        <!-- Cumulative stats rendered by app.js -->
+      </div>
+      <div class="handover-grid" id="handoverGrid">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- MODULE 4: INTERACTIVE GIS MASTER PLAN & FLOOR MAP -->
+    <section class="card-glass" id="gisMapModule">
+      <div class="section-title">
+        <h3>🗺️ SƠ ĐỒ PHÂN CÔNG TỔNG MẶT BẰNG & MẶT BẰNG TẦNG REAL-TIME</h3>
+        <div style="font-size:0.8rem; color:var(--text-muted);">
+          <span>Chú thích: 🟡 Dự kiến mời | 🟢 Đạt | 🔴 Không đạt</span>
+        </div>
+      </div>
+      <div class="gis-svg-wrapper" id="interactiveGisSvg">
+        <!-- SVG Interactive GIS Map rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- MODULE NEW: DATA MANAGEMENT SUBSYSTEM (PHÂN HỆ QUẢN LÝ DỮ LIỆU) -->
+    <section class="card-glass" id="dataManagementModule">
+      <div class="section-title">
+        <h3>📊 PHÂN HỆ QUẢN LÝ DỮ LIỆU THI CÔNG & HỒ SƠ BQLDA</h3>
+        <button class="btn-sm btn-primary" onclick="addNewDataRecord()">➕ Thêm Dữ Liệu Mới</button>
+      </div>
+
+      <div class="data-tabs-bar">
+        <button class="data-tab-btn active" id="tab_progress" onclick="switchDataTab('progress')">📅 Tiến Độ & Kế Hoạch</button>
+        <button class="data-tab-btn" id="tab_design" onclick="switchDataTab('design')">📐 Hồ Sơ Thiết Kế</button>
+        <button class="data-tab-btn" id="tab_bidding" onclick="switchDataTab('bidding')">📑 Hồ Sơ Mời Thầu (HSMT)</button>
+        <button class="data-tab-btn" id="tab_contracts" onclick="switchDataTab('contracts')">📜 Quản Lý Hợp Đồng</button>
+        <button class="data-tab-btn" id="tab_contractors" onclick="switchDataTab('contractors')">🏗️ Quản Lý Nhà Thầu</button>
+        <button class="data-tab-btn" id="tab_quantity" onclick="switchDataTab('quantity')">📊 Quản Lý Khối Lượng</button>
+      </div>
+
+      <div id="dataManagementContent">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- MODULE 5: 3 DEPARTMENT TRACKS -->
+    <section class="card-glass" id="deptTracksModule">
+      <div class="section-title">
+        <h3>🧰 THANH ĐIỀU HƯỚNG BỘ MÔN BQL</h3>
+      </div>
+      <div class="dept-nav">
+        <button class="dept-tab-btn" onclick="switchDeptTab('hanh_chinh')">🏛️ HÀNH CHÍNH</button>
+        <button class="dept-tab-btn" onclick="switchDeptTab('noi_nghiep')">🏢 NỘI NGHIỆP</button>
+        <button class="dept-tab-btn active" onclick="switchDeptTab('hien_truong')">🏗️ HIỆN TRƯỜNG</button>
+      </div>
+      <div id="deptTrackContent">
+        <!-- Content rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- MODULE 6: PERSONAL WORKSPACE & SUB-APP BUILDER -->
+    <section class="card-glass" id="personalAppsModule">
+      <div class="section-title">
+        <h3>👤 TRANG CÁ NHÂN & TRỢ LÝ TẠO APP CON (NO-CODE BUILDER)</h3>
+      </div>
+      <div class="subapps-grid" id="personalSubAppsGrid">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- MODULE 7: INTERNAL CHAT & TAGGING -->
+    <section class="card-glass" id="chatModule">
+      <div class="section-title">
+        <h3>💬 CHAT NỘI BỘ & THẺ TAGGING (@MENTION)</h3>
+      </div>
+      <div class="chat-container">
+        <div class="chat-messages" id="chatMessagesBox">
+          <!-- Chat bubbles rendered by app.js -->
+        </div>
+        <div class="chat-input-bar">
+          <input type="text" id="chatInput" placeholder="Nhập tin nhắn... Tag tên @cbgs.xaydung để gửi thông báo..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+          <button class="btn-primary" onclick="sendChatMessage()">Gửi</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 8: DESKTOP STICKY NOTES WIDGET -->
+    <section class="card-glass sticky-widget-container" id="stickyNotesWidget">
+      <div class="section-title">
+        <h3>📝 WIDGET STICKY NOTES DESKTOP (PC LÃNH ĐẠO)</h3>
+        <div>
+          <button class="btn-sm btn-primary" onclick="createNewStickyNote()">➕ Note Mới</button>
+          <button class="btn-sm btn-outline" onclick="toggleStickyWidgetWindow()">📌 Floated Window</button>
+        </div>
+      </div>
+      <div class="sticky-notes-grid" id="stickyNotesGrid">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- GMAIL LOGIN / RBAC MODAL -->
+  <div class="modal-overlay" id="gmailLoginModal" style="display:none;">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>🔑 ĐĂNG NHẬP BẰNG GMAIL / GOOGLE WORKSPACE</h3>
+        <button class="btn-close-note" onclick="document.getElementById('gmailLoginModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Account cards rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- USER MANAGEMENT DASHBOARD MODAL -->
+  <div class="modal-overlay" id="userManagementModal" style="display:none;">
+    <div class="modal-content" style="max-width: 950px; width: 95%;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>👥 TRANG QUẢN TRỊ TÀI KHOẢN & PHÂN QUYỀN NHÂN SỰ BQLDA</h3>
+        <button class="btn-close-note" onclick="document.getElementById('userManagementModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body" id="userManagementBody">
+        <!-- Rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD / EDIT ACCOUNT FORM MODAL -->
+  <div class="modal-overlay" id="addEditAccountModal" style="display:none; z-index: 10000;">
+    <div class="modal-content" style="max-width: 650px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>👤 QUẢN LÝ THÔNG TIN TÀI KHOẢN</h3>
+        <button class="btn-close-note" onclick="document.getElementById('addEditAccountModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Form rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- DEPARTMENT & ORGANIZATIONAL TREE MANAGEMENT MODAL -->
+  <div class="modal-overlay" id="deptMgmtModal" style="display:none; z-index: 11000;">
+    <div class="modal-content" style="max-width: 1200px; width: 95vw;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>🌳 SƠ ĐỒ CÂY TỔ CHỨC & BỘ PHẬN ĐA CẤP (VISUAL ORG CHART STUDIO)</h3>
+        <button class="btn-close-note" onclick="document.getElementById('deptMgmtModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body" id="deptMgmtBody">
+        <!-- Rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TITLE / POSITION MANAGEMENT MODAL -->
+  <div class="modal-overlay" id="titleMgmtModal" style="display:none; z-index: 11000;">
+    <div class="modal-content" style="max-width: 550px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>💼 QUẢN LÝ DANH MỤC CHỨC DANH</h3>
+        <button class="btn-close-note" onclick="document.getElementById('titleMgmtModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body" id="titleMgmtBody">
+        <!-- Rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- LEVEL NAMING CONFIGURATION MODAL -->
+  <div class="modal-overlay" id="levelNamingModal" style="display:none; z-index: 12000;">
+    <div class="modal-content" style="max-width: 550px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>🏷️ TÙY ĐẶT TÊN CÁC CẤP SƠ ĐỒ DỰ ÁN</h3>
+        <button class="btn-close-note" onclick="document.getElementById('levelNamingModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- DRIVE Z:\ & GAS MODAL -->
+  <div class="modal-overlay" id="driveZModal" style="display:none;">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>📂 Ổ ĐĨA ẢO Z:\ MASTER & GOOGLE APPS SCRIPT</h3>
+        <button class="btn-close-note" onclick="document.getElementById('driveZModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- JARSCRIPT INCLUDES WITH CACHE-BUSTING -->
+  <script src="./js/masterData.js?v=11"></script>
+  <script src="./js/authEngine.js?v=11"></script>
+  <script src="./js/aiEngine.js?v=11"></script>
+  <script src="./js/storageEngine.js?v=11"></script>
+  <script src="./js/adminStudio.js?v=11"></script>
+  <script src="./js/app.js?v=11"></script>
+
+  <script>
+    // Clear old service workers & cache if any
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+          registration.update();
+        }
+      });
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js?v=2')
+          .then(reg => {
+            console.log('PWA Service Worker registered:', reg.scope);
+            reg.update();
+          })
+          .catch(err => console.log('Service Worker registration failed:', err));
+      });
+    }
+
+    function triggerGlobalAISearch() {
+      const q = document.getElementById("globalAiSearchInput").value;
+      if (!q) return;
+      showToast("🤖 Gemini AI đang truy vấn dữ liệu toàn dự án...");
+      aiEngine.askKnowledgeBase(q).then(ans => {
+        alert(ans);
+      });
+    }
+  </script>
+</body>
+</html>
