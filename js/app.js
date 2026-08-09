@@ -915,7 +915,6 @@ function renderDataManagementModule() {
         </table>
       </div>
     `;
-  }
   } else if (currentDataTab === 'bidding') {
     container.innerHTML = `
       <div class="table-responsive">
