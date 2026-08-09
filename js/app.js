@@ -592,7 +592,13 @@ function renderChatMessages() {
 }
 
 function formatChatText(text) {
-  return text.replace(/@([a-zA-Z0-9._]+)/g, '<span class="mention-tag">@$1</span>');
+  if (!text) return "";
+  let formatted = text;
+  formatted = formatted.replace(/@all/gi, '<span class="badge badge-warning" style="font-weight:700; background:#facc15; color:#0f172a;">📢 @all (Tất cả BQLDA)</span>');
+  return formatted.replace(/@([a-zA-Z0-9._àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ\s]+)/g, (match, p1) => {
+    if (p1.toLowerCase().startsWith("all")) return match;
+    return `<span class="mention-tag">@${p1.trim()}</span>`;
+  });
 }
 
 function sendChatMessage() {
@@ -680,11 +686,6 @@ function showMentionDropdown(inputEl, atPos, query) {
     (s.dept && s.dept.toLowerCase().includes(query.toLowerCase())) ||
     (s.title && s.title.toLowerCase().includes(query.toLowerCase()))
   );
-
-  if (staff.length === 0) {
-    hideMentionDropdown();
-    return;
-  }
 
   dropdown.innerHTML = staff.map((s, idx) => `
     <div class="mention-item ${idx === 0 ? 'selected' : ''}" onclick="selectMentionStaff('${s.name.replace(/'/g, "\\'")}')">
@@ -1116,22 +1117,81 @@ function addNoteComment(noteId) {
   showToast("💬 Đã gửi phản hồi vào Ghi chú!");
 }
 
-function assignPersonToNote(noteId) {
+function openAssignStaffModal(noteId) {
   const note = MASTER_DATA.stickyNotes.find(x => x.id === noteId);
   if (!note) return;
 
-  const staffNames = MASTER_DATA.staffList.map(s => s.name).join("\n• ");
-  const person = prompt(`🏷️ Nhập tên cán bộ cần gán vào Ghi chú:\n• ${staffNames}`);
+  const modal = document.getElementById("assignStaffModal");
+  const body = document.getElementById("assignStaffModalBody");
+  if (!modal || !body) return;
 
-  if (person && person.trim()) {
-    if (!note.assignedTo) note.assignedTo = [];
-    if (!note.assignedTo.includes(person.trim())) {
-      note.assignedTo.push(person.trim());
-      storageEngine.saveNotes();
-      renderStickyNotes();
-      showToast(`🏷️ Đã gán cán bộ [${person.trim()}] vào Ghi chú!`);
-    }
+  const currentAssigned = note.assignedTo || [];
+
+  body.innerHTML = `
+    <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
+      <input type="text" id="assignSearchInput" class="input-text" placeholder="🔍 Tìm kiếm tên cán bộ hoặc chức danh..." style="flex:1;" oninput="filterAssignStaffList()">
+      <button class="btn-sm btn-primary" onclick="toggleSelectAllAssignStaff('${noteId}')" style="white-space:nowrap;">📢 Tag Tất Cả (@all)</button>
+    </div>
+
+    <div id="assignStaffCheckboxList" style="max-height:320px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+      ${MASTER_DATA.staffList.map(s => {
+        const isChecked = currentAssigned.includes(s.name) || currentAssigned.includes("@all");
+        return `
+          <label style="display:flex; align-items:center; gap:12px; background:#1e293b; padding:10px 14px; border-radius:8px; cursor:pointer; border:1px solid var(--glass-border);">
+            <input type="checkbox" class="assign-staff-chk" value="${s.name}" ${isChecked ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
+            <img src="${s.avatar}" style="width:30px; height:30px; border-radius:50%; background:#334155;">
+            <div style="display:flex; flex-direction:column;">
+              <strong style="font-size:0.88rem; color:#f8fafc;">${s.name}</strong>
+              <span style="font-size:0.75rem; color:#60a5fa;">${s.title} • ${s.dept ? s.dept.split('➔').pop() : ''}</span>
+            </div>
+          </label>
+        `;
+      }).join("")}
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn-outline" onclick="document.getElementById('assignStaffModal').style.display='none'">Hủy</button>
+      <button class="btn-primary" onclick="saveAssignStaffForm('${noteId}')">💾 Lưu Phân Công</button>
+    </div>
+  `;
+
+  modal.style.display = "flex";
+}
+
+function filterAssignStaffList() {
+  const q = (document.getElementById("assignSearchInput").value || "").toLowerCase();
+  document.querySelectorAll("#assignStaffCheckboxList label").forEach(lbl => {
+    const txt = lbl.innerText.toLowerCase();
+    lbl.style.display = txt.includes(q) ? "flex" : "none";
+  });
+}
+
+function toggleSelectAllAssignStaff(noteId) {
+  const chks = document.querySelectorAll(".assign-staff-chk");
+  const allChecked = Array.from(chks).every(c => c.checked);
+  chks.forEach(c => c.checked = !allChecked);
+}
+
+function saveAssignStaffForm(noteId) {
+  const note = MASTER_DATA.stickyNotes.find(x => x.id === noteId);
+  if (!note) return;
+
+  const chks = Array.from(document.querySelectorAll(".assign-staff-chk:checked")).map(c => c.value);
+
+  if (chks.length === MASTER_DATA.staffList.length) {
+    note.assignedTo = ["@all"];
+  } else {
+    note.assignedTo = chks;
   }
+
+  storageEngine.saveNotes();
+  renderStickyNotes();
+  document.getElementById("assignStaffModal").style.display = "none";
+  showToast(`🏷️ Đã cập nhật phân công cán bộ phụ trách Ghi chú!`);
+}
+
+function assignPersonToNote(noteId) {
+  openAssignStaffModal(noteId);
 }
 
 function createNewStickyNote() {

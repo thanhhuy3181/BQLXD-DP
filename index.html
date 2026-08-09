@@ -6,7 +6,7 @@
   <title>Super App BQLDA - Điều Hành Thi Công Thông Minh</title>
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2563eb">
-  <link rel="stylesheet" href="./style.css?v=12">
+  <link rel="stylesheet" href="./style.css?v=13">
 </head>
 <body class="glass-active">
 
@@ -258,6 +258,19 @@
     </div>
   </div>
 
+  <!-- ASSIGN STAFF MODAL WITH CHECKBOXES & @ALL -->
+  <div class="modal-overlay" id="assignStaffModal" style="display:none; z-index: 12000;">
+    <div class="modal-content" style="max-width: 600px; width: 92%;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>🏷️ GÁN CÁN BỘ PHỤ TRÁCH GHI CHÚ</h3>
+        <button class="btn-close-note" onclick="document.getElementById('assignStaffModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body" id="assignStaffModalBody">
+        <!-- Rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
   <!-- ADD / EDIT ACCOUNT FORM MODAL -->
   <div class="modal-overlay" id="addEditAccountModal" style="display:none; z-index: 10000;">
     <div class="modal-content" style="max-width: 650px;">
@@ -324,12 +337,12 @@
   </div>
 
   <!-- JARSCRIPT INCLUDES WITH CACHE-BUSTING -->
-  <script src="./js/masterData.js?v=12"></script>
-  <script src="./js/authEngine.js?v=12"></script>
-  <script src="./js/aiEngine.js?v=12"></script>
-  <script src="./js/storageEngine.js?v=12"></script>
-  <script src="./js/adminStudio.js?v=12"></script>
-  <script src="./js/app.js?v=12"></script>
+  <script src="./js/masterData.js?v=13"></script>
+  <script src="./js/authEngine.js?v=13"></script>
+  <script src="./js/aiEngine.js?v=13"></script>
+  <script src="./js/storageEngine.js?v=13"></script>
+  <script src="./js/adminStudio.js?v=13"></script>
+  <script src="./js/app.js?v=13"></script>
 
   <script>
     // Clear old service workers & cache if any
