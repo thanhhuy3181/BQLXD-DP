@@ -845,31 +845,27 @@ function renderDataManagementModule() {
     const activeFieldsBadges = activeFields.map(f => `<span class="badge badge-info" style="font-size:0.75rem;">✔ ${f.label}</span>`).join(" ");
 
     container.innerHTML = `
-      <!-- GOOGLE DRIVE SCANNER CONTROL BAR FOR DESIGN SUBSYSTEM -->
-      <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+      <!-- GOOGLE DRIVE SCANNER INFO BAR -->
+      <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--glass-border); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
           <div>
-            <div style="font-size:0.8rem; color:#60a5fa; font-weight:600;">☁️ KHO DỮ LIỆU GOOGLE DRIVE ĐÃ KẾT NỐI:</div>
-            <div style="font-size:1.05rem; font-weight:700; color:#f8fafc; margin-top:2px;">
-              📧 ${account.email} <span style="font-size:0.8rem; color:#94a3b8;">(${account.owner})</span>
+            <div style="font-size:0.75rem; color:#60a5fa; font-weight:600;">☁️ Nguồn dữ liệu đang kết nối:</div>
+            <div style="font-size:0.95rem; font-weight:700; color:#f8fafc; margin-top:2px;">
+              📧 ${account.email} <span style="font-size:0.78rem; color:#94a3b8;">(${account.owner})</span>
             </div>
-            <div style="font-size:0.8rem; color:#cbd5e1; margin-top:2px;">
-              📂 Thư mục đang quét: <code style="color:#facc15;">${mapping.folderPath}</code> (Quét gần nhất: ${mapping.lastScanned})
+            <div style="font-size:0.75rem; color:#cbd5e1; margin-top:2px;">
+              📁 <code style="color:#facc15;">${mapping.folderPath}</code> &nbsp;|&nbsp; Quét: ${mapping.lastScanned}
             </div>
           </div>
-
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn-sm btn-outline" onclick="openDriveMappingModal('design')">☁️ Kết Nối Drive & Đổi Kho</button>
-            <button class="btn-sm btn-primary" onclick="openDesignScannerFieldsModal()">⚙️ Cài Đặt Thuộc Tính Admin</button>
-            <button class="btn-sm btn-success" onclick="scanDesignDriveFolder()">🔄 Quét Lại Dữ Liệu Drive</button>
+            <button class="btn-sm btn-outline" onclick="openDataSourceModal()">🗄️ Nguồn dữ liệu</button>
+            <button class="btn-sm btn-primary" onclick="openDesignScannerFieldsModal()">⚙️ Thuộc tính quét</button>
+            <button class="btn-sm btn-success" onclick="scanDesignDriveFolder()">🔄 Quét lại</button>
           </div>
         </div>
-
-        <div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:10px; font-size:0.8rem;">
-          <strong style="color:#facc15;">⚙️ các thuộc tính Admin cài đặt quét tùy biến (${activeFields.length}):</strong>
-          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
-            ${activeFieldsBadges}
-          </div>
+        <div style="font-size:0.75rem; color:#94a3b8;">
+          Thuộc tính quét (${activeFields.length}):&nbsp;
+          ${activeFieldsBadges}
         </div>
       </div>
 
@@ -1291,15 +1287,172 @@ function toggleStickyWidgetWindow() {
 // ==========================================
 // 10. DRIVE Z:\ EXPLORER & GAS MODAL
 // ==========================================
-function openDriveZExplorer() {
+// Kept for GAS modal reuse - do not remove
+function openDriveZExplorer() { openDataSourceModal(); }
+
+// =============================================
+// NGUỒN DỮ LIỆU - GOOGLE DRIVE MULTI-ACCOUNT
+// =============================================
+const DATA_SUBSYSTEMS = [
+  { key: 'progress',    label: 'Tiến độ / Kế hoạch' },
+  { key: 'design',      label: 'Hồ sơ Thiết kế' },
+  { key: 'bidding',     label: 'HSMT' },
+  { key: 'contracts',   label: 'Hợp đồng' },
+  { key: 'contractors', label: 'Nhà thầu' },
+  { key: 'advance',     label: 'Tạm ứng / Thanh toán' },
+  { key: 'settlement',  label: 'Quyết toán' },
+  { key: 'quantity',    label: 'Khối lượng' },
+  { key: 'handover',    label: 'Nghiệm thu / Bàn giao' }
+];
+
+function openDataSourceModal() {
   const modal = document.getElementById("driveZModal");
   if (!modal) return;
 
-  modal.querySelector(".modal-body").innerHTML = `
-    <h4>📂 CẤU TRÚC Ổ ĐĨA ẢO Z:\\ (GOOGLE DRIVE CLOUD MASTER)</h4>
-    <pre class="drive-tree-view">${renderDriveTreeHTML(MASTER_DATA.driveZTree)}</pre>
-  `;
+  _renderDataSourceContent(modal.querySelector(".modal-body"));
   modal.style.display = "flex";
+}
+
+function _renderDataSourceContent(container) {
+  const accounts = MASTER_DATA.driveAccounts;
+  const mappings = MASTER_DATA.subsystemDriveMappings;
+
+  container.innerHTML = `
+    <!-- SECTION 1: TÀI KHOẢN GOOGLE DRIVE -->
+    <div style="margin-bottom:22px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h4 style="color:#facc15; margin:0;">1. Tài khoản Google Drive</h4>
+        <button class="btn-sm btn-primary" onclick="_addDriveAccount()">➕ Thêm tài khoản</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:7px;" id="driveAccountList">
+        ${accounts.map((acc, idx) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px; border:1px solid var(--glass-border);">
+            <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+              <span style="font-size:1.1rem;">📧</span>
+              <div style="min-width:0; overflow:hidden;">
+                <strong style="color:#f8fafc; font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">${acc.email}</strong>
+                <div style="font-size:0.73rem; color:#94a3b8;">${acc.owner} • ${acc.storage}</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; margin-left:10px; flex-shrink:0;">
+              <button class="btn-xs btn-outline" onclick="_editDriveAccount(${idx})">✏️</button>
+              <button class="btn-xs" style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:3px 8px; cursor:pointer;" onclick="_deleteDriveAccount(${idx})">🗑️</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+
+    <!-- SECTION 2: CẤU HÌNH PHÂN HỆ -->
+    <div style="border-top:1px dashed rgba(255,255,255,0.12); padding-top:16px;">
+      <h4 style="color:#60a5fa; margin-bottom:12px;">2. Thư mục dữ liệu theo Phân hệ</h4>
+      <div style="display:flex; flex-direction:column; gap:10px;" id="subsystemMappingList">
+        ${DATA_SUBSYSTEMS.map(sys => {
+          const m = mappings[sys.key] || {};
+          const acc = accounts.find(a => a.id === m.accountId);
+          return `
+          <div style="background:#1e293b; border:1px solid var(--glass-border); border-radius:10px; padding:12px 14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong style="color:#f8fafc; font-size:0.9rem;">📂 ${sys.label}</strong>
+              <button class="btn-xs btn-outline" onclick="_editSubsystemMapping('${sys.key}', '${sys.label}')">⚙️ Cài đặt</button>
+            </div>
+            <div style="font-size:0.78rem; color:#94a3b8; display:flex; gap:16px; flex-wrap:wrap;">
+              <span>📧 ${acc ? acc.email : '<span style="color:#ef4444;">Chưa chọn tài khoản</span>'}</span>
+              <span>📁 <code style="color:#facc15; font-size:0.75rem;">${m.folderPath || '<span style="color:#ef4444;">Chưa cấu hình</span>'}</code></span>
+            </div>
+          </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function _addDriveAccount() {
+  const email = prompt("📧 Địa chỉ Gmail cần kết nối:");
+  if (!email || !email.trim()) return;
+  const owner = prompt("📝 Tên gợi nhớ (vd: Kho Thiết kế, Ban QLDA...):", "Kho Google Drive");
+  MASTER_DATA.driveAccounts.push({
+    id: "ACC-" + Date.now(),
+    email: email.trim(),
+    owner: owner ? owner.trim() : "Kho Google Drive",
+    storage: "N/A",
+    status: "active"
+  });
+  const modal = document.getElementById("driveZModal");
+  _renderDataSourceContent(modal.querySelector(".modal-body"));
+  showToast("☁️ Đã thêm tài khoản Google Drive!");
+}
+
+function _editDriveAccount(idx) {
+  const acc = MASTER_DATA.driveAccounts[idx];
+  if (!acc) return;
+  const newEmail = prompt("📧 Sửa Gmail:", acc.email);
+  if (newEmail === null) return;
+  const newOwner = prompt("📝 Sửa tên gợi nhớ:", acc.owner);
+  if (newEmail.trim()) acc.email = newEmail.trim();
+  if (newOwner !== null && newOwner.trim()) acc.owner = newOwner.trim();
+  const modal = document.getElementById("driveZModal");
+  _renderDataSourceContent(modal.querySelector(".modal-body"));
+  showToast("✏️ Đã cập nhật tài khoản!");
+}
+
+function _deleteDriveAccount(idx) {
+  const acc = MASTER_DATA.driveAccounts[idx];
+  if (!acc) return;
+  if (!confirm(`🗑️ Xóa tài khoản [${acc.email}]?\nCác phân hệ đang dùng tài khoản này sẽ bị mất cấu hình.`)) return;
+  MASTER_DATA.driveAccounts.splice(idx, 1);
+  const modal = document.getElementById("driveZModal");
+  _renderDataSourceContent(modal.querySelector(".modal-body"));
+  showToast("🗑️ Đã xóa tài khoản Google Drive!");
+}
+
+function _editSubsystemMapping(sysKey, sysLabel) {
+  const modal = document.getElementById("driveZModal");
+  const body = modal.querySelector(".modal-body");
+  const accounts = MASTER_DATA.driveAccounts;
+  if (!MASTER_DATA.subsystemDriveMappings[sysKey]) {
+    MASTER_DATA.subsystemDriveMappings[sysKey] = { accountId: accounts[0]?.id || '', folderPath: '', customFields: [] };
+  }
+  const m = MASTER_DATA.subsystemDriveMappings[sysKey];
+
+  body.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+      <button class="btn-xs btn-outline" onclick="openDataSourceModal()">← Quay lại</button>
+      <h4 style="margin:0; color:#facc15;">⚙️ Cài đặt: ${sysLabel}</h4>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div>
+        <label style="font-size:0.82rem; color:#cbd5e1; display:block; margin-bottom:4px;">Tài khoản Google Drive:</label>
+        <select id="editSysAccount" class="input-text" style="width:100%;">
+          <option value="">-- Chọn tài khoản --</option>
+          ${accounts.map(a => `<option value="${a.id}" ${a.id === m.accountId ? 'selected' : ''}>${a.email} (${a.owner})</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.82rem; color:#cbd5e1; display:block; margin-bottom:4px;">Thư mục dữ liệu (đường dẫn hoặc Folder ID):</label>
+        <input type="text" id="editSysFolder" class="input-text" value="${m.folderPath || ''}" placeholder="vd: Google Drive/BQL_PROJECT/01_ThietKe" style="width:100%;">
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:18px;">
+      <button class="btn-outline" onclick="openDataSourceModal()">Hủy</button>
+      <button class="btn-primary" onclick="_saveSubsystemMapping('${sysKey}')">💾 Lưu</button>
+    </div>
+  `;
+}
+
+function _saveSubsystemMapping(sysKey) {
+  const accId = document.getElementById("editSysAccount").value;
+  const folder = document.getElementById("editSysFolder").value.trim();
+  if (!MASTER_DATA.subsystemDriveMappings[sysKey]) MASTER_DATA.subsystemDriveMappings[sysKey] = {};
+  MASTER_DATA.subsystemDriveMappings[sysKey].accountId = accId;
+  MASTER_DATA.subsystemDriveMappings[sysKey].folderPath = folder;
+  MASTER_DATA.subsystemDriveMappings[sysKey].lastScanned = new Date().toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+  openDataSourceModal();
+  renderDataManagementModule();
+  showToast("💾 Đã lưu cấu hình phân hệ!");
 }
 
 function renderDriveTreeHTML(node) {

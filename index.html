@@ -51,7 +51,7 @@
         <a class="sidebar-item" onclick="adminStudio.toggleEditMode(); toggleAppSidebar();">🛠️ Customizer Studio</a>
         <a class="sidebar-item" onclick="openDeptManagementModal(); toggleAppSidebar();">🏢 Quản Lý Phòng Ban</a>
         <a class="sidebar-item" onclick="openTitleManagementModal(); toggleAppSidebar();">💼 Quản Lý Chức Danh</a>
-        <a class="sidebar-item" onclick="openDriveZExplorer(); toggleAppSidebar();">📂 Ổ Z:\ Master Drive</a>
+        <a class="sidebar-item" onclick="openDataSourceModal(); toggleAppSidebar();">🗄️ Nguồn dữ liệu</a>
         <a class="sidebar-item" onclick="openGASCodeModal(); toggleAppSidebar();">⚡ Mã Google Apps Script</a>
       </div>
     </div>
@@ -78,7 +78,7 @@
 
     <!-- HEADER USER & ACTIONS -->
     <div class="header-actions">
-      <button class="btn-outline btn-sm" onclick="openDriveZExplorer()">📂 Ổ Z:\ Drive</button>
+      <button class="btn-outline btn-sm" onclick="openDataSourceModal()">🗄️ Nguồn dữ liệu</button>
       <button class="btn-outline btn-sm" onclick="openGASCodeModal()">⚡ Mã GAS</button>
 
       <div class="user-badge" id="currentUserBadge" onclick="openGmailLoginModal()">
@@ -351,12 +351,12 @@
 
   <!-- DRIVE Z:\ & GAS MODAL -->
   <div class="modal-overlay" id="driveZModal" style="display:none;">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:750px; width:94%;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>📂 Ổ ĐĨA ẢO Z:\ MASTER & GOOGLE APPS SCRIPT</h3>
+        <h3>🗄️ NGUỒN DỮ LIỆU & KẾT NỐI GOOGLE DRIVE</h3>
         <button class="btn-close-note" onclick="document.getElementById('driveZModal').style.display='none'">✕</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
         <!-- Rendered by app.js -->
       </div>
     </div>
