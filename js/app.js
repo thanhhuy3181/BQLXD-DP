@@ -571,6 +571,8 @@ function openNoCodeBuilder() {
 // ==========================================
 function initChatModule() {
   renderChatMessages();
+  const chatInput = document.getElementById("chatInput");
+  if (chatInput) setupMentionAutocomplete(chatInput);
 }
 
 function renderChatMessages() {
@@ -612,6 +614,142 @@ function sendChatMessage() {
   const box = document.getElementById("chatMessagesBox");
   box.scrollTop = box.scrollHeight;
 }
+
+// ==========================================
+// UNIVERSAL @MENTION AUTOCOMPLETE ENGINE
+// ==========================================
+let activeMentionInput = null;
+
+function setupMentionAutocomplete(inputEl) {
+  if (!inputEl || inputEl.dataset.mentionAttached) return;
+  inputEl.dataset.mentionAttached = "true";
+
+  inputEl.addEventListener("input", (e) => handleMentionInput(e, inputEl));
+  inputEl.addEventListener("focus", (e) => handleMentionInput(e, inputEl));
+  inputEl.addEventListener("keydown", (e) => {
+    const dropdown = document.getElementById("globalMentionDropdown");
+    if (!dropdown || !dropdown.classList.contains("active")) return;
+
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      moveMentionSelection(e.key === "ArrowDown" ? 1 : -1);
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      const selected = dropdown.querySelector(".mention-item.selected");
+      if (selected) {
+        e.preventDefault();
+        selected.click();
+      }
+    } else if (e.key === "Escape") {
+      hideMentionDropdown();
+    }
+  });
+}
+
+function handleMentionInput(e, inputEl) {
+  const val = inputEl.value;
+  const cursor = inputEl.selectionStart;
+  const textBeforeCursor = val.slice(0, cursor);
+  
+  const lastAtPos = textBeforeCursor.lastIndexOf("@");
+
+  if (lastAtPos !== -1) {
+    const query = textBeforeCursor.slice(lastAtPos + 1);
+    if (!query.includes("\n") && query.length < 20) {
+      showMentionDropdown(inputEl, lastAtPos, query);
+      return;
+    }
+  }
+
+  hideMentionDropdown();
+}
+
+function showMentionDropdown(inputEl, atPos, query) {
+  activeMentionInput = { el: inputEl, atPos: atPos };
+
+  let dropdown = document.getElementById("globalMentionDropdown");
+  if (!dropdown) {
+    dropdown = document.createElement("div");
+    dropdown.id = "globalMentionDropdown";
+    dropdown.className = "mention-dropdown-box";
+    document.body.appendChild(dropdown);
+  }
+
+  const staff = MASTER_DATA.staffList.filter(s => 
+    s.name.toLowerCase().includes(query.toLowerCase()) ||
+    s.role.toLowerCase().includes(query.toLowerCase()) ||
+    (s.dept && s.dept.toLowerCase().includes(query.toLowerCase())) ||
+    (s.title && s.title.toLowerCase().includes(query.toLowerCase()))
+  );
+
+  if (staff.length === 0) {
+    hideMentionDropdown();
+    return;
+  }
+
+  dropdown.innerHTML = staff.map((s, idx) => `
+    <div class="mention-item ${idx === 0 ? 'selected' : ''}" onclick="selectMentionStaff('${s.name.replace(/'/g, "\\'")}')">
+      <img src="${s.avatar}" class="mention-item-avatar" alt="${s.name}">
+      <div class="mention-item-info">
+        <span class="mention-item-name">${s.name}</span>
+        <span class="mention-item-role">${s.title} • ${authEngine.getRoleLabel(s.role)}</span>
+      </div>
+    </div>
+  `).join("");
+
+  const rect = inputEl.getBoundingClientRect();
+  dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`;
+  dropdown.style.left = `${rect.left + window.scrollX}px`;
+  dropdown.style.width = `${Math.max(rect.width, 280)}px`;
+  dropdown.classList.add("active");
+}
+
+function moveMentionSelection(direction) {
+  const dropdown = document.getElementById("globalMentionDropdown");
+  if (!dropdown) return;
+
+  const items = Array.from(dropdown.querySelectorAll(".mention-item"));
+  if (items.length === 0) return;
+
+  let currentIndex = items.findIndex(i => i.classList.contains("selected"));
+  if (currentIndex !== -1) items[currentIndex].classList.remove("selected");
+
+  let nextIndex = currentIndex + direction;
+  if (nextIndex < 0) nextIndex = items.length - 1;
+  if (nextIndex >= items.length) nextIndex = 0;
+
+  items[nextIndex].classList.add("selected");
+  items[nextIndex].scrollIntoView({ block: "nearest" });
+}
+
+function selectMentionStaff(staffName) {
+  if (!activeMentionInput || !activeMentionInput.el) return;
+
+  const inputEl = activeMentionInput.el;
+  const atPos = activeMentionInput.atPos;
+  const val = inputEl.value;
+
+  const beforeAt = val.slice(0, atPos);
+  const afterCursor = val.slice(inputEl.selectionStart);
+
+  inputEl.value = `${beforeAt}@${staffName} ${afterCursor}`;
+  inputEl.focus();
+
+  const newCursorPos = atPos + staffName.length + 2;
+  inputEl.setSelectionRange(newCursorPos, newCursorPos);
+
+  hideMentionDropdown();
+}
+
+function hideMentionDropdown() {
+  const dropdown = document.getElementById("globalMentionDropdown");
+  if (dropdown) dropdown.classList.remove("active");
+}
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".mention-dropdown-box") && !e.target.closest("input")) {
+    hideMentionDropdown();
+  }
+});
 
 // ==========================================
 // SIDEBAR MENU NAVIGATION & SCROLL
@@ -932,6 +1070,10 @@ function renderStickyNotes() {
       </div>
     `;
   }).join("");
+
+  setTimeout(() => {
+    container.querySelectorAll(".note-reply-input").forEach(inp => setupMentionAutocomplete(inp));
+  }, 50);
 }
 
 function editStickyNote(noteId) {
