@@ -1316,123 +1316,179 @@ function openDataSourceModal() {
 function _renderDataSourceContent(container) {
   const accounts = MASTER_DATA.driveAccounts;
   const mappings = MASTER_DATA.subsystemDriveMappings;
+  const clientId = (window.DriveEngine && DriveEngine.clientId) || '';
+  const gisReady = !!(window.google?.accounts?.oauth2);
 
   container.innerHTML = `
+    <!-- GOOGLE API SETUP -->
+    <div style="background:rgba(250,204,21,0.08); border:1px solid rgba(250,204,21,0.3); border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+      <div style="font-size:0.8rem; color:#facc15; font-weight:700; margin-bottom:6px;">🔑 Cấu hình Google API Client ID</div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="gClientIdInput" class="input-text" value="${clientId}" placeholder="Dán Google OAuth 2.0 Client ID vào đây..." style="flex:1; font-size:0.8rem; font-family:monospace;">
+        <button class="btn-sm btn-primary" onclick="_saveGoogleClientId()">Lưu</button>
+      </div>
+      <div style="font-size:0.72rem; color:#64748b; margin-top:5px;">
+        ➡️ Tạo tại: <strong style="color:#60a5fa;">console.cloud.google.com</strong> → APIs & Services → Credentials → Create OAuth 2.0 Client ID (Web application) → Thêm <code style="color:#facc15;">${window.location.origin}</code> vào Authorized JavaScript origins.
+      </div>
+      <div style="font-size:0.72rem; margin-top:3px; color:${gisReady ? '#22c55e' : '#f59e0b'};">
+        ${gisReady ? '✅ Thư viện Google Identity Services đã sẵn sàng' : '⏳ Đang tải thư viện Google...'}
+      </div>
+    </div>
+
     <!-- SECTION 1: TÀI KHOẢN GOOGLE DRIVE -->
-    <div style="margin-bottom:22px;">
+    <div style="margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <h4 style="color:#facc15; margin:0;">1. Tài khoản Google Drive</h4>
-        <button class="btn-sm btn-primary" onclick="_addDriveAccount()">➕ Thêm tài khoản</button>
+        <button class="btn-sm btn-primary" onclick="_addDriveAccount()">☁️ Đăng nhập Google</button>
       </div>
-      <div style="display:flex; flex-direction:column; gap:7px;" id="driveAccountList">
-        ${accounts.map((acc, idx) => `
-          <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px; border:1px solid var(--glass-border);">
-            <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
-              <span style="font-size:1.1rem;">📧</span>
-              <div style="min-width:0; overflow:hidden;">
-                <strong style="color:#f8fafc; font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">${acc.email}</strong>
-                <div style="font-size:0.73rem; color:#94a3b8;">${acc.owner} • ${acc.storage}</div>
-              </div>
-            </div>
-            <div style="display:flex; gap:6px; margin-left:10px; flex-shrink:0;">
-              <button class="btn-xs btn-outline" onclick="_editDriveAccount(${idx})">✏️</button>
-              <button class="btn-xs" style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:3px 8px; cursor:pointer;" onclick="_deleteDriveAccount(${idx})">🗑️</button>
-            </div>
-          </div>
-        `).join("")}
+      <div style="display:flex; flex-direction:column; gap:7px;">
+        ${accounts.length === 0
+          ? `<div style="text-align:center; color:#64748b; padding:16px; font-size:0.85rem;">Chưa có tài khoản nào. Bấm "Đăng nhập Google" để kết nối!</div>`
+          : accounts.map((acc, idx) => {
+              const status = window.DriveEngine ? DriveEngine.getTokenStatus(acc.id) : 'manual';
+              const isOAuth = acc.oauthConnected;
+              const isValid = status.startsWith('valid');
+              const minsLeft = isValid ? status.split(':')[1] : 0;
+              let statusBadge;
+              if (!isOAuth) statusBadge = `<span style="font-size:0.7rem; color:#94a3b8;">Thủ công</span>`;
+              else if (isValid) statusBadge = `<span class="badge badge-success" style="font-size:0.7rem;">✅ Đã kết nối (còn ${minsLeft} phút)</span>`;
+              else statusBadge = `<span class="badge badge-warning" style="font-size:0.7rem;">⚠️ Token hết hạn</span>`;
+
+              return `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px; border:1px solid var(--glass-border);">
+                <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+                  ${acc.picture ? `<img src="${acc.picture}" style="width:32px; height:32px; border-radius:50%; flex-shrink:0;" alt="">` : `<span style="font-size:1.2rem;">📧</span>`}
+                  <div style="min-width:0; overflow:hidden;">
+                    <strong style="color:#f8fafc; font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">${acc.email}</strong>
+                    <div style="font-size:0.72rem; color:#94a3b8; display:flex; gap:8px; flex-wrap:wrap; margin-top:1px;">${acc.owner} • ${acc.storage} &nbsp; ${statusBadge}</div>
+                  </div>
+                </div>
+                <div style="display:flex; gap:5px; margin-left:8px; flex-shrink:0;">
+                  ${isOAuth && !isValid ? `<button class="btn-xs btn-primary" onclick="_reconnectDriveAccount('${acc.id}')">🔄 Kết nối lại</button>` : ''}
+                  <button class="btn-xs" style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:3px 8px; cursor:pointer;" onclick="_deleteDriveAccount(${idx})">🗑️</button>
+                </div>
+              </div>`;
+            }).join("")}
       </div>
     </div>
 
     <!-- SECTION 2: CẤU HÌNH PHÂN HỆ -->
     <div style="border-top:1px dashed rgba(255,255,255,0.12); padding-top:16px;">
       <h4 style="color:#60a5fa; margin-bottom:12px;">2. Thư mục dữ liệu theo Phân hệ</h4>
-      <div style="display:flex; flex-direction:column; gap:10px;" id="subsystemMappingList">
+      <div style="display:flex; flex-direction:column; gap:8px;">
         ${DATA_SUBSYSTEMS.map(sys => {
           const m = mappings[sys.key] || {};
           const acc = accounts.find(a => a.id === m.accountId);
+          const isLinked = !!(acc && m.folderPath);
           return `
-          <div style="background:#1e293b; border:1px solid var(--glass-border); border-radius:10px; padding:12px 14px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <strong style="color:#f8fafc; font-size:0.9rem;">📂 ${sys.label}</strong>
-              <button class="btn-xs btn-outline" onclick="_editSubsystemMapping('${sys.key}', '${sys.label}')">⚙️ Cài đặt</button>
+          <div style="background:#1e293b; border:1px solid ${isLinked ? 'rgba(34,197,94,0.3)' : 'var(--glass-border)'}; border-radius:10px; padding:10px 14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="flex:1; min-width:0;">
+                <strong style="color:#f8fafc; font-size:0.88rem;">📂 ${sys.label}</strong>
+                <div style="font-size:0.73rem; color:#94a3b8; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  ${acc ? `📧 ${acc.email}` : '<span style="color:#ef4444;">Chưa chọn tài khoản</span>'}
+                  &nbsp;|&nbsp;
+                  ${m.folderPath ? `📁 <span style="color:#facc15;">${m.folderPath}</span>` : '<span style="color:#ef4444;">Chưa chọn thư mục</span>'}
+                </div>
+              </div>
+              <button class="btn-xs btn-outline" onclick="_editSubsystemMapping('${sys.key}', '${sys.label}')" style="margin-left:8px; flex-shrink:0;">⚙️ Cài đặt</button>
             </div>
-            <div style="font-size:0.78rem; color:#94a3b8; display:flex; gap:16px; flex-wrap:wrap;">
-              <span>📧 ${acc ? acc.email : '<span style="color:#ef4444;">Chưa chọn tài khoản</span>'}</span>
-              <span>📁 <code style="color:#facc15; font-size:0.75rem;">${m.folderPath || '<span style="color:#ef4444;">Chưa cấu hình</span>'}</code></span>
-            </div>
-          </div>
-          `;
+          </div>`;
         }).join("")}
       </div>
     </div>
   `;
 }
 
+function _saveGoogleClientId() {
+  const input = document.getElementById("gClientIdInput");
+  if (!input || !input.value.trim()) { showToast('⚠️ Vui lòng nhập Client ID!'); return; }
+  DriveEngine.setClientId(input.value.trim());
+  showToast('🔑 Đã lưu Google API Client ID!');
+  openDataSourceModal(); // Re-render to show updated status
+}
+
 function _addDriveAccount() {
-  const email = prompt("📧 Địa chỉ Gmail cần kết nối:");
-  if (!email || !email.trim()) return;
-  const owner = prompt("📝 Tên gợi nhớ (vd: Kho Thiết kế, Ban QLDA...):", "Kho Google Drive");
-  MASTER_DATA.driveAccounts.push({
-    id: "ACC-" + Date.now(),
-    email: email.trim(),
-    owner: owner ? owner.trim() : "Kho Google Drive",
-    storage: "N/A",
-    status: "active"
+  if (!window.DriveEngine) { showToast('⚠️ DriveEngine chưa sẵn sàng!'); return; }
+  DriveEngine.connect(
+    (account) => {
+      const modal = document.getElementById("driveZModal");
+      if (modal) _renderDataSourceContent(modal.querySelector(".modal-body"));
+    },
+    (err) => {
+      if (err === 'no_client_id') {
+        // Scroll to client ID input
+        const input = document.getElementById("gClientIdInput");
+        if (input) { input.focus(); input.style.border = '1px solid #ef4444'; }
+      }
+    }
+  );
+}
+
+function _reconnectDriveAccount(accountId) {
+  if (!window.DriveEngine) return;
+  DriveEngine.reconnect(accountId, (acc) => {
+    const modal = document.getElementById("driveZModal");
+    if (modal) _renderDataSourceContent(modal.querySelector(".modal-body"));
   });
-  const modal = document.getElementById("driveZModal");
-  _renderDataSourceContent(modal.querySelector(".modal-body"));
-  showToast("☁️ Đã thêm tài khoản Google Drive!");
 }
 
 function _editDriveAccount(idx) {
   const acc = MASTER_DATA.driveAccounts[idx];
   if (!acc) return;
-  const newEmail = prompt("📧 Sửa Gmail:", acc.email);
-  if (newEmail === null) return;
   const newOwner = prompt("📝 Sửa tên gợi nhớ:", acc.owner);
-  if (newEmail.trim()) acc.email = newEmail.trim();
-  if (newOwner !== null && newOwner.trim()) acc.owner = newOwner.trim();
+  if (newOwner !== null && newOwner.trim()) { acc.owner = newOwner.trim(); }
   const modal = document.getElementById("driveZModal");
   _renderDataSourceContent(modal.querySelector(".modal-body"));
-  showToast("✏️ Đã cập nhật tài khoản!");
+  showToast("✏️ Đã cập nhật!");
 }
 
 function _deleteDriveAccount(idx) {
   const acc = MASTER_DATA.driveAccounts[idx];
   if (!acc) return;
-  if (!confirm(`🗑️ Xóa tài khoản [${acc.email}]?\nCác phân hệ đang dùng tài khoản này sẽ bị mất cấu hình.`)) return;
+  if (!confirm(`🗑️ Xóa tài khoản [${acc.email}]?\nCác phân hệ đang dùng tài khoản này sẽ mất cấu hình.`)) return;
   MASTER_DATA.driveAccounts.splice(idx, 1);
+  if (window.DriveEngine) DriveEngine.saveOAuthAccounts();
   const modal = document.getElementById("driveZModal");
   _renderDataSourceContent(modal.querySelector(".modal-body"));
-  showToast("🗑️ Đã xóa tài khoản Google Drive!");
+  showToast("🗑️ Đã xóa tài khoản!");
 }
 
+// ─── Subsystem Mapping Editor ─────────────────────────────────────
 function _editSubsystemMapping(sysKey, sysLabel) {
   const modal = document.getElementById("driveZModal");
   const body = modal.querySelector(".modal-body");
   const accounts = MASTER_DATA.driveAccounts;
   if (!MASTER_DATA.subsystemDriveMappings[sysKey]) {
-    MASTER_DATA.subsystemDriveMappings[sysKey] = { accountId: accounts[0]?.id || '', folderPath: '', customFields: [] };
+    MASTER_DATA.subsystemDriveMappings[sysKey] = { accountId: '', folderPath: '', folderId: '', customFields: [] };
   }
   const m = MASTER_DATA.subsystemDriveMappings[sysKey];
 
   body.innerHTML = `
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
       <button class="btn-xs btn-outline" onclick="openDataSourceModal()">← Quay lại</button>
-      <h4 style="margin:0; color:#facc15;">⚙️ Cài đặt: ${sysLabel}</h4>
+      <h4 style="margin:0; color:#facc15;">⚙️ ${sysLabel}</h4>
     </div>
 
     <div style="display:flex; flex-direction:column; gap:12px;">
       <div>
         <label style="font-size:0.82rem; color:#cbd5e1; display:block; margin-bottom:4px;">Tài khoản Google Drive:</label>
-        <select id="editSysAccount" class="input-text" style="width:100%;">
+        <select id="editSysAccount" class="input-text" style="width:100%;" onchange="_onSysAccountChange()">
           <option value="">-- Chọn tài khoản --</option>
-          ${accounts.map(a => `<option value="${a.id}" ${a.id === m.accountId ? 'selected' : ''}>${a.email} (${a.owner})</option>`).join("")}
+          ${accounts.map(a => {
+            const isOk = window.DriveEngine ? DriveEngine.isConnected(a.id) : false;
+            return `<option value="${a.id}" ${a.id === m.accountId ? 'selected' : ''}>${a.email}${isOk ? ' ✅' : ' (chưa kết nối)'}</option>`;
+          }).join("")}
         </select>
       </div>
+
       <div>
-        <label style="font-size:0.82rem; color:#cbd5e1; display:block; margin-bottom:4px;">Thư mục dữ liệu (đường dẫn hoặc Folder ID):</label>
-        <input type="text" id="editSysFolder" class="input-text" value="${m.folderPath || ''}" placeholder="vd: Google Drive/BQL_PROJECT/01_ThietKe" style="width:100%;">
+        <label style="font-size:0.82rem; color:#cbd5e1; display:block; margin-bottom:4px;">Thư mục dữ liệu:</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="editSysFolder" class="input-text" value="${m.folderPath || ''}" placeholder="Chọn thư mục hoặc nhập đường dẫn..." style="flex:1;">
+          <input type="hidden" id="editSysFolderId" value="${m.folderId || ''}">
+          <button class="btn-sm btn-outline" onclick="_openFolderBrowser('${sysKey}', '${sysLabel}')">📁 Chọn</button>
+        </div>
       </div>
     </div>
 
@@ -1443,16 +1499,128 @@ function _editSubsystemMapping(sysKey, sysLabel) {
   `;
 }
 
+function _onSysAccountChange() {
+  // Reset folder when account changes
+  const folderInput = document.getElementById("editSysFolder");
+  const folderIdInput = document.getElementById("editSysFolderId");
+  if (folderInput) folderInput.value = '';
+  if (folderIdInput) folderIdInput.value = '';
+}
+
 function _saveSubsystemMapping(sysKey) {
   const accId = document.getElementById("editSysAccount").value;
   const folder = document.getElementById("editSysFolder").value.trim();
+  const folderId = document.getElementById("editSysFolderId").value.trim();
   if (!MASTER_DATA.subsystemDriveMappings[sysKey]) MASTER_DATA.subsystemDriveMappings[sysKey] = {};
   MASTER_DATA.subsystemDriveMappings[sysKey].accountId = accId;
   MASTER_DATA.subsystemDriveMappings[sysKey].folderPath = folder;
+  MASTER_DATA.subsystemDriveMappings[sysKey].folderId = folderId;
   MASTER_DATA.subsystemDriveMappings[sysKey].lastScanned = new Date().toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
   openDataSourceModal();
   renderDataManagementModule();
   showToast("💾 Đã lưu cấu hình phân hệ!");
+}
+
+// ─── Real Folder Browser (Drive API) ─────────────────────────────
+let _fbState = { sysKey: '', sysLabel: '', accountId: '', breadcrumbs: [{id:'root', name:'My Drive'}] };
+
+async function _openFolderBrowser(sysKey, sysLabel) {
+  const accId = document.getElementById("editSysAccount")?.value;
+  if (!accId) { showToast('⚠️ Chọn tài khoản Google Drive trước!'); return; }
+
+  if (!window.DriveEngine || !DriveEngine.isConnected(accId)) {
+    showToast('⚠️ Tài khoản chưa kết nối OAuth. Vui lòng Đăng nhập Google trước!');
+    return;
+  }
+
+  _fbState = { sysKey, sysLabel, accountId: accId, breadcrumbs: [{id:'root', name:'My Drive'}] };
+  await _renderFolderBrowser('root', 'My Drive');
+}
+
+async function _renderFolderBrowser(folderId, folderName) {
+  const modal = document.getElementById("driveZModal");
+  const body = modal.querySelector(".modal-body");
+
+  body.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+      <button class="btn-xs btn-outline" onclick="_editSubsystemMapping('${_fbState.sysKey}', '${_fbState.sysLabel}')">← Quay lại</button>
+      <h4 style="margin:0; color:#60a5fa;">📁 Chọn thư mục</h4>
+    </div>
+
+    <!-- Breadcrumbs -->
+    <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:10px; display:flex; flex-wrap:wrap; gap:4px; align-items:center;">
+      ${_fbState.breadcrumbs.map((b, i) => `
+        ${i > 0 ? '<span style="color:#475569;">/</span>' : ''}
+        <span onclick="_navigateTo('${b.id}', '${b.name.replace(/'/g,"\\'")}', ${i})" style="color:${i === _fbState.breadcrumbs.length - 1 ? '#f8fafc' : '#60a5fa'}; cursor:pointer; font-weight:${i === _fbState.breadcrumbs.length - 1 ? '700' : '400'};">${b.name}</span>
+      `).join("")}
+    </div>
+
+    <div id="folderBrowserList" style="max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">
+      <div style="text-align:center; padding:20px; color:#64748b;">⏳ Đang tải thư mục...</div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1);">
+      <div style="font-size:0.8rem; color:#94a3b8;">Chọn thư mục đang hiển thị:</div>
+      <button class="btn-primary" onclick="_selectCurrentFolder('${folderId}', '${folderName.replace(/'/g,"\\'")}')">
+        ✔ Chọn "<strong>${folderName}</strong>"
+      </button>
+    </div>
+  `;
+
+  // Load folders
+  try {
+    const folders = await DriveEngine.listFolders(_fbState.accountId, folderId);
+    const listEl = document.getElementById("folderBrowserList");
+    if (!listEl) return;
+
+    if (folders.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#64748b;">📭 Không có thư mục con nào</div>`;
+    } else {
+      listEl.innerHTML = folders.map(f => `
+        <div onclick="_navigateInto('${f.id}', '${f.name.replace(/'/g,"\\'")}', '${folderId}', '${folderName.replace(/'/g,"\\'")}', '${_fbState.breadcrumbs.length}')"
+          style="display:flex; align-items:center; gap:10px; background:#1e293b; padding:9px 12px; border-radius:7px; cursor:pointer; transition:background 0.15s;"
+          onmouseover="this.style.background='#263348'" onmouseout="this.style.background='#1e293b'">
+          <span style="font-size:1.1rem;">📁</span>
+          <span style="color:#f8fafc; font-size:0.88rem;">${f.name}</span>
+        </div>
+      `).join("");
+    }
+  } catch (e) {
+    const listEl = document.getElementById("folderBrowserList");
+    if (listEl) listEl.innerHTML = `<div style="color:#ef4444; padding:16px;">❌ Lỗi tải thư mục: ${e.message}<br><small>Token có thể đã hết hạn. Hãy kết nối lại tài khoản.</small></div>`;
+  }
+}
+
+function _navigateInto(folderId, folderName, parentId, parentName, depth) {
+  // Push to breadcrumbs
+  _fbState.breadcrumbs.push({ id: folderId, name: folderName });
+  _renderFolderBrowser(folderId, folderName);
+}
+
+function _navigateTo(folderId, folderName, breadcrumbIdx) {
+  // Trim breadcrumbs to this index
+  _fbState.breadcrumbs = _fbState.breadcrumbs.slice(0, breadcrumbIdx + 1);
+  _renderFolderBrowser(folderId, folderName);
+}
+
+function _selectCurrentFolder(folderId, folderName) {
+  // Build full path from breadcrumbs
+  const fullPath = _fbState.breadcrumbs.map(b => b.name).join(' / ');
+  const finalPath = folderId === 'root' ? fullPath : fullPath;
+
+  // Go back to subsystem mapping editor with pre-filled values
+  _editSubsystemMapping(_fbState.sysKey, _fbState.sysLabel);
+
+  // Fill in the folder fields after re-render
+  setTimeout(() => {
+    const folderInput = document.getElementById("editSysFolder");
+    const folderIdInput = document.getElementById("editSysFolderId");
+    const accSelect = document.getElementById("editSysAccount");
+    if (folderInput) folderInput.value = finalPath;
+    if (folderIdInput) folderIdInput.value = folderId;
+    if (accSelect) accSelect.value = _fbState.accountId;
+    showToast(`📁 Đã chọn: ${folderName}`);
+  }, 50);
 }
 
 function renderDriveTreeHTML(node) {

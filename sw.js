@@ -1,5 +1,5 @@
 // Service Worker for Super App BQLDA PWA - Network First Strategy
-const CACHE_NAME = 'bqlda-superapp-v16';
+const CACHE_NAME = 'bqlda-superapp-v17';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
