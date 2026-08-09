@@ -318,43 +318,6 @@ const MASTER_DATA = {
     }
   ],
 
-  // ====================================================
-  // PHÂN HỆ QUẢN LÝ DỮ LIỆU DỰ ÁN (DATA MANAGEMENT)
-  // ====================================================
-  dataManagement: {
-    // 1. Quản lý Kế hoạch, Tiến độ
-    progressPlans: [
-      { id: "KH-001", task: "Thi công cống hộp đường D1", category: "Hạ tầng", startDate: "2026-07-01", endDate: "2026-07-30", progress: 85, assignee: "Phạm Văn Giám Sát", status: "in_progress", note: "Đang thi công mũi đêm 02" },
-      { id: "KH-002", task: "Hoàn thiện trần louver TTTM L2", category: "TTTM", startDate: "2026-07-10", endDate: "2026-08-15", progress: 60, assignee: "Hoàng Thị M&E", status: "in_progress", note: "Chờ điều chỉnh HSMT" },
-      { id: "KH-003", task: "Nghiệm thu bàn giao căn LK05-12", category: "Thấp tầng", startDate: "2026-07-20", endDate: "2026-07-26", progress: 100, assignee: "Lê Văn Đội Trưởng", status: "completed", note: "Đã xong nghiệm thu" }
-    ],
-    // 2. Quản lý Thiết kế
-    designDocs: [
-      { id: "TK-01", code: "CAD-TTTM-L2-09", title: "Bản vẽ chi tiết louver & trụ khung thép TTTM Tầng 2", rev: "Rev.02", author: "KTS. Trần Văn Thiết Kế", date: "2026-07-24", filePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\02_NoiNghiep_HoSo\\BanVe_CAD_TTTM_L2.dwg", status: "Approved" },
-      { id: "TK-02", code: "CAD-HT-D1-04", title: "Bản vẽ trắc dọc & mặt cắt cống D1", rev: "Rev.01", author: "KTS. Lê Anh Tuấn", date: "2026-07-15", filePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\02_NoiNghiep_HoSo\\TracDoc_CongD1.dwg", status: "Approved" }
-    ],
-    // 3. Quản lý Hồ sơ mời thầu (HSMT)
-    biddingDocs: [
-      { id: "TB-101", code: "HSMT-2026/ME-05", title: "Gói thầu Cung cấp & Lắp đặt Hệ thống TBA & PCCC", budget: "12.5 Tỷ VNĐ", dept: "Cơ Điện (M&E)", publishDate: "2026-07-05", endDate: "2026-07-28", status: "Evaluating" },
-      { id: "TB-102", code: "HSMT-2026/HT-02", title: "Gói thầu Thi công Hạ tầng Kỹ thuật & Đường D1", budget: "8.2 Tỷ VNĐ", dept: "Nội Nghiệp & HSMT", publishDate: "2026-06-20", endDate: "2026-07-10", status: "Awarded" }
-    ],
-    // 4. Quản lý Hợp đồng
-    contracts: [
-      { id: "HD-001", code: "HĐ-2026/VIC-NTB", partner: "Công ty Cổ phần Xây dựng Nhà thầu B", scope: "Thi công cống D1 & Thấp tầng SB5", value: "18.5 Tỷ VNĐ", paid: "12.0 Tỷ VNĐ", signDate: "2026-02-15", status: "Active" },
-      { id: "HD-002", code: "HĐ-2026/VIC-SIMCO", partner: "Công ty Cơ điện Simco", scope: "Lắp đặt Trạm biến áp TTTM", value: "9.8 Tỷ VNĐ", paid: "9.8 Tỷ VNĐ", signDate: "2026-03-01", status: "Completed" }
-    ],
-    // 5. Quản lý Nhà thầu
-    contractors: [
-      { id: "NT-01", name: "Nhà thầu Thi công B", taxCode: "0102938475", representative: "Nguyễn Văn Thầu", phone: "0911 222 333", rating: "⭐⭐⭐⭐ (4/5)", status: "Active" },
-      { id: "NT-02", name: "Công ty Cơ điện Simco", taxCode: "0309876543", representative: "Trần Anh Đức", phone: "0944 555 666", rating: "⭐⭐⭐⭐⭐ (5/5)", status: "Active" }
-    ],
-    // 6. Quản lý Khối lượng (BOQ)
-    quantityBoqs: [
-      { id: "KL-01", item: "Cống tròn bê tông D1000", unit: "Mét", planQty: 850, actualQty: 720, diffQty: -130, unitPrice: "2,400,000 VNĐ", totalAmount: "1.728 Tỷ VNĐ" },
-      { id: "KL-02", item: "Khung sắt louver TTTM L2", unit: "Tấn", planQty: 45, actualQty: 48.5, diffQty: +3.5, unitPrice: "38,000,000 VNĐ", totalAmount: "1.843 Tỷ VNĐ" }
-    ]
-  },
-
   // ID Tagging System Master Codes
   spaces: [
     { id: "TTTM-L1-GH01", type: "TTTM", category: "Gian hàng Nike", level: "Tầng 1", dtgs: "Lê Văn Đội Trưởng", cbgs: "Phạm Văn Giám Sát", area: 180, status: "pending" },
