@@ -837,36 +837,85 @@ function renderDataManagementModule() {
       </div>
     `;
   } else if (currentDataTab === 'design') {
+    const mapping = MASTER_DATA.subsystemDriveMappings.design;
+    const account = MASTER_DATA.driveAccounts.find(a => a.id === mapping.accountId) || MASTER_DATA.driveAccounts[1];
+    const activeFields = mapping.customFields.filter(f => f.active);
+    const scannedFolders = MASTER_DATA.designScannedFolders;
+
+    const activeFieldsBadges = activeFields.map(f => `<span class="badge badge-info" style="font-size:0.75rem;">✔ ${f.label}</span>`).join(" ");
+
     container.innerHTML = `
+      <!-- GOOGLE DRIVE SCANNER CONTROL BAR FOR DESIGN SUBSYSTEM -->
+      <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+          <div>
+            <div style="font-size:0.8rem; color:#60a5fa; font-weight:600;">☁️ KHO DỮ LIỆU GOOGLE DRIVE ĐÃ KẾT NỐI:</div>
+            <div style="font-size:1.05rem; font-weight:700; color:#f8fafc; margin-top:2px;">
+              📧 ${account.email} <span style="font-size:0.8rem; color:#94a3b8;">(${account.owner})</span>
+            </div>
+            <div style="font-size:0.8rem; color:#cbd5e1; margin-top:2px;">
+              📂 Thư mục đang quét: <code style="color:#facc15;">${mapping.folderPath}</code> (Quét gần nhất: ${mapping.lastScanned})
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-sm btn-outline" onclick="openDriveMappingModal('design')">☁️ Kết Nối Drive & Đổi Kho</button>
+            <button class="btn-sm btn-primary" onclick="openDesignScannerFieldsModal()">⚙️ Cài Đặt Thuộc Tính Admin</button>
+            <button class="btn-sm btn-success" onclick="scanDesignDriveFolder()">🔄 Quét Lại Dữ Liệu Drive</button>
+          </div>
+        </div>
+
+        <div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:10px; font-size:0.8rem;">
+          <strong style="color:#facc15;">⚙️ các thuộc tính Admin cài đặt quét tùy biến (${activeFields.length}):</strong>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+            ${activeFieldsBadges}
+          </div>
+        </div>
+      </div>
+
+      <!-- SCANNED DATA TABLE & FOLDER TREE FOR DESIGN SUBSYSTEM -->
       <div class="table-responsive">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Mã Bản Vẽ</th>
-              <th>Tên Hồ Sơ / Bản Vẽ CAD</th>
-              <th>Phiên bản</th>
-              <th>Tác giả / KTS</th>
-              <th>Ngày phê duyệt</th>
-              <th>Đường dẫn Ổ Z:\\ Drive</th>
+              ${activeFields.map(f => `<th>${f.label}</th>`).join("")}
+              <th>Tệp CAD / PDF Scanned</th>
+              <th>AI Phân Tích</th>
               <th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            ${data.designDocs.map(d => `
+            ${scannedFolders.map(folder => `
               <tr>
-                <td><strong>${d.code}</strong></td>
-                <td><strong>${d.title}</strong></td>
-                <td><span class="badge badge-primary">${d.rev}</span></td>
-                <td>${d.author}</td>
-                <td>${d.date}</td>
-                <td><code>${d.filePath}</code></td>
-                <td><button class="btn-xs btn-outline" onclick="openDriveFile('${d.filePath.replace(/\\/g, "\\\\")}')">📂 Phê Duyệt / Xem CAD</button></td>
+                ${activeFields.map(f => {
+                  if (f.id === 'folderLevel') return `<td><span class="badge badge-primary">${folder.levelBadge}</span></td>`;
+                  if (f.id === 'folderName') return `<td><strong style="color:#f8fafc;">📁 ${folder.folderName}</strong></td>`;
+                  if (f.id === 'releaseDate') return `<td><strong style="color:#22c55e;">📅 ${folder.releaseDate}</strong></td>`;
+                  if (f.id === 'cadCode') return `<td><code style="color:#38bdf8;">${folder.cadCode}</code></td>`;
+                  if (f.id === 'revision') return `<td><span class="badge badge-info">${folder.revision}</span></td>`;
+                  if (f.id === 'author') return `<td>${folder.author}</td>`;
+                  if (f.id === 'fileType') return `<td><span class="badge badge-warning">DWG / PDF</span></td>`;
+                  if (f.id === 'status') return `<td><span class="badge ${folder.status === 'Approved' ? 'badge-success' : 'badge-warning'}">${folder.status}</span></td>`;
+                  return `<td>-</td>`;
+                }).join("")}
+                <td>
+                  <div style="display:flex; flex-direction:column; gap:2px; font-size:0.8rem;">
+                    ${folder.files.map(file => `
+                      <span>📄 <strong>${file.name}</strong> <span style="color:#64748b;">[${file.size}]</span></span>
+                    `).join("")}
+                  </div>
+                </td>
+                <td><span style="font-size:0.8rem; color:#cbd5e1;">🤖 ${folder.aiSummary}</span></td>
+                <td>
+                  <button class="btn-xs btn-outline" onclick="openDriveFile('${folder.filePath.replace(/\\/g, "\\\\")}')">📂 Xem File CAD</button>
+                </td>
               </tr>
             `).join("")}
           </tbody>
         </table>
       </div>
     `;
+  }
   } else if (currentDataTab === 'bidding') {
     container.innerHTML = `
       <div class="table-responsive">
@@ -2149,6 +2198,175 @@ function deleteTitleItem(titleName) {
     renderUserManagementTable();
     showToast(`🗑️ Đã xóa chức danh ${titleName}!`);
   }
+}
+
+// ====================================================
+// GOOGLE DRIVE CLOUD MULTI-ACCOUNT & MAPPING ENGINE
+// ====================================================
+function openDriveMappingModal(subsystemKey = 'design') {
+  const modal = document.getElementById("driveCloudMappingModal");
+  const body = document.getElementById("driveCloudMappingModalBody");
+  if (!modal || !body) return;
+
+  const mapping = MASTER_DATA.subsystemDriveMappings[subsystemKey] || MASTER_DATA.subsystemDriveMappings.design;
+
+  body.innerHTML = `
+    <div style="margin-bottom:20px;">
+      <h4 style="color:#facc15; margin-bottom:6px;">1. KẾT NỐI DANH SÁCH TÀI KHOẢN GOOGLE DRIVE (MULTI-ACCOUNT)</h4>
+      <p style="font-size:0.8rem; color:#cbd5e1;">Bạn có thể liên kết nhiều tài khoản Google Drive khác nhau (ví dụ: Gmail cá nhân, Gmail Ban QLDA, Gmail Thiết Kế...):</p>
+      
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+        ${MASTER_DATA.driveAccounts.map(acc => `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px; border:1px solid var(--glass-border);">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:1.2rem;">📧</span>
+              <div>
+                <strong style="color:#f8fafc; font-size:0.9rem;">${acc.email}</strong>
+                <div style="font-size:0.75rem; color:#94a3b8;">${acc.owner} • Dung lượng: ${acc.storage}</div>
+              </div>
+            </div>
+            <span class="badge badge-success">Đã kết nối</span>
+          </div>
+        `).join("")}
+      </div>
+      <button class="btn-sm btn-outline" onclick="addNewDriveAccount()" style="margin-top:10px;">➕ Kết Nối Tài Khoản Google Drive Mới</button>
+    </div>
+
+    <div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:16px;">
+      <h4 style="color:#60a5fa; margin-bottom:6px;">2. PHÂN CÔNG KHO THƯ MỤC GOOGLE DRIVE CHO PHÂN HỆ [${subsystemKey.toUpperCase()}]</h4>
+      <p style="font-size:0.8rem; color:#cbd5e1;">Chọn tài khoản Google và trỏ đến thư mục chứa dữ liệu tương ứng trên Cloud Drive:</p>
+      
+      <div style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">
+        <div>
+          <label style="font-size:0.8rem; color:#f8fafc;">Tài khoản Google Drive phụ trách:</label>
+          <select id="mapDriveAccountSelect" class="input-text" style="width:100%; margin-top:4px;">
+            ${MASTER_DATA.driveAccounts.map(a => `
+              <option value="${a.id}" ${a.id === mapping.accountId ? 'selected' : ''}>${a.email} (${a.owner})</option>
+            `).join("")}
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size:0.8rem; color:#f8fafc;">Đường dẫn Thư mục Kho Google Drive (Path / Folder ID):</label>
+          <input type="text" id="mapDriveFolderPathInput" class="input-text" value="${mapping.folderPath}" style="width:100%; margin-top:4px;">
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+      <button class="btn-outline" onclick="document.getElementById('driveCloudMappingModal').style.display='none'">Hủy</button>
+      <button class="btn-primary" onclick="saveDriveMappingForm('${subsystemKey}')">💾 Lưu Cấu Hình Kho Drive</button>
+    </div>
+  `;
+
+  modal.style.display = "flex";
+}
+
+function addNewDriveAccount() {
+  const email = prompt("📧 Nhập địa chỉ Gmail / Google Workspace cần kết nối Google Drive:");
+  if (email && email.trim()) {
+    const owner = prompt("👤 Nhập tên mô tả chủ sở hữu (Ví dụ: Kho Bản Vẽ KTS / Kho HSMT):", "Kho Google Drive BQL");
+    const newAcc = {
+      id: "ACC-" + Date.now(),
+      email: email.trim(),
+      owner: owner ? owner.trim() : "Kho Google Drive BQL",
+      storage: "0.1 GB / 100 GB",
+      status: "active"
+    };
+    MASTER_DATA.driveAccounts.push(newAcc);
+    showToast(`☁️ Đã liên kết tài khoản Google Drive [${email.trim()}]!`);
+    openDriveMappingModal();
+  }
+}
+
+function saveDriveMappingForm(subsystemKey) {
+  const accId = document.getElementById("mapDriveAccountSelect").value;
+  const path = document.getElementById("mapDriveFolderPathInput").value;
+
+  if (MASTER_DATA.subsystemDriveMappings[subsystemKey]) {
+    MASTER_DATA.subsystemDriveMappings[subsystemKey].accountId = accId;
+    MASTER_DATA.subsystemDriveMappings[subsystemKey].folderPath = path.trim();
+    MASTER_DATA.subsystemDriveMappings[subsystemKey].lastScanned = new Date().toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+  }
+
+  document.getElementById("driveCloudMappingModal").style.display = "none";
+  renderDataManagementModule();
+  showToast(`☁️ Đã lưu cấu hình kết nối Google Drive cho Phân hệ ${subsystemKey.toUpperCase()}!`);
+}
+
+// ====================================================
+// ADMIN CUSTOM EXTRACT FIELDS CONFIGURATOR ENGINE
+// ====================================================
+function openDesignScannerFieldsModal() {
+  const modal = document.getElementById("designScannerFieldsModal");
+  const body = document.getElementById("designScannerFieldsModalBody");
+  if (!modal || !body) return;
+
+  const fields = MASTER_DATA.subsystemDriveMappings.design.customFields;
+
+  body.innerHTML = `
+    <p style="font-size:0.8rem; color:#cbd5e1; margin-bottom:12px;">Admin có thể tích chọn hoặc thêm mới các thuộc tính/thông tin mà hệ thống sẽ tự động quét và bóc tách từ thư mục Google Drive của Phân hệ Thiết kế:</p>
+
+    <div style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; margin-bottom:16px;">
+      ${fields.map(f => `
+        <label style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px; cursor:pointer; border:1px solid var(--glass-border);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <input type="checkbox" onchange="toggleDesignField('${f.id}')" ${f.active ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
+            <strong style="font-size:0.88rem; color:#f8fafc;">${f.label}</strong>
+          </div>
+          <span class="badge ${f.type === 'system' ? 'badge-info' : 'badge-warning'}">${f.type === 'system' ? 'Mặc định' : 'Tùy biến Admin'}</span>
+        </label>
+      `).join("")}
+    </div>
+
+    <div style="display:flex; gap:10px; margin-bottom:16px;">
+      <input type="text" id="newCustomFieldNameInput" class="input-text" placeholder="Thêm thuộc tính mới (Ví dụ: Đơn vị tư vấn TK, Giai đoạn TKTK...)..." style="flex:1;">
+      <button class="btn-primary" onclick="addNewCustomDesignField()">➕ Thêm Thuộc Tính</button>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end;">
+      <button class="btn-primary" onclick="document.getElementById('designScannerFieldsModal').style.display='none'; renderDataManagementModule();">💾 Hoàn Tất Cài Đặt</button>
+    </div>
+  `;
+
+  modal.style.display = "flex";
+}
+
+function toggleDesignField(fieldId) {
+  const field = MASTER_DATA.subsystemDriveMappings.design.customFields.find(f => f.id === fieldId);
+  if (field) {
+    field.active = !field.active;
+    renderDataManagementModule();
+  }
+}
+
+function addNewCustomDesignField() {
+  const input = document.getElementById("newCustomFieldNameInput");
+  if (!input || !input.value.trim()) return;
+
+  const name = input.value.trim();
+  const id = "field_" + Date.now();
+
+  MASTER_DATA.subsystemDriveMappings.design.customFields.push({
+    id: id,
+    label: name,
+    active: true,
+    type: "custom"
+  });
+
+  input.value = "";
+  openDesignScannerFieldsModal();
+  renderDataManagementModule();
+  showToast(`⚙️ Đã thêm thuộc tính quét mới: [${name}]`);
+}
+
+function scanDesignDriveFolder() {
+  showToast("🔍 AI đang tự động kết nối Google Drive & quét toàn bộ cấp thư mục...");
+  setTimeout(() => {
+    MASTER_DATA.subsystemDriveMappings.design.lastScanned = new Date().toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+    renderDataManagementModule();
+    showToast("🟢 Đã quét và tổng hợp xong dữ liệu HSTK từ Google Drive!");
+  }, 1200);
 }
 
 

@@ -6,7 +6,7 @@
   <title>Super App BQLDA - Điều Hành Thi Công Thông Minh</title>
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2563eb">
-  <link rel="stylesheet" href="./style.css?v=13">
+  <link rel="stylesheet" href="./style.css?v=14">
 </head>
 <body class="glass-active">
 
@@ -310,6 +310,32 @@
     </div>
   </div>
 
+  <!-- GOOGLE DRIVE MULTI-ACCOUNT & SUBSYSTEM MAPPING MODAL -->
+  <div class="modal-overlay" id="driveCloudMappingModal" style="display:none; z-index: 12000;">
+    <div class="modal-content" style="max-width: 850px; width: 92%;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>☁️ CẤU HÌNH KẾT NỐI GOOGLE DRIVE MULTI-ACCOUNT & KHO PHÂN HỆ</h3>
+        <button class="btn-close-note" onclick="document.getElementById('driveCloudMappingModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body" id="driveCloudMappingModalBody">
+        <!-- Rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN CUSTOM EXTRACT FIELDS CONFIGURATOR MODAL -->
+  <div class="modal-overlay" id="designScannerFieldsModal" style="display:none; z-index: 13000;">
+    <div class="modal-content" style="max-width: 650px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>⚙️ CÀI ĐẶT THUỘC TÍNH QUÉT TÙY BIẾN ADMIN (PHÂN HỆ THIẾT KẾ)</h3>
+        <button class="btn-close-note" onclick="document.getElementById('designScannerFieldsModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body" id="designScannerFieldsModalBody">
+        <!-- Rendered by app.js -->
+      </div>
+    </div>
+  </div>
+
   <!-- LEVEL NAMING CONFIGURATION MODAL -->
   <div class="modal-overlay" id="levelNamingModal" style="display:none; z-index: 12000;">
     <div class="modal-content" style="max-width: 550px;">
@@ -337,12 +363,12 @@
   </div>
 
   <!-- JARSCRIPT INCLUDES WITH CACHE-BUSTING -->
-  <script src="./js/masterData.js?v=13"></script>
-  <script src="./js/authEngine.js?v=13"></script>
-  <script src="./js/aiEngine.js?v=13"></script>
-  <script src="./js/storageEngine.js?v=13"></script>
-  <script src="./js/adminStudio.js?v=13"></script>
-  <script src="./js/app.js?v=13"></script>
+  <script src="./js/masterData.js?v=14"></script>
+  <script src="./js/authEngine.js?v=14"></script>
+  <script src="./js/aiEngine.js?v=14"></script>
+  <script src="./js/storageEngine.js?v=14"></script>
+  <script src="./js/adminStudio.js?v=14"></script>
+  <script src="./js/app.js?v=14"></script>
 
   <script>
     // Clear old service workers & cache if any

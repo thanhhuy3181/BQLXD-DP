@@ -185,6 +185,140 @@ const MASTER_DATA = {
   ],
 
   // ====================================================
+  // CẤU HÌNH KẾT NỐI GOOGLE DRIVE MULTI-ACCOUNT & THƯ MỤC PHÂN HỆ
+  // ====================================================
+  driveAccounts: [
+    { id: "ACC-01", email: "bql.danphuong@gmail.com", owner: "Kho Master Ban QLDA", storage: "45.2 GB / 200 GB", status: "active" },
+    { id: "ACC-02", email: "thietke.cad.bql@gmail.com", owner: "Kho Thiết Kế & CAD", storage: "18.6 GB / 100 GB", status: "active" },
+    { id: "ACC-03", email: "phong.hsmt.bql@gmail.com", owner: "Kho HSMT & Hợp Đồng", storage: "8.4 GB / 100 GB", status: "active" }
+  ],
+
+  subsystemDriveMappings: {
+    design: {
+      accountId: "ACC-02",
+      folderPath: "Google Drive/BQL_PROJECT_MASTER/02_NoiNghiep_HoSo/01_ThietKe_CAD",
+      folderName: "01_ThietKe_CAD (Kho Bản Vẽ Thiết Kế Master)",
+      lastScanned: "2026-08-09 16:50",
+      customFields: [
+        { id: "folderLevel", label: "Cấp thư mục (Hierarchy Level)", active: true, type: "system" },
+        { id: "folderName", label: "Tên thư mục / Hạng mục", active: true, type: "system" },
+        { id: "releaseDate", label: "Ngày phát hành HSTK", active: true, type: "custom" },
+        { id: "cadCode", label: "Mã bản vẽ CAD", active: true, type: "custom" },
+        { id: "revision", label: "Phiên bản (Revision)", active: true, type: "custom" },
+        { id: "author", label: "Người duyệt / KTS", active: true, type: "custom" },
+        { id: "fileType", label: "Định dạng Tệp (DWG/PDF)", active: true, type: "system" },
+        { id: "status", label: "Trạng thái Phê duyệt", active: true, type: "system" }
+      ]
+    },
+    progress: {
+      accountId: "ACC-01",
+      folderPath: "Google Drive/BQL_PROJECT_MASTER/03_HienTruong_NhatKy",
+      folderName: "03_HienTruong_NhatKy (Nhật Ký Thi Công & Tiến Độ)",
+      lastScanned: "2026-08-09 15:30",
+      customFields: [
+        { id: "taskId", label: "Mã Kế hoạch", active: true },
+        { id: "taskName", label: "Hạng mục Công việc", active: true },
+        { id: "startDate", label: "Ngày bắt đầu", active: true },
+        { id: "endDate", label: "Ngày kết thúc", active: true },
+        { id: "progressPct", label: "% Tiến độ", active: true }
+      ]
+    },
+    bidding: {
+      accountId: "ACC-03",
+      folderPath: "Google Drive/BQL_PROJECT_MASTER/02_NoiNghiep_HoSo/02_HSMT",
+      folderName: "02_HSMT (Hồ Sơ Mời Thầu & Dự Toán)",
+      lastScanned: "2026-08-09 14:00",
+      customFields: [
+        { id: "bidCode", label: "Mã Gói thầu", active: true },
+        { id: "bidName", label: "Tên Gói thầu", active: true },
+        { id: "budget", label: "Dự toán", active: true }
+      ]
+    },
+    contracts: {
+      accountId: "ACC-03",
+      folderPath: "Google Drive/BQL_PROJECT_MASTER/02_NoiNghiep_HoSo/03_HopDong",
+      folderName: "03_HopDong (Kho Hợp Đồng & Thanh Toán)",
+      lastScanned: "2026-08-09 12:00",
+      customFields: [
+        { id: "contractCode", label: "Mã Hợp đồng", active: true },
+        { id: "partner", label: "Nhà thầu", active: true }
+      ]
+    },
+    contractors: {
+      accountId: "ACC-01",
+      folderPath: "Google Drive/BQL_PROJECT_MASTER/06_Master_Data/NhaThau",
+      folderName: "NhaThau (Danh Bạ Nhà Thầu)",
+      lastScanned: "2026-08-09 10:00",
+      customFields: [
+        { id: "contractorId", label: "Mã Nhà thầu", active: true }
+      ]
+    },
+    quantity: {
+      accountId: "ACC-01",
+      folderPath: "Google Drive/BQL_PROJECT_MASTER/02_NoiNghiep_HoSo/04_BocTach_KhoiLuong",
+      folderName: "04_BocTach_KhoiLuong (BOQ & Vật Tư)",
+      lastScanned: "2026-08-09 11:30",
+      customFields: [
+        { id: "boqItem", label: "Hạng mục BOQ", active: true }
+      ]
+    }
+  },
+
+  // DỮ LIỆU TỔNG HỢP QUÉT TỪ GOOGLE DRIVE CHO PHÂN HỆ THIẾT KẾ (SCANNER RESULTS)
+  designScannedFolders: [
+    {
+      id: "SCAN-TK-01",
+      level: 1,
+      levelBadge: "Cấp 1 (Folder Gốc)",
+      folderName: "01_Kho_BanVe_Master_TTTM",
+      releaseDate: "2026-07-24",
+      cadCode: "CAD-TTTM-L2-09",
+      revision: "Rev.02",
+      author: "KTS. Trần Văn Thiết Kế",
+      filePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\02_NoiNghiep_HoSo\\BanVe_CAD_TTTM_L2.dwg",
+      files: [
+        { name: "BanVe_CAD_TTTM_L2.dwg", size: "14.2 MB", date: "2026-07-24 15:30" },
+        { name: "ThietKe_ChiTiet_Louver_L2.pdf", size: "3.8 MB", date: "2026-07-24 16:00" }
+      ],
+      status: "Approved",
+      aiSummary: "Đã thẩm định xong khung sắt louver L2, đủ điều kiện nghiệm thu."
+    },
+    {
+      id: "SCAN-TK-02",
+      level: 2,
+      levelBadge: "Cấp 2 (Hạng mục Cống D1)",
+      folderName: "02_BanVe_TracDoc_MoiThiCong_D1",
+      releaseDate: "2026-07-15",
+      cadCode: "CAD-HT-D1-04",
+      revision: "Rev.01",
+      author: "KTS. Lê Anh Tuấn",
+      filePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\02_NoiNghiep_HoSo\\TracDoc_CongD1.dwg",
+      files: [
+        { name: "TracDoc_CongD1.dwg", size: "8.5 MB", date: "2026-07-15 10:20" },
+        { name: "MatCat_BeBong_D1.dwg", size: "6.1 MB", date: "2026-07-15 11:00" }
+      ],
+      status: "Approved",
+      aiSummary: "Mặt cắt bê tông cống tròn D1000 đúng tiêu chuẩn kỹ thuật TMB."
+    },
+    {
+      id: "SCAN-TK-03",
+      level: 3,
+      levelBadge: "Cấp 3 (Mũi thi công SB5-12)",
+      folderName: "03_ThietKe_Shophouse_SB5",
+      releaseDate: "2026-07-20",
+      cadCode: "CAD-SB5-LK05-12",
+      revision: "Rev.03",
+      author: "KTS. Nguyễn Hoàng Nam",
+      filePath: "Z:\\My Drive\\BQL_PROJECT_MASTER\\02_NoiNghiep_HoSo\\Shophouse_SB5.dwg",
+      files: [
+        { name: "Shophouse_SB5.dwg", size: "19.4 MB", date: "2026-07-20 09:15" }
+      ],
+      status: "Evaluating",
+      aiSummary: "Bản vẽ hoàn thiện mặt tiền shophouse đang chờ duyệt bổ sung."
+    }
+  ],
+
+  // ====================================================
   // PHÂN HỆ QUẢN LÝ DỮ LIỆU DỰ ÁN (DATA MANAGEMENT)
   // ====================================================
   dataManagement: {
