@@ -65,7 +65,7 @@ const DriveEngine = {
       }
     });
 
-    tokenClient.requestAccessToken({ prompt: 'select_account' });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   },
 
   /** Reconnect a specific account (no account picker shown if still signed in) */
