@@ -7,6 +7,7 @@
 const DriveEngine = {
   CLIENT_ID_KEY: 'bqlda_gdrive_client_id',
   ACCOUNTS_KEY: 'bqlda_gdrive_oauth_accounts',
+  MAPPINGS_KEY: 'bqlda_subsystem_mappings',
 
   // ─── Client ID (stored in localStorage) ───────────────────────
   get clientId() { return localStorage.getItem(this.CLIENT_ID_KEY) || ''; },
@@ -23,14 +24,37 @@ const DriveEngine = {
     localStorage.setItem(this.ACCOUNTS_KEY, JSON.stringify(oauths));
   },
 
-  /** Merge saved OAuth accounts into MASTER_DATA on page load */
+  // ─── Subsystem Mappings Persistence ───────────────────────────
+  saveMappings() {
+    localStorage.setItem(this.MAPPINGS_KEY, JSON.stringify(MASTER_DATA.subsystemDriveMappings));
+  },
+
+  loadMappings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.MAPPINGS_KEY) || '{}');
+      Object.keys(saved).forEach(key => {
+        const existing = MASTER_DATA.subsystemDriveMappings[key] || {};
+        MASTER_DATA.subsystemDriveMappings[key] = {
+          ...existing,
+          ...saved[key],
+          // Preserve customFields from masterData if saved doesn't have them
+          customFields: saved[key].customFields?.length ? saved[key].customFields : (existing.customFields || [])
+        };
+      });
+    } catch {}
+  },
+
+  /** Merge saved OAuth accounts + mappings into MASTER_DATA on page load */
   loadSaved() {
+    // Load OAuth accounts
     const saved = this.getOAuthAccounts();
     saved.forEach(acc => {
       const idx = MASTER_DATA.driveAccounts.findIndex(a => a.id === acc.id);
       if (idx >= 0) MASTER_DATA.driveAccounts[idx] = acc;
       else MASTER_DATA.driveAccounts.push(acc);
     });
+    // Load subsystem mappings
+    this.loadMappings();
   },
 
   // ─── OAuth Connect ─────────────────────────────────────────────
