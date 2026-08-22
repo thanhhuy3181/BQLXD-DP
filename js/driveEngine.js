@@ -92,7 +92,7 @@ const DriveEngine = {
     tokenClient.requestAccessToken({ prompt: 'consent' });
   },
 
-  /** Reconnect a specific account (no account picker shown if still signed in) */
+  /** Reconnect a specific account (force re-consent to grant Drive scope) */
   reconnect(accountId, onSuccess) {
     if (!this.clientId) {
       showToast('⚠️ Chưa nhập Google API Client ID!');
@@ -118,7 +118,7 @@ const DriveEngine = {
         if (updated && onSuccess) onSuccess(updated);
       }
     });
-    tokenClient.requestAccessToken({ prompt: '' });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   },
 
   /** Exchange token for user info & update MASTER_DATA */
@@ -174,7 +174,7 @@ const DriveEngine = {
       }
 
       this.saveOAuthAccounts();
-      showToast(`✅ Đã kết nối: ${user.email}`);
+      showToast(`✅ Đã kết nối & cấp quyền Drive: ${user.email}`);
       return account;
     } catch (e) {
       showToast('❌ Lỗi xử lý token: ' + e.message);
@@ -188,6 +188,15 @@ const DriveEngine = {
     if (!acc || !acc.token) return null;
     if (acc.expiry && Date.now() >= acc.expiry) return null; // expired
     return acc.token;
+  },
+
+  invalidateToken(accountId) {
+    const acc = MASTER_DATA.driveAccounts.find(a => a.id === accountId);
+    if (acc) {
+      acc.token = null;
+      acc.expiry = 0;
+      this.saveOAuthAccounts();
+    }
   },
 
   isConnected(accountId) {
@@ -207,7 +216,7 @@ const DriveEngine = {
   // ─── Drive API: List Folders ────────────────────────────────────
   async listFolders(accountId, parentId = 'root') {
     const token = this.getToken(accountId);
-    if (!token) throw new Error('NO_TOKEN');
+    if (!token) throw new Error('Chưa đăng nhập hoặc token đã hết hạn');
 
     const q = `'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
     const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,modifiedTime)&orderBy=name&pageSize=100`;
@@ -218,7 +227,12 @@ const DriveEngine = {
 
     if (!resp.ok) {
       const err = await resp.json();
-      throw new Error(err.error?.message || 'Drive API error');
+      const msg = err.error?.message || 'Drive API error';
+      if (resp.status === 403 || msg.includes('insufficient authentication scopes')) {
+        this.invalidateToken(accountId);
+        throw new Error('Tài khoản chưa được cấp quyền đọc Google Drive. Vui lòng bấm "Kết nối lại" bên dưới.');
+      }
+      throw new Error(msg);
     }
 
     const data = await resp.json();

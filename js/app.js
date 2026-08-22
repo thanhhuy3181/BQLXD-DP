@@ -1588,7 +1588,15 @@ async function _renderFolderBrowser(folderId, folderName) {
     }
   } catch (e) {
     const listEl = document.getElementById("folderBrowserList");
-    if (listEl) listEl.innerHTML = `<div style="color:#ef4444; padding:16px;">❌ Lỗi tải thư mục: ${e.message}<br><small>Token có thể đã hết hạn. Hãy kết nối lại tài khoản.</small></div>`;
+    if (listEl) {
+      listEl.innerHTML = `
+        <div style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:16px; margin:10px 0; text-align:center;">
+          <div style="color:#ef4444; font-weight:700; font-size:0.95rem; margin-bottom:6px;">❌ ${e.message}</div>
+          <div style="font-size:0.8rem; color:#cbd5e1; margin-bottom:12px;">Tài khoản này cần được cấp lại quyền đọc dữ liệu Google Drive (Scope drive.readonly).</div>
+          <button class="btn-sm btn-primary" onclick="_reconnectDriveAccount('${_fbState.accountId}')">🔑 Đăng Nhập Lại & Cấp Quyền Drive</button>
+        </div>
+      `;
+    }
   }
 }
 
