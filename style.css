@@ -1387,3 +1387,63 @@ body.glass-active .app-header {
   .chart-children-container { flex-direction: column; }
   .chart-children-container::before { display: none; }
 }
+
+/* FLOATING SECONDARY APP LAUNCHER BUTTON (BOTTOM RIGHT CORNER) */
+.secondary-launcher-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(15, 23, 42, 0.98));
+  border: 1px dashed rgba(250, 204, 21, 0.6);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(37, 99, 235, 0.5);
+  backdrop-filter: blur(16px);
+  color: #fff;
+  padding: 12px 22px;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: pulseGlow 3s infinite alternate;
+}
+
+.secondary-launcher-btn:hover {
+  transform: translateY(-4px) scale(1.04);
+  border-color: #facc15;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.7), 0 0 35px rgba(250, 204, 21, 0.6);
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(37, 99, 235, 0.4); }
+  100% { box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(250, 204, 21, 0.5); }
+}
+
+/* SECONDARY APP FULLSCREEN MODAL CONTAINER */
+.secondary-app-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99990;
+  background: #090d16;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.secondary-app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100000;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}

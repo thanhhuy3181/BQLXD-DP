@@ -2734,4 +2734,22 @@ async function scanDesignDriveFolder() {
   showToast("🟢 Đã quét và tổng hợp xong dữ liệu HSTK từ Google Drive!");
 }
 
+// ==========================================
+// SECONDARY APP MODAL TOGGLE
+// ==========================================
+function openSecondaryAppModal() {
+  const modal = document.getElementById("secondaryAppModal");
+  if (modal) {
+    modal.style.display = "flex";
+    showToast("🏗️ Đã mở Trang Thứ Cấp (Super App v1)");
+  }
+}
+
+function closeSecondaryAppModal() {
+  const modal = document.getElementById("secondaryAppModal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+}
+
 
