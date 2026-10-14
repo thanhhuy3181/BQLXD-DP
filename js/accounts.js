@@ -7,10 +7,11 @@ const AccountsModule = (function() {
   let _currentUser = null;
   let _users = [];
   let _permData = null;
+  let _permissionSaveChain = Promise.resolve();
 
-  const NAV_PERMISSIONS = {home:'tab_home','ql-file':'tab_quan_ly',theo_doi:'tab_theo_doi',chuc_nang:'tab_chuc_nang',cai_dat:'tab_cai_dat'};
+  const NAV_PERMISSIONS = {home:'tab_home',mail:'tab_mail','ql-file':'tab_quan_ly',theo_doi:'tab_theo_doi',chuc_nang:'tab_chuc_nang',cai_dat:'tab_cai_dat'};
   const SETTINGS_PERMISSIONS = {'cd-theme':'cd_theme','cd-hm-ctr':'cd_hm_ctr','cd-acc':'cd_ql_acc','cd-perm':'cd_perm','cd-ai':'cd_ai_engine','cd-excel':'cd_excel_cfg','cd-links':'cd_links','cd-data-matrix':'cd_data_matrix','cd-backup':'cd_backup'};
-  const FUNCTION_PERMISSIONS = {word:'cn_tab_b1_word','cn-b2':'cn_tab_b2_hsmt','cn-b3':'cn_tab_b3_hd','cn-b4':'cn_tab_b4_heading','cn-skill-hsmt':'cn_tab_b5_skill_hsmt','cn-skill-hd':'cn_tab_b5_skill_hd','cn-b6':'cn_tab_b6_ai','cn-b7':'cn_tab_b7_search','cn-b8':'cn_tab_b8_central','cn-extract-boq':'cn_tab_b9_merge_boq','cn-down-hd':'cn_down_hd','cn-down-cks':'cn_down_cks'};
+  const FUNCTION_PERMISSIONS = {word:'cn_tab_b1_word','cn-down-hd':'cn_down_hd','cn-down-cks':'cn_down_cks','cn-skill-hsmt':'cn_tab_b5_skill_hsmt','cn-b9-merge-boq':'cn_tab_b9_merge_boq','cn-skill-hd':'cn_tab_b5_skill_hd','cn-extract-boq':'cn_tab_b9_merge_boq','cn-b2':'cn_tab_b2_hsmt','cn-b3':'cn_tab_b3_hd','cn-b8':'cn_tab_b8_central','cn-b7':'cn_tab_b7_search','cn-b6':'cn_tab_b6_ai','cn-b4':'cn_tab_b4_heading'};
 
   async function init() {
     await checkCurrentUser();
@@ -157,7 +158,8 @@ const AccountsModule = (function() {
 
     const perms = _permData.permissions || {};
     const readOnly = _currentUser?.role !== 'Admin';
-    document.getElementById('perm-save-button')?.classList.toggle('hidden', readOnly);
+    const status = document.getElementById('perm-autosave-status');
+    if (status) status.textContent = readOnly ? 'Chỉ xem — thay đổi do Admin thực hiện' : 'Tự động lưu khi thay đổi';
     const groups = window.PermissionCatalog?.groups || _permData.groups || [];
 
     let html = '';
@@ -212,20 +214,28 @@ const AccountsModule = (function() {
     if (!_permData?.permissions) return;
     _permData.permissions[role] = _permData.permissions[role] || {};
     _permData.permissions[role][pkey] = val;
+    savePermissions(true);
   }
 
-  async function savePermissions() {
+  async function savePermissions(silent = false) {
     if (_currentUser?.role !== 'Admin') {
-      toast('Bạn chỉ có quyền xem ma trận phân quyền.', 'warning');
+      if (!silent) toast('Bạn chỉ có quyền xem ma trận phân quyền.', 'warning');
       return;
     }
     if (!_permData?.permissions) return;
-    const res = await API.saveRolePermissions(_permData.permissions);
-    if (res.ok) {
-      toast('Đã lưu ma trận phân quyền thành công!', 'success');
-    } else {
-      toast('Lỗi lưu phân quyền: ' + res.error, 'error');
-    }
+    const status = document.getElementById('perm-autosave-status');
+    if (status) status.textContent = 'Đang lưu…';
+    // Serialize writes so quick edits cannot overwrite one another out of order.
+    _permissionSaveChain = _permissionSaveChain.then(async () => {
+      const res = await API.saveRolePermissions(_permData.permissions);
+      if (res.ok) {
+        if (status) status.textContent = '✓ Đã tự lưu';
+      } else {
+        if (status) status.textContent = '⚠ Lưu không thành công';
+        toast('Lỗi lưu phân quyền: ' + res.error, 'error');
+      }
+    });
+    return _permissionSaveChain;
   }
 
   async function changeRole(username, role) {

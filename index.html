@@ -246,6 +246,9 @@
       <button class="main-tab-btn px-4 py-1.5 rounded-md text-xs font-bold transition-all active" data-tab="home" onclick="switchTopNav('home')">
         <span>🏠</span><span> Home </span>
       </button>
+      <button class="main-tab-btn px-4 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="mail" onclick="switchTopNav('mail')">
+        <span>✉</span><span> Mail </span>
+      </button>
       <button class="main-tab-btn px-4 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="ql-file" onclick="switchTopNav('ql-file')">
         <span>📁</span><span> QL File </span>
       </button>
@@ -483,9 +486,89 @@
       </div>
     </section>
 
+    <!-- ──────────────────────────────────────────────────────────────────
+         TAB 2: MAIL (Hộp thư Điện tử Outlook & Quản lý Tệp .msg)
+    ────────────────────────────────────────────────────────────────── -->
+    <section id="page-mail" class="page-section h-full overflow-hidden p-2 gap-2 flex-col">
+      <!-- 1. Header & Quick Toolbar -->
+      <div class="flex items-center justify-between bg-[#1E1E1C] border border-[#2E2E2A] rounded-xl px-4 py-2.5 shadow-sm flex-shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">✉</span>
+          <div>
+            <h2 class="text-sm font-extrabold tracking-wide text-[#EDEDEA]">HỘP THƯ ĐIỆN TỬ OUTLOOK & QUẢN LÝ TỆP .MSG</h2>
+            <p class="text-[11px] text-[#908CAA]">Tự động phân loại email theo 5 nghiệp vụ: HSMT, Hợp đồng, TƯ/TT, BVTK, Chủ trương đầu tư.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-xs bg-[#1976D2] hover:bg-[#1565C0] text-white border-none rounded-md font-bold gap-1 shadow-sm" onclick="MailModule.connectOutlook()">
+            <span>📥</span><span>Kết Nối Outlook Classic</span>
+          </button>
+          <button class="btn btn-xs bg-[#2ECC71] hover:bg-[#27AE60] text-black border-none rounded-md font-bold gap-1 shadow-sm" onclick="MailModule.chooseScanFolder()">
+            <span>📁</span><span>Quét Thư Mục .msg</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Main 3-Column Work Area -->
+      <div class="flex flex-1 gap-2 overflow-hidden">
+        <!-- 2.1 Left Categories Sidebar -->
+        <div class="w-56 bg-[#1F1D2E] border border-[#2E2E2A] rounded-xl flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
+          <div class="px-3 py-2 border-b border-[#2E2E2A] flex items-center justify-between bg-[#26233A]">
+            <span class="font-bold text-xs text-[#E0DEF4] flex items-center gap-1.5">
+              <span>📬</span><span>DANH MỤC THƯ</span>
+            </span>
+          </div>
+          <div class="flex flex-col gap-1 p-1.5 overflow-y-auto flex-1 text-xs">
+            <button class="mail-cat-btn btn btn-sm w-full justify-between rounded-lg font-bold text-left transition-all active" data-cat="all" onclick="MailModule.setCategory('all')">
+              <span class="flex items-center gap-2"><span>📥</span><span>Hộp thư đến</span></span>
+              <span id="mail-badge-all" class="badge badge-sm badge-ghost text-[10px]">0</span>
+            </button>
+            <button class="mail-cat-btn btn btn-sm w-full justify-between rounded-lg font-bold text-left transition-all" data-cat="hsmt" onclick="MailModule.setCategory('hsmt')">
+              <span class="flex items-center gap-2"><span>📑</span><span>Hồ sơ mời thầu</span></span>
+              <span id="mail-badge-hsmt" class="badge badge-sm badge-ghost text-[10px]">0</span>
+            </button>
+            <button class="mail-cat-btn btn btn-sm w-full justify-between rounded-lg font-bold text-left transition-all" data-cat="contract" onclick="MailModule.setCategory('contract')">
+              <span class="flex items-center gap-2"><span>🤝</span><span>Hợp đồng kinh tế</span></span>
+              <span id="mail-badge-contract" class="badge badge-sm badge-ghost text-[10px]">0</span>
+            </button>
+            <button class="mail-cat-btn btn btn-sm w-full justify-between rounded-lg font-bold text-left transition-all" data-cat="payment" onclick="MailModule.setCategory('payment')">
+              <span class="flex items-center gap-2"><span>🏢</span><span>Tạm ứng, TT</span></span>
+              <span id="mail-badge-payment" class="badge badge-sm badge-ghost text-[10px]">0</span>
+            </button>
+            <button class="mail-cat-btn btn btn-sm w-full justify-between rounded-lg font-bold text-left transition-all" data-cat="bvtk" onclick="MailModule.setCategory('bvtk')">
+              <span class="flex items-center gap-2"><span>📐</span><span>Bản vẽ thiết kế</span></span>
+              <span id="mail-badge-bvtk" class="badge badge-sm badge-ghost text-[10px]">0</span>
+            </button>
+            <button class="mail-cat-btn btn btn-sm w-full justify-between rounded-lg font-bold text-left transition-all" data-cat="chu-truong" onclick="MailModule.setCategory('chu-truong')">
+              <span class="flex items-center gap-2"><span>📋</span><span>Chủ trương</span></span>
+              <span id="mail-badge-chu-truong" class="badge badge-sm badge-ghost text-[10px]">0</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2.2 Middle Mail List -->
+        <div class="w-80 bg-[#1F1D2E] border border-[#2E2E2A] rounded-xl flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
+          <div class="p-2 border-b border-[#2E2E2A] bg-[#26233A] flex items-center gap-2">
+            <input type="text" placeholder="Tìm theo tiêu đề, người gửi..." class="input input-xs input-bordered bg-[#191724] text-[#E0DEF4] w-full text-xs" oninput="MailModule.onSearch(this.value)" />
+          </div>
+          <div id="mail-list-container" class="flex-1 overflow-y-auto divide-y divide-[#2E2E2A]/60">
+            <!-- Injected by mail.js -->
+          </div>
+        </div>
+
+        <!-- 2.3 Right Mail Detail & Actions -->
+        <div class="flex-1 bg-[#1F1D2E] border border-[#2E2E2A] rounded-xl flex flex-col overflow-hidden shadow-sm">
+          <div id="mail-detail-container" class="h-full flex flex-col">
+            <div class="flex-1 flex items-center justify-center text-[#908CAA] text-xs">
+              Chọn một email từ danh sách bên trái để xem chi tiết
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- ──────────────────────────────────────────────────────────────────
-         TAB 2: QUẢN LÝ (QL File — Explorer with Project Bar + Left Sidebar)
+         TAB 3: QUẢN LÝ (QL File — Explorer with Project Bar + Left Sidebar)
     ────────────────────────────────────────────────────────────────── -->
     <section id="page-ql-file" class="page-section h-full overflow-hidden p-2 gap-2">
         <!-- 1. THANH PROJECT TAB BAR TRÊN CÙNG -->
@@ -747,7 +830,7 @@
             <span class="font-black text-sm tracking-wider text-white flex items-center gap-1">
               <span class="text-[#F39C12] font-mono">📊</span><span>V386</span>
             </span>
-            <span class="text-[11px] font-semibold text-[#908CAA]">8 Tab</span>
+            <span class="text-[11px] font-semibold text-[#908CAA]">10 Tab</span>
           </div>
           <div class="grid grid-cols-4 gap-1 p-1 bg-[#191724] border-b border-[#2E2E2A] text-[11px]">
             <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.moveTheoDoiSubTab('up')" title="Di chuyển lên"><span>▲</span><span>Lên</span></button>
@@ -757,13 +840,19 @@
           </div>
           <div id="td-sidebar-list" class="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">
             <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all active" data-td="progress" onclick="switchTheoDoiSubTab('progress')">
-              <span class="text-sm">⏱</span><span>Tiến độ</span>
+              <span class="text-sm">⏳</span><span>Tiến độ</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="chu-truong" onclick="switchTheoDoiSubTab('chu-truong')">
+              <span class="text-sm">📋</span><span>Chủ trương</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="bvtk" onclick="switchTheoDoiSubTab('bvtk')">
+              <span class="text-sm">📐</span><span>BVTK</span>
             </button>
             <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="hsmt" onclick="switchTheoDoiSubTab('hsmt')">
-              <span class="text-sm">📄</span><span>HSMT</span>
+              <span class="text-sm">📑</span><span>HSMT</span>
             </button>
             <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="contract" onclick="switchTheoDoiSubTab('contract')">
-              <span class="text-sm">👥</span><span>Hợp đồng</span>
+              <span class="text-sm">🤝</span><span>Hợp đồng</span>
             </button>
             <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="boq" onclick="switchTheoDoiSubTab('boq')">
               <span class="text-sm">📦</span><span>Khối lượng</span>
@@ -1028,7 +1117,7 @@
             <span class="font-black text-sm tracking-wider text-white flex items-center gap-1">
               <span class="text-[#F39C12] font-mono">🛠️</span><span>V386</span>
             </span>
-            <span class="text-[11px] font-semibold text-[#908CAA]">11 Chức năng</span>
+            <span class="text-[11px] font-semibold text-[#908CAA]">13 Chức năng</span>
           </div>
           <div class="grid grid-cols-4 gap-1 p-1 bg-[#191724] border-b border-[#2E2E2A] text-[11px]">
             <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.moveChucNangSubTab('up')" title="Lên"><span>▲</span><span>Lên</span></button>
@@ -1038,40 +1127,43 @@
           </div>
           <div id="cn-sidebar-list" class="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">
             <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all active" data-cn="word" onclick="switchChucNangSubTab('word')">
-              <span class="text-sm">✓</span><span>B1. Tạo Word</span>
-            </button>
-            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b2" onclick="switchChucNangSubTab('cn-b2')">
-              <span class="text-sm">📄</span><span>B2. Cập nhật HSMT</span>
-            </button>
-            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b3" onclick="switchChucNangSubTab('cn-b3')">
-              <span class="text-sm">📄</span><span>B3. Cập nhật HĐ</span>
-            </button>
-            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b4" onclick="switchChucNangSubTab('cn-b4')">
-              <span class="text-sm">📝</span><span>B4. Tự tạo Heading</span>
-            </button>
-            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-skill-hsmt" onclick="switchChucNangSubTab('cn-skill-hsmt')">
-              <span class="text-sm">🤖</span><span>B5. Skill HSMT</span>
-            </button>
-            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-skill-hd" onclick="switchChucNangSubTab('cn-skill-hd')">
-              <span class="text-sm">📄</span><span>B5. Skill HĐ</span>
-            </button>
-            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b6" onclick="switchChucNangSubTab('cn-b6')">
-              <span class="text-sm">🎓</span><span>B6: RÈN LUYỆN AI</span>
-            </button>
-            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b7" onclick="switchChucNangSubTab('cn-b7')">
-              <span class="text-sm">🔍</span><span>B7. Tìm kiếm</span>
-            </button>
-            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b8" onclick="switchChucNangSubTab('cn-b8')">
-              <span class="text-sm">📄</span><span>B8. Cập nhật TT</span>
-            </button>
-            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-extract-boq" onclick="switchChucNangSubTab('cn-extract-boq')">
-              <span class="text-sm">📊</span><span>Trích xuất KL, G.trị HĐ</span>
+              <span class="text-sm">✓</span><span>B1. Tạo word, md</span>
             </button>
             <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-down-hd" onclick="switchChucNangSubTab('cn-down-hd')">
-              <span class="text-sm">🌐</span><span>Down HĐ từ V-Pro</span>
+              <span class="text-sm">🌐</span><span>B2.1. Down V-Pro</span>
             </button>
             <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-down-cks" onclick="switchChucNangSubTab('cn-down-cks')">
-              <span class="text-sm">🌐</span><span>Download CKS</span>
+              <span class="text-sm">🌐</span><span>B2.2. Down CKS</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-skill-hsmt" onclick="switchChucNangSubTab('cn-skill-hsmt')">
+              <span class="text-sm">🤖</span><span>B6.1. Đọc HSMT</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b9-merge-boq" onclick="switchChucNangSubTab('cn-b9-merge-boq')">
+              <span class="text-sm">📊</span><span>B6.2. Bóc KL, ghép HSMT</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-skill-hd" onclick="switchChucNangSubTab('cn-skill-hd')">
+              <span class="text-sm">📄</span><span>B7.1. Đọc HĐ</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-extract-boq" onclick="switchChucNangSubTab('cn-extract-boq')">
+              <span class="text-sm">📦</span><span>B7.2. Bóc KL, ghép HĐ</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b2" onclick="switchChucNangSubTab('cn-b2')">
+              <span class="text-sm">📑</span><span>B10.1. HSMT -> Excel</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b3" onclick="switchChucNangSubTab('cn-b3')">
+              <span class="text-sm">🤝</span><span>B10.2. HĐ -> Excel</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b8" onclick="switchChucNangSubTab('cn-b8')">
+              <span class="text-sm">💻</span><span>B10.3 Cập nhật SAP</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b7" onclick="switchChucNangSubTab('cn-b7')">
+              <span class="text-sm">🔍</span><span>B11. Tìm kiếm</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b6" onclick="switchChucNangSubTab('cn-b6')">
+              <span class="text-sm">🎓</span><span>B12. Luyện AI</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b4" onclick="switchChucNangSubTab('cn-b4')">
+              <span class="text-sm">📝</span><span>B13. Tạo Heading</span>
             </button>
           </div>
         </div>
@@ -1215,6 +1307,137 @@
           </div>
 
           <div id="cn-subpane-other" class="subpane">
+        <!-- B6.2 Pane (Excel Merger Pro Component) -->
+        <div id="cn-b9-merge-boq" class="cn-subtab-pane hidden flex flex-col gap-3 h-full overflow-hidden">
+          <!-- 1. Top Ribbon & Config Toolbar -->
+          <div class="grid grid-cols-1 lg:grid-cols-4 gap-2 bg-[#181816] p-2.5 rounded-xl border border-[#2E2E2A] flex-shrink-0">
+            <!-- Box 1: Nguồn dữ liệu -->
+            <div class="bg-[#242421] p-2 rounded-lg border border-[#2E2E2A] flex flex-col gap-1.5">
+              <span class="text-[11px] font-bold text-[#F39C12] flex items-center gap-1">
+                <span>📂</span><span>NGUỒN DỮ LIỆU EXCEL</span>
+              </span>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button class="btn btn-xs bg-[#1976D2] hover:bg-[#1565C0] text-white font-bold border-none" onclick="FunctionsFullModule.chooseMergeFolder()">
+                  <span>📁</span><span>Chọn Thư Mục</span>
+                </button>
+                <button class="btn btn-xs bg-[#2ECC71] hover:bg-[#27AE60] text-black font-bold border-none" onclick="FunctionsFullModule.scanMergeFiles()">
+                  <span>🔄</span><span>Quét lại</span>
+                </button>
+                <select id="merge-depth-select" class="select select-xs select-bordered bg-[#181816] text-[#E0DEF4]" onchange="FunctionsFullModule.onMergeFilterChanged()">
+                  <option value="All" selected>All Cấp</option>
+                  <option value="1">1 Cấp</option>
+                  <option value="2">2 Cấp</option>
+                  <option value="3">3 Cấp</option>
+                  <option value="4">4 Cấp</option>
+                  <option value="5">5 Cấp</option>
+                </select>
+              </div>
+              <span id="merge-folder-lbl" class="text-[10px] text-[#908CAA] font-mono truncate">Chưa chọn thư mục...</span>
+            </div>
+
+            <!-- Box 2: Lọc Sheet -->
+            <div class="bg-[#242421] p-2 rounded-lg border border-[#2E2E2A] flex flex-col gap-1.5">
+              <span class="text-[11px] font-bold text-[#3498DB] flex items-center gap-1">
+                <span>⚙️</span><span>CẤU HÌNH LỌC SHEET</span>
+              </span>
+              <div class="flex items-center gap-2 text-xs">
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="merge-sheet-vis" value="both" checked class="radio radio-xs radio-primary" onchange="FunctionsFullModule.onMergeFilterChanged()" />
+                  <span class="text-[11px]">Tất cả</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="merge-sheet-vis" value="visible" class="radio radio-xs radio-primary" onchange="FunctionsFullModule.onMergeFilterChanged()" />
+                  <span class="text-[11px]">Hiện</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="merge-sheet-vis" value="hidden" class="radio radio-xs radio-primary" onchange="FunctionsFullModule.onMergeFilterChanged()" />
+                  <span class="text-[11px]">Ẩn</span>
+                </label>
+              </div>
+              <div class="flex items-center gap-1">
+                <input type="text" id="merge-sheet-filter" placeholder="Lọc tên sheet (VD: BOQ, Tonghop)..." class="input input-xs input-bordered bg-[#181816] text-[#E0DEF4] w-full text-[11px]" oninput="FunctionsFullModule.onMergeFilterChanged()" />
+              </div>
+            </div>
+
+            <!-- Box 3: Đầu ra -->
+            <div class="bg-[#242421] p-2 rounded-lg border border-[#2E2E2A] flex flex-col gap-1.5">
+              <span class="text-[11px] font-bold text-[#9B59B6] flex items-center gap-1">
+                <span>💾</span><span>CẤU HÌNH ĐẦU RA</span>
+              </span>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button class="btn btn-xs bg-[#8E44AD] hover:bg-[#7D3C98] text-white font-bold border-none" onclick="FunctionsFullModule.chooseMergeOutput()">
+                  <span>💾</span><span>Nơi Lưu File</span>
+                </button>
+                <div class="flex items-center gap-1 text-[11px]">
+                  <span>Tiêu đề:</span>
+                  <select id="merge-header-type" class="select select-xs select-bordered bg-[#181816] text-[#E0DEF4]">
+                    <option value="both" selected>TM + File</option>
+                    <option value="folder">Thư mục</option>
+                    <option value="file">Tên File</option>
+                  </select>
+                </div>
+              </div>
+              <span id="merge-output-lbl" class="text-[10px] text-[#908CAA] font-mono truncate">Tự động: Ghep_KL_HSMT_TongHop.xlsx</span>
+            </div>
+
+            <!-- Box 4: Thực thi -->
+            <div class="bg-[#242421] p-2 rounded-lg border border-[#2E2E2A] flex flex-col justify-between">
+              <span class="text-[11px] font-bold text-[#2ECC71] flex items-center gap-1">
+                <span>⚡</span><span>TIẾN HÀNH GHÉP FILE</span>
+              </span>
+              <button class="btn btn-sm bg-[#27AE60] hover:bg-[#219653] text-white font-black border-none rounded-lg text-xs gap-1 shadow-md w-full" onclick="FunctionsFullModule.executeMergeBoq()">
+                <span>⚡</span><span>BẮT ĐẦU GHÉP EXCEL</span>
+              </button>
+              <div class="flex items-center justify-between text-[11px] text-[#908CAA]">
+                <span id="merge-stats-lbl">0 file · 0 sheet</span>
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="checkbox" id="merge-open-after" checked class="checkbox checkbox-xs checkbox-primary" />
+                  <span>Mở file sau ghép</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Filters: TM, File, Sheet -->
+          <div class="flex items-center gap-2 bg-[#20201D] px-3 py-1.5 rounded-lg border border-[#2E2E2A] text-xs flex-shrink-0 flex-wrap">
+            <span class="font-bold text-[#F1C40F]">🔍 Lọc nhanh:</span>
+            <input type="text" id="merge-filter-folder" placeholder="Lọc thư mục..." class="input input-xs input-bordered bg-[#181816] text-[#E0DEF4] w-40 text-xs" oninput="FunctionsFullModule.onMergeFilterChanged()" />
+            <input type="text" id="merge-filter-file" placeholder="Lọc tập tin..." class="input input-xs input-bordered bg-[#181816] text-[#E0DEF4] w-40 text-xs" oninput="FunctionsFullModule.onMergeFilterChanged()" />
+            <div class="flex items-center gap-1 ml-auto">
+              <button class="btn btn-xs bg-[#26233A] text-[#E0DEF4] border border-[#312F44]" onclick="FunctionsFullModule.toggleAllMergeSheets(true)">Chọn Tất Cả</button>
+              <button class="btn btn-xs bg-[#26233A] text-[#E0DEF4] border border-[#312F44]" onclick="FunctionsFullModule.toggleAllMergeSheets(false)">Bỏ Chọn</button>
+            </div>
+          </div>
+
+          <!-- Main Table: Treeview of Files and Worksheets -->
+          <div class="flex-1 bg-[#181816] border border-[#2E2E2A] rounded-xl overflow-hidden flex flex-col">
+            <div class="overflow-auto flex-1">
+              <table class="table table-xs w-full text-xs border-collapse">
+                <thead class="sticky top-0 bg-[#242421] text-[#EDEDEA] z-10 border-b border-[#2E2E2A]">
+                  <tr>
+                    <th class="w-10 text-center">Chọn</th>
+                    <th class="w-12 text-center">STT</th>
+                    <th class="w-72">Thư mục nguồn</th>
+                    <th class="w-72">Tập tin Excel (.xlsx, .xlsm)</th>
+                    <th class="w-48">Tên Sheet</th>
+                    <th class="w-24 text-center">Trạng thái Sheet</th>
+                    <th class="w-24 text-right">Số dòng</th>
+                    <th class="w-24 text-right">Số cột</th>
+                    <th>Nhận xét / Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody id="merge-boq-tbody" class="divide-y divide-[#2E2E2A]">
+                  <tr>
+                    <td colspan="9" class="text-center py-16 text-[#908CAA]">
+                      Chưa chọn thư mục nào. Hãy bấm <strong>[📁 Chọn Thư Mục]</strong> ở góc trên để quét danh sách file và sheet cần ghép.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- BOQ Extractor Pane -->
         <div id="cn-extract-boq" class="cn-subtab-pane hidden flex flex-col gap-3 h-full overflow-hidden">
           <!-- 1. Top Action & Controls Bar -->
@@ -1652,9 +1875,7 @@
                 </h3>
                 <p class="text-xs text-base-content/70">Phân quyền chi tiết cho Admin, Phó nhóm và Thành viên cho từng cụm chức năng.</p>
               </div>
-              <button id="perm-save-button" class="btn btn-xs btn-success gap-1" onclick="AccountsModule.savePermissions()">
-                <span>💾</span><span>Lưu phân quyền</span>
-              </button>
+              <span id="perm-autosave-status" class="text-xs text-base-content/60">Tự động lưu khi thay đổi</span>
             </div>
             <div class="bg-base-200 rounded-2xl border border-base-300 overflow-hidden max-h-[500px] overflow-y-auto">
               <table class="table table-xs w-full">
@@ -2289,9 +2510,10 @@
   <script src="js/contract.js"></script>
   <script src="js/progress.js"></script>
   <script src="js/word.js"></script>
+  <script src="js/mail.js"></script>
   <script src="js/home.js"></script>
   <script src="js/explorer.js"></script>
-<script src="js/drive_picker.js"></script>
+  <script src="js/drive_picker.js"></script>
   <script src="js/contractor.js"></script>
   <script src="js/sap.js"></script>
   <script src="js/boq.js"></script>
@@ -2354,14 +2576,6 @@
       </div>
     </div>
   </dialog>
-
-  <!-- Loading Overlay -->
-  <div id="loading-overlay" class="hidden">
-    <span class="loading loading-spinner loading-lg text-[#EBBCBA]"></span>
-  </div>
-
-  <!-- Toast Notifications -->
-  <div id="toast-container"></div>
 
   <!-- SCRIPT INCLUDES -->
   
