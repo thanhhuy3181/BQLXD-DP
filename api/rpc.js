@@ -18,7 +18,10 @@ const failure = error => ({ ok: false, data: null, error: String(error?.message 
 const publicUser = row => {
   if (!row) return null;
   const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
-  return { ...data, username: row.username, status: row.status || data.status || 'Active' };
+  // Older deployments used two generic roles.  Read them as the closest
+  // current job title so existing staff is governed by the new RBAC matrix.
+  const legacyRole = {'Phó nhóm':'Nội nghiệp','Thành viên':'CBGS'};
+  return { ...data, role: legacyRole[data.role] || data.role || 'CBGS', username: row.username, status: row.status || data.status || 'Active' };
 };
 
 function sqlClient() {
@@ -128,6 +131,7 @@ async function rpc(req) {
     const rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE lower(username)=${identifier} OR lower(data->>'email')=${identifier} LIMIT 1`;
     const row = rows[0];
     if (!row) return failure('Tài khoản không tồn tại trên hệ thống!');
+    if (row.status === 'Pending') return failure('Tài khoản đang chờ Quản trị viên phê duyệt.');
     if (row.status === 'Locked') return failure('Tài khoản này đã bị khóa bởi Quản trị viên!');
     if (row.password_hash !== passwordHash) return failure('Sai mật khẩu đăng nhập!');
     const token = crypto.randomBytes(32).toString('hex');
@@ -154,11 +158,12 @@ async function rpc(req) {
       const base = `gmail_${email.split('@')[0].replace(/[^a-z0-9_.-]/g,'').slice(0,20) || 'user'}`;
       let username = base, suffix = 1;
       while ((await sql`SELECT 1 FROM bqlda_users WHERE username=${username}`).length) username = `${base}_${suffix++}`;
-      const data={id:crypto.randomUUID(),username,fullname:String(profile.name||email),email,phone:'',avatar:String(profile.picture||''),role:'Thành viên',status:'Active',allowed_projects:[],current_project:'',created_at:new Date().toISOString(),auth_provider:'google'};
-      await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(crypto.randomUUID())},'Active',${JSON.stringify(data)}::jsonb)`;
+      const data={id:crypto.randomUUID(),username,fullname:String(profile.name||email),email,phone:'',avatar:String(profile.picture||''),role:'CBGS',status:'Pending',allowed_projects:[],current_project:'',created_at:new Date().toISOString(),auth_provider:'google'};
+      await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(crypto.randomUUID())},'Pending',${JSON.stringify(data)}::jsonb)`;
       rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE username=${username}`;
       row = rows[0];
     }
+    if (row.status === 'Pending') return failure('Tài khoản đã đăng ký và đang chờ Quản trị viên phê duyệt.');
     if (row.status === 'Locked') return failure('Tài khoản này đã bị khóa bởi Quản trị viên!');
     const token = crypto.randomBytes(32).toString('hex');
     await sql`DELETE FROM bqlda_sessions WHERE expires_at<=now()`;
@@ -171,15 +176,15 @@ async function rpc(req) {
     if (String(d.password||'').length<4) return failure('Mật khẩu phải từ 4 ký tự trở lên!');
     const exists=await sql`SELECT 1 FROM bqlda_users WHERE username=${username}`; if(exists.length)return failure('Tài khoản này đã tồn tại!');
     const project=state.projects?.current_project||'';
-    const data={id:crypto.randomUUID(),username,fullname:String(d.fullname||username),email:String(d.email||''),phone:String(d.phone||''),role:'Thành viên',status:'Active',allowed_projects:project?[project]:[],current_project:project,created_at:new Date().toISOString()};
-    await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(String(d.password))},'Active',${JSON.stringify(data)}::jsonb)`;
-    return result({message:'Đăng ký tài khoản thành công! Quản trị viên có thể điều chỉnh dự án và quyền.'});
+    const data={id:crypto.randomUUID(),username,fullname:String(d.fullname||username),email:String(d.email||''),phone:String(d.phone||''),role:'CBGS',status:'Pending',allowed_projects:[],current_project:'',created_at:new Date().toISOString()};
+    await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(String(d.password))},'Pending',${JSON.stringify(data)}::jsonb)`;
+    return result({message:'Đăng ký thành công. Tài khoản sẽ dùng được sau khi Quản trị viên phê duyệt.'});
   }
   if (method === 'logout_user') {
     const token=(req.headers.authorization||'').replace(/^Bearer /,''); if(token)await sql`DELETE FROM bqlda_sessions WHERE token=${token}`;
     return result({logged_out:true});
   }
-  if (method === 'get_current_user') return result(user || {username:'guest',fullname:'Khách',role:'Thành viên',status:'Active',allowed_projects:[]});
+  if (method === 'get_current_user') return result(user || {username:'guest',fullname:'Khách',role:'CBGS',status:'Active',allowed_projects:[]});
 
   if (!user) return failure('Bạn cần đăng nhập để sử dụng dữ liệu dùng chung.');
 
@@ -251,8 +256,37 @@ async function rpc(req) {
   if (method === 'update_user_role' || method === 'toggle_user_lock') {
     if(user.role!=='Admin')return failure('Chỉ Admin được quản lý tài khoản.'); const username=String(args[0]||'');if(username==='admin')return failure('Không thay đổi tài khoản Admin hệ thống.');
     const rows=await sql`SELECT status,data FROM bqlda_users WHERE username=${username}`;if(!rows.length)return failure('Không tìm thấy tài khoản.');const data=rows[0].data;
-    if(method==='update_user_role'){data.role=String(args[1]||'Thành viên');await sql`UPDATE bqlda_users SET data=${JSON.stringify(data)}::jsonb,updated_at=now() WHERE username=${username}`;return result({username,role:data.role});}
-    const status=rows[0].status==='Locked'?'Active':'Locked';data.status=status;await sql`UPDATE bqlda_users SET status=${status},data=${JSON.stringify(data)}::jsonb,updated_at=now() WHERE username=${username}`;return result({username,status});
+    if(method==='update_user_role'){
+      const role=String(args[1]||'CBGS');if(!['Admin','Văn phòng','Nội nghiệp','ĐTGS','CBGS'].includes(role))return failure('Chức danh không hợp lệ.');
+      data.role=role;await sql`UPDATE bqlda_users SET data=${JSON.stringify(data)}::jsonb,updated_at=now() WHERE username=${username}`;return result({username,role:data.role});
+    }
+    const status=rows[0].status==='Locked'?(data.status_before_lock||'Active'):'Locked';
+    if(status==='Locked') data.status_before_lock=rows[0].status; else delete data.status_before_lock;
+    data.status=status;await sql`UPDATE bqlda_users SET status=${status},data=${JSON.stringify(data)}::jsonb,updated_at=now() WHERE username=${username}`;return result({username,status});
+  }
+  if (method === 'approve_user') {
+    if(user.role!=='Admin')return failure('Chỉ Admin được phê duyệt tài khoản.');
+    const username=String(args[0]||'');const rows=await sql`SELECT data FROM bqlda_users WHERE username=${username}`;
+    if(!rows.length)return failure('Không tìm thấy tài khoản.');const data=rows[0].data;data.status='Active';
+    await sql`UPDATE bqlda_users SET status='Active',data=${JSON.stringify(data)}::jsonb,updated_at=now() WHERE username=${username}`;
+    return result({username,status:'Active'});
+  }
+  if (method === 'update_user_projects') {
+    if(user.role!=='Admin')return failure('Chỉ Admin được gán dự án.');
+    const username=String(args[0]||''), requested=[...new Set(Array.isArray(args[1])?args[1]:[])];
+    const allowed=new Set(state.projects?.all_projects||[]);if(requested.some(p=>!allowed.has(p)))return failure('Có dự án không hợp lệ.');
+    const rows=await sql`SELECT data FROM bqlda_users WHERE username=${username}`;if(!rows.length)return failure('Không tìm thấy tài khoản.');
+    const data=rows[0].data;data.allowed_projects=requested;data.current_project=requested.includes(data.current_project)?data.current_project:(requested[0]||'');
+    await sql`UPDATE bqlda_users SET data=${JSON.stringify(data)}::jsonb,updated_at=now() WHERE username=${username}`;
+    return result({username,allowed_projects:requested});
+  }
+  if (method === 'create_project') {
+    if(user.role!=='Admin')return failure('Chỉ Admin được thêm dự án.');
+    const name=String(args[0]||'').trim();if(name.length<2||name.length>160)return failure('Tên dự án phải từ 2 đến 160 ký tự.');
+    state.projects=state.projects||{all_projects:[],tab_projects:[],current_project:''};state.projects.all_projects=state.projects.all_projects||[];
+    if(state.projects.all_projects.includes(name))return failure('Dự án này đã tồn tại.');
+    state.projects.all_projects.push(name);state.tabs_by_project=state.tabs_by_project||{};state.tabs_by_project[name]=[];state.links=state.links||{};state.links[name]=[];
+    await saveState(sql,state);return result({name});
   }
   if (method === 'get_role_permissions') return result(state.role_permissions);
   if (method === 'save_role_permissions') {if(user.role!=='Admin')return failure('Chỉ Admin được sửa phân quyền.');state.role_permissions.permissions=args[0]||{};await saveState(sql,state);return result({saved:true});}

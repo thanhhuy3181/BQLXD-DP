@@ -1854,14 +1854,19 @@
               <h3 class="font-bold text-sm text-primary flex items-center gap-2">
                 <span>👥</span><span>Quản lý Tài khoản Người dùng & Đăng nhập</span>
               </h3>
-              <button class="btn btn-xs btn-primary gap-1" onclick="AccountsModule.showRegisterModal()">
-                <span>+</span><span>Thêm tài khoản mới</span>
-              </button>
+              <div class="flex gap-2">
+                <button class="btn btn-xs btn-outline btn-accent gap-1" onclick="AccountsModule.showCreateProjectModal()">
+                  <span>+</span><span>Thêm dự án</span>
+                </button>
+                <button class="btn btn-xs btn-primary gap-1" onclick="AccountsModule.showRegisterModal()">
+                  <span>+</span><span>Thêm tài khoản mới</span>
+                </button>
+              </div>
             </div>
             <div class="bg-base-200 rounded-2xl border border-base-300 overflow-hidden">
               <table class="table table-xs w-full">
-                <thead><tr><th class="w-10 text-center">STT</th><th>Tên đăng nhập</th><th>Email</th><th>Vai trò (Role)</th><th>Trạng thái</th><th class="w-24 text-center">Thao tác</th></tr></thead>
-                <tbody id="accounts-tbody"><tr><td colspan="6" class="text-center py-6 text-base-content/50 text-xs">Đang tải...</td></tr></tbody>
+                <thead><tr><th class="w-10 text-center">STT</th><th>Tên đăng nhập</th><th>Email</th><th>Dự án được xem</th><th>Vai trò (Role)</th><th>Trạng thái</th><th class="w-44 text-center">Thao tác</th></tr></thead>
+                <tbody id="accounts-tbody"><tr><td colspan="7" class="text-center py-6 text-base-content/50 text-xs">Đang tải...</td></tr></tbody>
               </table>
             </div>
           </div>
@@ -1873,7 +1878,7 @@
                 <h3 class="font-bold text-sm text-primary flex items-center gap-2">
                   <span>🛡️</span><span>Ma trận Phân quyền Vai trò (RBAC Matrix)</span>
                 </h3>
-                <p class="text-xs text-base-content/70">Phân quyền chi tiết cho Admin, Phó nhóm và Thành viên cho từng cụm chức năng.</p>
+                <p class="text-xs text-base-content/70">Quyền được quản lý theo chức danh. Thay đổi được tự động lưu và có hiệu lực ngay với phiên đang mở.</p>
               </div>
               <span id="perm-autosave-status" class="text-xs text-base-content/60">Tự động lưu khi thay đổi</span>
             </div>
@@ -1882,9 +1887,11 @@
                 <thead class="sticky top-0 bg-base-300 z-10">
                   <tr>
                     <th>Chức năng / Quyền hạn</th>
-                    <th class="w-28 text-center">👑 Admin</th>
-                    <th class="w-32 text-center">✏️ Phó nhóm</th>
-                    <th class="w-32 text-center">👁️ Thành viên</th>
+                    <th class="w-24 text-center">👑 Admin</th>
+                    <th class="w-24 text-center">🏢 Văn phòng</th>
+                    <th class="w-24 text-center">🗂️ Nội nghiệp</th>
+                    <th class="w-24 text-center">🦺 ĐTGS</th>
+                    <th class="w-24 text-center">👷 CBGS</th>
                   </tr>
                 </thead>
                 <tbody id="perm-matrix-tbody">

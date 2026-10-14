@@ -104,13 +104,17 @@ const AccountsModule = (function() {
     if (!tbody) return;
 
     if (_users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-base-content/50 text-xs">Chưa có người dùng</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-base-content/50 text-xs">Chưa có người dùng</td></tr>';
       return;
     }
 
     tbody.innerHTML = _users.map((u, idx) => {
       const isLocked = u.status === 'Locked';
+      const isPending = u.status === 'Pending';
       const isAdmin = u.username === 'admin';
+      const projects = Array.isArray(u.allowed_projects) ? u.allowed_projects : [];
+      const projectLabel = projects.includes('*') ? 'Tất cả dự án' : (projects.length ? `${projects.length} dự án` : 'Chưa gán dự án');
+      const projectTitle = projects.includes('*') ? 'Tất cả dự án' : projects.join(', ');
       return `
         <tr class="hover text-xs">
           <td class="text-center font-medium">${idx + 1}</td>
@@ -120,20 +124,30 @@ const AccountsModule = (function() {
           </td>
           <td class="text-base-content/70">${escapeHtml(u.email || '—')}</td>
           <td>
+            <button class="btn btn-ghost btn-xs normal-case max-w-[170px] truncate" title="${escapeAttr(projectTitle || 'Chưa có dự án')}"
+                    ${isAdmin ? 'disabled' : ''} onclick="AccountsModule.showProjectAccess('${escapeAttr(u.username)}')">
+              📁 ${escapeHtml(projectLabel)}
+            </button>
+          </td>
+          <td>
             <select class="select select-bordered select-xs" ${isAdmin ? 'disabled' : ''}
                     onchange="AccountsModule.changeRole('${escapeAttr(u.username)}', this.value)">
               <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>👑 Admin</option>
-              <option value="Phó nhóm" ${u.role === 'Phó nhóm' ? 'selected' : ''}>✏️ Phó nhóm</option>
-              <option value="Thành viên" ${u.role === 'Thành viên' ? 'selected' : ''}>👁️ Thành viên</option>
+              <option value="Văn phòng" ${u.role === 'Văn phòng' ? 'selected' : ''}>🏢 Văn phòng</option>
+              <option value="Nội nghiệp" ${u.role === 'Nội nghiệp' ? 'selected' : ''}>🗂️ Nội nghiệp</option>
+              <option value="ĐTGS" ${u.role === 'ĐTGS' ? 'selected' : ''}>🦺 ĐTGS</option>
+              <option value="CBGS" ${u.role === 'CBGS' || u.role === 'Thành viên' ? 'selected' : ''}>👷 CBGS</option>
             </select>
           </td>
           <td>
-            <span class="badge ${isLocked ? 'badge-error' : 'badge-success'} badge-xs font-semibold">
-              ${isLocked ? '🔒 Đã khóa' : '✔ Hoạt động'}
+            <span class="badge ${isPending ? 'badge-warning' : (isLocked ? 'badge-error' : 'badge-success')} badge-xs font-semibold">
+              ${isPending ? '⏳ Chờ duyệt' : (isLocked ? '🔒 Đã khóa' : '✔ Hoạt động')}
             </span>
           </td>
           <td>
             ${!isAdmin ? `
+              ${isPending ? `<button class="btn btn-xs btn-success btn-outline" onclick="AccountsModule.approveUser('${escapeAttr(u.username)}')">Duyệt</button>` : ''}
+              <button class="btn btn-xs btn-info btn-outline" onclick="AccountsModule.showProjectAccess('${escapeAttr(u.username)}')">Dự án</button>
               <button class="btn btn-xs ${isLocked ? 'btn-success' : 'btn-warning'} btn-outline"
                       onclick="AccountsModule.toggleLock('${escapeAttr(u.username)}')">
                 ${isLocked ? 'Mở khóa' : 'Khóa'}
@@ -162,45 +176,36 @@ const AccountsModule = (function() {
     if (status) status.textContent = readOnly ? 'Chỉ xem — thay đổi do Admin thực hiện' : 'Tự động lưu khi thay đổi';
     const groups = window.PermissionCatalog?.groups || _permData.groups || [];
 
+    const roles = ['Admin','Văn phòng','Nội nghiệp','ĐTGS','CBGS'];
     let html = '';
     groups.forEach(([grpTitle, grpItems]) => {
       html += `
         <tr class="bg-base-200/80 font-bold text-xs">
-          <td colspan="4" class="py-2 px-3 text-primary">${escapeHtml(grpTitle)}</td>
+          <td colspan="6" class="py-2 px-3 text-primary">${escapeHtml(grpTitle)}</td>
         </tr>
       `;
       grpItems.forEach(([pkey, pdesc]) => {
         const adminVal = perms.Admin?.[pkey] || 'full';
-        const phoVal = perms['Phó nhóm']?.[pkey] || 'edit';
-        const tvVal = perms['Thành viên']?.[pkey] || 'view';
-
         html += `
           <tr class="hover text-xs border-b border-base-200">
             <td class="pl-6 font-medium">${escapeHtml(pdesc)}</td>
             <td class="text-center font-bold text-success">${getPermLabel(adminVal)}</td>
-            <td class="text-center">
-              <select class="select select-bordered select-xs" ${readOnly ? 'disabled' : ''}
-                      onchange="AccountsModule.setPermVal('Phó nhóm', '${pkey}', this.value)">
-                <option value="full" ${phoVal === 'full' ? 'selected' : ''}>Full quyền</option>
-                <option value="edit" ${phoVal === 'edit' ? 'selected' : ''}>Chỉnh sửa</option>
-                <option value="view" ${phoVal === 'view' ? 'selected' : ''}>Xem</option>
-                <option value="none" ${phoVal === 'none' ? 'selected' : ''}>Khóa</option>
-              </select>
-            </td>
-            <td class="text-center">
-              <select class="select select-bordered select-xs" ${readOnly ? 'disabled' : ''}
-                      onchange="AccountsModule.setPermVal('Thành viên', '${pkey}', this.value)">
-                <option value="full" ${tvVal === 'full' ? 'selected' : ''}>Full quyền</option>
-                <option value="edit" ${tvVal === 'edit' ? 'selected' : ''}>Chỉnh sửa</option>
-                <option value="view" ${tvVal === 'view' ? 'selected' : ''}>Xem</option>
-                <option value="none" ${tvVal === 'none' ? 'selected' : ''}>Khóa</option>
-              </select>
-            </td>
+            ${roles.slice(1).map(role => permissionSelect(role, pkey, perms[role]?.[pkey] || 'none', readOnly)).join('')}
           </tr>
         `;
       });
     });
     tbody.innerHTML = html;
+  }
+
+  function permissionSelect(role, pkey, val, readOnly) {
+    return `<td class="text-center"><select class="select select-bordered select-xs" ${readOnly ? 'disabled' : ''}
+      onchange="AccountsModule.setPermVal('${role}', '${pkey}', this.value)">
+      <option value="full" ${val === 'full' ? 'selected' : ''}>Full</option>
+      <option value="edit" ${val === 'edit' ? 'selected' : ''}>Sửa</option>
+      <option value="view" ${val === 'view' ? 'selected' : ''}>Xem</option>
+      <option value="none" ${val === 'none' ? 'selected' : ''}>Khóa</option>
+    </select></td>`;
   }
 
   function getPermLabel(val) {
@@ -256,6 +261,78 @@ const AccountsModule = (function() {
     } else {
       toast('Lỗi thao tác: ' + res.error, 'error');
     }
+  }
+
+  async function approveUser(username) {
+    const res = await API.approveUser(username);
+    if (res.ok) {
+      toast(`Đã duyệt tài khoản ${username}. Hãy gán dự án trước khi người dùng làm việc.`, 'success');
+      loadUsers();
+    } else {
+      toast('Không thể duyệt tài khoản: ' + res.error, 'error');
+    }
+  }
+
+  function removeAccountDialog() {
+    document.getElementById('account-management-dialog')?.remove();
+  }
+
+  async function showProjectAccess(username) {
+    const account = _users.find(item => item.username === username);
+    if (!account) return toast('Không tìm thấy tài khoản.', 'error');
+    const projectsRes = await API.getProjectsBarData();
+    if (!projectsRes.ok) return toast('Không tải được danh sách dự án: ' + projectsRes.error, 'error');
+    const projects = projectsRes.data?.all_projects || [];
+    const granted = new Set(account.allowed_projects || []);
+    removeAccountDialog();
+    const dialog = document.createElement('dialog');
+    dialog.id = 'account-management-dialog';
+    dialog.className = 'modal';
+    dialog.innerHTML = `<div class="modal-box max-w-xl">
+      <h3 class="font-bold text-lg">📁 Dự án được phép xem</h3>
+      <p class="text-sm opacity-70 mt-1"><b>${escapeHtml(account.fullname || account.username)}</b> chỉ xem dữ liệu thuộc dự án được chọn và các dữ liệu dùng chung.</p>
+      <div class="max-h-72 overflow-y-auto mt-4 space-y-2 border border-base-300 rounded-lg p-3">
+        ${projects.length ? projects.map(project => `<label class="flex items-center gap-3 cursor-pointer py-1"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary account-project-check" value="${escapeAttr(project)}" ${granted.has('*') || granted.has(project) ? 'checked' : ''}><span>${escapeHtml(project)}</span></label>`).join('') : '<p class="opacity-60 text-sm">Chưa có dự án. Hãy bấm “Thêm dự án” trước.</p>'}
+      </div>
+      <div class="modal-action"><button class="btn btn-sm" onclick="document.getElementById('account-management-dialog').close()">Hủy</button><button class="btn btn-sm btn-primary" onclick="AccountsModule.saveProjectAccess('${escapeAttr(username)}')">Lưu phân dự án</button></div>
+    </div><form method="dialog" class="modal-backdrop"><button>Đóng</button></form>`;
+    document.body.appendChild(dialog);
+    dialog.addEventListener('close', removeAccountDialog, {once:true});
+    dialog.showModal();
+  }
+
+  async function saveProjectAccess(username) {
+    const projects = [...document.querySelectorAll('.account-project-check:checked')].map(input => input.value);
+    const res = await API.updateUserProjects(username, projects);
+    if (!res.ok) return toast('Không lưu được phân dự án: ' + res.error, 'error');
+    document.getElementById('account-management-dialog')?.close();
+    toast(`Đã gán ${projects.length} dự án cho ${username}.`, 'success');
+    loadUsers();
+  }
+
+  function showCreateProjectModal() {
+    removeAccountDialog();
+    const dialog = document.createElement('dialog');
+    dialog.id = 'account-management-dialog';
+    dialog.className = 'modal';
+    dialog.innerHTML = `<div class="modal-box max-w-md"><h3 class="font-bold text-lg">➕ Thêm dự án</h3>
+      <p class="text-sm opacity-70 mt-1">Dự án mới sẽ xuất hiện trong danh sách gán quyền của từng tài khoản.</p>
+      <label class="form-control mt-4"><span class="label-text text-sm font-semibold">Tên dự án</span><input id="new-project-name" class="input input-bordered" maxlength="160" placeholder="Ví dụ: Dự án Vinhomes Đan Phượng"></label>
+      <div class="modal-action"><button class="btn btn-sm" onclick="document.getElementById('account-management-dialog').close()">Hủy</button><button class="btn btn-sm btn-primary" onclick="AccountsModule.createProject()">Thêm dự án</button></div>
+    </div><form method="dialog" class="modal-backdrop"><button>Đóng</button></form>`;
+    document.body.appendChild(dialog);
+    dialog.addEventListener('close', removeAccountDialog, {once:true});
+    dialog.showModal();
+    setTimeout(() => document.getElementById('new-project-name')?.focus(), 0);
+  }
+
+  async function createProject() {
+    const name = document.getElementById('new-project-name')?.value.trim();
+    if (!name) return toast('Nhập tên dự án.', 'warning');
+    const res = await API.createProject(name);
+    if (!res.ok) return toast('Không thêm được dự án: ' + res.error, 'error');
+    document.getElementById('account-management-dialog')?.close();
+    toast(`Đã thêm dự án ${name}.`, 'success');
   }
 
   function showAuthModal() {
@@ -347,7 +424,7 @@ const AccountsModule = (function() {
 
     const res = await API.registerUser({ username: u, fullname: fn, email: em, phone: ph, password: pw });
     if (res.ok) {
-      toast('Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay.', 'success');
+      toast('Đăng ký thành công. Tài khoản sẽ dùng được sau khi Quản trị viên phê duyệt.', 'success');
       document.getElementById('modal-auth-register')?.close();
       showAuthModal();
       loadUsers();
@@ -385,6 +462,11 @@ const AccountsModule = (function() {
     handleGoogleCredential,
     changeRole,
     toggleLock,
+    approveUser,
+    showProjectAccess,
+    saveProjectAccess,
+    showCreateProjectModal,
+    createProject,
     setPermVal,
     savePermissions
   };
