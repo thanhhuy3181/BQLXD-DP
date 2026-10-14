@@ -34,6 +34,10 @@ window.PermissionCatalog = {
     const permissions = data.permissions || (data.permissions = {});
     ['Admin','Phó nhóm','Thành viên'].forEach(role => { permissions[role] = permissions[role] || {}; });
     this.groups.flatMap(([, items]) => items).forEach(([key]) => {
+      ['Admin','Phó nhóm','Thành viên'].forEach(role => {
+        if (permissions[role][key] === true) permissions[role][key] = 'full';
+        if (permissions[role][key] === false) permissions[role][key] = 'none';
+      });
       if (permissions.Admin[key] === undefined) permissions.Admin[key] = 'full';
       if (permissions['Phó nhóm'][key] === undefined) permissions['Phó nhóm'][key] = 'none';
       if (permissions['Thành viên'][key] === undefined) permissions['Thành viên'][key] = 'none';

@@ -147,7 +147,7 @@ const AccountsModule = (function() {
   async function loadPermissions() {
     const res = await API.getRolePermissions();
     if (!res.ok) return;
-    _permData = res.data;
+    _permData = window.PermissionCatalog ? PermissionCatalog.ensure(res.data) : res.data;
     renderPermMatrix();
   }
 
