@@ -193,7 +193,7 @@ const AccountsModule = (function() {
     const usernameInput = document.getElementById('auth-username');
     const pwdInput = document.getElementById('auth-password');
     if (usernameInput) usernameInput.value = _currentUser?.username || 'admin';
-    if (pwdInput) pwdInput.value = window.pywebview ? '55555' : '';
+    if (pwdInput) pwdInput.value = '';
     modal.showModal();
     renderGoogleButton('google-login-button');
   }
