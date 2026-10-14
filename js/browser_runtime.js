@@ -47,7 +47,7 @@ window.BrowserRuntime = (() => {
 
   const serverMethods = new Set([
     'get_current_user','login_user','logout_user','get_users_list','update_user_role',
-    'toggle_user_lock','register_user','get_role_permissions','save_role_permissions',
+    'toggle_user_lock','register_user','google_login','get_role_permissions','save_role_permissions',
     'get_projects_bar_data','switch_project','add_project_to_bar','get_explorer_tabs',
     'save_explorer_tabs','add_explorer_tab','update_explorer_tab','move_explorer_tab',
     'remove_explorer_tab','get_link_scopes','get_managed_links','save_managed_link',
