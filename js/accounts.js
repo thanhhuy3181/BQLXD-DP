@@ -221,6 +221,7 @@ const AccountsModule = (function() {
     updateHeaderUser();
     document.getElementById('modal-auth-login')?.close();
     document.getElementById('modal-auth-register')?.close();
+    document.body.classList.remove('auth-gate');
     toast(`Đăng nhập Google thành công! Chào mừng ${_currentUser.fullname}`, 'success');
     if (!window.pywebview) setTimeout(() => window.location.reload(), 150);
   }
@@ -238,6 +239,7 @@ const AccountsModule = (function() {
       updateHeaderUser();
       toast(`Đăng nhập thành công! Chào mừng ${_currentUser.fullname}`, 'success');
       document.getElementById('modal-auth-login')?.close();
+      document.body.classList.remove('auth-gate');
       loadUsers();
     } else {
       toast('Đăng nhập thất bại: ' + res.error, 'error');
@@ -250,6 +252,7 @@ const AccountsModule = (function() {
     updateHeaderUser();
     toast('Đã đăng xuất', 'info');
     document.getElementById('modal-auth-login')?.close();
+    if (!window.pywebview) { document.body.classList.add('auth-gate'); setTimeout(() => showAuthModal(), 100); }
   }
 
   function showRegisterModal() {
@@ -310,5 +313,11 @@ const AccountsModule = (function() {
 // The browser build always starts at the authentication gate.  The desktop
 // pywebview build keeps its existing startup behaviour.
 document.addEventListener('DOMContentLoaded', () => {
-  if (!window.pywebview) setTimeout(() => AccountsModule.showAuthModal(), 250);
+  if (!window.pywebview) {
+    const style = document.createElement('style');
+    style.textContent = 'body.auth-gate{background:#090812!important}body.auth-gate> *:not(dialog){visibility:hidden!important}body.auth-gate dialog{visibility:visible!important}body.auth-gate dialog::backdrop{background:#090812!important;opacity:1!important}';
+    document.head.appendChild(style);
+    document.body.classList.add('auth-gate');
+    setTimeout(() => AccountsModule.showAuthModal(), 250);
+  }
 });
