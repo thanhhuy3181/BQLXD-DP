@@ -217,8 +217,7 @@ window.BrowserRuntime = (() => {
     const save=()=>localStorage.setItem('bqlda_local_state',JSON.stringify(state));
     if(method==='get_current_user') return ok(JSON.parse(localStorage.getItem('bqlda_local_user')||'null')||{username:'guest',fullname:'Khách',role:'Thành viên',allowed_projects:[currentProject]});
     if(method==='login_user') {
-      if(String(args[0]).toLowerCase()==='admin' && String(args[1])==='55555') { const u={username:'admin',fullname:'Quản Trị Viên (Admin)',email:'admin@bngua.com',role:'Admin',status:'Active',allowed_projects:['*']}; localStorage.setItem('bqlda_local_user',JSON.stringify(u)); return ok(u); }
-      return err('Cơ sở dữ liệu đang khởi tạo; tài khoản tạm thời là admin / 55555');
+      return err('Không thể kết nối máy chủ xác thực. Vui lòng thử lại sau.');
     }
     if(method==='logout_user'){localStorage.removeItem('bqlda_local_user');return ok({logged_out:true});}
     if(method==='get_users_list') return ok([{username:'admin',fullname:'Quản Trị Viên (Admin)',email:'admin@bngua.com',role:'Admin',status:'Active',allowed_projects:['*']}]);
