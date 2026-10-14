@@ -20,6 +20,9 @@ module.exports=async({method,args,sql,user,state,project,allowedProject,visibleP
  if(!allowedProject(user,project))return err('Không có quyền xem dự án này.');
  if(method==='get_tracking_workspace'){
   const [tab,mode='summary']=args,sub=tab==='sap'?mode:tab==='contractor'&&mode==='detail'?'detail':'';
+  const acl=require('./awm_rpc');
+  const permission=tab==='contractor-data'?'td_contractor_data':acl.groups[tab]?.[1];
+  if(!permission||!acl.can(user,state,permission))return err('Không có quyền đọc nhóm hồ sơ này.');
   let snapshot=snapshots[project]?.[sub?`${tab}:${sub}`:tab];
   if(snapshot?.shared)snapshot=snapshots[snapshot.shared];
   if(!snapshot)return ok({project,items:[],columns:snapshots.__columns?.[tab]||[]});

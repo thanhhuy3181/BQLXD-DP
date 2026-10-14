@@ -120,6 +120,8 @@ async function rpc(req) {
   let state = await getState(sql);
   let user = await getSessionUser(sql, req);
 
+  if (method.startsWith('awm_')) return require('./awm_rpc')({method,args,sql,user,state,allowedProject,visibleProjects});
+
   if (method === 'get_bootstrap') return result({version:seed.version,theme:state.theme||seed.theme,catalog:seed.catalog});
   if (method === 'get_theme') return result(state.theme||seed.theme);
   if (method === 'get_management_categories_catalog') return result(seed.catalog);
@@ -148,20 +150,26 @@ async function rpc(req) {
       profile = await response.json();
     } catch (error) { return failure('Không thể xác thực tài khoản Google lúc này.'); }
     const clientId = process.env.GOOGLE_WEB_CLIENT_ID || '893599506998-5o9a9t5b2v5bca51r89hb2sgegcijqu5.apps.googleusercontent.com';
-    if (!profile?.email || profile.aud !== clientId || String(profile.email_verified) !== 'true') {
+    if (!profile?.sub || !profile.email || profile.aud !== clientId || String(profile.email_verified) !== 'true' || !['accounts.google.com','https://accounts.google.com'].includes(profile.iss) || Number(profile.exp)*1000<=Date.now()) {
       return failure('Tài khoản Google chưa được xác thực hoặc OAuth Client không khớp.');
     }
     const email = String(profile.email).trim().toLowerCase();
-    let rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE lower(data->>'email')=${email} LIMIT 1`;
+    let rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE data->>'google_sub'=${String(profile.sub)} OR lower(data->>'email')=${email} ORDER BY (data->>'google_sub'=${String(profile.sub)}) DESC NULLS LAST LIMIT 1`;
     let row = rows[0];
     if (!row) {
       const base = `gmail_${email.split('@')[0].replace(/[^a-z0-9_.-]/g,'').slice(0,20) || 'user'}`;
       let username = base, suffix = 1;
       while ((await sql`SELECT 1 FROM bqlda_users WHERE username=${username}`).length) username = `${base}_${suffix++}`;
-      const data={id:crypto.randomUUID(),username,fullname:String(profile.name||email),email,phone:'',avatar:String(profile.picture||''),role:'CBGS',status:'Pending',allowed_projects:[],current_project:'',created_at:new Date().toISOString(),auth_provider:'google'};
+      const data={id:crypto.randomUUID(),username,fullname:String(profile.name||email),email,phone:'',avatar:String(profile.picture||''),role:'CBGS',status:'Pending',allowed_projects:[],current_project:'',created_at:new Date().toISOString(),auth_provider:'google',google_sub:String(profile.sub)};
       await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(crypto.randomUUID())},'Pending',${JSON.stringify(data)}::jsonb)`;
       rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE username=${username}`;
       row = rows[0];
+    }
+    if (row.data.google_sub && row.data.google_sub !== String(profile.sub)) return failure('Danh tính Google không khớp tài khoản đã liên kết.');
+    if (!row.data.google_sub) {
+      const linked={...row.data,google_sub:String(profile.sub),auth_provider:'google'};
+      await sql`UPDATE bqlda_users SET data=${JSON.stringify(linked)}::jsonb,updated_at=now() WHERE username=${row.username}`;
+      row.data=linked;
     }
     if (row.status === 'Pending') return failure('Tài khoản đã đăng ký và đang chờ Quản trị viên phê duyệt.');
     if (row.status === 'Locked') return failure('Tài khoản này đã bị khóa bởi Quản trị viên!');
@@ -186,7 +194,16 @@ async function rpc(req) {
   }
   if (method === 'get_current_user') return result(user || {username:'guest',fullname:'Khách',role:'CBGS',status:'Active',allowed_projects:[]});
 
-  if (!user) return failure('Bạn cần đăng nhập để sử dụng dữ liệu dùng chung.');
+  if (!user || user.status !== 'Active') return failure('Bạn cần tài khoản đang hoạt động để sử dụng dữ liệu dùng chung.');
+
+  // The mobile gate must not be bypassable by calling an older desktop RPC.
+  const readPermissions={
+    get_hsmt_list:'td_hsmt',get_hsmt_summary:'td_hsmt',get_hd_list:'td_contract',get_hd_summary:'td_contract',
+    get_payment_list:'td_payment',get_payment_summary:'td_payment',get_payment_record:'td_payment',get_payment_loai_tt_list:'td_payment',
+    get_progress_list:'td_progress',get_progress_summary:'td_progress',get_boq_data:'td_boq',get_sap_data:'td_sap',
+    get_contractor_summary:'td_contractor',get_contractor_detail:'td_contractor',get_contractor_list:'td_contractor',get_contractor_directory:'td_contractor_data'
+  };
+  if (readPermissions[method] && !require('./awm_rpc').can(user,state,readPermissions[method])) return failure('Không có quyền đọc dữ liệu nghiệp vụ này.');
 
   const project=currentProject(user,state);
   const menuResult=await require('./menu_rpc')({method,args,sql,user,state,project,allowedProject,visibleProjects,canEdit});

@@ -1,0 +1,21 @@
+'use strict';
+// ASCII DXF geometry reader: LINE, LWPOLYLINE (straight segments), CIRCLE and ARC.
+// Unsupported entities are reported, never presented as a complete DWG viewer.
+window.AwmCad={render(text,body,controls){
+ const lines=text.replace(/\r/g,'').split('\n');if(lines.length>600000)throw Error('DXF quá lớn cho bộ đọc 2D.');
+ const pairs=[];for(let i=0;i+1<lines.length;i+=2)pairs.push([Number(lines[i].trim()),lines[i+1].trim()]);
+ const entities=[];let section=false,current=null;
+ for(let i=0;i<pairs.length;i++){const [code,value]=pairs[i];if(code===0&&value==='SECTION'&&pairs[i+1]?.[1]==='ENTITIES'){section=true;continue}if(code===0&&value==='ENDSEC'){if(current)entities.push(current);current=null;section=false;continue}if(!section)continue;if(code===0){if(current)entities.push(current);current={type:value,pairs:[]}}else if(current)current.pairs.push([code,value])}
+ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.style.cssText='width:100%;height:70dvh;background:#182b29;touch-action:none';const group=document.createElementNS(svg.namespaceURI,'g');group.setAttribute('transform','scale(1,-1)');group.setAttribute('stroke','#d5e6b0');group.setAttribute('fill','none');svg.append(group);let xmin=Infinity,ymin=Infinity,xmax=-Infinity,ymax=-Infinity,count=0;const skipped=new Set();
+ const point=(x,y)=>{if(!Number.isFinite(x)||!Number.isFinite(y)||Math.abs(x)>1e12||Math.abs(y)>1e12)throw Error('Tọa độ DXF không hợp lệ.');xmin=Math.min(xmin,x);xmax=Math.max(xmax,x);ymin=Math.min(ymin,y);ymax=Math.max(ymax,y)};
+ const shape=(tag,attrs)=>{const e=document.createElementNS(svg.namespaceURI,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);e.setAttribute('vector-effect','non-scaling-stroke');e.setAttribute('stroke-width','1');group.append(e);count++};
+ for(const e of entities){const get=(code)=>Number(e.pairs.find(p=>p[0]===code)?.[1]);
+  if(e.type==='LINE'){const x=get(10),y=get(20),xx=get(11),yy=get(21);point(x,y);point(xx,yy);shape('line',{x1:x,y1:y,x2:xx,y2:yy})}
+  else if(e.type==='CIRCLE'||e.type==='ARC'){const x=get(10),y=get(20),r=get(40);if(!(r>0))continue;point(x-r,y-r);point(x+r,y+r);if(e.type==='CIRCLE')shape('circle',{cx:x,cy:y,r});else{const a=get(50)*Math.PI/180,b=get(51)*Math.PI/180;const span=((b-a)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);shape('path',{d:`M ${x+r*Math.cos(a)} ${y+r*Math.sin(a)} A ${r} ${r} 0 ${span>Math.PI?1:0} 1 ${x+r*Math.cos(b)} ${y+r*Math.sin(b)}`})}}
+  else if(e.type==='LWPOLYLINE'){if(e.pairs.some(([c,v])=>c===42&&Number(v)!==0)){skipped.add('LWPOLYLINE cong');continue}const points=[];for(let i=0;i<e.pairs.length;i++)if(e.pairs[i][0]===10){const x=Number(e.pairs[i][1]),y=Number(e.pairs.slice(i+1).find(p=>p[0]===20)?.[1]);point(x,y);points.push(`${x},${y}`)}shape(get(70)&1?'polygon':'polyline',{points:points.join(' ')})}
+  else skipped.add(e.type);
+ }
+ if(!count)throw Error('Không có hình học DXF 2D được hỗ trợ. Cần bản PDF hoặc viewer CAD đầy đủ.');
+ let box=[xmin,-ymax,Math.max(xmax-xmin,1),Math.max(ymax-ymin,1)];box=[box[0]-box[2]*.05,box[1]-box[3]*.05,box[2]*1.1,box[3]*1.1];const initial=box.slice();const update=()=>svg.setAttribute('viewBox',box.join(' '));update();controls.innerHTML='<button id="cad-in">+</button><button id="cad-out">−</button><button id="cad-fit">Vừa màn hình</button><span class="sheet-note">DXF 2D cơ bản</span>';
+ const zoom=f=>{const w=box[2]*f,h=box[3]*f;box=[box[0]+(box[2]-w)/2,box[1]+(box[3]-h)/2,w,h];update()};document.getElementById('cad-in').onclick=()=>zoom(.8);document.getElementById('cad-out').onclick=()=>zoom(1.25);document.getElementById('cad-fit').onclick=()=>{box=initial.slice();update()};let drag=null;svg.onpointerdown=e=>{drag=[e.clientX,e.clientY,...box];svg.setPointerCapture(e.pointerId)};svg.onpointermove=e=>{if(!drag)return;const scale=Math.max(drag[4]/svg.clientWidth,drag[5]/svg.clientHeight);box=[drag[2]-(e.clientX-drag[0])*scale,drag[3]-(e.clientY-drag[1])*scale,drag[4],drag[5]];update()};svg.onpointerup=svg.onpointercancel=()=>drag=null;body.replaceChildren(svg);const note=document.createElement('p');note.className='sheet-note';note.textContent=`${count} hình học. Không hỗ trợ text, block/Xref, layout và 3D.${skipped.size?' Thành phần chưa đọc: '+[...skipped].join(', '):''}`;body.append(note);
+}};
