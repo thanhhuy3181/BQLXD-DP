@@ -195,6 +195,30 @@ const AccountsModule = (function() {
     if (usernameInput) usernameInput.value = _currentUser?.username || 'admin';
     if (pwdInput) pwdInput.value = window.pywebview ? '55555' : '';
     modal.showModal();
+    renderGoogleButton('google-login-button');
+  }
+
+  function renderGoogleButton(elementId) {
+    const target = document.getElementById(elementId);
+    if (!target || !window.google?.accounts?.id || !window.BQLDA_WEB_CLIENT_ID) return;
+    target.innerHTML = '';
+    google.accounts.id.initialize({
+      client_id: window.BQLDA_WEB_CLIENT_ID,
+      callback: handleGoogleCredential,
+      cancel_on_tap_outside: true
+    });
+    google.accounts.id.renderButton(target, { theme: 'outline', size: 'medium', width: 300, text: 'continue_with' });
+  }
+
+  async function handleGoogleCredential(response) {
+    if (!response?.credential) return;
+    const res = await API.googleLogin(response.credential);
+    if (!res.ok) { toast('Đăng nhập Google thất bại: ' + res.error, 'error'); return; }
+    _currentUser = res.data;
+    updateHeaderUser();
+    document.getElementById('modal-auth-login')?.close();
+    document.getElementById('modal-auth-register')?.close();
+    toast(`Đăng nhập Google thành công! Chào mừng ${_currentUser.fullname}`, 'success');
   }
 
   async function submitLogin() {
@@ -227,6 +251,7 @@ const AccountsModule = (function() {
   function showRegisterModal() {
     document.getElementById('modal-auth-login')?.close();
     document.getElementById('modal-auth-register')?.showModal();
+    setTimeout(() => renderGoogleButton('google-register-button'), 0);
   }
 
   async function submitRegister() {
@@ -270,6 +295,7 @@ const AccountsModule = (function() {
     submitLogout,
     showRegisterModal,
     submitRegister,
+    handleGoogleCredential,
     changeRole,
     toggleLock,
     setPermVal,

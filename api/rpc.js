@@ -135,6 +135,36 @@ async function rpc(req) {
     await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},now()+interval '30 days')`;
     return {...result(publicUser(row)), session_token:token};
   }
+  if (method === 'google_login') {
+    const credential = String(args[0] || '').trim();
+    if (!credential) return failure('Thiếu thông tin tài khoản Google.');
+    let profile;
+    try {
+      const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+      profile = await response.json();
+    } catch (error) { return failure('Không thể xác thực tài khoản Google lúc này.'); }
+    const clientId = process.env.GOOGLE_WEB_CLIENT_ID || '893599506998-5o9a9t5b2v5bca51r89hb2sgegcijqu5.apps.googleusercontent.com';
+    if (!profile?.email || profile.aud !== clientId || String(profile.email_verified) !== 'true') {
+      return failure('Tài khoản Google chưa được xác thực hoặc OAuth Client không khớp.');
+    }
+    const email = String(profile.email).trim().toLowerCase();
+    let rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE lower(data->>'email')=${email} LIMIT 1`;
+    let row = rows[0];
+    if (!row) {
+      const base = `gmail_${email.split('@')[0].replace(/[^a-z0-9_.-]/g,'').slice(0,20) || 'user'}`;
+      let username = base, suffix = 1;
+      while ((await sql`SELECT 1 FROM bqlda_users WHERE username=${username}`).length) username = `${base}_${suffix++}`;
+      const data={id:crypto.randomUUID(),username,fullname:String(profile.name||email),email,phone:'',avatar:String(profile.picture||''),role:'Thành viên',status:'Active',allowed_projects:[],current_project:'',created_at:new Date().toISOString(),auth_provider:'google'};
+      await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(crypto.randomUUID())},'Active',${JSON.stringify(data)}::jsonb)`;
+      rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE username=${username}`;
+      row = rows[0];
+    }
+    if (row.status === 'Locked') return failure('Tài khoản này đã bị khóa bởi Quản trị viên!');
+    const token = crypto.randomBytes(32).toString('hex');
+    await sql`DELETE FROM bqlda_sessions WHERE expires_at<=now()`;
+    await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},now()+interval '30 days')`;
+    return {...result(publicUser(row)), session_token:token};
+  }
   if (method === 'register_user') {
     const d=args[0]||{}, username=String(d.username||'').trim().toLowerCase();
     if (!/^[a-zA-Z0-9_.-]{3,30}$/.test(username)) return failure('Tên tài khoản không hợp lệ (3-30 ký tự, không dấu)!');
