@@ -223,7 +223,6 @@ const AccountsModule = (function() {
     document.getElementById('modal-auth-register')?.close();
     document.body.classList.remove('auth-gate');
     toast(`Đăng nhập Google thành công! Chào mừng ${_currentUser.fullname}`, 'success');
-    if (!window.pywebview) setTimeout(() => window.location.reload(), 150);
   }
 
   async function submitLogin() {
