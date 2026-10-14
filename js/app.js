@@ -21,7 +21,7 @@ let _currentZoom = 90;
 // ── 1. Top Navigation Routing (5 Level-1 Tabs) ───────────────────────────────
 window.switchTopNav = function(navId) {
   const requiredPermission = typeof AccountsModule !== 'undefined' ? AccountsModule.navPermission(navId) : null;
-  if (requiredPermission && !AccountsModule.canAccess(requiredPermission)) {
+  if (requiredPermission && !AccountsModule.navAllowed(navId)) {
     AccountsModule.denyAccess();
     return;
   }

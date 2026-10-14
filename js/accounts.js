@@ -8,9 +8,9 @@ const AccountsModule = (function() {
   let _users = [];
   let _permData = null;
 
-  const NAV_PERMISSIONS = {home:'tab_home','ql-file':'tab_quan_ly','chuc_nang':'tab_chuc_nang','cai_dat':'tab_cai_dat'};
-  const SETTINGS_PERMISSIONS = {'cd-acc':'cd_ql_acc','cd-perm':'cd_perm','cd-ai':'cd_ai_engine','cd-excel':'cd_excel_cfg','cd-backup':'cd_backup'};
-  const FUNCTION_PERMISSIONS = {word:'cn_tab_b1_word','cn-b2':'cn_tab_b2_hsmt','cn-b3':'cn_tab_b3_hd','cn-b4':'cn_tab_b4_heading','cn-skill-hsmt':'cn_tab_b5_skill_hsmt','cn-skill-hd':'cn_tab_b5_skill_hd','cn-b6':'cn_tab_b6_ai','cn-b7':'cn_tab_b7_search','cn-b8':'cn_tab_b8_central','cn-extract-boq':'cn_tab_b9_merge_boq'};
+  const NAV_PERMISSIONS = {home:'tab_home','ql-file':'tab_quan_ly',theo_doi:'tab_theo_doi',chuc_nang:'tab_chuc_nang',cai_dat:'tab_cai_dat'};
+  const SETTINGS_PERMISSIONS = {'cd-theme':'cd_theme','cd-hm-ctr':'cd_hm_ctr','cd-acc':'cd_ql_acc','cd-perm':'cd_perm','cd-ai':'cd_ai_engine','cd-excel':'cd_excel_cfg','cd-links':'cd_links','cd-data-matrix':'cd_data_matrix','cd-backup':'cd_backup'};
+  const FUNCTION_PERMISSIONS = {word:'cn_tab_b1_word','cn-b2':'cn_tab_b2_hsmt','cn-b3':'cn_tab_b3_hd','cn-b4':'cn_tab_b4_heading','cn-skill-hsmt':'cn_tab_b5_skill_hsmt','cn-skill-hd':'cn_tab_b5_skill_hd','cn-b6':'cn_tab_b6_ai','cn-b7':'cn_tab_b7_search','cn-b8':'cn_tab_b8_central','cn-extract-boq':'cn_tab_b9_merge_boq','cn-down-hd':'cn_down_hd','cn-down-cks':'cn_down_cks'};
 
   async function init() {
     await checkCurrentUser();
@@ -22,7 +22,21 @@ const AccountsModule = (function() {
   function canAccess(permissionKey) {
     if (!permissionKey || _currentUser?.role === 'Admin') return true;
     const level = _permData?.permissions?.[_currentUser?.role]?.[permissionKey];
-    return level !== 'none' && level !== false;
+    return level === 'view' || level === 'edit' || level === 'full' || level === true;
+  }
+
+  function canEdit(permissionKey) {
+    if (!permissionKey || _currentUser?.role === 'Admin') return true;
+    const level = _permData?.permissions?.[_currentUser?.role]?.[permissionKey];
+    return level === 'edit' || level === 'full' || level === true;
+  }
+
+  function navAllowed(tab) {
+    const key = NAV_PERMISSIONS[tab];
+    // Settings is a container: it stays visible if the person can view any
+    // child setting, even when the broad tab flag itself is locked.
+    if (tab === 'cai_dat') return canAccess(key) || Object.values(SETTINGS_PERMISSIONS).some(canAccess);
+    return canAccess(key);
   }
 
   function denyAccess() {
@@ -31,8 +45,8 @@ const AccountsModule = (function() {
 
   function applyAccessControl() {
     if (!_currentUser) return;
-    Object.entries(NAV_PERMISSIONS).forEach(([tab, key]) => {
-      document.querySelectorAll(`[data-tab="${tab}"]`).forEach(el => el.classList.toggle('hidden', !canAccess(key)));
+    Object.entries(NAV_PERMISSIONS).forEach(([tab]) => {
+      document.querySelectorAll(`[data-tab="${tab}"]`).forEach(el => el.classList.toggle('hidden', !navAllowed(tab)));
     });
     Object.entries(SETTINGS_PERMISSIONS).forEach(([tab, key]) => {
       document.querySelectorAll(`[data-cd="${tab}"]`).forEach(el => el.classList.toggle('hidden', !canAccess(key)));
@@ -45,9 +59,14 @@ const AccountsModule = (function() {
   async function loadAccessControl() {
     const res = await API.getRolePermissions();
     if (res.ok) {
-      _permData = res.data;
+      _permData = window.PermissionCatalog ? PermissionCatalog.ensure(res.data) : res.data;
       applyAccessControl();
     }
+  }
+
+  async function refreshAccessControl() {
+    await checkCurrentUser();
+    await loadAccessControl();
   }
 
   async function checkCurrentUser() {
@@ -137,7 +156,9 @@ const AccountsModule = (function() {
     if (!tbody || !_permData) return;
 
     const perms = _permData.permissions || {};
-    const groups = _permData.groups || [];
+    const readOnly = _currentUser?.role !== 'Admin';
+    document.getElementById('perm-save-button')?.classList.toggle('hidden', readOnly);
+    const groups = window.PermissionCatalog?.groups || _permData.groups || [];
 
     let html = '';
     groups.forEach(([grpTitle, grpItems]) => {
@@ -156,7 +177,7 @@ const AccountsModule = (function() {
             <td class="pl-6 font-medium">${escapeHtml(pdesc)}</td>
             <td class="text-center font-bold text-success">${getPermLabel(adminVal)}</td>
             <td class="text-center">
-              <select class="select select-bordered select-xs"
+              <select class="select select-bordered select-xs" ${readOnly ? 'disabled' : ''}
                       onchange="AccountsModule.setPermVal('Phó nhóm', '${pkey}', this.value)">
                 <option value="full" ${phoVal === 'full' ? 'selected' : ''}>Full quyền</option>
                 <option value="edit" ${phoVal === 'edit' ? 'selected' : ''}>Chỉnh sửa</option>
@@ -165,7 +186,7 @@ const AccountsModule = (function() {
               </select>
             </td>
             <td class="text-center">
-              <select class="select select-bordered select-xs"
+              <select class="select select-bordered select-xs" ${readOnly ? 'disabled' : ''}
                       onchange="AccountsModule.setPermVal('Thành viên', '${pkey}', this.value)">
                 <option value="full" ${tvVal === 'full' ? 'selected' : ''}>Full quyền</option>
                 <option value="edit" ${tvVal === 'edit' ? 'selected' : ''}>Chỉnh sửa</option>
@@ -194,6 +215,10 @@ const AccountsModule = (function() {
   }
 
   async function savePermissions() {
+    if (_currentUser?.role !== 'Admin') {
+      toast('Bạn chỉ có quyền xem ma trận phân quyền.', 'warning');
+      return;
+    }
     if (!_permData?.permissions) return;
     const res = await API.saveRolePermissions(_permData.permissions);
     if (res.ok) {
@@ -333,7 +358,10 @@ const AccountsModule = (function() {
 
   return {
     init,
+    refreshAccessControl,
     canAccess,
+    canEdit,
+    navAllowed,
     denyAccess,
     navPermission: tab => NAV_PERMISSIONS[tab],
     settingsPermission: tab => SETTINGS_PERMISSIONS[tab],
@@ -368,6 +396,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Restore the authenticated person's name in the global header before
       // any settings screen is opened.
       setTimeout(() => AccountsModule.init(), 250);
+      // Admin changes take effect for an already-open member session without
+      // forcing a logout or a hard refresh.
+      setInterval(() => AccountsModule.refreshAccessControl(), 10000);
     }
   }
 });
