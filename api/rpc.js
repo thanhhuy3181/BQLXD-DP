@@ -140,7 +140,7 @@ async function rpc(req) {
     if (!credential) return failure('Thiếu thông tin tài khoản Google.');
     let profile;
     try {
-      const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+      const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`, {signal: AbortSignal.timeout(10000)});
       profile = await response.json();
     } catch (error) { return failure('Không thể xác thực tài khoản Google lúc này.'); }
     const clientId = process.env.GOOGLE_WEB_CLIENT_ID || '893599506998-5o9a9t5b2v5bca51r89hb2sgegcijqu5.apps.googleusercontent.com';

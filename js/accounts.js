@@ -215,10 +215,14 @@ const AccountsModule = (function() {
     const res = await API.googleLogin(response.credential);
     if (!res.ok) { toast('Đăng nhập Google thất bại: ' + res.error, 'error'); return; }
     _currentUser = res.data;
+    // Persist the session and rebuild the app state so the user lands in the
+    // authenticated web UI after Google's account chooser closes.
+    try { localStorage.setItem('bqlda_current_user', JSON.stringify(_currentUser)); } catch (_) {}
     updateHeaderUser();
     document.getElementById('modal-auth-login')?.close();
     document.getElementById('modal-auth-register')?.close();
     toast(`Đăng nhập Google thành công! Chào mừng ${_currentUser.fullname}`, 'success');
+    if (!window.pywebview) setTimeout(() => window.location.reload(), 150);
   }
 
   async function submitLogin() {
