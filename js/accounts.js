@@ -317,7 +317,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const style = document.createElement('style');
     style.textContent = 'body.auth-gate{background:#090812!important}body.auth-gate> *:not(dialog){visibility:hidden!important}body.auth-gate dialog{visibility:visible!important}body.auth-gate dialog::backdrop{background:#090812!important;opacity:1!important}';
     document.head.appendChild(style);
-    document.body.classList.add('auth-gate');
-    setTimeout(() => AccountsModule.showAuthModal(), 250);
+    // A saved server session means the user has already authenticated.  Only
+    // show the gate for a new/expired browser session.
+    if (!localStorage.getItem('bqlda_web_session')) {
+      document.body.classList.add('auth-gate');
+      setTimeout(() => AccountsModule.showAuthModal(), 250);
+    }
   }
 });
