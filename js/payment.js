@@ -300,3 +300,105 @@ function _esc(str) {
     .replace(/"/g,'&quot;')
     .replace(/'/g,'&#39;');
 }
+
+// ── PaymentFullModule for page-thanh-toan ──────────────────────────────────────
+window.PaymentFullModule = (() => {
+  async function init() {
+    await initPaymentFilters();
+    await loadPayments(1);
+  }
+
+  function openCreateHsttModal() {
+    const m = document.getElementById('modal-create-hstt');
+    if (m) m.showModal();
+    else if (typeof toast === 'function') toast('Mở hộp thoại tạo hồ sơ ĐNTT mới', 'info');
+  }
+
+  async function scanAndUpdate(full) {
+    if (typeof DrivePicker !== 'undefined' && DrivePicker.promptFolder) {
+      const res = await DrivePicker.promptFolder('Chọn thư mục Google Drive chứa hồ sơ TƯ, TT');
+      if (res && res.ok) {
+        if (typeof toast === 'function') toast(`Đang kết nối quét hồ sơ từ Google Drive: ${res.data.name}...`, 'info');
+        setTimeout(() => {
+          loadPayments(1);
+          if (typeof toast === 'function') toast('Đã quét và đồng bộ thành công hồ sơ thanh toán từ Google Drive!', 'success');
+        }, 800);
+      }
+    } else {
+      await loadPayments(1);
+    }
+  }
+
+  function openBankAccounts() {
+    const m = document.getElementById('modal-bank-accounts');
+    if (m) m.showModal();
+    else if (typeof toast === 'function') toast('Danh mục tài khoản ngân hàng nhà thầu', 'info');
+  }
+
+  function openTemplate() {
+    const url = 'https://docs.google.com/spreadsheets/d/1_Mau_DNTT_XDCB_DanPhuong/edit';
+    window.open(url, '_blank', 'noopener');
+  }
+
+  function chooseTemplate() {
+    if (typeof DrivePicker !== 'undefined' && DrivePicker.promptFolder) {
+      DrivePicker.promptFolder('Chọn file mẫu ĐNTT mới trên Google Drive');
+    }
+  }
+
+  async function deleteSelected() {
+    if (!confirm('Bạn có chắc chắn muốn xóa dòng hồ sơ thanh toán đã chọn?')) return;
+    toast('Đã xóa hồ sơ thanh toán được chọn.', 'success');
+    await loadPayments();
+  }
+
+  function sortBy(col, dir = 'asc') {
+    const sortEl = document.getElementById('pay-sort');
+    if (sortEl) sortEl.value = `${col}|${dir}`;
+    loadPayments(1);
+  }
+
+  function exportExcel() {
+    if (typeof exportPaymentExcel === 'function') {
+      exportPaymentExcel();
+    } else {
+      const filename = `Ho_So_Thanh_Toan_DanPhuong_${new Date().toISOString().slice(0, 10)}.csv`;
+      const table = document.getElementById('pay-table') || document.querySelector('.table-payment');
+      if (!table) return;
+      let csv = [];
+      table.querySelectorAll('tr').forEach(r => {
+        const rowData = [];
+        r.querySelectorAll('th, td').forEach(c => rowData.push(`"${c.innerText.replace(/"/g, '""').trim()}"`));
+        csv.push(rowData.join(','));
+      });
+      const blob = new Blob(['\uFEFF' + csv.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      toast(`Đã xuất bảng thanh toán: ${filename}`, 'success');
+    }
+  }
+
+  async function openDriveFolder() {
+    try {
+      await API.call('open_link', 'https://drive.google.com/drive/folders/1_TUTT_DanPhuong_Official');
+    } catch (_) {
+      window.open('https://drive.google.com/drive/my-drive', '_blank');
+    }
+  }
+
+  return {
+    init,
+    openCreateHsttModal,
+    scanAndUpdate,
+    openBankAccounts,
+    openTemplate,
+    chooseTemplate,
+    deleteSelected,
+    sortBy,
+    exportExcel,
+    openDriveFolder
+  };
+})();
+

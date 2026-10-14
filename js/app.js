@@ -6,6 +6,7 @@
 
 const PAGE_META = {
   home:       { title: 'Trang chủ • Dashboard Tổng quan' },
+  mail:       { title: 'Hộp thư điện tử • Phân loại Email Dự án' },
   'ql-file':  { title: 'Quản lý Hồ sơ & Thư mục Dự án' },
   theo_doi:   { title: 'Theo dõi • Tiến độ & Hợp đồng & Tài chính' },
   chuc_nang:  { title: 'Chức năng • Nghiệp vụ Tự động Hóa' },
@@ -18,7 +19,7 @@ let _currentCnSubTab = 'word';
 let _currentCdSubTab = 'cd-theme';
 let _currentZoom = 90;
 
-// ── 1. Top Navigation Routing (5 Level-1 Tabs) ───────────────────────────────
+// ── 1. Top Navigation Routing (6 Level-1 Tabs) ───────────────────────────────
 window.switchTopNav = function(navId) {
   const requiredPermission = typeof AccountsModule !== 'undefined' ? AccountsModule.navPermission(navId) : null;
   if (requiredPermission && !AccountsModule.navAllowed(navId)) {
@@ -32,7 +33,7 @@ window.switchTopNav = function(navId) {
     btn.classList.toggle('active', btn.dataset.tab === navId);
   });
 
-  // Hide all 5 main sections
+  // Hide all main sections
   document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
 
   // Show active section & trigger module init
@@ -41,6 +42,11 @@ window.switchTopNav = function(navId) {
     if (el) el.classList.add('active');
     if (typeof HomeModule !== 'undefined') HomeModule.init();
     App.setStatus('Trang chủ — Hệ thống Quản lý Dự án sẵn sàng.');
+  } else if (navId === 'mail') {
+    const el = document.getElementById('page-mail');
+    if (el) el.classList.add('active');
+    if (typeof MailModule !== 'undefined') MailModule.init();
+    App.setStatus('Hộp thư điện tử — Quản lý và phân loại Email Outlook sẵn sàng.');
   } else if (navId === 'ql-file') {
     const el = document.getElementById('page-ql-file');
     if (el) el.classList.add('active');
@@ -51,6 +57,21 @@ window.switchTopNav = function(navId) {
     if (el) el.classList.add('active');
     syncTdProjectPills();
     switchTheoDoiSubTab(_currentTdSubTab);
+  } else if (navId === 'bao_cao') {
+    const el = document.getElementById('page-bao-cao');
+    if (el) el.classList.add('active');
+    if (typeof ReportsModule !== 'undefined') ReportsModule.init();
+    App.setStatus('Báo cáo & Thống kê Tổng hợp — KPIs, HSMT, Hợp đồng, BOQ, Giải ngân.');
+  } else if (navId === 'so_sanh') {
+    const el = document.getElementById('page-so-sanh');
+    if (el) el.classList.add('active');
+    if (typeof CompareModule !== 'undefined') CompareModule.init();
+    App.setStatus('So sánh & Đối chiếu Dữ liệu — HSMT vs Hợp đồng, BOQ, Giải ngân, OCR.');
+  } else if (navId === 'thanh_toan') {
+    const el = document.getElementById('page-thanh-toan');
+    if (el) el.classList.add('active');
+    if (typeof PaymentFullModule !== 'undefined') PaymentFullModule.init();
+    App.setStatus('Quản lý Đề nghị Thanh toán — Tạm ứng, Thanh toán đợt & Lũy kế.');
   } else if (navId === 'chuc_nang') {
     const el = document.getElementById('page-chuc-nang');
     if (el) el.classList.add('active');
@@ -64,7 +85,7 @@ window.switchTopNav = function(navId) {
 
 // Backward-compatible alias for existing code
 window.showPage = function(pageId) {
-  if (pageId === 'home' || pageId === 'ql-file') {
+  if (pageId === 'home' || pageId === 'mail' || pageId === 'ql-file' || pageId === 'bao_cao' || pageId === 'so_sanh' || pageId === 'thanh_toan') {
     switchTopNav(pageId);
   } else if (['payment', 'hsmt', 'contract', 'progress', 'chu-truong', 'bvtk', 'boq', 'contractor', 'sap', 'contractor-data'].includes(pageId)) {
     switchTopNav('theo_doi');
@@ -180,15 +201,18 @@ window.switchCaiDatSubTab = function(subId) {
     btn.classList.toggle('active', btn.dataset.cd === subId);
   });
 
-  const linksPane = document.getElementById('cd-pane-links');
+  // Hide all settings panes first
+  document.querySelectorAll('.cd-subtab-pane').forEach(p => p.classList.add('hidden'));
+
+  const linksPane = document.getElementById('cd-links') || document.getElementById('cd-pane-links');
 
   if (subId === 'cd-links') {
-    document.querySelectorAll('.cd-subtab-pane').forEach(p => p.classList.add('hidden'));
     if (linksPane) linksPane.classList.remove('hidden');
     if (typeof LinksModule !== 'undefined') LinksModule.init();
-    App.setStatus('Đang cấu hình: Cài đặt > Quản lý Link.');
+    App.setStatus('Đang cấu hình: Cài đặt > Quản lý Link & Google Drive.');
   } else {
-    if (linksPane) linksPane.classList.add('hidden');
+    const targetPane = document.getElementById(subId);
+    if (targetPane) targetPane.classList.remove('hidden');
     if (typeof SettingsFullModule !== 'undefined') SettingsFullModule.switchCdSubTab(subId);
     if (['cd-acc', 'cd-perm'].includes(subId) && typeof AccountsModule !== 'undefined') AccountsModule.init();
     App.setStatus(`Đang cấu hình: Cài đặt > ${subId}.`);

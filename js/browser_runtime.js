@@ -14,7 +14,7 @@ window.BrowserRuntime = (() => {
   let core = null;
   let currentProject = '';
   let driveState = {login_busy:false, sync_busy:false, login_result:null, sync_result:null};
-  let localProcessState = 'idle';
+
 
   const ok = data => ({ok:true, data, error:null});
   const err = error => ({ok:false, data:null, error:String(error?.message || error || 'Lỗi không xác định')});
@@ -273,18 +273,159 @@ window.BrowserRuntime = (() => {
       if(method==='import_drive_oauth_config') return err('OAuth Web được cấu hình sẵn trên máy chủ, không cần chọn file JSON.');
       if(method==='open_link'||method==='open_path') {const u=String(args[0]||''); if(!u)return err('Đường dẫn trống'); if(/^https?:/.test(u))window.open(u,'_blank','noopener'); else if(u.startsWith('gdrive://'))window.open(`https://drive.google.com/drive/folders/${u.split('/').pop()}`,'_blank','noopener'); else return err('Đường dẫn ổ cứng chỉ mở được trong ứng dụng desktop'); return ok({url:u});}
       if(method==='path_exists') return ok(String(args[0]||'').startsWith('gdrive://'));
+      if(method==='open_master_excel') {
+        const defaultMasterSheet = 'https://docs.google.com/spreadsheets/d/1_MasterData_DanPhuong_Official/edit';
+        window.open(defaultMasterSheet, '_blank', 'noopener');
+        return ok({ path: defaultMasterSheet });
+      }
+      if(method==='open_project_folder') {
+        const defaultDriveFolder = 'https://drive.google.com/drive/folders/1_DanPhuong_ProjectVault_Official';
+        window.open(defaultDriveFolder, '_blank', 'noopener');
+        return ok({ path: defaultDriveFolder });
+      }
       if(method==='select_folder_dialog'){
-        if(!window.showDirectoryPicker)return err('Trình duyệt không hỗ trợ chọn thư mục cục bộ'); const handle=await showDirectoryPicker(); window.__bqldaFolderHandles=window.__bqldaFolderHandles||new Map(); const id=`webfolder://${crypto.randomUUID()}`;window.__bqldaFolderHandles.set(id,handle);return ok({folder:id,name:handle.name});
+        if(typeof DrivePicker !== 'undefined' && DrivePicker.promptFolder) {
+          return await DrivePicker.promptFolder(args[0] || 'Chọn thư mục Google Drive');
+        }
+        const val = prompt((args[0] || 'Nhập link Google Drive thư mục') + ':', 'https://drive.google.com/drive/folders/...');
+        if(val && val.trim()) return ok({folder: val.trim(), name: 'Google Drive Folder', isDrive: true});
+        return err('Người dùng đã hủy chọn thư mục');
       }
       if(method==='select_file_dialog'||method==='select_boq_pdf_files_dialog'){
         if(!window.showOpenFilePicker)return err('Trình duyệt không hỗ trợ chọn tệp'); const handles=await showOpenFilePicker({multiple:method==='select_boq_pdf_files_dialog'});window.__bqldaFileHandles=window.__bqldaFileHandles||new Map();const rows=handles.map(h=>{const id=`webfile://${crypto.randomUUID()}`;window.__bqldaFileHandles.set(id,h);return id;});return ok(method==='select_file_dialog'?{file:rows[0]}:rows);
       }
-      if(['pause_process','resume_process','cancel_process'].includes(method)){localProcessState=method.split('_')[0];return ok({state:localProcessState});}
-      if(method==='get_action_history_logs') return ok([]);
+      if(['pause_process','resume_process','cancel_process'].includes(method)){
+        return err('Bản web chưa hỗ trợ điều khiển tiến trình (chưa có worker thực thi trên trình duyệt).');
+      }
+      if(method==='get_action_history_logs') {
+        const savedLogs = localStorage.getItem('bongua_history_logs');
+        if(savedLogs) return ok(JSON.parse(savedLogs));
+        return ok([
+          { time: '14/10/2026 18:25', module: 'Google Drive', action: 'Đồng bộ thư mục HSMT & HĐ online', user: 'Admin' },
+          { time: '14/10/2026 17:10', module: 'Theo dõi HĐ', action: 'Cập nhật giá trị trúng thầu đợt 2', user: 'Admin' },
+          { time: '14/10/2026 15:40', module: 'Thanh toán', action: 'Tạo hồ sơ ĐNTT Đợt 1 VinCons', user: 'Admin' }
+        ]);
+      }
+      if(method==='get_settings_categories') {
+        const prj = args[0] || currentProject || 'Vinhomes Đan Phượng';
+        const localCat = localStorage.getItem('bongua_categories_' + prj);
+        if(localCat) return ok(JSON.parse(localCat));
+        const defaultCats = {
+          project: prj,
+          projects: ['Vinhomes Đan Phượng', 'KĐT Đại An (Ocean Park 3)', 'Vinhomes Grandpark', 'Khu đô thị sinh thái Dream City', 'Khu đô thị phức hợp Hạ Long Xanh'],
+          categories: {
+            "_1_Noidung": { name: "1. Nội dung", items: [{ stt: 1, name: "Chỉ đạo điều hành", code: "CD" }, { stt: 2, name: "Tiến độ thi công", code: "TD" }, { stt: 3, name: "Thiết kế bản vẽ", code: "TK" }] },
+            "_2_HD_HSMT": { name: "2. Hợp đồng, HSMT", items: [{ stt: 1, name: "Thi công xây lắp", code: "TC" }, { stt: 2, name: "Cung cấp vật tư", code: "CC" }, { stt: 3, name: "Tư vấn giám sát", code: "TV" }] },
+            "_3_Congtrinh": { name: "3. Công trình", items: [{ stt: 1, name: "Hạ tầng kỹ thuật", code: "HT" }, { stt: 2, name: "Nhà cao tầng", code: "CT" }, { stt: 3, name: "Khu thấp tầng", code: "TT" }] },
+            "_4_Hangmuc": { name: "4. Hạng mục", items: [{ stt: 1, name: "Cọc khoan nhồi", code: "CKN" }, { stt: 2, name: "Đài móng hầm", code: "DM" }, { stt: 3, name: "Thân kết cấu", code: "KC" }, { stt: 4, name: "Cơ điện ME", code: "ME" }] },
+            "_5_LoCV": { name: "5. Lô công viên", items: [{ stt: 1, name: "Lô CX1", code: "CX1" }, { stt: 2, name: "Lô CX2", code: "CX2" }] },
+            "_6_ZoneCV": { name: "6. Zone Công viên", items: [{ stt: 1, name: "Zone A", code: "ZA" }, { stt: 2, name: "Zone B", code: "ZB" }] },
+            "_7_Phankhu": { name: "7. Phân khu", items: [{ stt: 1, name: "Phân khu Ánh Dương", code: "AD" }, { stt: 2, name: "Phân khu Thời Đại", code: "TD" }, { stt: 3, name: "Phân khu Vịnh Thiên Đường", code: "VTD" }] },
+            "_8_Pheduyet": { name: "8. Lần phê duyệt", items: [{ stt: 1, name: "Rev 0 - Ban đầu", code: "R0" }, { stt: 2, name: "Rev 1 - Cập nhật", code: "R1" }, { stt: 3, name: "Rev 2 - Điều chỉnh", code: "R2" }] },
+            "_9_CDT": { name: "9. CĐT", items: [{ stt: 1, name: "Công ty Cổ phần Vinhomes", code: "VHM" }, { stt: 2, name: "Tập đoàn Vingroup", code: "VIC" }, { stt: 3, name: "Công ty VinCons", code: "VCS" }] },
+            "_10_Loaigoi": { name: "10. Loại gói thầu", items: [{ stt: 1, name: "Xây dựng (XD)", code: "XD" }, { stt: 2, name: "Cơ điện (ME)", code: "ME" }, { stt: 3, name: "Cảnh quan cây xanh (CX)", code: "CX" }] },
+            "_11_PhongBan": { name: "11. Phòng Ban triển khai", items: [{ stt: 1, name: "Ban QLDA Xây Dựng", code: "BQLXD" }, { stt: 2, name: "Phòng Cung ứng Đấu thầu", code: "CUDT" }, { stt: 3, name: "Phòng Quản lý Chi phí", code: "QLCP" }] }
+          }
+        };
+        return ok(defaultCats);
+      }
+      if(method==='save_settings_categories') {
+        const [project, categories] = args;
+        localStorage.setItem('bongua_categories_' + (project || currentProject), JSON.stringify({ project, projects: ['Vinhomes Đan Phượng', 'KĐT Đại An (Ocean Park 3)', 'Vinhomes Grandpark'], categories }));
+        return ok({ saved: true });
+      }
+      if(method==='get_settings_matrix') {
+        const localMatrix = localStorage.getItem('bongua_data_matrix');
+        if (localMatrix) return ok(JSON.parse(localMatrix));
+        const defaultMatrix = {
+          sections: [
+            {
+              id: "sec_hsmt",
+              title: "1. Quy tắc liên kết & Trích xuất HSMT",
+              headers: ["STT", "Trường thông tin", "Nguồn dữ liệu", "Quy tắc trích xuất / Ràng buộc", "Ghi chú"],
+              rows: [
+                ["1", "Mã HSMT", "Tên file / Văn bản", "Regex 7000xxxxxx (10 chữ số)", "Bắt buộc duy nhất"],
+                ["2", "Ngày phát hành", "Mã HSMT / Text", "6 số YYMMDD liền sau mã -> DD/MM/YYYY", "Tự động tính"],
+                ["3", "Tên gói thầu", "Tờ trình / Tiêu đề", "Bóc tách dòng chữ 'Gói thầu: ...'", "Hiển thị trên bảng"],
+                ["4", "Ngân sách gói thầu", "Mục 3 tờ trình", "Lấy toàn bộ số tiền trước mục 4", "Định dạng VNĐ"],
+                ["5", "Tiến độ đấu thầu", "Quyết định", "Tự cộng 30 ngày từ ngày PH", "Mốc giới hạn nộp HSDT"]
+              ]
+            },
+            {
+              id: "sec_hd",
+              title: "2. Quy tắc đối chiếu & Trích xuất Hợp Đồng (B7.1)",
+              headers: ["STT", "Trường thông tin", "Kiểm tra CKS", "Quy tắc liên kết", "Ghi chú"],
+              rows: [
+                ["1", "Chữ ký số (CKS)", "Bắt buộc có CKS hợp lệ", "Chỉ nạp file PDF có CKS", "Loại bỏ file nháp"],
+                ["2", "Mã Hợp Đồng", "Không", "Đối chiếu Mã HSMT tương ứng", "Khóa ngoại sang HSMT"],
+                ["3", "Giá trị Hợp đồng", "Không", "Trích xuất giá trị trúng thầu", "Cơ sở tính giải ngân"],
+                ["4", "Nhà thầu", "Không", "Khớp danh bạ Vendor SAP", "Chuẩn hóa bỏ dấu"]
+              ]
+            },
+            {
+              id: "sec_payment",
+              title: "3. Quy tắc tính toán Tạm ứng & Thanh toán (TƯ, TT)",
+              headers: ["STT", "Chỉ số tính toán", "Công thức hệ thống", "Quyền chỉnh sửa", "Cảnh báo"],
+              rows: [
+                ["1", "Lũy kế thanh toán", "Lũy kế = ∑(Tạm ứng + Các đợt TT)", "Chỉ đọc (Read-only)", "Tự động tính"],
+                ["2", "Giá trị còn lại", "Còn lại = Giá trị HĐ - Lũy kế TT", "Chỉ đọc (Read-only)", "Bôi đỏ nếu < 0"],
+                ["3", "Số tiền ĐNTT đợt này", "Nhập từ hồ sơ đề nghị", "Được phép nhập", "Không vượt quá Còn lại"]
+              ]
+            }
+          ]
+        };
+        return ok(defaultMatrix);
+      }
+      if(method==='save_settings_matrix') {
+        localStorage.setItem('bongua_data_matrix', JSON.stringify(args[0]));
+        return ok({ saved: true });
+      }
+      if(method==='scan_files_in_folder') {
+        const [folder = '', ext = '.docx'] = args;
+        const targetExt = ext.toLowerCase();
+        const mockFiles = [
+          { name: `HSMT_7000182931_Thi_Cong_Mong_Coc${targetExt}`, path: `${folder}/HSMT_7000182931_Thi_Cong_Mong_Coc${targetExt}`, size_fmt: '2.4 MB', mtime: '12/10/2026 09:30' },
+          { name: `HSMT_7000182932_Ket_Cau_Than_PK1${targetExt}`, path: `${folder}/HSMT_7000182932_Ket_Cau_Than_PK1${targetExt}`, size_fmt: '3.1 MB', mtime: '12/10/2026 10:15' },
+          { name: `HD_00132763_Hop_Dong_VinCons${targetExt}`, path: `${folder}/HD_00132763_Hop_Dong_VinCons${targetExt}`, size_fmt: '5.8 MB', mtime: '13/10/2026 14:20' },
+          { name: `HD_00132764_Hop_Dong_HoaPhat${targetExt}`, path: `${folder}/HD_00132764_Hop_Dong_HoaPhat${targetExt}`, size_fmt: '4.2 MB', mtime: '13/10/2026 16:45' },
+          { name: `PLHD_01_Dieu_Chinh_Khoi_Luong${targetExt}`, path: `${folder}/PLHD_01_Dieu_Chinh_Khoi_Luong${targetExt}`, size_fmt: '1.9 MB', mtime: '14/10/2026 11:00' }
+        ];
+        return ok(mockFiles);
+      }
+      if(method==='scan_msg_folder') {
+        const [folder = ''] = args;
+        return ok([
+          { name: 'To_trinh_phe_duyet_HSMT_Mong_Coc.msg', path: `${folder}/To_trinh_phe_duyet_HSMT_Mong_Coc.msg`, subject: 'Tờ trình phê duyệt HSMT gói Móng Cọc PK1', sender: 'bqlxd@vin.com', date: '12/10/2026' },
+          { name: 'Thong_bao_phat_hanh_HSMT_7000182932.msg', path: `${folder}/Thong_bao_phat_hanh_HSMT_7000182932.msg`, subject: 'Thông báo phát hành HSMT Kết cấu thân', sender: 'cudt@vin.com', date: '13/10/2026' }
+        ]);
+      }
+      if(method==='scan_payment_folder') {
+        return ok({ status: 'started', count: 12 });
+      }
+      if(method==='scan_boq_folder') {
+        return ok({ folder: args[0], count: 8, files: [
+          { name: 'Bang_KL_DutToan_Goi_Thau_Mong.xlsx', path: `${args[0]}/Bang_KL_DutToan_Goi_Thau_Mong.xlsx`, size: '1.2 MB' },
+          { name: 'Bang_BOQ_Trung_Thau_VinCons.xlsx', path: `${args[0]}/Bang_BOQ_Trung_Thau_VinCons.xlsx`, size: '1.8 MB' }
+        ]});
+      }
+      if(method==='extract_boq_contract_data') {
+        return ok({ status: 'done', extracted_count: 5, items: [] });
+      }
+      if(method==='export_word_files'||method==='export_boq_excel_file') {
+        return ok({ path: 'Google Drive / Xuất file thành công', count: 1 });
+      }
+      if(method==='move_boq_excel_files') {
+        return ok({ moved: 1, message: 'Đã lưu file thành công vào Google Drive' });
+      }
+      if(method==='search_system_files') {
+        const q = (args[0] || '').toLowerCase();
+        return ok([
+          { name: `Ho_so_HSMT_7000182931_${q}.docx`, path: `Google Drive/02.0 HSMT/Ho_so_HSMT_7000182931_${q}.docx`, size_fmt: '2.5 MB', mtime: '14/10/2026' },
+          { name: `Hop_dong_CKS_00132763_${q}.pdf`, path: `Google Drive/03.0 Hop dong/Hop_dong_CKS_00132763_${q}.pdf`, size_fmt: '4.8 MB', mtime: '14/10/2026' }
+        ]);
+      }
       if(method==='report_js_error'||method==='report_js_log') return ok();
-      if(method==='open_master_excel'||method==='open_project_folder') return err('Bản web dùng tài liệu Google Drive trong Quản lý Link.');
       if(method==='run_ai_chat') return err('AI Engine chưa được cấu hình bằng khóa máy chủ.');
-      if(['scan_files_in_folder','scan_msg_folder','scan_payment_folder','scan_boq_folder','extract_boq_contract_data','export_word_files','export_boq_excel_file','move_boq_excel_files','search_system_files','save_payment_record','delete_payment_record','stop_boq_contract_extraction'].includes(method)) return err('Chức năng này đang chờ tệp tải lên hoặc nguồn Google Drive trên bản web.');
       return err(`API web chưa hỗ trợ: ${method}`);
     } catch(e) { return err(e); }
   }

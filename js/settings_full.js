@@ -8,14 +8,27 @@ const SettingsFullModule = (() => {
     if(document.getElementById('settings-ribbon'))return;
     const host=document.getElementById('cd-subpane-container');
     host.insertAdjacentHTML('afterbegin',`<div id="settings-ribbon" class="flex flex-wrap gap-2 mb-4 pb-3 border-b border-base-300"><strong id="settings-title" class="mr-auto">Cài đặt</strong>${btn('↻ Nạp lại','reload()')}${btn('💾 Lưu','saveCurrent()')}</div>`);
-    host.insertAdjacentHTML('beforeend',`<div id="cd-hm-ctr" class="cd-subtab-pane hidden flex flex-col gap-3"><div class="flex flex-wrap gap-2"><label>Dự án <select id="settings-project" class="select select-sm select-bordered"></select></label><label>Nhóm <select id="settings-group" class="select select-sm select-bordered"></select></label>${btn('＋ Nhóm','addGroup()')}${btn('Đổi tên nhóm','renameGroup()')}${btn('＋ Dòng','addCategoryRow()')}${btn('Xuất JSON','downloadCategories()')}</div><div class="overflow-auto"><table class="table table-sm"><thead><tr><th>STT</th><th>Tên hạng mục / công trình</th><th>Mã</th><th>Thao tác</th></tr></thead><tbody id="settings-categories"></tbody></table></div></div><div id="cd-data-matrix" class="cd-subtab-pane hidden flex flex-col gap-3"><div class="flex flex-wrap gap-2"><select id="settings-matrix-section" class="select select-sm select-bordered"></select>${btn('＋ Dòng','addMatrixRow()')}${btn('Xuất JSON','downloadMatrix()')}</div><div class="overflow-auto"><table class="table table-sm"><thead id="settings-matrix-head"></thead><tbody id="settings-matrix-body"></tbody></table></div></div>`);
-    document.getElementById('settings-project').onchange=e=>loadCategories(e.target.value);
-    document.getElementById('settings-group').onchange=e=>{group=e.target.value;renderCategories();};
-    document.getElementById('settings-matrix-section').onchange=e=>{section=Number(e.target.value);renderMatrix();};
-    document.getElementById('cd-theme').insertAdjacentHTML('beforeend',`<label>Cỡ chữ <select id="settings-font" class="select select-sm select-bordered" onchange="setFontSize(this.value)"><option value="sm">Nhỏ</option><option value="md">Vừa</option><option value="lg">Lớn</option></select></label>`);
-    document.getElementById('cd-excel').insertAdjacentHTML('beforeend',`<div class="flex flex-wrap gap-2">${btn('Chọn Excel',"choosePath('cfg-excel-path',false)")}${btn('Chọn thư mục',"choosePath('cfg-last-dir',true)")}${btn('Mở Excel',"openConfigured('cfg-excel-path')")}${btn('Mở thư mục',"openConfigured('cfg-last-dir')")}</div>`);
-    document.getElementById('cd-ai').insertAdjacentHTML('beforeend',`<div class="flex flex-wrap gap-2">${btn('Kiểm tra Gemini',"testAi('gemini')")}${btn('Kiểm tra Ollama',"testAi('ollama')")}<span id="settings-ai-status" role="status" class="text-xs"></span></div>`);
-    document.getElementById('cd-backup').insertAdjacentHTML('afterbegin',`<div class="flex flex-wrap gap-2 mb-2">${btn('Xuất sao lưu cài đặt','backup()')}${btn('Chọn bản phục hồi','previewBackup()')}<button id="settings-restore" class="btn btn-xs btn-warning" disabled onclick="SettingsFullModule.restoreBackup()">Phục hồi bản đã chọn</button><span id="settings-restore-info" role="status" class="text-xs"></span><span class="text-xs">Sao lưu giao diện, đường dẫn, danh mục và ma trận; không chứa API Key.</span></div>`);
+    if (!document.getElementById('cd-hm-ctr')) {
+      host.insertAdjacentHTML('beforeend',`<div id="cd-hm-ctr" class="cd-subtab-pane hidden flex flex-col gap-3"><div class="flex flex-wrap gap-2"><label>Dự án <select id="settings-project" class="select select-sm select-bordered"></select></label><label>Nhóm <select id="settings-group" class="select select-sm select-bordered"></select></label>${btn('＋ Nhóm','addGroup()')}${btn('Đổi tên nhóm','renameGroup()')}${btn('＋ Dòng','addCategoryRow()')}${btn('Xuất JSON','downloadCategories()')}</div><div class="overflow-auto"><table class="table table-sm"><thead><tr><th>STT</th><th>Tên hạng mục / công trình</th><th>Mã</th><th>Thao tác</th></tr></thead><tbody id="settings-categories"></tbody></table></div></div><div id="cd-data-matrix" class="cd-subtab-pane hidden flex flex-col gap-3"><div class="flex flex-wrap gap-2"><select id="settings-matrix-section" class="select select-sm select-bordered"></select>${btn('＋ Dòng','addMatrixRow()')}${btn('Xuất JSON','downloadMatrix()')}</div><div class="overflow-auto"><table class="table table-sm"><thead id="settings-matrix-head"></thead><tbody id="settings-matrix-body"></tbody></table></div></div>`);
+    }
+    const prjEl = document.getElementById('settings-project');
+    if (prjEl) prjEl.onchange = e => loadCategories(e.target.value);
+    const grpEl = document.getElementById('settings-group');
+    if (grpEl) grpEl.onchange = e => { group = e.target.value; renderCategories(); };
+    const mtxEl = document.getElementById('settings-matrix-section');
+    if (mtxEl) mtxEl.onchange = e => { section = Number(e.target.value); renderMatrix(); };
+    if (!document.getElementById('settings-font')) {
+      document.getElementById('cd-theme')?.insertAdjacentHTML('beforeend',`<label>Cỡ chữ <select id="settings-font" class="select select-sm select-bordered" onchange="setFontSize(this.value)"><option value="sm">Nhỏ</option><option value="md">Vừa</option><option value="lg">Lớn</option></select></label>`);
+    }
+    if (!document.getElementById('cfg-excel-path-btn')) {
+      document.getElementById('cd-excel')?.insertAdjacentHTML('beforeend',`<div id="cfg-excel-path-btn" class="flex flex-wrap gap-2">${btn('Chọn Excel',"choosePath('cfg-excel-path',false)")}${btn('Chọn thư mục',"choosePath('cfg-last-dir',true)")}${btn('Mở Excel',"openConfigured('cfg-excel-path')")}${btn('Mở thư mục',"openConfigured('cfg-last-dir')")}</div>`);
+    }
+    if (!document.getElementById('settings-ai-status')) {
+      document.getElementById('cd-ai')?.insertAdjacentHTML('beforeend',`<div class="flex flex-wrap gap-2">${btn('Kiểm tra Gemini',"testAi('gemini')")}${btn('Kiểm tra Ollama',"testAi('ollama')")}<span id="settings-ai-status" role="status" class="text-xs"></span></div>`);
+    }
+    if (!document.getElementById('settings-restore')) {
+      document.getElementById('cd-backup')?.insertAdjacentHTML('afterbegin',`<div class="flex flex-wrap gap-2 mb-2">${btn('Xuất sao lưu cài đặt','backup()')}${btn('Chọn bản phục hồi','previewBackup()')}<button id="settings-restore" class="btn btn-xs btn-warning" disabled onclick="SettingsFullModule.restoreBackup()">Phục hồi bản đã chọn</button><span id="settings-restore-info" role="status" class="text-xs"></span><span class="text-xs">Sao lưu giao diện, đường dẫn, danh mục và ma trận; không chứa API Key.</span></div>`);
+    }
   }
   async function loadConfig(){
     const c=await request('get_app_config_full');if(!c)return false;loaded=true;
@@ -75,5 +88,5 @@ const SettingsFullModule = (() => {
   function downloadCategories(){if(categories)download(categories,'danh-muc-du-an.json');}
   function downloadMatrix(){if(matrix)download(matrix,'ma-tran-du-lieu.json');}
   async function loadHistoryLogs(){const d=await request('get_action_history_logs',50);if(d)document.getElementById('history-logs-tbody').innerHTML=d.length?d.map((h,i)=>`<tr><td>${i+1}</td><td>${esc(h.time||h.timestamp||'')}</td><td>${esc(h.module||'Hệ thống')}</td><td>${esc(h.action||h.description||'')}</td><td>${esc(h.user||'')}</td></tr>`).join(''):'<tr><td colspan="5">Chưa có nhật ký thao tác.</td></tr>';}
-  return {init,switchCdSubTab,saveAiConfig,saveExcelConfig,loadHistoryLogs,reload,saveCurrent,choosePath,openConfigured,testAi,backup,previewBackup,restoreBackup,addGroup,renameGroup,addCategoryRow,deleteCategoryRow,moveCategoryRow,addMatrixRow,deleteMatrixRow,downloadCategories,downloadMatrix};
+  return {init,switchCdSubTab,saveAiConfig,saveExcelConfig,loadHistoryLogs,reload,saveCurrent,choosePath,openConfigured,testAi,backup,previewBackup,restoreBackup,addGroup,renameGroup,addCategoryRow,deleteCategoryRow,moveCategoryRow,addMatrixRow,deleteMatrixRow,downloadCategories,downloadMatrix,loadCategories,renderCategories,loadMatrix,renderMatrix};
 })();

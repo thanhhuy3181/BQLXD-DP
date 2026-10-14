@@ -9,7 +9,7 @@ const AccountsModule = (function() {
   let _permData = null;
   let _permissionSaveChain = Promise.resolve();
 
-  const NAV_PERMISSIONS = {home:'tab_home',mail:'tab_mail','ql-file':'tab_quan_ly',theo_doi:'tab_theo_doi',chuc_nang:'tab_chuc_nang',cai_dat:'tab_cai_dat'};
+  const NAV_PERMISSIONS = {home:'tab_home',mail:'tab_mail','ql-file':'tab_quan_ly',theo_doi:'tab_theo_doi',bao_cao:'tab_bao_cao',so_sanh:'tab_so_sanh',thanh_toan:'tab_thanh_toan',chuc_nang:'tab_chuc_nang',cai_dat:'tab_cai_dat'};
   const SETTINGS_PERMISSIONS = {'cd-theme':'cd_theme','cd-hm-ctr':'cd_hm_ctr','cd-acc':'cd_ql_acc','cd-perm':'cd_perm','cd-ai':'cd_ai_engine','cd-excel':'cd_excel_cfg','cd-links':'cd_links','cd-data-matrix':'cd_data_matrix','cd-backup':'cd_backup'};
   const FUNCTION_PERMISSIONS = {word:'cn_tab_b1_word','cn-down-hd':'cn_down_hd','cn-down-cks':'cn_down_cks','cn-skill-hsmt':'cn_tab_b5_skill_hsmt','cn-b9-merge-boq':'cn_tab_b9_merge_boq','cn-skill-hd':'cn_tab_b5_skill_hd','cn-extract-boq':'cn_tab_b9_merge_boq','cn-b2':'cn_tab_b2_hsmt','cn-b3':'cn_tab_b3_hd','cn-b8':'cn_tab_b8_central','cn-b7':'cn_tab_b7_search','cn-b6':'cn_tab_b6_ai','cn-b4':'cn_tab_b4_heading'};
 
