@@ -306,3 +306,9 @@ const AccountsModule = (function() {
     savePermissions
   };
 })();
+
+// The browser build always starts at the authentication gate.  The desktop
+// pywebview build keeps its existing startup behaviour.
+document.addEventListener('DOMContentLoaded', () => {
+  if (!window.pywebview) setTimeout(() => AccountsModule.showAuthModal(), 250);
+});
