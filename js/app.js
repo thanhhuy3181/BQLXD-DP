@@ -257,41 +257,98 @@ window.App = {
   },
 
   async pauseProcess() {
-    App.setStatus('⏸️ Đang gửi tín hiệu tạm dừng tiến trình...');
+    const app = (typeof App !== 'undefined' && App) || (typeof window !== 'undefined' && window.App) || this;
+    if (app && typeof app.setStatus === 'function') app.setStatus('⏸️ Đang gửi tín hiệu tạm dừng tiến trình...');
+    const notifyToast = (m, t) => (typeof toast === 'function' ? toast(m, t) : (typeof window !== 'undefined' && typeof window.toast === 'function' ? window.toast(m, t) : null));
     try {
-      if (window.pywebview && window.pywebview.api && window.pywebview.api.pause_process) {
-        await window.pywebview.api.pause_process();
+      const api = (typeof API !== 'undefined' && API) || (typeof window !== 'undefined' && window.API) || null;
+      if (!api || typeof api.pauseProcess !== 'function') {
+        const errMsg = 'API điều khiển tiến trình không khả dụng';
+        if (app && typeof app.setStatus === 'function') app.setStatus(`❌ Không thể tạm dừng tiến trình: ${errMsg}`);
+        notifyToast(errMsg, 'error');
+        return { ok: false, data: null, error: errMsg };
       }
-      App.setStatus('⏸️ Tiến trình đã tạm dừng.');
-      if (typeof toast === 'function') toast('Đã tạm dừng tiến trình!', 'warning');
-    } catch (_) {
-      App.setStatus('⏸️ Tiến trình đã tạm dừng.');
+      const res = await api.pauseProcess();
+      if (!res || res.ok !== true) {
+        const errMsg = (res && typeof res === 'object' && (res.error || res.message)) || 'Không nhận được phản hồi hợp lệ từ hệ thống';
+        if (app && typeof app.setStatus === 'function') app.setStatus(`❌ Không thể tạm dừng tiến trình: ${errMsg}`);
+        notifyToast(errMsg, 'error');
+        const normalized = (res && typeof res === 'object') ? { ...res, ok: false } : { ok: false, data: null, error: errMsg };
+        if (!normalized.error) normalized.error = errMsg;
+        return normalized;
+      }
+      if (app && typeof app.setStatus === 'function') app.setStatus('⏸️ Tiến trình đã tạm dừng.');
+      notifyToast('Đã tạm dừng tiến trình!', 'warning');
+      return res;
+    } catch (err) {
+      const errMsg = (err && (err.message || String(err))) || 'Lỗi không xác định khi tạm dừng';
+      if (app && typeof app.setStatus === 'function') app.setStatus(`❌ Không thể tạm dừng tiến trình: ${errMsg}`);
+      notifyToast(errMsg, 'error');
+      return { ok: false, data: null, error: errMsg };
     }
   },
 
   async resumeProcess() {
-    App.setStatus('▶️ Đang tiếp tục chạy tiến trình...');
+    const app = (typeof App !== 'undefined' && App) || (typeof window !== 'undefined' && window.App) || this;
+    if (app && typeof app.setStatus === 'function') app.setStatus('▶️ Đang tiếp tục chạy tiến trình...');
+    const notifyToast = (m, t) => (typeof toast === 'function' ? toast(m, t) : (typeof window !== 'undefined' && typeof window.toast === 'function' ? window.toast(m, t) : null));
     try {
-      if (window.pywebview && window.pywebview.api && window.pywebview.api.resume_process) {
-        await window.pywebview.api.resume_process();
+      const api = (typeof API !== 'undefined' && API) || (typeof window !== 'undefined' && window.API) || null;
+      if (!api || typeof api.resumeProcess !== 'function') {
+        const errMsg = 'API điều khiển tiến trình không khả dụng';
+        if (app && typeof app.setStatus === 'function') app.setStatus(`❌ Không thể tiếp tục tiến trình: ${errMsg}`);
+        notifyToast(errMsg, 'error');
+        return { ok: false, data: null, error: errMsg };
       }
-      App.setStatus('▶️ Tiến trình đang tiếp tục chạy.');
-      if (typeof toast === 'function') toast('Đang tiếp tục tiến trình!', 'success');
-    } catch (_) {
-      App.setStatus('▶️ Tiến trình đang tiếp tục chạy.');
+      const res = await api.resumeProcess();
+      if (!res || res.ok !== true) {
+        const errMsg = (res && typeof res === 'object' && (res.error || res.message)) || 'Không nhận được phản hồi hợp lệ từ hệ thống';
+        if (app && typeof app.setStatus === 'function') app.setStatus(`❌ Không thể tiếp tục tiến trình: ${errMsg}`);
+        notifyToast(errMsg, 'error');
+        const normalized = (res && typeof res === 'object') ? { ...res, ok: false } : { ok: false, data: null, error: errMsg };
+        if (!normalized.error) normalized.error = errMsg;
+        return normalized;
+      }
+      if (app && typeof app.setStatus === 'function') app.setStatus('▶️ Tiến trình đang tiếp tục chạy.');
+      notifyToast('Đang tiếp tục tiến trình!', 'success');
+      return res;
+    } catch (err) {
+      const errMsg = (err && (err.message || String(err))) || 'Lỗi không xác định khi tiếp tục tiến trình';
+      if (app && typeof app.setStatus === 'function') app.setStatus(`❌ Không thể tiếp tục tiến trình: ${errMsg}`);
+      notifyToast(errMsg, 'error');
+      return { ok: false, data: null, error: errMsg };
     }
   },
 
   async cancelProcess() {
-    App.setStatus('⏹️ Đang dừng tiến trình...');
+    const app = (typeof App !== 'undefined' && App) || (typeof window !== 'undefined' && window.App) || this;
+    if (app && typeof app.setStatus === 'function') app.setStatus('⏹️ Đang dừng tiến trình...');
+    const notifyToast = (m, t) => (typeof toast === 'function' ? toast(m, t) : (typeof window !== 'undefined' && typeof window.toast === 'function' ? window.toast(m, t) : null));
     try {
-      if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_process) {
-        await window.pywebview.api.cancel_process();
+      const api = (typeof API !== 'undefined' && API) || (typeof window !== 'undefined' && window.API) || null;
+      if (!api || typeof api.cancelProcess !== 'function') {
+        const errMsg = 'API điều khiển tiến trình không khả dụng';
+        if (app && typeof app.setStatus === 'function') app.setStatus(`❌ Không thể dừng tiến trình: ${errMsg}`);
+        notifyToast(errMsg, 'error');
+        return { ok: false, data: null, error: errMsg };
       }
-      App.setStatus('⏹️ Tiến trình đã dừng hoàn toàn.');
-      if (typeof toast === 'function') toast('Đã hủy bỏ tiến trình!', 'error');
-    } catch (_) {
-      App.setStatus('⏹️ Tiến trình đã dừng.');
+      const res = await api.cancelProcess();
+      if (!res || res.ok !== true) {
+        const errMsg = (res && typeof res === 'object' && (res.error || res.message)) || 'Không nhận được phản hồi hợp lệ từ hệ thống';
+        if (app && typeof app.setStatus === 'function') app.setStatus(`❌ Không thể dừng tiến trình: ${errMsg}`);
+        notifyToast(errMsg, 'error');
+        const normalized = (res && typeof res === 'object') ? { ...res, ok: false } : { ok: false, data: null, error: errMsg };
+        if (!normalized.error) normalized.error = errMsg;
+        return normalized;
+      }
+      if (app && typeof app.setStatus === 'function') app.setStatus('⏹️ Tiến trình đã dừng hoàn toàn.');
+      notifyToast('Đã hủy bỏ tiến trình!', 'error');
+      return res;
+    } catch (err) {
+      const errMsg = (err && (err.message || String(err))) || 'Lỗi không xác định khi dừng tiến trình';
+      if (app && typeof app.setStatus === 'function') app.setStatus(`❌ Không thể dừng tiến trình: ${errMsg}`);
+      notifyToast(errMsg, 'error');
+      return { ok: false, data: null, error: errMsg };
     }
   },
 
