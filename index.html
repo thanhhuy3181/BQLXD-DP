@@ -1854,11 +1854,11 @@
       <div class="flex flex-col gap-2.5">
         <div>
           <label class="text-xs font-semibold block mb-1">Tên đăng nhập</label>
-          <input type="text" id="auth-username" class="input input-sm input-bordered w-full text-xs" />
+          <input type="text" id="auth-username" class="input input-sm input-bordered w-full text-xs" onkeydown="if(event.key==='Enter'){event.preventDefault();AccountsModule.submitLogin()}" />
         </div>
         <div>
           <label class="text-xs font-semibold block mb-1">Mật khẩu</label>
-          <input type="password" id="auth-password" class="input input-sm input-bordered w-full text-xs" />
+          <input type="password" id="auth-password" class="input input-sm input-bordered w-full text-xs" onkeydown="if(event.key==='Enter'){event.preventDefault();AccountsModule.submitLogin()}" />
         </div>
       </div>
       <div class="modal-action flex items-center justify-between">

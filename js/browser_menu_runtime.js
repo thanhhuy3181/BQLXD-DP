@@ -2,7 +2,7 @@
 window.BrowserMenuRuntime=(()=>{
  const serverMethods=new Set(['get_tracking_workspace','save_tracking_cell','get_settings_categories','save_settings_categories','get_settings_matrix','save_settings_matrix','export_settings_backup','preview_settings_backup','restore_settings_backup','test_ai_connection','get_theme']);
  const ok=data=>({ok:true,data,error:null}),fail=e=>({ok:false,data:null,error:String(e?.message||e)});
- async function rpc(method,args){const headers={'Content-Type':'application/json'},token=localStorage.getItem('bqlda_web_session');if(token)headers.Authorization='Bearer '+token;const response=await fetch('/api/rpc',{method:'POST',headers,body:JSON.stringify({method,args})});return await response.json();}
+ async function rpc(method,args){const headers={'Content-Type':'application/json'},token=localStorage.getItem('bqlda_web_session');if(token)headers.Authorization='Bearer '+token;const response=await fetch('/api/rpc',{method:'POST',headers,body:JSON.stringify({method,args})});const payload=await response.json();if(payload?.session_token)localStorage.setItem('bqlda_web_session',payload.session_token);if(method==='logout_user')localStorage.removeItem('bqlda_web_session');return payload;}
  function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);}
  const xml=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
  function workbook(headers,rows){
