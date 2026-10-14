@@ -322,6 +322,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!localStorage.getItem('bqlda_web_session')) {
       document.body.classList.add('auth-gate');
       setTimeout(() => AccountsModule.showAuthModal(), 250);
+    } else {
+      // Restore the authenticated person's name in the global header before
+      // any settings screen is opened.
+      setTimeout(() => AccountsModule.checkCurrentUser(), 250);
     }
   }
 });
