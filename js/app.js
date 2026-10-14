@@ -20,6 +20,11 @@ let _currentZoom = 90;
 
 // ── 1. Top Navigation Routing (5 Level-1 Tabs) ───────────────────────────────
 window.switchTopNav = function(navId) {
+  const requiredPermission = typeof AccountsModule !== 'undefined' ? AccountsModule.navPermission(navId) : null;
+  if (requiredPermission && !AccountsModule.canAccess(requiredPermission)) {
+    AccountsModule.denyAccess();
+    return;
+  }
   _currentTopNav = navId;
 
   // Highlight active main tab
@@ -131,6 +136,11 @@ window.switchTheoDoiSubTab = function(subId) {
 
 // ── 3. Chức Năng Sub-Navigation (11 Function Tabs) ───────────────────────────
 window.switchChucNangSubTab = function(subId) {
+  const requiredPermission = typeof AccountsModule !== 'undefined' ? AccountsModule.functionPermission(subId) : null;
+  if (requiredPermission && !AccountsModule.canAccess(requiredPermission)) {
+    AccountsModule.denyAccess();
+    return;
+  }
   _currentCnSubTab = subId;
   if (typeof FunctionsFullModule !== 'undefined') FunctionsFullModule.init(subId);
 
@@ -158,6 +168,11 @@ window.switchChucNangSubTab = function(subId) {
 
 // ── 4. Cài Đặt Sub-Navigation (9 Settings Tabs) ──────────────────────────────
 window.switchCaiDatSubTab = function(subId) {
+  const requiredPermission = typeof AccountsModule !== 'undefined' ? AccountsModule.settingsPermission(subId) : null;
+  if (requiredPermission && !AccountsModule.canAccess(requiredPermission)) {
+    AccountsModule.denyAccess();
+    return;
+  }
   _currentCdSubTab = subId;
 
   // Highlight button in sidebar

@@ -8,10 +8,46 @@ const AccountsModule = (function() {
   let _users = [];
   let _permData = null;
 
+  const NAV_PERMISSIONS = {home:'tab_home','ql-file':'tab_quan_ly','chuc_nang':'tab_chuc_nang','cai_dat':'tab_cai_dat'};
+  const SETTINGS_PERMISSIONS = {'cd-acc':'cd_ql_acc','cd-perm':'cd_perm','cd-ai':'cd_ai_engine','cd-excel':'cd_excel_cfg','cd-backup':'cd_backup'};
+  const FUNCTION_PERMISSIONS = {word:'cn_tab_b1_word','cn-b2':'cn_tab_b2_hsmt','cn-b3':'cn_tab_b3_hd','cn-b4':'cn_tab_b4_heading','cn-skill-hsmt':'cn_tab_b5_skill_hsmt','cn-skill-hd':'cn_tab_b5_skill_hd','cn-b6':'cn_tab_b6_ai','cn-b7':'cn_tab_b7_search','cn-b8':'cn_tab_b8_central','cn-extract-boq':'cn_tab_b9_merge_boq'};
+
   async function init() {
     await checkCurrentUser();
+    await loadAccessControl();
     await loadUsers();
     await loadPermissions();
+  }
+
+  function canAccess(permissionKey) {
+    if (!permissionKey || _currentUser?.role === 'Admin') return true;
+    const level = _permData?.permissions?.[_currentUser?.role]?.[permissionKey];
+    return level !== 'none' && level !== false;
+  }
+
+  function denyAccess() {
+    toast('Bạn không được phân quyền cho chức năng này.', 'warning');
+  }
+
+  function applyAccessControl() {
+    if (!_currentUser) return;
+    Object.entries(NAV_PERMISSIONS).forEach(([tab, key]) => {
+      document.querySelectorAll(`[data-tab="${tab}"]`).forEach(el => el.classList.toggle('hidden', !canAccess(key)));
+    });
+    Object.entries(SETTINGS_PERMISSIONS).forEach(([tab, key]) => {
+      document.querySelectorAll(`[data-cd="${tab}"]`).forEach(el => el.classList.toggle('hidden', !canAccess(key)));
+    });
+    Object.entries(FUNCTION_PERMISSIONS).forEach(([tab, key]) => {
+      document.querySelectorAll(`[data-cn="${tab}"]`).forEach(el => el.classList.toggle('hidden', !canAccess(key)));
+    });
+  }
+
+  async function loadAccessControl() {
+    const res = await API.getRolePermissions();
+    if (res.ok) {
+      _permData = res.data;
+      applyAccessControl();
+    }
   }
 
   async function checkCurrentUser() {
@@ -215,6 +251,7 @@ const AccountsModule = (function() {
     const res = await API.googleLogin(response.credential);
     if (!res.ok) { toast('Đăng nhập Google thất bại: ' + res.error, 'error'); return; }
     _currentUser = res.data;
+    await loadAccessControl();
     // Persist the session and rebuild the app state so the user lands in the
     // authenticated web UI after Google's account chooser closes.
     try { localStorage.setItem('bqlda_current_user', JSON.stringify(_currentUser)); } catch (_) {}
@@ -235,6 +272,7 @@ const AccountsModule = (function() {
     const res = await API.loginUser(u, p);
     if (res.ok) {
       _currentUser = res.data;
+    await loadAccessControl();
       updateHeaderUser();
       toast(`Đăng nhập thành công! Chào mừng ${_currentUser.fullname}`, 'success');
       document.getElementById('modal-auth-login')?.close();
@@ -295,6 +333,11 @@ const AccountsModule = (function() {
 
   return {
     init,
+    canAccess,
+    denyAccess,
+    navPermission: tab => NAV_PERMISSIONS[tab],
+    settingsPermission: tab => SETTINGS_PERMISSIONS[tab],
+    functionPermission: tab => FUNCTION_PERMISSIONS[tab],
     checkCurrentUser,
     showAuthModal,
     submitLogin,
@@ -324,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       // Restore the authenticated person's name in the global header before
       // any settings screen is opened.
-      setTimeout(() => AccountsModule.checkCurrentUser(), 250);
+      setTimeout(() => AccountsModule.init(), 250);
     }
   }
 });
