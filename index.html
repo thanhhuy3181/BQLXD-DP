@@ -1,586 +1,2404 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="vsf_cybernetic">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BQLDA Master - Hệ Thống Điều Hành Dự Án</title>
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#2563eb">
-  <link rel="stylesheet" href="./style.css?v=21">
-  <!-- Google Identity Services (OAuth2) -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phần mềm Quản lý Dự án V386</title>
+
+  <!-- DaisyUI & Tailwind Offline Bundles -->
+  <link rel="stylesheet" href="assets/daisyui.min.css" />
+  <script src="assets/tailwind-cdn.js"></script>
+
+  <style>
+    /* Theme color variables matching Desktop V386 Theme 5 (Rosé Pine) & Themes 1-4 */
+    /* VSF Cybernetic & Clean UI Theme Tokens */
+    [data-theme="vsf_cybernetic"] {
+      --bg-base: #0D0B14;
+      --bg-header: #1E0C1B;
+      --bg-nav: #09070F;
+      --bg-sidebar: #140C1A;
+      --bg-card: #FFFFFF;
+      --bg-input: #F8FAFC;
+      --border-base: #E2E8F0;
+      --text-main: #1E293B;
+      --text-muted: #64748B;
+      --accent: #E0062D;
+      --accent-text: #FFFFFF;
+      --accent-hover: #C40026;
+      --tab-unsel: #1A0E22;
+      --tab-unsel-hover: #291536;
+      --sidebar-header: #E0062D;
+      --sidebar-btn: #1E0C1B;
+      --sidebar-btn-active: #E0062D;
+      --table-header: #F1F5F9;
+      --table-row-even: #FFFFFF;
+      --table-row-odd: #F8FAFC;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(224, 222, 244, 0.2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(224, 222, 244, 0.4); }
+
+    /* Main Tab Navigation Buttons */
+    .main-tab-btn {
+      background: var(--tab-unsel);
+      color: #EDEDEA;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+    .main-tab-btn:hover {
+      background: var(--tab-unsel-hover);
+      color: #FFFFFF;
+    }
+    .main-tab-btn.active {
+      background: #EBBCBA !important;
+      color: #191724 !important;
+      font-weight: 800 !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    /* Sidebar Sub-tab Buttons */
+    .sub-nav-btn {
+      background: #232320;
+      color: #E0DEF4;
+      border: 1px solid transparent;
+    }
+    .sub-nav-btn:hover {
+      background: #2A2A27;
+      color: #FFFFFF;
+    }
+    .sub-nav-btn.active {
+      background: #EBBCBA !important;
+      color: #191724 !important;
+      font-weight: 700 !important;
+    }
+
+    /* DaisyUI Dark Rosé Pine Overrides */
+    html, body, .bg-base-100 { background-color: #191724 !important; color: #e0def4 !important; }
+    .bg-base-200 { background-color: #1f1d2e !important; color: #e0def4 !important; }
+    .bg-base-300 { background-color: #26233a !important; color: #e0def4 !important; }
+    .border-base-300, .border-base-200 { border-color: #312f44 !important; }
+    .text-base-content { color: #e0def4 !important; }
+
+    /* Home Chips */
+    .home-status-chip {
+      background: #242421;
+      color: #B4B2A9;
+      border-radius: 9999px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .home-status-chip:hover {
+      background: #2E2E2A;
+      color: #FFFFFF;
+    }
+    .home-status-chip.active {
+      background: #C0392B !important;
+      color: #FFFFFF !important;
+    }
+    .home-milestone-chip {
+      background: #242421;
+      color: #B4B2A9;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .home-milestone-chip:hover {
+      background: #2E2E2A;
+      color: #FFFFFF;
+    }
+    .home-milestone-chip.active {
+      background: #0F6E56 !important;
+      color: #FFFFFF !important;
+    }
+
+    /* Page section switching */
+    .page-section {
+
+      display: none !important;
+      height: 100%;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+    .page-section.active {
+      display: flex !important;
+    }
+
+    /* Sub-pane switching */
+    .subpane {
+      display: none !important;
+      height: 100%;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+    .subpane.active {
+      display: flex !important;
+    }
+
+    .tbl-container { overflow: auto; max-height: calc(100vh - 270px); }
+    .data-table th { position: sticky; top: 0; z-index: 10; background: var(--table-header); white-space: nowrap; }
+    .data-table td { white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+    .data-table tr:hover td { background: rgba(235, 188, 186, 0.08); }
+
+    #titlebar { -webkit-app-region: drag; user-select: none; }
+    #titlebar button, #titlebar select, #titlebar input { -webkit-app-region: no-drag; }
+
+    /* Consistent dark palette, including DaisyUI semantic utilities. */
+    :root, [data-theme] {
+      --bg-base: #191724; --bg-header: #1f1d2e; --bg-nav: #191724;
+      --bg-sidebar: #1f1d2e; --bg-card: #1f1d2e; --bg-input: #26233a;
+      --border-base: #403d52; --text-main: #e0def4; --text-muted: #b4b0cb;
+      --tab-unsel: #232320; --tab-unsel-hover: #312f44;
+      --table-header: #26233a;
+      --b1: 16% .025 285; --b2: 20% .03 285; --b3: 25% .035 285;
+      --bc: 91% .025 285; --p: 80% .1 235; --pc: 18% .025 285;
+      color-scheme: dark;
+    }
+    .hidden { display: none !important; }
+    dialog.modal:not([open]) { display: none !important; }
+    .page-section, .subpane, #td-subpane-container, #cn-subpane-container,
+    #cd-subpane-container, .tbl-container { min-height: 0; min-width: 0; }
+    .subpane.active { padding: 12px; gap: 8px; }
+    .data-table th { color: #e0def4 !important; background: #26233a !important; }
+    .input, .select, .textarea { background: #26233a; color: #e0def4; border-color: #524f67; }
+    .input::placeholder { color: #b4b0cb; opacity: 1; }
+    .text-primary, a { color: #8bd5f7; }
+    .data-table .text-base-content\/40, .data-table .text-base-content\/50,
+    .data-table .text-base-content\/60, .data-table .text-base-content\/70 { color: #b4b0cb; }
+    #mobile-sidebar-toggle { display: none; }
+    @media (max-width: 760px) { #mobile-sidebar-toggle { display: flex; } }
+  </style>
 </head>
-<body class="glass-active" style="background: radial-gradient(circle at top left, #1e1b4b 0%, #0f172a 40%, #080c14 100%); color: #f8fafc; min-height: 100vh;">
+<body class="flex flex-col h-screen overflow-hidden select-none">
 
-  <!-- ==========================================================================
-       MAIN DARK THEME PAGE (TRANG WEB CHÍNH GIAO DIỆN MÀU TỐI HẠN MỤC MỚI)
-       ========================================================================== -->
-  
-  <!-- MAIN PAGE HEADER -->
-  <header class="app-header" style="position: sticky; top: 0; z-index: 1000; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border-bottom: 1px solid var(--glass-border);">
-    <div class="brand-box">
-      <div class="brand-logo" style="font-size:1.8rem;">🏢</div>
-      <div class="brand-text">
-        <h1 style="color: #facc15; font-weight: 700; font-size: 1.25rem;">BQLXD ĐAN PHƯỢNG</h1>
-        <span style="color: #94a3b8; font-size: 0.78rem;">Hệ Thống Điều Hành & Quản Lý Dự Án Master</span>
+  <!-- ══════════════════════════════════════════════════════════════════════
+       1. TOP TITLEBAR & HEADER BAR (Matching Desktop V386 Header)
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <header id="titlebar" class="flex items-center justify-between px-3 py-1.5 bg-[#1E1E1C] border-b border-[#2E2E2A] flex-shrink-0 z-30 select-none">
+    <!-- Brand Title -->
+    <div class="flex items-center gap-2">
+      <span class="text-lg">📁</span>
+      <span class="font-extrabold text-xs tracking-wider text-[#EDEDEA]">PHẦN MỀM QUẢN LÝ DỰ ÁN — BỌ NGỰA V386</span>
+    </div>
+
+    <!-- Quick Action Toolbar -->
+    <div class="flex items-center gap-2">
+      <!-- Cụm thu phóng cỡ chữ & giao diện (Zoom 80% - 150%) -->
+      <div class="flex items-center gap-1 bg-[#232320] px-2 py-0.5 rounded border border-[#2E2E2A] text-xs">
+        <span class="text-[#908CAA] text-[11px] font-bold">🔍 Size:</span>
+        <button class="px-1.5 py-0.5 bg-[#2A2A27] hover:bg-[#3A3A37] rounded text-[11px] font-bold text-[#EDEDEA]" onclick="App.zoom(-1)">➖</button>
+        <span id="app-zoom-val" class="font-bold text-[#F39C12] text-xs px-1">90%</span>
+        <button class="px-1.5 py-0.5 bg-[#2A2A27] hover:bg-[#3A3A37] rounded text-[11px] font-bold text-[#EDEDEA]" onclick="App.zoom(1)">➕</button>
+        <button class="px-1 text-[#888780] hover:text-white text-xs font-bold" onclick="App.resetZoom()">↺</button>
       </div>
-    </div>
 
-    <!-- AI GLOBAL SEARCH BAR -->
-    <div class="search-ai-box" style="flex:1; max-width:480px; margin: 0 20px;">
-      <span>🔍</span>
-      <input type="text" id="globalAiSearchInput" placeholder="Hỏi AI tra cứu HSMT, CAD, Hợp đồng, Công văn..." onkeydown="if(event.key==='Enter') triggerGlobalAISearch()">
-    </div>
+      <!-- Nút Cập nhật -->
+      <button class="flex items-center gap-1 px-2.5 py-1 bg-[#1E3A2B] hover:bg-[#0F6E56] text-[#2ECC71] font-bold rounded text-xs border border-[#1E3A2B] transition-colors" onclick="App.checkUpdate()">
+        <span>🚀</span><span>Cập nhật</span>
+      </button>
 
-    <!-- MAIN HEADER ACTIONS -->
-    <div class="header-actions">
-      <button class="btn-outline btn-sm" onclick="openDataSourceModal()">🗄️ Nguồn dữ liệu</button>
-      <button class="btn-outline btn-sm" onclick="openSecondaryAppModal()">🏗️ Trang thứ cấp</button>
-      <div class="user-badge" id="currentUserBadge" onclick="openGmailLoginModal()">
-        <!-- Rendered by authEngine -->
+      <!-- Nút Đổi tài khoản -->
+      <button class="flex items-center gap-1 px-2.5 py-1 bg-[#232320] hover:bg-[#2A2A27] text-[#EDEDEA] rounded text-xs border border-[#2E2E2A] transition-colors" onclick="AccountsModule.showAuthModal()">
+        <span>🔄</span><span>Đổi tài khoản</span>
+      </button>
+
+      <!-- User Role Badge -->
+      <div id="header-user-badge" class="flex items-center gap-1 text-xs font-bold text-[#2ECC71] px-1">
+        <span>👤</span><span id="header-user-name">admin</span> (<span id="header-user-role">👑 Admin</span>)
+      </div>
+
+      <!-- Window Controls -->
+      <div class="flex items-center ml-2 border-l border-[#2E2E2A] pl-2 gap-1">
+        <button title="Thu nhỏ" onclick="pyApi('minimize_window')" class="px-2 py-0.5 hover:bg-[#2A2A27] text-xs rounded text-[#908CAA]">─</button>
+        <button title="Phóng to / Khôi phục" onclick="pyApi('toggle_maximize')" class="px-2 py-0.5 hover:bg-[#2A2A27] text-xs rounded text-[#908CAA]">□</button>
+        <button title="Đóng" onclick="pyApi('close_window')" class="px-2 py-0.5 hover:bg-[#E53935] hover:text-white text-xs rounded text-[#908CAA]">✕</button>
       </div>
     </div>
   </header>
 
-  <!-- MAIN PAGE CONTENT CONTAINER -->
-  <main class="main-container" style="max-width: 1400px; margin: 24px auto; padding: 0 20px; display: flex; flex-direction: column; gap: 24px;">
+  <!-- ══════════════════════════════════════════════════════════════════════
+       2. MAIN NAVIGATION (Level 1 Tabs: Home, QL File, Theo dõi, Chức năng, Cài đặt)
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <nav class="flex items-center px-3 py-1.5 bg-[#141412] border-b border-[#2E2E2A] flex-shrink-0 z-20">
+    <div id="main-tabs-container" class="flex items-center gap-1 bg-[#1E1E1C] p-1 rounded-lg border border-[#2E2E2A]">
+      <button class="main-tab-btn px-4 py-1.5 rounded-md text-xs font-bold transition-all active" data-tab="home" onclick="switchTopNav('home')">
+        <span>🏠</span><span> Home </span>
+      </button>
+      <button class="main-tab-btn px-4 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="ql-file" onclick="switchTopNav('ql-file')">
+        <span>📁</span><span> QL File </span>
+      </button>
+      <button class="main-tab-btn px-4 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="theo_doi" onclick="switchTopNav('theo_doi')">
+        <span>📊</span><span> Theo dõi </span>
+      </button>
+      <button class="main-tab-btn px-4 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="chuc_nang" onclick="switchTopNav('chuc_nang')">
+        <span>🛠️</span><span> Chức năng </span>
+      </button>
+      <button class="main-tab-btn px-4 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="cai_dat" onclick="switchTopNav('cai_dat')">
+        <span>⚙️</span><span> Cài đặt </span>
+      </button>
+    </div>
+  </nav>
 
-    <!-- HERO WELCOME BANNER (DARK THEME) -->
-    <section class="card-glass" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95)); border: 1px solid var(--glass-border); border-radius: 20px; padding: 32px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
-        <div style="max-width: 800px;">
-          <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(250, 204, 21, 0.15); border: 1px solid rgba(250, 204, 21, 0.4); padding: 4px 12px; border-radius: 30px; margin-bottom: 14px;">
-            <span style="font-size: 0.8rem; color: #facc15; font-weight: 700;">✨ TRANG CHÍNH MỚI GIAO DIỆN DARK MODE</span>
+  <!-- ══════════════════════════════════════════════════════════════════════
+       3. MAIN VIEWPORT (5 Top-Level Pages)
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <!-- Mobile navigation drawer controls -->
+  <button id="mobile-sidebar-toggle" class="mobile-sidebar-toggle" type="button" aria-label="Mở danh mục" aria-expanded="false" onclick="toggleMobileSidebar()">☰ <span>Danh mục</span></button>
+  <div id="mobile-sidebar-backdrop" class="mobile-sidebar-backdrop" aria-hidden="true" onclick="closeMobileSidebar()"></div>
+  <main id="main-viewport" class="flex-1 flex flex-col overflow-hidden relative bg-[#191724]">
+
+    <!-- ──────────────────────────────────────────────────────────────────
+         TAB 1: HOME (Trang chủ — Full Width Dashboard)
+    ────────────────────────────────────────────────────────────────── -->
+    <section id="page-home" class="page-section active p-3 overflow-y-auto space-y-3">
+      <!-- 1. Header Banner -->
+      <div class="bg-[#1E1E1C] border border-[#2E2E2A] rounded-xl px-4 py-3 shadow-sm flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🏠</span>
+          <div>
+            <h2 class="text-sm font-extrabold tracking-wide text-[#EDEDEA]">TRANG CHỦ — HỆ THỐNG QUẢN LÝ DỰ ÁN</h2>
+            <p class="text-[11px] text-[#908CAA]">Bảng điều khiển trung tâm và hệ thống cảnh báo tiến độ dự án tự động theo thời gian thực.</p>
           </div>
-          <h2 style="font-size: 2rem; font-weight: 800; color: #f8fafc; margin-bottom: 12px; line-height: 1.3;">
-            TRUNG TÂM ĐIỀU HÀNH & GIÁM SÁT THI CÔNG DỰ ÁN
-          </h2>
-          <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px;">
-            Trang web chính đã được chuyển đổi sang <strong>Giao diện Dark Theme màu tối sang trọng</strong>. Toàn bộ các phân hệ và tính năng Super App đã phát triển trước đó được lưu giữ đầy đủ tại <strong>Trang thứ cấp (nút bấm ở góc dưới bên phải)</strong>.
-          </p>
-          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-            <button class="btn-primary" onclick="openSecondaryAppModal()" style="padding: 10px 20px; font-weight: 700; font-size: 0.95rem; border-radius: 10px;">
-              🏗️ Mở Trang Thứ Cấp (Super App v1)
+        </div>
+      </div>
+
+      <!-- 2. Main Progress Warning Dashboard (Matrix & Table) -->
+      <div class="bg-[#181816] border border-[#2D2D2A] rounded-xl p-4 shadow-sm space-y-3">
+        <!-- Dashboard Header Toolbar -->
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-extrabold text-sm text-[#F1C40F] flex items-center gap-1.5">
+              <span>⚡</span><span>CẢNH BÁO TIẾN ĐỘ GÓI THẦU</span>
+            </span>
+            <span id="home-project-badge" class="bg-[#0F6E56] text-white text-[11px] font-bold px-2.5 py-0.5 rounded-md shadow-sm">
+              🏢 Dự án: Vinhomes Đan Phượng
+            </span>
+            <span id="home-eval-date" class="bg-[#242421] border border-[#312F44] text-[#E0DEF4] text-[11px] font-mono px-2 py-0.5 rounded-md">
+              📅 Hôm nay: Đang tải...
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button class="btn btn-xs bg-[#242421] text-[#E0DEF4] hover:bg-[#312F44] border border-[#312F44] rounded-md gap-1" onclick="HomeModule.refresh(true)">
+              <span>🔄</span><span>Cập Nhật Cảnh Báo</span>
             </button>
-            <button class="btn-outline" onclick="openDataSourceModal()" style="padding: 10px 20px; font-weight: 600; font-size: 0.95rem; border-radius: 10px;">
-              🗄️ Quản Lý Nguồn Dữ Liệu Google Drive
+            <button class="btn btn-xs bg-[#0F6E56] text-white hover:bg-[#0D5C48] border-none rounded-md font-bold gap-1" onclick="switchTopNav('theo_doi'); switchTheoDoiSubTab('progress');">
+              <span>📊</span><span>Mở Bảng Tiến Độ</span>
             </button>
           </div>
         </div>
 
-        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px; min-width: 280px;">
-          <h4 style="color: #60a5fa; font-size: 0.88rem; margin-bottom: 12px;">📊 TRẠNG THÁI HỆ THỐNG REAL-TIME</h4>
-          <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.83rem;">
-            <div style="display:flex; justify-content: space-between; align-items:center;">
-              <span style="color:#cbd5e1;">Nguồn Dữ Liệu Drive:</span>
-              <span class="badge badge-success">Google Drive OAuth</span>
+        <p class="text-[11px] text-[#908CAA]">
+          Tự động đánh giá 4 mốc: Hồ sơ mời thầu, Hợp đồng, Bắt đầu thi công và Kết thúc thi công (Cảnh báo trước 7 ngày)
+        </p>
+
+        <!-- 4-Milestone Assessment Matrix -->
+        <div class="overflow-x-auto rounded-lg border border-[#2E2E2A]">
+          <table class="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr class="bg-[#1E1E1C] text-[#EDEDEA] border-b border-[#2E2E2A]">
+                <th class="py-2 px-3 font-bold w-48 text-[#888780]">MỨC ĐỘ ĐÁNH GIÁ</th>
+                <th class="py-2 px-3 font-bold text-center border-l border-[#2E2E2A] text-[#3498DB]">📑 1. HỒ SƠ MỜI THẦU</th>
+                <th class="py-2 px-3 font-bold text-center border-l border-[#2E2E2A] text-[#9B59B6]">🤝 2. HỢP ĐỒNG</th>
+                <th class="py-2 px-3 font-bold text-center border-l border-[#2E2E2A] text-[#F39C12]">🏗️ 3. BẮT ĐẦU THI CÔNG</th>
+                <th class="py-2 px-3 font-bold text-center border-l border-[#2E2E2A] text-[#2ECC71]">🏁 4. KẾT THÚC THI CÔNG</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#2E2E2A] bg-[#141412]">
+              <!-- Row 1: Quá hạn -->
+              <tr class="hover:bg-[#1E1E1C]/60 cursor-pointer" onclick="HomeModule.onMatrixCellClick(null, 'CHAM')">
+                <td class="py-1.5 px-3 font-medium text-[#E74C3C] flex items-center gap-1.5">
+                  <span>🔴</span><span>Chậm tiến độ (Quá hạn)</span>
+                </td>
+                <td id="m-hsmt-cham" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('HSMT', 'CHAM')">-</td>
+                <td id="m-hd-cham" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('HD', 'CHAM')">-</td>
+                <td id="m-bdtc-cham" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('BD_TC', 'CHAM')">-</td>
+                <td id="m-kttc-cham" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('KT_TC', 'CHAM')">-</td>
+              </tr>
+              <!-- Row 2: Sắp tới hạn -->
+              <tr class="hover:bg-[#1E1E1C]/60 cursor-pointer" onclick="HomeModule.onMatrixCellClick(null, 'SAP_TOI')">
+                <td class="py-1.5 px-3 font-medium text-[#F39C12] flex items-center gap-1.5">
+                  <span>🟡</span><span>Sắp tới hạn (Trong 7 ngày)</span>
+                </td>
+                <td id="m-hsmt-sap-toi" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('HSMT', 'SAP_TOI')">-</td>
+                <td id="m-hd-sap-toi" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('HD', 'SAP_TOI')">-</td>
+                <td id="m-bdtc-sap-toi" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('BD_TC', 'SAP_TOI')">-</td>
+                <td id="m-kttc-sap-toi" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('KT_TC', 'SAP_TOI')">-</td>
+              </tr>
+              <!-- Row 3: Đúng hạn -->
+              <tr class="hover:bg-[#1E1E1C]/60 cursor-pointer" onclick="HomeModule.onMatrixCellClick(null, 'DUNG_HAN')">
+                <td class="py-1.5 px-3 font-medium text-[#2ECC71] flex items-center gap-1.5">
+                  <span>🟢</span><span>Đúng hạn (Còn > 7 ngày)</span>
+                </td>
+                <td id="m-hsmt-dung-han" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('HSMT', 'DUNG_HAN')">-</td>
+                <td id="m-hd-dung-han" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('HD', 'DUNG_HAN')">-</td>
+                <td id="m-bdtc-dung-han" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('BD_TC', 'DUNG_HAN')">-</td>
+                <td id="m-kttc-dung-han" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('KT_TC', 'DUNG_HAN')">-</td>
+              </tr>
+              <!-- Row 4: Đã xong -->
+              <tr class="hover:bg-[#1E1E1C]/60 cursor-pointer" onclick="HomeModule.onMatrixCellClick(null, 'HOAN_THANH')">
+                <td class="py-1.5 px-3 font-medium text-[#16A085] flex items-center gap-1.5">
+                  <span>☑️</span><span>Đã có kết quả thực tế</span>
+                </td>
+                <td id="m-hsmt-ht" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('HSMT', 'HOAN_THANH')">-</td>
+                <td id="m-hd-ht" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('HD', 'HOAN_THANH')">-</td>
+                <td id="m-bdtc-ht" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('BD_TC', 'HOAN_THANH')">-</td>
+                <td id="m-kttc-ht" class="py-1.5 px-3 text-center border-l border-[#2E2E2A]" onclick="event.stopPropagation(); HomeModule.onMatrixCellClick('KT_TC', 'HOAN_THANH')">-</td>
+              </tr>
+              <!-- Row 5: Tổng -->
+              <tr class="bg-[#1E1E1C]/40 font-bold" onclick="HomeModule.onMatrixCellClick(null, 'ALL')">
+                <td class="py-1.5 px-3 text-[#EDEDEA] flex items-center gap-1.5">
+                  <span>📊</span><span>Tổng gói có kế hoạch</span>
+                </td>
+                <td id="m-hsmt-total" class="py-1.5 px-3 text-center border-l border-[#2E2E2A] text-[#EDEDEA]">-</td>
+                <td id="m-hd-total" class="py-1.5 px-3 text-center border-l border-[#2E2E2A] text-[#EDEDEA]">-</td>
+                <td id="m-bdtc-total" class="py-1.5 px-3 text-center border-l border-[#2E2E2A] text-[#EDEDEA]">-</td>
+                <td id="m-kttc-total" class="py-1.5 px-3 text-center border-l border-[#2E2E2A] text-[#EDEDEA]">-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Filter Controls Bar -->
+        <div class="flex items-center justify-between flex-wrap gap-2 pt-1">
+          <!-- Status Chips -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs font-bold text-[#EDEDEA] mr-1">Lọc trạng thái:</span>
+            <button class="home-status-chip active" data-filter="CANH_BAO" onclick="HomeModule.setStatusFilter('CANH_BAO')">🔥 Tất cả Cảnh báo</button>
+            <button class="home-status-chip" data-filter="CHAM" onclick="HomeModule.setStatusFilter('CHAM')">🔴 Chậm hạn</button>
+            <button class="home-status-chip" data-filter="SAP_TOI" onclick="HomeModule.setStatusFilter('SAP_TOI')">🟡 Sắp tới hạn (7 ngày)</button>
+            <button class="home-status-chip" data-filter="DUNG_HAN" onclick="HomeModule.setStatusFilter('DUNG_HAN')">🟢 Đúng hạn</button>
+            <button class="home-status-chip" data-filter="HOAN_THANH" onclick="HomeModule.setStatusFilter('HOAN_THANH')">✅ Đã xong</button>
+            <button class="home-status-chip" data-filter="ALL" onclick="HomeModule.setStatusFilter('ALL')">👁️ Tất cả</button>
+          </div>
+
+          <!-- Search Box -->
+          <div class="flex items-center gap-1">
+            <span class="text-xs font-bold text-[#EDEDEA]">🔍 Tìm:</span>
+            <div class="relative flex items-center">
+              <input id="home-search-input" type="text" placeholder="Mã, tên gói thầu, hạng mục..."
+                     class="input input-xs bg-[#242421] text-[#E0DEF4] border border-[#312F44] rounded px-2 py-1 text-xs w-52 focus:outline-none focus:border-[#EBBCBA]"
+                     oninput="HomeModule.onSearchChange(this.value)" />
+              <button class="absolute right-1 text-[#908CAA] hover:text-white text-xs px-1" onclick="HomeModule.clearSearch()">✕</button>
             </div>
-            <div style="display:flex; justify-content: space-between; align-items:center;">
-              <span style="color:#cbd5e1;">Bộ Phận Hoạt Động:</span>
-              <strong style="color:#f8fafc;">6 Bộ Phận BQL</strong>
-            </div>
-            <div style="display:flex; justify-content: space-between; align-items:center;">
-              <span style="color:#cbd5e1;">Trạng Thái Mở Mới:</span>
-              <strong style="color:#facc15;">Sẵn Sàng Thiết Kế</strong>
-            </div>
+          </div>
+        </div>
+
+        <!-- Milestone Filter Bar -->
+        <div class="flex items-center justify-between flex-wrap gap-2 border-t border-[#2E2E2A] pt-2">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs font-bold text-[#EDEDEA] mr-1">Mốc tiến độ:</span>
+            <button class="home-milestone-chip active" data-milestone="ALL" onclick="HomeModule.setMilestoneFilter('ALL')">🌐 Tất cả mốc</button>
+            <button class="home-milestone-chip" data-milestone="HSMT" onclick="HomeModule.setMilestoneFilter('HSMT')">📑 1. Hồ sơ mời thầu</button>
+            <button class="home-milestone-chip" data-milestone="HD" onclick="HomeModule.setMilestoneFilter('HD')">🤝 2. Hợp đồng</button>
+            <button class="home-milestone-chip" data-milestone="BD_TC" onclick="HomeModule.setMilestoneFilter('BD_TC')">🏗️ 3. Bắt đầu thi công</button>
+            <button class="home-milestone-chip" data-milestone="KT_TC" onclick="HomeModule.setMilestoneFilter('KT_TC')">🏁 4. Kết thúc thi công</button>
+          </div>
+          <span id="home-table-count" class="text-xs font-mono font-bold text-[#2ECC71]">
+            Hiển thị: 0 / 0 dòng đánh giá
+          </span>
+        </div>
+
+        <!-- Detailed Warning Evaluation Table -->
+        <div class="overflow-auto rounded-lg border border-[#2E2E2A] max-h-96">
+          <table class="w-full text-xs text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-[#1E1E1C] text-[#EDEDEA] border-b border-[#2E2E2A]">
+              <tr>
+                <th class="py-2 px-2 text-center w-12">STT</th>
+                <th class="py-2 px-2 text-center w-28">Mã Gói Thầu</th>
+                <th class="py-2 px-2">Tên Gói Thầu</th>
+                <th class="py-2 px-2">Hạng Mục / Khu Vực</th>
+                <th class="py-2 px-2 text-center w-28">Mốc Tiến Độ</th>
+                <th class="py-2 px-2 text-center w-24">Ngày KH</th>
+                <th class="py-2 px-2 text-center w-24">Thực Tế</th>
+                <th class="py-2 px-2 w-44">Mức Cảnh Báo</th>
+                <th class="py-2 px-2">Ghi Chú / Giải Trình</th>
+              </tr>
+            </thead>
+            <tbody id="home-table-body" class="divide-y divide-[#2E2E2A] bg-[#141412]">
+              <!-- Injected by home.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. Bottom 3 Feature Cards (Quick Navigation) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Card 1: Thư viện Dự án -->
+        <div class="bg-[#1E1E1C] border border-[#2E2E2A] hover:border-[#EBBCBA]/50 transition-all rounded-xl p-3.5 cursor-pointer shadow-sm flex items-start gap-3"
+             onclick="switchTopNav('ql-file')">
+          <span class="text-2xl p-2 rounded-lg bg-[#242421]">📁</span>
+          <div>
+            <h4 class="text-xs font-bold text-[#EDEDEA] flex items-center gap-1">
+              <span>Thư viện Dự án</span><span>↗</span>
+            </h4>
+            <p class="text-[11px] text-[#908CAA] mt-0.5">Truy cập nhanh danh mục hồ sơ, bản vẽ, tiến độ và pháp lý tại tab Quản lý.</p>
+          </div>
+        </div>
+
+        <!-- Card 2: Xử lý Tự động -->
+        <div class="bg-[#1E1E1C] border border-[#2E2E2A] hover:border-[#EBBCBA]/50 transition-all rounded-xl p-3.5 cursor-pointer shadow-sm flex items-start gap-3"
+             onclick="switchTopNav('chuc_nang')">
+          <span class="text-2xl p-2 rounded-lg bg-[#242421]">⚡</span>
+          <div>
+            <h4 class="text-xs font-bold text-[#EDEDEA] flex items-center gap-1">
+              <span>Xử lý Tự động</span><span>↗</span>
+            </h4>
+            <p class="text-[11px] text-[#908CAA] mt-0.5">Đồng bộ tự động Word, cập nhật HSMT, hợp đồng và trích xuất dữ liệu AI.</p>
+          </div>
+        </div>
+
+        <!-- Card 3: Theo dõi Chi tiết -->
+        <div class="bg-[#1E1E1C] border border-[#2E2E2A] hover:border-[#EBBCBA]/50 transition-all rounded-xl p-3.5 cursor-pointer shadow-sm flex items-start gap-3"
+             onclick="switchTopNav('theo_doi')">
+          <span class="text-2xl p-2 rounded-lg bg-[#242421]">🛠️</span>
+          <div>
+            <h4 class="text-xs font-bold text-[#EDEDEA] flex items-center gap-1">
+              <span>Theo dõi Chi tiết</span><span>↗</span>
+            </h4>
+            <p class="text-[11px] text-[#908CAA] mt-0.5">Bảng tiến độ 59 cột, đối chiếu HSMT, Hợp đồng và Quản lý thanh toán TƯ-TT.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- STANDBY FOR USER NEW DESIGN REQUESTS -->
-    <section class="card-glass" style="background: rgba(30, 41, 59, 0.6); border: 1px dashed rgba(250, 204, 21, 0.4); border-radius: 16px; padding: 24px; text-align: center;">
-      <div style="font-size: 2.2rem; margin-bottom: 8px;">🎨</div>
-      <h3 style="color: #facc15; font-size: 1.3rem; font-weight: 700; margin-bottom: 8px;">SẴN SÀNG THIẾT KẾ TRANG CHÍNH THEO YÊU CẦU CỦA BẠN</h3>
-      <p style="color: #94a3b8; font-size: 0.9rem; max-width: 800px; margin: 0 auto 16px auto; line-height: 1.6;">
-        Hãy gửi các yêu cầu thiết kế giao diện chính mới của Bạn (biểu đồ tiến độ, dashboard điều hành, bảng theo dõi, các card thống kê...). Antigravity sẽ tiến hành xây dựng trực tiếp lên trang chính này theo từng bước yêu cầu!
-      </p>
-      <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(37, 99, 235, 0.2); padding: 8px 16px; border-radius: 30px; border: 1px solid rgba(37, 99, 235, 0.4);">
-        <span style="font-size: 0.82rem; color: #60a5fa;">👇 Bấm biểu tượng góc dưới bên phải để truy cập lại toàn bộ Trang thứ cấp bất cứ lúc nào!</span>
+
+    <!-- ──────────────────────────────────────────────────────────────────
+         TAB 2: QUẢN LÝ (QL File — Explorer with Project Bar + Left Sidebar)
+    ────────────────────────────────────────────────────────────────── -->
+    <section id="page-ql-file" class="page-section h-full overflow-hidden p-2 gap-2">
+        <!-- 1. THANH PROJECT TAB BAR TRÊN CÙNG -->
+        <div class="flex items-center justify-between bg-base-200 border border-base-300 rounded-lg px-2.5 py-1.5 flex-shrink-0 text-xs gap-2">
+          <div class="flex items-center gap-1.5 overflow-x-auto flex-1 py-0.5" id="ql-project-bar-container">
+            <span class="font-bold text-warning flex items-center gap-1 flex-shrink-0 mr-1">
+              <span>🏢</span><span>DỰ ÁN:</span>
+            </span>
+            <!-- Dynamic Project Pills injected by explorer.js -->
+            <div id="ql-project-pills" class="flex items-center gap-1"></div>
+            <button class="btn btn-xs btn-success text-white font-bold gap-1 flex-shrink-0" onclick="ExplorerModule.openAddProjectModal()">
+              <span>➕</span><span>Thêm Dự Án</span>
+            </button>
+          </div>
+          <button class="btn btn-xs btn-outline btn-ghost gap-1 text-base-content/70 flex-shrink-0" onclick="showPage('cai_dat')">
+            <span>⚙️</span><span>QL Dự Án</span>
+          </button>
+        </div>
+
+        <!-- 2. KHUNG NỘI DUNG CHÍNH (SIDEBAR MENU DỌC BÊN TRÁI + EXPLORER BÊN PHẢI) -->
+        <div class="flex flex-1 gap-2 overflow-hidden">
+          <!-- 2.1 SIDEBAR DỌC QUẢN LÝ (SIDEBARNOTEBOOK) -->
+          <div class="w-64 bg-base-200 border border-base-300 rounded-xl flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
+            <!-- Header Sidebar -->
+            <div class="px-3 py-2 border-b border-base-300 flex items-center justify-between bg-base-300/40">
+              <span class="font-black text-sm tracking-wider text-base-content/80 flex items-center gap-1">
+                <span class="text-primary font-mono">📁</span><span>V386</span>
+              </span>
+              <span class="text-[11px] font-semibold text-base-content/50" id="ql-sidebar-count">12 Tab</span>
+            </div>
+
+            <!-- Toolbar Sidebar: Lên, Xuống, Tên, Icon -->
+            <div class="grid grid-cols-4 gap-1 p-1.5 bg-base-300/30 border-b border-base-300 text-[11px]">
+              <button class="btn btn-xs btn-ghost border border-base-300 hover:btn-primary gap-0.5 px-1 font-bold" onclick="ExplorerModule.moveActiveTab('up')" title="Di chuyển tab lên trên">
+                <span>▲</span><span>Lên</span>
+              </button>
+              <button class="btn btn-xs btn-ghost border border-base-300 hover:btn-primary gap-0.5 px-1 font-bold" onclick="ExplorerModule.moveActiveTab('down')" title="Di chuyển tab xuống dưới">
+                <span>▼</span><span>Xuống</span>
+              </button>
+              <button class="btn btn-xs btn-ghost border border-base-300 hover:btn-primary gap-0.5 px-1 font-bold" onclick="ExplorerModule.openRenameActiveTabModal()" title="Đổi tên tab">
+                <span>✏️</span><span>Tên</span>
+              </button>
+              <button class="btn btn-xs btn-ghost border border-base-300 hover:btn-primary gap-0.5 px-1 font-bold" onclick="ExplorerModule.openChangeIconModal()" title="Đổi icon & màu">
+                <span>🎨</span><span>Icon</span>
+              </button>
+            </div>
+
+            <!-- Danh sách tab dọc (Scrollable Vertical Menu List) -->
+            <div id="ql-sidebar-tabs" class="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">
+              <!-- Rendered by explorer.js -->
+            </div>
+
+            <!-- Nút Thêm Tab ở cuối Sidebar -->
+            <div class="p-1.5 border-t border-base-300 bg-base-300/20">
+              <button class="btn btn-xs btn-outline btn-primary w-full gap-1.5 font-bold" onclick="ExplorerModule.openAddTabModal()">
+                <span>➕</span><span>Thêm tab...</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2.2 KHUNG EXPLORER NỘI DUNG (EXPLORERTAB VIEW) -->
+          <div class="flex-1 bg-base-200 border border-base-300 rounded-xl flex flex-col overflow-hidden shadow-sm">
+            <!-- TOP TOOLBAR: Cỡ chữ, Chọn nguồn, Mở máy, A-Z, Refresh, Path, Search, Lọc ngày -->
+            <div class="p-2 border-b border-base-300 flex flex-col gap-1.5 bg-base-100/50 flex-shrink-0">
+              <!-- Hàng 1: Nút chức năng nguồn & đường dẫn -->
+              <div class="flex items-center justify-between gap-2 flex-wrap text-xs">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <!-- Cỡ chữ -->
+                  <div class="join border border-base-300 rounded-lg">
+                    <button class="join-item btn btn-xs btn-ghost px-2 font-bold" onclick="ExplorerModule.adjustFontSize(-1)" title="Giảm cỡ chữ">A-</button>
+                    <button class="join-item btn btn-xs btn-ghost px-2 font-bold" onclick="ExplorerModule.adjustFontSize(1)" title="Tăng cỡ chữ">A+</button>
+                  </div>
+
+                  <!-- Nút Chọn nguồn --><button class="btn btn-sm btn-outline" onclick="ExplorerModule.chooseOnlineSource()">🌐 Chọn nguồn online</button><select id="ql-online-source" class="select select-sm max-w-xs" aria-label="Nguồn quản lý" onchange="ExplorerModule.changeSource(this.value)"></select>
+                  <button class="btn btn-xs btn-success text-white gap-1 font-bold shadow-sm" onclick="ExplorerModule.chooseSourceFolder()">
+                    <span>📁</span><span>Chọn nguồn</span>
+                  </button>
+
+                  <!-- Nút Mở thư mục trên máy -->
+                  <button class="btn btn-xs btn-outline btn-ghost gap-1" onclick="ExplorerModule.openInWindowsExplorer()" title="Mở thư mục hiện tại trong Windows Explorer">
+                    <span>📂</span><span>Mở thư mục</span>
+                  </button>
+
+                  <!-- Nút Sort A-Z / Z-A -->
+                  <button id="ql-btn-sort-dir" class="btn btn-xs btn-ghost border border-base-300 gap-1 font-bold" onclick="ExplorerModule.toggleSortDir()">
+                    <span>🔤</span><span id="ql-sort-dir-text">A-Z</span>
+                  </button>
+
+                  <!-- Nút Refresh -->
+                  <button class="btn btn-xs btn-ghost border border-base-300 px-2" onclick="ExplorerModule.refreshCurrentFolder()" title="Làm mới thư mục">
+                    <span>🔄</span>
+                  </button>
+                </div>
+
+                <!-- Nhãn hiển thị đường dẫn hiện tại -->
+                <div class="flex items-center gap-1 bg-base-200 border border-base-300 rounded-md px-2 py-0.5 text-[11px] font-mono max-w-md truncate cursor-pointer hover:border-primary text-base-content/80" onclick="ExplorerModule.openInWindowsExplorer()" title="Bấm để mở thư mục trên máy">
+                  <span class="text-primary font-bold">📍</span>
+                  <span id="ql-current-path-label" class="truncate">Chưa chọn thư mục</span>
+                </div>
+              </div>
+
+              <!-- Hàng 2: Tìm kiếm & Lọc Ngày -->
+              <div class="flex items-center justify-between gap-2 flex-wrap text-xs pt-1 border-t border-base-300/40">
+                <div class="flex items-center gap-2 flex-1 max-w-sm">
+                  <div class="relative w-full">
+                    <input type="text" id="ql-search-input" placeholder="🔍 Tìm kiếm file/thư mục (có dấu hoặc không dấu)..." class="input input-xs input-bordered w-full pr-6 text-xs" oninput="ExplorerModule.onSearchInput(this.value)" />
+                    <button class="absolute right-1 top-1 text-base-content/40 hover:text-base-content text-xs" onclick="ExplorerModule.clearSearch()">✕</button>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <label class="flex items-center gap-1 cursor-pointer select-none text-[11px] font-medium text-base-content/70">
+                    <input type="checkbox" id="ql-use-date-filter" class="checkbox checkbox-xs checkbox-primary" onchange="ExplorerModule.onDateFilterToggle(this.checked)" />
+                    <span>Lọc ngày:</span>
+                  </label>
+                  <input type="text" id="ql-from-date" placeholder="Từ: dd/mm/yyyy" class="input input-xs input-bordered w-28 text-[11px] font-mono" onchange="ExplorerModule.onDateChange()" />
+                  <span class="text-base-content/40">-</span>
+                  <input type="text" id="ql-to-date" placeholder="Đến: dd/mm/yyyy" class="input input-xs input-bordered w-28 text-[11px] font-mono" onchange="ExplorerModule.onDateChange()" />
+                  <button class="btn btn-xs btn-primary gap-1 font-bold" onclick="ExplorerModule.refreshCurrentFolder()">
+                    <span>🔍</span><span>Tìm</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- FILTER BAR: Cấp 1, Cấp 2, Cấp 3, Cấp 4, Cấp 5 & File, Thư mục -->
+            <div class="px-3 py-1.5 border-b border-base-300 bg-base-200/50 flex items-center justify-between text-xs flex-shrink-0">
+              <div class="flex items-center gap-2.5">
+                <span class="text-[11px] font-bold text-base-content/50 uppercase tracking-wider">Cấp hiển thị:</span>
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                  <input type="checkbox" id="ql-chk-level-1" class="checkbox checkbox-xs checkbox-primary" onchange="ExplorerModule.onLevelChange(1, this.checked)" />
+                  <span class="text-xs font-semibold">Cấp 1</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                  <input type="checkbox" id="ql-chk-level-2" class="checkbox checkbox-xs checkbox-primary" onchange="ExplorerModule.onLevelChange(2, this.checked)" />
+                  <span class="text-xs font-semibold">Cấp 2</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                  <input type="checkbox" id="ql-chk-level-3" class="checkbox checkbox-xs checkbox-primary" onchange="ExplorerModule.onLevelChange(3, this.checked)" />
+                  <span class="text-xs font-semibold">Cấp 3</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                  <input type="checkbox" id="ql-chk-level-4" class="checkbox checkbox-xs checkbox-primary" onchange="ExplorerModule.onLevelChange(4, this.checked)" />
+                  <span class="text-xs font-semibold">Cấp 4</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                  <input type="checkbox" id="ql-chk-level-5" class="checkbox checkbox-xs checkbox-primary" onchange="ExplorerModule.onLevelChange(5, this.checked)" />
+                  <span class="text-xs font-semibold">Cấp 5</span>
+                </label>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                  <input type="checkbox" id="ql-chk-show-dir" class="checkbox checkbox-xs checkbox-accent" checked onchange="ExplorerModule.onShowDirChange(this.checked)" />
+                  <span class="text-xs font-medium">Thư mục</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                  <input type="checkbox" id="ql-chk-show-file" class="checkbox checkbox-xs checkbox-accent" checked onchange="ExplorerModule.onShowFileChange(this.checked)" />
+                  <span class="text-xs font-medium">File</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- DUAL-PANE VIEW: Khung Trái Cây Thư mục & Khung Phải Danh sách Treeview -->
+            <div class="flex flex-1 overflow-hidden" id="ql-dual-pane-container">
+              <!-- Khung Trái: Cây thư mục (Folder Tree) -->
+              <div class="w-64 border-r border-base-300 flex flex-col flex-shrink-0 bg-base-100/30 overflow-hidden">
+                <div class="px-2.5 py-1.5 border-b border-base-300 bg-base-200/40 flex items-center justify-between text-[11px] font-bold text-base-content/60">
+                  <span>CÂY THƯ MỤC</span>
+                  <span id="ql-tree-node-count" class="badge badge-xs badge-ghost">0</span>
+                </div>
+                <div id="ql-folder-tree-container" class="flex-1 overflow-y-auto p-1.5 flex flex-col gap-0.5 text-xs">
+                  <!-- Rendered by explorer.js -->
+                </div>
+              </div>
+
+              <!-- Khung Phải: Bảng Danh Sách Treeview File & Folder -->
+              <div class="flex-1 flex flex-col overflow-hidden bg-base-100">
+                <div id="ql-explorer-alert" class="p-3 text-xs bg-warning/10 text-warning border-b border-warning/20 hidden flex items-center justify-between">
+                  <span id="ql-explorer-alert-msg"></span>
+                  <button class="btn btn-xs btn-warning font-bold" onclick="ExplorerModule.chooseSourceFolder()">Chọn lại thư mục</button>
+                </div>
+
+                <div class="flex-1 overflow-auto">
+                  <table class="table table-xs data-table w-full select-none" id="ql-file-table">
+                    <thead class="sticky top-0 bg-base-200/90 backdrop-blur z-10 border-b border-base-300">
+                      <tr class="text-xs font-bold text-base-content/70">
+                        <th class="cursor-pointer hover:text-primary transition-colors" onclick="ExplorerModule.sortBy('#0')">
+                          <span class="flex items-center gap-1">
+                            <span>Tên thư mục / File</span>
+                            <span id="ql-sort-icon-name" class="text-[10px]">↕</span>
+                          </span>
+                        </th>
+                        <th class="w-40 cursor-pointer hover:text-primary transition-colors" onclick="ExplorerModule.sortBy('date')">
+                          <span class="flex items-center gap-1">
+                            <span>Ngày tạo / sửa</span>
+                            <span id="ql-sort-icon-date" class="text-[10px]">↕</span>
+                          </span>
+                        </th>
+                        <th class="w-32 cursor-pointer hover:text-primary transition-colors text-right pr-4" onclick="ExplorerModule.sortBy('size')">
+                          <span class="flex items-center justify-end gap-1">
+                            <span>Dung lượng</span>
+                            <span id="ql-sort-icon-size" class="text-[10px]">↕</span>
+                          </span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="ql-file-tbody">
+                      <!-- Injected by explorer.js -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Bottom Status Bar -->
+                <div class="px-3 py-1.5 border-t border-base-300 bg-base-200/50 flex items-center justify-between text-[11px] text-base-content/60">
+                  <div id="ql-status-left" class="flex items-center gap-2">
+                    <span>0 mục</span>
+                  </div>
+                  <div id="ql-status-right" class="flex items-center gap-2 font-mono">
+                    <span>Đúp chuột để mở tệp hoặc thư mục</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 3: TẠM ỨNG – THANH TOÁN (PAYMENT)
+      ════════════════════════════════════════════════════════════════ -->
+      
+
+    <!-- ──────────────────────────────────────────────────────────────────
+         TAB 3: THEO DÕI (Tracking with Project Bar + Left Sidebar + 8 Views)
+    ────────────────────────────────────────────────────────────────── -->
+    <section id="page-theo-doi" class="page-section h-full overflow-hidden p-2 gap-2">
+      <!-- Project Tab Bar -->
+      <div class="flex items-center justify-between bg-[#1F1D2E] border border-[#2E2E2A] rounded-lg px-2.5 py-1.5 flex-shrink-0 text-xs gap-2">
+        <div class="flex items-center gap-1.5 overflow-x-auto flex-1 py-0.5">
+          <span class="font-bold text-[#F39C12] flex items-center gap-1 flex-shrink-0 mr-1">
+            <span>🏢</span><span>DỰ ÁN:</span>
+          </span>
+          <div id="td-project-pills" class="flex items-center gap-1"></div>
+          <button class="btn btn-xs bg-[#2ECC71] hover:bg-[#27AE60] text-black font-bold gap-1 flex-shrink-0 border-none" onclick="ExplorerModule.openAddProjectModal()">
+            <span>➕</span><span>Thêm Dự Án</span>
+          </button>
+        </div>
+        <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] text-[#E0DEF4] border border-[#312F44] gap-1 flex-shrink-0" onclick="ExplorerModule.openAddProjectModal()">
+          <span>⚙️</span><span>QL Dự Án</span>
+        </button>
+      </div>
+
+      <!-- Main Body: Sidebar + Subpanes -->
+      <div class="flex flex-1 gap-2 overflow-hidden">
+        <!-- Left Sidebar: SidebarNotebook -->
+        <div class="w-56 bg-[#1F1D2E] border border-[#2E2E2A] rounded-xl flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
+          <div class="px-3 py-2 border-b border-[#2E2E2A] flex items-center justify-between bg-[#26233A]">
+            <span class="font-black text-sm tracking-wider text-white flex items-center gap-1">
+              <span class="text-[#F39C12] font-mono">📊</span><span>V386</span>
+            </span>
+            <span class="text-[11px] font-semibold text-[#908CAA]">8 Tab</span>
+          </div>
+          <div class="grid grid-cols-4 gap-1 p-1 bg-[#191724] border-b border-[#2E2E2A] text-[11px]">
+            <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.moveTheoDoiSubTab('up')" title="Di chuyển lên"><span>▲</span><span>Lên</span></button>
+            <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.moveTheoDoiSubTab('down')" title="Di chuyển xuống"><span>▼</span><span>Xuống</span></button>
+            <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.openRenameTabDialog('theo_doi')" title="Đổi tên"><span>✏️</span><span>Tên</span></button>
+            <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.openIconDialog('theo_doi')" title="Icon"><span>🎨</span><span>Icon</span></button>
+          </div>
+          <div id="td-sidebar-list" class="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all active" data-td="progress" onclick="switchTheoDoiSubTab('progress')">
+              <span class="text-sm">⏱</span><span>Tiến độ</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="hsmt" onclick="switchTheoDoiSubTab('hsmt')">
+              <span class="text-sm">📄</span><span>HSMT</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="contract" onclick="switchTheoDoiSubTab('contract')">
+              <span class="text-sm">👥</span><span>Hợp đồng</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="boq" onclick="switchTheoDoiSubTab('boq')">
+              <span class="text-sm">📦</span><span>Khối lượng</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="payment" onclick="switchTheoDoiSubTab('payment')">
+              <span class="text-sm">🏢</span><span>TƯ, TT</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="contractor" onclick="switchTheoDoiSubTab('contractor')">
+              <span class="text-sm">👥</span><span>Nhà thầu</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="sap" onclick="switchTheoDoiSubTab('sap')">
+              <span class="text-sm">💻</span><span>SAP</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-td="contractor-data" onclick="switchTheoDoiSubTab('contractor-data')">
+              <span class="text-sm">📋</span><span>Dữ liệu NT</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Sub-panes Container -->
+        <div id="td-subpane-container" class="flex-1 bg-[#1F1D2E] border border-[#2E2E2A] rounded-xl flex flex-col overflow-hidden shadow-sm">
+          <div id="td-subpane-progress" class="subpane active"><div class="flex items-center justify-between gap-3 mb-2 flex-shrink-0">
+          <div class="flex items-center gap-2 flex-1">
+            <input type="text" id="progress-search" placeholder="Tìm gói thầu, nhà thầu tiến độ..." class="input input-xs input-bordered w-72 text-xs" oninput="debounceProgressSearch()" />
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="progress-total-count" class="badge badge-sm badge-ghost text-xs">0 gói thầu</span>
+          </div>
+        </div>
+        <div class="tbl-container bg-base-200 rounded-xl border border-base-300 flex-1">
+          <table class="table table-xs data-table w-full">
+            <thead><tr><th>STT</th><th>Mã gói thầu</th><th>Tên gói thầu / Hạng mục</th><th>Nhà thầu</th><th>Ngày PH HSMT</th><th>Bắt đầu thi công</th><th>Kết thúc thi công</th><th>Tình trạng</th><th>Thao tác</th></tr></thead>
+            <tbody id="progress-tbody">
+              <!-- Injected by progress.js -->
+            </tbody>
+          </table>
+        </div>
+        <span id="progress-page-info" class="text-xs"></span><div id="progress-pagination" class="flex items-center justify-between pt-2 flex-shrink-0"></div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 7: KHỐI LƯỢNG BOQ
+      ════════════════════════════════════════════════════════════════ --></div>
+          <div id="td-subpane-hsmt" class="subpane"><div class="flex items-center justify-between gap-3 mb-2 flex-shrink-0">
+          <div class="flex items-center gap-2 flex-1">
+            <input type="text" id="hsmt-search" placeholder="Tìm theo Mã HSMT, Tên gói, CĐT..." class="input input-xs input-bordered w-72 text-xs" oninput="debounceHsmtSearch()" />
+            <select id="hsmt-filter-cdt" class="select select-xs select-bordered text-xs" onchange="loadHsmt(1)">
+              <option value="">-- Tất cả Chủ đầu tư --</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="hsmt-total-count" class="badge badge-sm badge-ghost text-xs">0 bản ghi</span>
+            <button class="btn btn-xs btn-outline btn-primary gap-1" onclick="exportHsmtExcel()">
+              <span>📥</span><span>Xuất Excel</span>
+            </button>
+          </div>
+        </div>
+        <div class="tbl-container bg-base-200 rounded-xl border border-base-300 flex-1">
+          <table class="table table-xs data-table w-full">
+            <thead><tr><th>STT</th><th>Mã HSMT / Ngày PH</th><th>Tên gói thầu / Hạng mục</th><th>Nội dung</th><th>Chủ đầu tư</th><th>Hình thức PH</th><th>Ngân sách</th><th>Phân khu / Công trình</th><th>Thao tác</th></tr></thead>
+            <tbody id="hsmt-tbody">
+              <!-- Injected by hsmt.js -->
+            </tbody>
+          </table>
+        </div>
+        <span id="hsmt-page-info" class="text-xs"></span><div id="hsmt-pagination" class="flex items-center justify-between pt-2 flex-shrink-0"></div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 5: HỢP ĐỒNG KINH TẾ (CONTRACT)
+      ════════════════════════════════════════════════════════════════ --></div>
+          <div id="td-subpane-contract" class="subpane"><div class="flex items-center justify-between gap-3 mb-2 flex-shrink-0">
+          <div class="flex items-center gap-2 flex-1">
+            <input type="text" id="contract-search" placeholder="Tìm theo Số HĐ, Tên gói, Nhà thầu..." class="input input-xs input-bordered w-72 text-xs" oninput="debounceContractSearch()" />
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="contract-total-count" class="badge badge-sm badge-ghost text-xs">0 bản ghi</span>
+            <button class="btn btn-xs btn-outline btn-primary gap-1" onclick="exportContractExcel()">
+              <span>📥</span><span>Xuất Excel</span>
+            </button>
+          </div>
+        </div>
+        <div class="tbl-container bg-base-200 rounded-xl border border-base-300 flex-1">
+          <table class="table table-xs data-table w-full">
+            <thead><tr><th>STT</th><th>Mã HĐ / Số HĐ</th><th>Nội dung gói thầu</th><th>Nhà thầu</th><th>Giá trị HĐ (VNĐ)</th><th>Ngày ký</th><th>Tạm ứng</th><th>Đã thanh toán</th><th>Thư mục</th><th>Thao tác</th></tr></thead>
+            <tbody id="contract-tbody">
+              <!-- Injected by contract.js -->
+            </tbody>
+          </table>
+        </div>
+        <span id="contract-page-info" class="text-xs"></span><div id="contract-pagination" class="flex items-center justify-between pt-2 flex-shrink-0"></div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 6: TIẾN ĐỘ THỰC HIỆN (PROGRESS)
+      ════════════════════════════════════════════════════════════════ --></div>
+          <div id="td-subpane-boq" class="subpane"><div class="flex items-center justify-between gap-3 mb-2 flex-shrink-0">
+          <div class="flex items-center gap-2 flex-1">
+            <input type="text" id="boq-search" placeholder="Tìm theo mã gói, tên hạng mục..." class="input input-xs input-bordered w-72 text-xs" oninput="BoqModule.onSearch(this.value)" />
+          </div>
+          <span id="boq-count" class="badge badge-sm badge-ghost text-xs">0 dòng</span>
+        </div>
+        <div class="tbl-container bg-base-200 rounded-xl border border-base-300 flex-1">
+          <table class="table table-xs data-table w-full">
+            <thead>
+              <tr>
+                <th class="w-10 text-center">STT</th>
+                <th>Mã gói thầu</th>
+                <th>Hạng mục công việc</th>
+                <th class="text-center">ĐVT</th>
+                <th class="text-right">Khối lượng</th>
+                <th class="text-right">Đơn giá</th>
+                <th class="text-right">Thành tiền (VNĐ)</th>
+              </tr>
+            </thead>
+            <tbody id="boq-tbody">
+              <!-- Injected by boq.js -->
+            </tbody>
+          </table>
+        </div>
+        <div id="boq-pagination" class="flex items-center justify-between pt-2 flex-shrink-0"></div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 8: NHÀ THẦU & KPI (CONTRACTOR)
+      ════════════════════════════════════════════════════════════════ --></div>
+          <div id="td-subpane-payment" class="subpane"><!-- Toolbar -->
+        <div class="flex items-center justify-between gap-3 mb-2 flex-shrink-0">
+          <div class="flex items-center gap-2 flex-1">
+            <input type="text" id="pay-search" placeholder="Tìm theo Mã HĐ, Nhà thầu, Gói thầu..." class="input input-xs input-bordered w-72 text-xs" oninput="PayState.page=1; debounceSearch()" />
+            <select id="payment-filter-loai-tt" class="select select-xs select-bordered text-xs" onchange="onPaymentFilterLoaiTt(this.value)">
+              <option value="">-- Tất cả loại TT --</option>
+            </select>
+            <button class="btn btn-xs btn-ghost" onclick="resetPaymentFilter()">Xóa lọc</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="payment-total-count" class="badge badge-sm badge-ghost text-xs">0 bản ghi</span>
+            <button class="btn btn-xs btn-outline btn-primary gap-1" onclick="exportPaymentExcel()">
+              <span>📥</span><span>Xuất Excel</span>
+            </button>
+          </div>
+        </div>
+        <!-- Table -->
+        <div class="tbl-container bg-base-200 rounded-xl border border-base-300 flex-1">
+          <table class="table table-xs data-table w-full">
+            <thead><tr><th>STT</th><th>Mã HĐ / ĐH</th><th>Nội dung / Nhà thầu</th><th>Đợt TT</th><th>Số tiền ĐNTT</th><th>Giá trị HĐ</th><th>Mã CF</th><th>Ngày NT nộp</th><th>Mã PR</th><th>Ngân hàng</th><th>Hồ sơ</th><th>Thao tác</th></tr></thead>
+            <tbody id="payment-tbody">
+              <!-- Injected by payment.js -->
+            </tbody>
+          </table>
+        </div>
+        <!-- Pagination -->
+        <span id="pay-page-info" class="text-xs"></span><div id="pay-pagination" class="flex items-center justify-between pt-2 flex-shrink-0"></div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 4: HỒ SƠ MỜI THẦU (HSMT)
+      ════════════════════════════════════════════════════════════════ --></div>
+          <div id="td-subpane-contractor" class="subpane"><div class="flex items-center justify-between gap-3 mb-2 flex-shrink-0">
+          <div class="flex items-center gap-2 flex-1">
+            <input type="text" id="contractor-search" placeholder="Tìm tên nhà thầu, tên viết tắt..." class="input input-xs input-bordered w-72 text-xs" oninput="ContractorModule.onSearch(this.value)" />
+          </div>
+          <span id="contractor-count" class="badge badge-sm badge-ghost text-xs">0 Nhà thầu</span>
+        </div>
+        <div class="tbl-container bg-base-200 rounded-xl border border-base-300 flex-1">
+          <table class="table table-xs data-table w-full">
+            <thead>
+              <tr>
+                <th class="w-10 text-center">STT</th>
+                <th class="cursor-pointer" onclick="ContractorModule.onSort('name')">Tên Nhà thầu ▾</th>
+                <th class="text-center cursor-pointer" onclick="ContractorModule.onSort('hd_count')">Số HĐ ▾</th>
+                <th class="text-right cursor-pointer" onclick="ContractorModule.onSort('total_value')">Tổng giá trị (VNĐ) ▾</th>
+                <th class="text-right cursor-pointer" onclick="ContractorModule.onSort('total_paid')">Đã thanh toán ▾</th>
+                <th class="text-right cursor-pointer" onclick="ContractorModule.onSort('remaining')">Còn lại ▾</th>
+                <th class="cursor-pointer" onclick="ContractorModule.onSort('paid_ratio')">Tỷ lệ TT (%) ▾</th>
+                <th class="text-center">Ký số CKS</th>
+                <th class="text-center w-20">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="contractor-tbody">
+              <!-- Injected by contractor.js -->
+            </tbody>
+          </table>
+        </div>
+        <div id="contractor-pagination" class="flex items-center justify-between pt-2 flex-shrink-0"></div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 9: HỆ THỐNG SAP & CCM
+      ════════════════════════════════════════════════════════════════ --></div>
+          <div id="td-subpane-sap" class="subpane"><!-- Sub-tabs for SAP: HSMT, CCM, PLHD, PR -->
+        <div class="flex items-center justify-between gap-3 mb-2 flex-shrink-0 border-b border-base-300 pb-2">
+          <div class="flex items-center gap-1">
+            <button id="btn-sap-hsmt" class="btn btn-xs btn-primary font-bold" onclick="SapModule.setTab('hsmt')">📑 HSMT</button>
+            <button id="btn-sap-ccm" class="btn btn-xs btn-ghost" onclick="SapModule.setTab('ccm')">💼 CCM (1000...)</button>
+            <button id="btn-sap-plhd" class="btn btn-xs btn-ghost" onclick="SapModule.setTab('plhd')">📜 PLHĐ (2000...)</button>
+            <button id="btn-sap-pr" class="btn btn-xs btn-ghost" onclick="SapModule.setTab('pr')">🛒 PR</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="sap-search" placeholder="Tìm trong dữ liệu SAP..." class="input input-xs input-bordered w-60 text-xs" oninput="SapModule.onSearch(this.value)" />
+            <span id="sap-count" class="badge badge-sm badge-ghost text-xs">0 dòng</span>
+          </div>
+        </div>
+        <div class="tbl-container bg-base-200 rounded-xl border border-base-300 flex-1">
+          <table class="table table-xs data-table w-full">
+            <thead id="sap-thead">
+              <!-- Injected by sap.js -->
+            </thead>
+            <tbody id="sap-tbody">
+              <!-- Injected by sap.js -->
+            </tbody>
+          </table>
+        </div>
+        <div id="sap-pagination" class="flex items-center justify-between pt-2 flex-shrink-0"></div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 10: DỮ LIỆU NHÀ THẦU GỐC (DANH BẠ 13,853 NT)
+      ════════════════════════════════════════════════════════════════ --></div>
+          <div id="td-subpane-contractor-data" class="subpane"><div class="flex items-center justify-between gap-3 mb-2 flex-shrink-0">
+          <div class="flex items-center gap-2 flex-1">
+            <input type="text" id="contractor-data-search" placeholder="Tra cứu danh bạ theo Tên, MST, Địa chỉ..." class="input input-xs input-bordered w-80 text-xs" oninput="ContractorDataModule.onSearch(this.value)" />
+          </div>
+          <span id="contractor-data-count" class="badge badge-sm badge-ghost text-xs">13,853 Nhà thầu</span>
+        </div>
+        <div class="tbl-container bg-base-200 rounded-xl border border-base-300 flex-1">
+          <table class="table table-xs data-table w-full">
+            <thead>
+              <tr>
+                <th class="w-10 text-center">STT</th>
+                <th>Tên Nhà thầu</th>
+                <th>Mã số thuế</th>
+                <th>Địa chỉ trụ sở</th>
+                <th>Điện thoại</th>
+                <th>Email</th>
+                <th class="text-center w-24">Tra cứu HĐ</th>
+              </tr>
+            </thead>
+            <tbody id="contractor-data-tbody">
+              <!-- Injected by contractor_data.js -->
+            </tbody>
+          </table>
+        </div>
+        <div id="contractor-data-pagination" class="flex items-center justify-between pt-2 flex-shrink-0"></div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 11: TẠO WORD (WORD.JS)
+      ════════════════════════════════════════════════════════════════ --></div>
+        </div>
       </div>
     </section>
 
-    <!-- MAIN SUBSYSTEMS DASHBOARD QUICK ACCESSIBILITY GRID -->
-    <section>
-      <h3 style="color: #facc15; font-size: 1.15rem; font-weight: 700; margin-bottom: 16px;">📂 CÁC PHÂN HỆ QUẢN LÝ DỮ LIỆU CHÍNH</h3>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
-        
-        <div class="card-glass" style="padding: 20px; border-radius: 14px; cursor: pointer;" onclick="openSecondaryAppModal(); switchDataTab('progress');">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size: 1.8rem;">📅</span>
-            <span class="badge badge-info">Phân hệ Tiến Độ</span>
+    <!-- ──────────────────────────────────────────────────────────────────
+         TAB 4: CHỨC NĂNG (Left Sidebar V386 + 11 Sub-functions)
+    ────────────────────────────────────────────────────────────────── -->
+    <section id="page-chuc-nang" class="page-section h-full overflow-hidden p-2 gap-2">
+      <div class="flex flex-1 gap-2 overflow-hidden">
+        <!-- Left Sidebar: SidebarNotebook -->
+        <div class="w-56 bg-[#1F1D2E] border border-[#2E2E2A] rounded-xl flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
+          <div class="px-3 py-2 border-b border-[#2E2E2A] flex items-center justify-between bg-[#26233A]">
+            <span class="font-black text-sm tracking-wider text-white flex items-center gap-1">
+              <span class="text-[#F39C12] font-mono">🛠️</span><span>V386</span>
+            </span>
+            <span class="text-[11px] font-semibold text-[#908CAA]">11 Chức năng</span>
           </div>
-          <h4 style="color:#f8fafc; font-size:1.05rem; margin-bottom:6px;">Quản Lý Tiến Độ & Kế Hoạch</h4>
-          <p style="color:#94a3b8; font-size:0.82rem; line-height:1.5;">Theo dõi tiến độ thi công hạ tầng cống D1, hoàn thiện louver TTTM L2 & nghiệm thu căn SB5.</p>
+          <div class="grid grid-cols-4 gap-1 p-1 bg-[#191724] border-b border-[#2E2E2A] text-[11px]">
+            <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.moveChucNangSubTab('up')" title="Lên"><span>▲</span><span>Lên</span></button>
+            <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.moveChucNangSubTab('down')" title="Xuống"><span>▼</span><span>Xuống</span></button>
+            <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.openRenameTabDialog('chuc_nang')" title="Tên"><span>✏️</span><span>Tên</span></button>
+            <button class="btn btn-xs bg-[#26233A] hover:bg-[#312F44] border-none text-[#E0DEF4] px-1 font-bold" onclick="App.openIconDialog('chuc_nang')" title="Icon"><span>🎨</span><span>Icon</span></button>
+          </div>
+          <div id="cn-sidebar-list" class="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all active" data-cn="word" onclick="switchChucNangSubTab('word')">
+              <span class="text-sm">✓</span><span>B1. Tạo Word</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b2" onclick="switchChucNangSubTab('cn-b2')">
+              <span class="text-sm">📄</span><span>B2. Cập nhật HSMT</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b3" onclick="switchChucNangSubTab('cn-b3')">
+              <span class="text-sm">📄</span><span>B3. Cập nhật HĐ</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b4" onclick="switchChucNangSubTab('cn-b4')">
+              <span class="text-sm">📝</span><span>B4. Tự tạo Heading</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-skill-hsmt" onclick="switchChucNangSubTab('cn-skill-hsmt')">
+              <span class="text-sm">🤖</span><span>B5. Skill HSMT</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-skill-hd" onclick="switchChucNangSubTab('cn-skill-hd')">
+              <span class="text-sm">📄</span><span>B5. Skill HĐ</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b6" onclick="switchChucNangSubTab('cn-b6')">
+              <span class="text-sm">🎓</span><span>B6: RÈN LUYỆN AI</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b7" onclick="switchChucNangSubTab('cn-b7')">
+              <span class="text-sm">🔍</span><span>B7. Tìm kiếm</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-b8" onclick="switchChucNangSubTab('cn-b8')">
+              <span class="text-sm">📄</span><span>B8. Cập nhật TT</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-extract-boq" onclick="switchChucNangSubTab('cn-extract-boq')">
+              <span class="text-sm">📊</span><span>Trích xuất KL, G.trị HĐ</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-down-hd" onclick="switchChucNangSubTab('cn-down-hd')">
+              <span class="text-sm">🌐</span><span>Down HĐ từ V-Pro</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cn="cn-down-cks" onclick="switchChucNangSubTab('cn-down-cks')">
+              <span class="text-sm">🌐</span><span>Download CKS</span>
+            </button>
+          </div>
         </div>
 
-        <div class="card-glass" style="padding: 20px; border-radius: 14px; cursor: pointer;" onclick="openSecondaryAppModal(); switchDataTab('design');">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size: 1.8rem;">📐</span>
-            <span class="badge badge-success">Phân hệ Thiết Kế</span>
+        <!-- Right Sub-panes Container -->
+        <div id="cn-subpane-container" class="flex-1 bg-[#1F1D2E] border border-[#2E2E2A] rounded-xl flex flex-col overflow-hidden shadow-sm p-4 overflow-y-auto">
+          <div id="cn-subpane-word" class="subpane active flex flex-col gap-2.5 h-full overflow-hidden">
+            <!-- 1. Top Action Toolbar -->
+            <div class="flex items-center justify-between bg-[#1E1E1C] p-2 rounded-xl border border-[#2E2E2A] flex-shrink-0">
+              <div class="flex items-center gap-2">
+                <button class="btn btn-sm bg-[#1976D2] hover:bg-[#1565C0] text-white font-bold border-none rounded-lg text-xs gap-1.5 shadow-sm" onclick="WordModule.selectFolder()">
+                  <span>📁</span><span>Chọn các thư mục gói thầu</span>
+                </button>
+                <button class="btn btn-sm bg-[#F57C00] hover:bg-[#E65100] text-white font-bold border-none rounded-lg text-xs gap-1.5 shadow-sm" onclick="WordModule.toggleAll()">
+                  <span>☑️</span><span>Chọn / Bỏ chọn tất cả</span>
+                </button>
+              </div>
+              <button id="btn-export-words" class="btn btn-sm bg-[#388E3C] hover:bg-[#2E7D32] text-white font-bold border-none rounded-lg text-xs gap-1.5 shadow-sm" onclick="WordModule.processExport()">
+                <span>🚀</span><span>Bắt đầu xuất Word</span>
+              </button>
+            </div>
+
+            <!-- 2. Nơi lưu file Word đầu ra -->
+            <div class="bg-[#181816] border border-[#2D2D2A] rounded-xl p-3 flex flex-col gap-2 flex-shrink-0">
+              <span class="text-xs font-bold text-[#EDEDEA] flex items-center gap-1.5">
+                <span>📁</span><span>Nơi lưu file Word đầu ra</span>
+              </span>
+              <div class="flex flex-col gap-1.5 text-xs text-[#E0DEF4] pl-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="word-save-mode" value="same" checked onchange="WordModule.onSaveModeChange(this.value)" class="radio radio-xs radio-primary" />
+                  <span>Lưu cùng thư mục chứa file Email tương ứng</span>
+                </label>
+                <div class="flex items-center gap-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="word-save-mode" value="custom" onchange="WordModule.onSaveModeChange(this.value)" class="radio radio-xs radio-primary" />
+                    <span>Lưu tất cả vào thư mục cụ thể:</span>
+                  </label>
+                  <button id="btn-word-custom-dir" class="btn btn-xs bg-[#26233A] text-[#E0DEF4] border border-[#312F44] hover:bg-[#312F44]" onclick="WordModule.selectCustomOutDir()" disabled>
+                    Chọn thư mục lưu...
+                  </button>
+                  <span id="word-custom-dir-lbl" class="text-xs text-[#908CAA] italic truncate flex-1">Z:/My Drive/VH/06. HSMT/Luu/a</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Cấu hình tên file Word đầu ra -->
+            <div class="bg-[#181816] border border-[#2D2D2A] rounded-xl p-3 flex flex-col gap-2 flex-shrink-0">
+              <span class="text-xs font-bold text-[#EDEDEA] flex items-center gap-1.5">
+                <span>⚙️</span><span>Cấu hình tên file Word đầu ra</span>
+              </span>
+              <div class="grid grid-cols-7 gap-2 text-xs">
+                <div>
+                  <label class="text-[11px] font-bold text-[#908CAA] block mb-1">Phần 1</label>
+                  <select id="w-cfg-p1" class="select select-xs select-bordered w-full bg-[#242421] text-[#E0DEF4]" onchange="WordModule.updatePreview()">
+                    <option value="ma_hsmt" selected>Mã HSMT</option>
+                    <option value="ngay_ph">Ngày phát hành HSMT</option>
+                    <option value="nd_hsmt">ND HSMT</option>
+                    <option value="empty">(Trống)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-[#908CAA] block mb-1">Nối 1</label>
+                  <select id="w-cfg-n1" class="select select-xs select-bordered w-full bg-[#242421] text-[#E0DEF4]" onchange="WordModule.updatePreview()">
+                    <option value=" - " selected> - </option>
+                    <option value="_">_</option>
+                    <option value=" "> </option>
+                    <option value="">(Rỗng)</option>
+                    <option value="+">+</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-[#908CAA] block mb-1">Phần 2</label>
+                  <select id="w-cfg-p2" class="select select-xs select-bordered w-full bg-[#242421] text-[#E0DEF4]" onchange="WordModule.updatePreview()">
+                    <option value="nd_hsmt" selected>ND HSMT</option>
+                    <option value="ma_hsmt">Mã HSMT</option>
+                    <option value="ngay_ph">Ngày phát hành HSMT</option>
+                    <option value="empty">(Trống)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-[#908CAA] block mb-1">Nối 2</label>
+                  <select id="w-cfg-n2" class="select select-xs select-bordered w-full bg-[#242421] text-[#E0DEF4]" onchange="WordModule.updatePreview()">
+                    <option value="empty" selected>(Trống)</option>
+                    <option value=" - "> - </option>
+                    <option value="_">_</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-[#908CAA] block mb-1">Phần 3</label>
+                  <select id="w-cfg-p3" class="select select-xs select-bordered w-full bg-[#242421] text-[#E0DEF4]" onchange="WordModule.updatePreview()">
+                    <option value="empty" selected>(Trống)</option>
+                    <option value="ma_hsmt">Mã HSMT</option>
+                    <option value="nd_hsmt">ND HSMT</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-[#908CAA] block mb-1">Nối 3</label>
+                  <select id="w-cfg-n3" class="select select-xs select-bordered w-full bg-[#242421] text-[#E0DEF4]" onchange="WordModule.updatePreview()">
+                    <option value="empty" selected>(Trống)</option>
+                    <option value=" - "> - </option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-[#908CAA] block mb-1">Phần 4</label>
+                  <select id="w-cfg-p4" class="select select-xs select-bordered w-full bg-[#242421] text-[#E0DEF4]" onchange="WordModule.updatePreview()">
+                    <option value="empty" selected>(Trống)</option>
+                    <option value="ma_hsmt">Mã HSMT</option>
+                  </select>
+                </div>
+              </div>
+              <div id="word-name-preview" class="text-xs text-[#3498DB] italic pt-1">
+                Xem trước tên file mẫu: Thông tin GT.docx
+              </div>
+            </div>
+
+            <!-- 4. Danh sách file Email (*.msg) tìm thấy -->
+            <div class="bg-[#181816] border border-[#2D2D2A] rounded-xl flex-1 flex flex-col overflow-hidden p-3 gap-2">
+              <div class="flex items-center justify-between flex-shrink-0">
+                <span class="text-xs font-bold text-[#EDEDEA] flex items-center gap-1.5">
+                  <span>✉️</span><span>Danh sách file Email (*.msg) tìm thấy</span>
+                </span>
+                <span id="word-scanned-count" class="text-xs font-mono text-[#908CAA]">0 tệp tin</span>
+              </div>
+              <div class="overflow-auto flex-1 rounded-lg border border-[#2E2E2A] bg-[#141412]">
+                <table class="w-full text-xs text-left border-collapse">
+                  <thead class="sticky top-0 z-10 bg-[#1E1E1C] text-[#EDEDEA] border-b border-[#2E2E2A]">
+                    <tr>
+                      <th class="py-2 px-3 text-center w-14">Tích</th>
+                      <th class="py-2 px-3 w-64">Thư mục chứa</th>
+                      <th class="py-2 px-3">Tên file Email (.msg)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="word-msg-tbody" class="divide-y divide-[#2E2E2A]">
+                    <tr>
+                      <td colspan="3" class="text-center py-16 text-[#908CAA]">Chưa chọn thư mục nào. Hãy bấm [Chọn các thư mục gói thầu] ở trên.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-          <h4 style="color:#f8fafc; font-size:1.05rem; margin-bottom:6px;">Quản Lý Hồ Sơ Thiết Kế & CAD</h4>
-          <p style="color:#94a3b8; font-size:0.82rem; line-height:1.5;">Tự động quét và tổng hợp dữ liệu tệp CAD DWG/PDF trực tiếp từ Google Drive của KTS.</p>
+
+          <div id="cn-subpane-other" class="subpane">
+        <!-- BOQ Extractor Pane -->
+        <div id="cn-extract-boq" class="cn-subtab-pane hidden flex flex-col gap-3 h-full overflow-hidden">
+          <!-- 1. Top Action & Controls Bar -->
+          <div class="flex items-center justify-between bg-[#181816] p-2.5 rounded-xl border border-[#2E2E2A] flex-shrink-0 gap-2">
+            <div class="flex items-center gap-2 flex-wrap text-xs">
+              <button class="btn btn-sm bg-[#1976D2] hover:bg-[#1565C0] text-white font-bold border-none rounded-lg text-xs gap-1.5" onclick="BoqExtractModule.selectFolder()">
+                <span>📁</span><span>Chọn Thư Mục</span>
+              </button>
+              
+              <div class="flex items-center gap-1 bg-[#242421] px-2 py-1 rounded-lg border border-[#2E2E2A]">
+                <span class="text-[#908CAA] font-bold text-[11px]">Cấp quét:</span>
+                <select id="boq-depth-select" onchange="BoqExtractModule.onFilterChanged()" class="select select-xs select-bordered bg-[#181816] text-[#E0DEF4]">
+                  <option value="0" selected>Tất cả cấp con</option>
+                  <option value="1">1 Cấp con</option>
+                  <option value="2">2 Cấp con</option>
+                  <option value="3">3 Cấp con</option>
+                  <option value="4">4 Cấp con</option>
+                  <option value="5">5 Cấp con</option>
+                </select>
+              </div>
+
+              <label class="flex items-center gap-1.5 bg-[#242421] px-2.5 py-1 rounded-lg border border-[#2E2E2A] cursor-pointer hover:bg-[#2A2A27] text-xs font-bold text-[#E0DEF4]">
+                <input type="checkbox" id="boq-chk-cks-only" onchange="BoqExtractModule.onFilterChanged()" class="checkbox checkbox-xs checkbox-primary" />
+                <span>🔒 Chỉ lấy file có CKS</span>
+              </label>
+
+              <button class="btn btn-sm bg-[#0288D1] hover:bg-[#01579B] text-white font-bold border-none rounded-lg text-xs gap-1.5" onclick="BoqExtractModule.selectFiles()">
+                <span>📄</span><span>Chọn PDF Lẻ</span>
+              </button>
+              <button class="btn btn-sm bg-[#F39C12] hover:bg-[#D35400] text-black font-bold border-none rounded-lg text-xs gap-1" onclick="BoqExtractModule.selectOnlyStarFiles()">
+                <span>⭐</span><span>Chỉ HĐ chính</span>
+              </button>
+              <button class="btn btn-sm bg-[#26233A] hover:bg-[#312F44] text-[#E0DEF4] font-bold border border-[#312F44] rounded-lg text-xs" onclick="BoqExtractModule.toggleAll()">
+                <span>☑️</span><span>Chọn/Bỏ tất cả</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btn-boq-start" class="btn btn-sm bg-[#2E7D32] hover:bg-[#1B5E20] text-white font-bold border-none rounded-lg text-xs gap-1.5 shadow-sm" onclick="BoqExtractModule.startExtraction()">
+                <span>🚀</span><span>Trích xuất</span>
+              </button>
+              <button id="btn-boq-stop" class="btn btn-sm bg-[#C62828] hover:bg-[#B71C1C] text-white font-bold border-none rounded-lg text-xs gap-1.5" onclick="BoqExtractModule.stopExtraction()" disabled>
+                <span>⏹</span><span>Dừng</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Path Display & Status Alert -->
+          <div class="flex items-center justify-between bg-[#242421] px-3 py-1.5 rounded-lg border border-[#2E2E2A] text-xs flex-shrink-0">
+            <span id="boq-path-lbl" class="text-[#908CAA] font-mono truncate max-w-xl">Chưa chọn đường dẫn...</span>
+            <span id="boq-status-lbl" class="badge badge-sm badge-warning text-xs font-bold">Sẵn sàng</span>
+          </div>
+
+          <!-- Table 1: File List Table -->
+          <div class="bg-[#181816] border border-[#2E2E2A] rounded-xl p-2 flex flex-col max-h-48 overflow-y-auto flex-shrink-0">
+            <div class="text-[11px] font-bold text-[#EDEDEA] mb-1.5 flex items-center justify-between px-1">
+              <span>BẢNG 1: DANH SÁCH FILE PDF HỢP ĐỒNG CẦN BÓC TÁCH</span>
+              <span id="boq-pdf-count" class="text-[#908CAA] font-normal">0 file</span>
+            </div>
+            <table class="table table-xs w-full text-xs">
+              <thead>
+                <tr class="text-[#908CAA] border-b border-[#2E2E2A]">
+                  <th class="w-8 text-center"><input type="checkbox" id="boq-chk-all" onchange="BoqExtractModule.onCheckAllChanged(this.checked)" class="checkbox checkbox-xs checkbox-primary" checked /></th>
+                  <th class="w-8 text-center">STT</th>
+                  <th class="w-24 text-center">File HĐ ⭐</th>
+                  <th>File PDF Hợp đồng / Phụ lục</th>
+                  <th class="w-28 text-center">Chữ ký số CKS</th>
+                  <th class="w-24 text-center">Dung lượng</th>
+                  <th class="w-20 text-center">Mở PDF</th>
+                  <th class="w-32 text-center">Trạng thái bóc tách</th>
+                </tr>
+              </thead>
+              <tbody id="boq-pdf-tbody">
+                <tr><td colspan="8" class="text-center py-4 text-[#908CAA]">Chưa chọn thư mục hoặc file PDF nào</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Progress Bar -->
+          <div id="boq-progress-bar-container" class="hidden w-full bg-[#242421] rounded-full h-2 overflow-hidden border border-[#2E2E2A] flex-shrink-0">
+            <div id="boq-progress-bar-fill" class="bg-[#2E7D32] h-full w-0 transition-all duration-300"></div>
+          </div>
+
+          <!-- Results Section with Sub-tabs -->
+          <div class="flex-1 bg-[#181816] border border-[#2E2E2A] rounded-xl flex flex-col overflow-hidden p-2">
+            <!-- Sub-tab headers -->
+            <div class="flex items-center justify-between border-b border-[#2E2E2A] pb-2 mb-2 flex-shrink-0">
+              <div class="flex items-center gap-1">
+                <button class="btn btn-xs btn-primary font-bold boq-res-tab-btn active" data-tab="excel" onclick="BoqExtractModule.switchResTab('excel')">
+                  📁 Kết Quả File Excel
+                </button>
+                <button class="btn btn-xs btn-ghost text-[#E0DEF4] font-bold boq-res-tab-btn" data-tab="grid" onclick="BoqExtractModule.switchResTab('grid')">
+                  📊 Chi Tiết 20 Cột Master (BOQ)
+                </button>
+                <button class="btn btn-xs btn-ghost text-[#E0DEF4] font-bold boq-res-tab-btn" data-tab="info" onclick="BoqExtractModule.switchResTab('info')">
+                  🤝 Giá Trị Hợp Đồng
+                </button>
+                <button class="btn btn-xs btn-ghost text-[#E0DEF4] font-bold boq-res-tab-btn" data-tab="warn" onclick="BoqExtractModule.switchResTab('warn')">
+                  ⚠️ Cần Kiểm Tra
+                </button>
+              </div>
+              <span id="boq-row-count-lbl" class="text-[11px] text-[#908CAA]">0 file Excel bóc xong</span>
+            </div>
+
+            <!-- Tab 0: Excel Files List (Table 2) -->
+            <div id="boq-res-pane-excel" class="flex-1 flex flex-col gap-2 overflow-hidden">
+              <div class="flex items-center justify-between bg-[#242421] px-2.5 py-1.5 rounded-lg border border-[#2E2E2A] text-xs flex-shrink-0">
+                <span class="text-[#EDEDEA] font-bold">BẢNG 2: KẾT QUẢ CÁC FILE EXCEL ĐÃ BÓC TÁCH (LƯU TẠM)</span>
+                <button id="btn-boq-move-excel" class="btn btn-xs bg-[#00897B] hover:bg-[#00695C] text-white font-bold border-none rounded gap-1" onclick="BoqExtractModule.moveSelectedExcelFiles()">
+                  <span>💾</span><span>Xuất file Excel (Chuyển về thư mục HĐ)</span>
+                </button>
+              </div>
+              <div class="flex-1 overflow-auto">
+                <table class="table table-xs w-full text-xs border-collapse">
+                  <thead class="sticky top-0 bg-[#242421] text-[#EDEDEA] z-10">
+                    <tr class="border-b border-[#2E2E2A]">
+                      <th class="w-8 text-center"><input type="checkbox" id="boq-excel-chk-all" onchange="BoqExtractModule.onExcelCheckAllChanged(this.checked)" class="checkbox checkbox-xs checkbox-primary" checked /></th>
+                      <th class="w-8 text-center">STT</th>
+                      <th class="w-32 font-bold text-[#F39C12]">Mã HĐ</th>
+                      <th class="w-48 font-bold text-[#2ECC71]">Tên File Excel bóc xong</th>
+                      <th class="w-56 font-bold text-[#E74C3C]">Nhận xét / Ghi chú lỗi</th>
+                      <th class="w-24 text-center">Thao tác Mở</th>
+                      <th>Thư mục chứa Hợp đồng gốc</th>
+                      <th class="w-24 text-center">Số dòng BOQ</th>
+                      <th class="w-28 text-center">Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody id="boq-excel-tbody">
+                    <tr><td colspan="9" class="text-center py-10 text-[#908CAA]">Chưa có file Excel bóc tách nào. Hãy bấm [Trích xuất] ở trên.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tab 1: BOQ Grid -->
+            <div id="boq-res-pane-grid" class="flex-1 overflow-auto hidden">
+              <table class="table table-xs w-full text-xs border-collapse">
+                <thead class="sticky top-0 bg-[#242421] text-[#EDEDEA] z-10">
+                  <tr class="border-b border-[#2E2E2A]">
+                    <th class="w-16 text-center">STT</th>
+                    <th class="w-28">Mã 5 lớp</th>
+                    <th class="w-96">Nội dung / Tên hàng hóa</th>
+                    <th class="w-80">Thông số KT / Quy cách</th>
+                    <th class="w-72">Mô tả / Vị trí / Hạng mục</th>
+                    <th class="w-32">Mã số / Mã SP</th>
+                    <th class="w-36">Nhãn hiệu / Nhà SX</th>
+                    <th class="w-36">Xuất xứ / Nguồn gốc</th>
+                    <th class="w-20 text-center">Hình ảnh</th>
+                    <th class="w-20 text-center">ĐVT</th>
+                    <th class="w-28 text-right">Khối lượng</th>
+                    <th class="w-32 text-right">ĐG Vật tư</th>
+                    <th class="w-32 text-right">ĐG N.Công</th>
+                    <th class="w-32 text-right">ĐG Máy</th>
+                    <th class="w-32 text-right">ĐG Tổng</th>
+                    <th class="w-36 text-right">Thành tiền trước thuế</th>
+                    <th class="w-20 text-center">% VAT</th>
+                    <th class="w-32 text-right">Thuế VAT</th>
+                    <th class="w-36 text-right">Thành tiền sau thuế</th>
+                    <th class="w-48">Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody id="boq-grid-tbody">
+                  <tr><td colspan="20" class="text-center py-10 text-[#908CAA]">Chưa có dữ liệu trích xuất</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Tab 2: Contract Info -->
+            <div id="boq-res-pane-info" class="flex-1 overflow-auto hidden">
+              <table class="table table-xs w-full text-xs">
+                <thead class="sticky top-0 bg-[#242421] text-[#EDEDEA] z-10">
+                  <tr class="border-b border-[#2E2E2A]">
+                    <th class="w-10 text-center">STT</th>
+                    <th class="w-48">File PDF Hợp đồng</th>
+                    <th class="w-36 text-right">Giá trị HĐ (VNĐ)</th>
+                    <th class="w-28 text-center">Trạng thái VAT</th>
+                    <th class="w-16 text-center">Trang</th>
+                    <th>Ngữ cảnh trích xuất từ PDF</th>
+                  </tr>
+                </thead>
+                <tbody id="boq-info-tbody">
+                  <tr><td colspan="6" class="text-center py-10 text-[#908CAA]">Chưa có dữ liệu giá trị hợp đồng</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Tab 3: Warnings -->
+            <div id="boq-res-pane-warn" class="flex-1 overflow-auto hidden">
+              <table class="table table-xs w-full text-xs">
+                <thead class="sticky top-0 bg-[#242421] text-[#EDEDEA] z-10">
+                  <tr class="border-b border-[#2E2E2A]">
+                    <th class="w-10 text-center">STT</th>
+                    <th class="w-48">File PDF Hợp đồng</th>
+                    <th class="w-16 text-center">Trang</th>
+                    <th class="w-36 text-center">Loại cảnh báo</th>
+                    <th class="w-64">Chi tiết cảnh báo</th>
+                    <th>Dữ liệu gốc</th>
+                  </tr>
+                </thead>
+                <tbody id="boq-warn-tbody">
+                  <tr><td colspan="6" class="text-center py-10 text-[#908CAA]">Không có cảnh báo nào cần kiểm tra</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
-        <div class="card-glass" style="padding: 20px; border-radius: 14px; cursor: pointer;" onclick="openSecondaryAppModal(); switchDataTab('bidding');">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size: 1.8rem;">📑</span>
-            <span class="badge badge-warning">Phân hệ HSMT</span>
+
+        <!-- B2 Pane -->
+        <div id="cn-b2" class="cn-subtab-pane hidden flex flex-col gap-4 max-w-4xl mx-auto">
+          <div class="p-4 bg-base-200 rounded-2xl border border-base-300 flex flex-col gap-3">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>📑</span><span>B2. Cập nhật HSMT từ file Word vào Bảng theo dõi</span>
+            </h3>
+            <div class="flex items-center gap-2">
+              <input type="text" id="b2-folder-input" placeholder="Chọn thư mục chứa tệp Word HSMT" class="input input-sm input-bordered flex-1 text-xs" readonly />
+              <button class="btn btn-sm btn-primary" onclick="FunctionsFullModule.chooseFolder('cn-b2')">Chọn thư mục</button>
+            </div>
           </div>
-          <h4 style="color:#f8fafc; font-size:1.05rem; margin-bottom:6px;">Quản Lý Hồ Sơ Mời Thầu & Dự Toán</h4>
-          <p style="color:#94a3b8; font-size:0.82rem; line-height:1.5;">Thẩm định gói thầu TBA & PCCC 12.5 Tỷ VNĐ và thi công hạ tầng đường D1.</p>
+          <div class="bg-base-200 rounded-2xl border border-base-300 p-4">
+            <table class="table table-xs w-full">
+              <thead><tr><th class="w-10 text-center">STT</th><th>Tên tệp Word</th><th>Dung lượng</th><th>Trạng thái</th></tr></thead>
+              <tbody id="b2-file-tbody"><tr><td colspan="4" class="text-center py-6 text-base-content/50 text-xs">Chưa chọn thư mục</td></tr></tbody>
+            </table>
+          </div>
         </div>
 
-        <div class="card-glass" style="padding: 20px; border-radius: 14px; cursor: pointer;" onclick="openSecondaryAppModal(); switchDataTab('contracts');">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size: 1.8rem;">📜</span>
-            <span class="badge badge-primary">Phân hệ Hợp Đồng</span>
+        <!-- B3 Pane -->
+        <div id="cn-b3" class="cn-subtab-pane hidden flex flex-col gap-4 max-w-4xl mx-auto">
+          <div class="p-4 bg-base-200 rounded-2xl border border-base-300 flex flex-col gap-3">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>🤝</span><span>B3. Cập nhật Hợp đồng từ PDF (Có chữ ký số) vào Bảng theo dõi</span>
+            </h3>
+            <div class="flex items-center gap-2">
+              <input type="text" id="b3-folder-input" placeholder="Chọn thư mục chứa tệp PDF Hợp đồng" class="input input-sm input-bordered flex-1 text-xs" readonly />
+              <button class="btn btn-sm btn-primary" onclick="FunctionsFullModule.chooseFolder('cn-b3')">Chọn thư mục</button>
+            </div>
           </div>
-          <h4 style="color:#f8fafc; font-size:1.05rem; margin-bottom:6px;">Quản Lý Hợp Đồng & Thanh Toán</h4>
-          <p style="color:#94a3b8; font-size:0.82rem; line-height:1.5;">Quản lý giá trị hợp đồng thi công Nhà thầu B và Hợp đồng cơ điện Simco.</p>
+          <div class="bg-base-200 rounded-2xl border border-base-300 p-4">
+            <table class="table table-xs w-full">
+              <thead><tr><th class="w-10 text-center">STT</th><th>Tên tệp PDF</th><th>Dung lượng</th><th>Chữ ký số CKS</th></tr></thead>
+              <tbody id="b3-file-tbody"><tr><td colspan="4" class="text-center py-6 text-base-content/50 text-xs">Chưa chọn thư mục</td></tr></tbody>
+            </table>
+          </div>
         </div>
 
-        <div class="card-glass" style="padding: 20px; border-radius: 14px; cursor: pointer;" onclick="openSecondaryAppModal(); switchDataTab('contractors');">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size: 1.8rem;">🏗️</span>
-            <span class="badge badge-info">Phân hệ Nhà Thầu</span>
+        <!-- B4 Pane -->
+        <div id="cn-b4" class="cn-subtab-pane hidden flex flex-col gap-4 max-w-4xl mx-auto">
+          <div class="p-4 bg-base-200 rounded-2xl border border-base-300 flex flex-col gap-3">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>📝</span><span>B4. Tự tạo Heading & Đánh chỉ mục văn bản Word</span>
+            </h3>
+            <p class="text-xs text-base-content/70">Tự động nhận diện cấu trúc văn bản (Điều, Khoản, Điểm, Mục) và thiết lập Heading 1, 2, 3 chuẩn phong cách xuất bản.</p>
+            <button class="btn btn-sm btn-primary self-start" onclick="toast('Tính năng Tự tạo Heading sẵn sàng xử lý tệp Word', 'info')">Chọn tệp Word thực hiện</button>
           </div>
-          <h4 style="color:#f8fafc; font-size:1.05rem; margin-bottom:6px;">Quản Lý Danh Bạ Nhà Thầu</h4>
-          <p style="color:#94a3b8; font-size:0.82rem; line-height:1.5;">Đánh giá xếp hạng sao, mã số thuế và thông tin người đại diện các nhà thầu thi công.</p>
         </div>
 
-        <div class="card-glass" style="padding: 20px; border-radius: 14px; cursor: pointer;" onclick="openSecondaryAppModal(); switchDataTab('quantity');">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size: 1.8rem;">📊</span>
-            <span class="badge badge-success">Phân hệ Khối Lượng</span>
+        <!-- B5 Skill HSMT Pane -->
+        <div id="cn-skill-hsmt" class="cn-subtab-pane hidden flex flex-col gap-4 max-w-4xl mx-auto">
+          <div class="p-4 bg-base-200 rounded-2xl border border-base-300 flex flex-col gap-3">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>🤖</span><span>B5. Skill HSMT — Bóc tách Dữ liệu Hồ sơ Mời thầu bằng AI</span>
+            </h3>
+            <p class="text-xs text-base-content/70">Tự động trích xuất thông tin dự án, hình thức phát hành, ngân sách, tiến độ đấu thầu, bảng BOQ khối lượng từ file Word và email.</p>
+            <button class="btn btn-sm btn-primary self-start" onclick="toast('Khởi động Skill HSMT AI Parser...', 'info')">Chạy phân tích AI HSMT</button>
           </div>
-          <h4 style="color:#f8fafc; font-size:1.05rem; margin-bottom:6px;">Quản Lý Bóc Tách Khối Lượng BOQ</h4>
-          <p style="color:#94a3b8; font-size:0.82rem; line-height:1.5;">Bóc tách chi tiết chênh lệch khối lượng cống D1000 và khung sắt louver TTTM.</p>
         </div>
 
+        <!-- B5 Skill HD Pane -->
+        <div id="cn-skill-hd" class="cn-subtab-pane hidden flex flex-col gap-4 max-w-4xl mx-auto">
+          <div class="p-4 bg-base-200 rounded-2xl border border-base-300 flex flex-col gap-3">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>📄</span><span>B5. Skill HĐ — Bóc tách 11 trường Hợp đồng & Xác thực CKS</span>
+            </h3>
+            <p class="text-xs text-base-content/70">Đọc PDF có chữ ký số điện tử (CKS), kiểm tra tính toàn vẹn chữ ký, trích xuất chính xác giá trị HĐ, nhà thầu và các điều khoản.</p>
+            <button class="btn btn-sm btn-primary self-start" onclick="toast('Khởi động Skill HĐ & CKS Parser...', 'info')">Chạy phân tích Hợp đồng & CKS</button>
+          </div>
+        </div>
+
+        <!-- B6 AI Training Pane -->
+        <div id="cn-b6" class="cn-subtab-pane hidden flex flex-col gap-3 max-w-3xl mx-auto h-[600px]">
+          <div class="p-3 bg-base-200 rounded-xl border border-base-300 flex items-center justify-between">
+            <h3 class="font-bold text-xs text-primary flex items-center gap-2">
+              <span>🎓</span><span>B6. RÈN LUYỆN AI — Trợ lý Huấn luyện Quy tắc Bóc tách</span>
+            </h3>
+            <span class="badge badge-success badge-xs">Ollama / Gemini Online</span>
+          </div>
+          <div id="b6-chat-messages" class="flex-1 overflow-y-auto bg-base-200/50 rounded-2xl p-4 border border-base-300 flex flex-col gap-3">
+            <!-- Injected by chucnang.js -->
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="b6-chat-input" placeholder="Nhập câu lệnh hoặc quy tắc huấn luyện cho AI..." class="input input-sm input-bordered flex-1 text-xs" onkeydown="if(event.key==='Enter') ChucNangModule.sendAiMessage()" />
+            <button class="btn btn-sm btn-primary" onclick="ChucNangModule.sendAiMessage()">Gửi</button>
+          </div>
+        </div>
+
+        <!-- B7 Search Pane -->
+        <div id="cn-b7" class="cn-subtab-pane hidden flex flex-col gap-4 max-w-4xl mx-auto">
+          <div class="p-4 bg-base-200 rounded-2xl border border-base-300 flex flex-col gap-3">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>🔍</span><span>B7. Tìm kiếm Tệp tin & Nội dung Toàn diện</span>
+            </h3>
+            <div class="flex items-center gap-2">
+              <input type="text" id="b7-query-input" placeholder="Nhập từ khóa tìm kiếm (tên file, số HĐ, mã HSMT)..." class="input input-sm input-bordered flex-1 text-xs" onkeydown="if(event.key==='Enter') ChucNangModule.performB7Search()" />
+              <select id="b7-ext-filter" class="select select-sm select-bordered text-xs">
+                <option value="">Tất cả định dạng</option>
+                <option value=".docx">File Word (.docx)</option>
+                <option value=".pdf">File PDF (.pdf)</option>
+                <option value=".xlsx">File Excel (.xlsx, .xlsm)</option>
+                <option value=".msg">File Mail (.msg)</option>
+              </select>
+              <button class="btn btn-sm btn-primary" onclick="ChucNangModule.performB7Search()">Tìm kiếm</button>
+            </div>
+          </div>
+          <div class="bg-base-200 rounded-2xl border border-base-300 p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-base-content/60">Kết quả tìm kiếm</span>
+              <span id="b7-count" class="badge badge-sm badge-ghost text-xs">0 tệp tin</span>
+            </div>
+            <table class="table table-xs w-full">
+              <thead><tr><th class="w-10 text-center">STT</th><th>Tên tệp tin</th><th>Kích thước</th><th>Ngày sửa</th><th class="text-center w-20">Mở</th></tr></thead>
+              <tbody id="b7-results-tbody"><tr><td colspan="5" class="text-center py-6 text-base-content/50 text-xs">Nhập từ khóa để bắt đầu tìm kiếm</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Downloader V-Pro Pane -->
+        <div id="cn-down-hd" class="cn-subtab-pane hidden flex flex-col gap-4 max-w-4xl mx-auto">
+          <div class="p-4 bg-base-200 rounded-2xl border border-base-300 flex flex-col gap-3">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>🌐</span><span>Tải Hợp đồng Tự động từ Cổng V-Pro (cudt.vinhomes.vn)</span>
+            </h3>
+            <p class="text-xs text-base-content/70">Tự động kết nối trình duyệt Chrome (CDP Automator), quét danh sách hợp đồng đã duyệt và tải hàng loạt file PDF về máy.</p>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-sm btn-primary" onclick="API.openLink('https://cudt.vinhomes.vn')">Mở Cổng V-Pro</button>
+              <button class="btn btn-sm btn-outline" onclick="toast('Sẵn sàng đồng bộ từ V-Pro', 'info')">Kiểm tra kết nối</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Downloader CKS Pane -->
+        <div id="cn-down-cks" class="cn-subtab-pane hidden flex flex-col gap-4 max-w-4xl mx-auto">
+          <div class="p-4 bg-base-200 rounded-2xl border border-base-300 flex flex-col gap-3">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>🔏</span><span>Tải Văn bản Chữ Ký Số Tự động từ Cổng CKS (cks.vinhomes.vn)</span>
+            </h3>
+            <p class="text-xs text-base-content/70">Đồng bộ tự động các văn bản đã hoàn tất ký số, đối chiếu danh mục Hợp đồng và cập nhật trạng thái có CKS.</p>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-sm btn-primary" onclick="API.openLink('https://cks.vinhomes.vn')">Mở Cổng Chữ Ký Số</button>
+              <button class="btn btn-sm btn-outline" onclick="toast('Sẵn sàng đồng bộ từ CKS', 'info')">Kiểm tra kết nối</button>
+            </div>
+          </div>
+        </div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 13: ĐƯỜNG LINK (LINKS.JS)
+      ════════════════════════════════════════════════════════════════ --></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────────────────
+         TAB 5: CÀI ĐẶT (Left Sidebar ⚙️ CÀI ĐẶT + 9 Settings Panels)
+    ────────────────────────────────────────────────────────────────── -->
+    <section id="page-cai-dat-full" class="page-section h-full overflow-hidden p-2 gap-2">
+      <div class="flex flex-1 gap-2 overflow-hidden">
+        <!-- Left Sidebar: Cài đặt -->
+        <div class="w-56 bg-[#1F1D2E] border border-[#2E2E2A] rounded-xl flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
+          <div class="px-3 py-2.5 border-b border-[#2E2E2A] flex items-center justify-between bg-[#26233A]">
+            <span class="font-black text-sm tracking-wider text-white flex items-center gap-1">
+              <span>⚙️</span><span>CÀI ĐẶT</span>
+            </span>
+            <span class="text-[11px] font-semibold text-[#908CAA]">9 Mục</span>
+          </div>
+          <div id="cd-sidebar-list" class="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all active" data-cd="cd-theme" onclick="switchCaiDatSubTab('cd-theme')">
+              <span>🎨</span><span>Tùy biến Tab & Màu sắc</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cd="cd-hm-ctr" onclick="switchCaiDatSubTab('cd-hm-ctr')">
+              <span>🏗️</span><span>QL HM/CTr</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cd="cd-acc" onclick="switchCaiDatSubTab('cd-acc')">
+              <span>👥</span><span>QL ACC (Tài khoản)</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cd="cd-perm" onclick="switchCaiDatSubTab('cd-perm')">
+              <span>🛡️</span><span>Phân quyền (RBAC)</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cd="cd-ai" onclick="switchCaiDatSubTab('cd-ai')">
+              <span>🤖</span><span>Cấu hình AI Engine</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cd="cd-excel" onclick="switchCaiDatSubTab('cd-excel')">
+              <span>📊</span><span>Cấu hình Excel</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cd="cd-links" onclick="switchCaiDatSubTab('cd-links')">
+              <span>🔗</span><span>Quản lý Link</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cd="cd-data-matrix" onclick="switchCaiDatSubTab('cd-data-matrix')">
+              <span>🧩</span><span>Ma trận dữ liệu</span>
+            </button>
+            <button class="sub-nav-btn btn btn-sm w-full justify-start gap-2 rounded-lg text-xs font-bold text-left transition-all" data-cd="cd-backup" onclick="switchCaiDatSubTab('cd-backup')">
+              <span>💾</span><span>Sao lưu & Phục hồi</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Sub-panes Container -->
+        <div id="cd-subpane-container" class="flex-1 bg-[#1F1D2E] border border-[#2E2E2A] rounded-xl flex flex-col overflow-hidden shadow-sm p-4 overflow-y-auto">
+          <!-- Sub-tab Panes -->
+        <div class="max-w-4xl mx-auto flex flex-col gap-4">
+
+          <!-- 1. Tài khoản -->
+          <div id="cd-acc" class="cd-subtab-pane flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+                <span>👥</span><span>Quản lý Tài khoản Người dùng & Đăng nhập</span>
+              </h3>
+              <button class="btn btn-xs btn-primary gap-1" onclick="AccountsModule.showRegisterModal()">
+                <span>+</span><span>Thêm tài khoản mới</span>
+              </button>
+            </div>
+            <div class="bg-base-200 rounded-2xl border border-base-300 overflow-hidden">
+              <table class="table table-xs w-full">
+                <thead><tr><th class="w-10 text-center">STT</th><th>Tên đăng nhập</th><th>Email</th><th>Vai trò (Role)</th><th>Trạng thái</th><th class="w-24 text-center">Thao tác</th></tr></thead>
+                <tbody id="accounts-tbody"><tr><td colspan="6" class="text-center py-6 text-base-content/50 text-xs">Đang tải...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 2. Phân quyền RBAC -->
+          <div id="cd-perm" class="cd-subtab-pane hidden flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+                  <span>🛡️</span><span>Ma trận Phân quyền Vai trò (RBAC Matrix)</span>
+                </h3>
+                <p class="text-xs text-base-content/70">Phân quyền chi tiết cho Admin, Phó nhóm và Thành viên cho từng cụm chức năng.</p>
+              </div>
+              <button class="btn btn-xs btn-success gap-1" onclick="AccountsModule.savePermissions()">
+                <span>💾</span><span>Lưu phân quyền</span>
+              </button>
+            </div>
+            <div class="bg-base-200 rounded-2xl border border-base-300 overflow-hidden max-h-[500px] overflow-y-auto">
+              <table class="table table-xs w-full">
+                <thead class="sticky top-0 bg-base-300 z-10">
+                  <tr>
+                    <th>Chức năng / Quyền hạn</th>
+                    <th class="w-28 text-center">👑 Admin</th>
+                    <th class="w-32 text-center">✏️ Phó nhóm</th>
+                    <th class="w-32 text-center">👁️ Thành viên</th>
+                  </tr>
+                </thead>
+                <tbody id="perm-matrix-tbody">
+                  <!-- Injected by accounts.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 3. Giao diện -->
+          <div id="cd-theme" class="cd-subtab-pane hidden flex flex-col gap-4">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>🎨</span><span>Cấu hình Giao diện & Hiển thị</span>
+            </h3>
+            <div class="bg-base-200 p-4 rounded-2xl border border-base-300 flex flex-col gap-4">
+              <div>
+                <label class="text-xs font-bold block mb-1">Chủ đề (daisyUI Theme)</label>
+                <div class="flex flex-wrap gap-2">
+                  <button class="btn btn-xs" onclick="selectTheme('corporate')">Corporate</button>
+                  <button class="btn btn-xs" onclick="selectTheme('light')">Light</button>
+                  <button class="btn btn-xs" onclick="selectTheme('dark')">Dark</button>
+                  <button class="btn btn-xs" onclick="selectTheme('business')">Business</button>
+                  <button class="btn btn-xs" onclick="selectTheme('nord')">Nord</button>
+                  <button class="btn btn-xs" onclick="selectTheme('night')">Night</button>
+                  <button class="btn btn-xs" onclick="selectTheme('winter')">Winter</button>
+                  <button class="btn btn-xs" onclick="selectTheme('cupcake')">Cupcake</button>
+                  <button class="btn btn-xs" onclick="selectTheme('emerald')">Emerald</button>
+                  <button class="btn btn-xs" onclick="selectTheme('dracula')">Dracula</button>
+                </div>
+              </div>
+              <div class="flex items-center justify-between border-t border-base-300 pt-3">
+                <span class="text-xs font-bold">Chế độ Bảng tính nén gọn (Compact Mode)</span>
+                <input type="checkbox" id="cfg-compact-toggle" class="toggle toggle-primary toggle-sm" onchange="setCompact(this.checked)" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Cấu hình AI -->
+          <div id="cd-ai" class="cd-subtab-pane hidden flex flex-col gap-4">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>🤖</span><span>Cấu hình AI Engine (Google Gemini & Ollama Cục bộ)</span>
+            </h3>
+            <div class="bg-base-200 p-4 rounded-2xl border border-base-300 flex flex-col gap-3">
+              <div>
+                <label class="text-xs font-bold block mb-1">Google Gemini API Key</label>
+                <input type="password" id="cfg-gemini-key" placeholder="AIzaSy..." class="input input-sm input-bordered w-full text-xs font-mono" />
+              </div>
+              <div>
+                <label class="text-xs font-bold block mb-1">Ollama Server URL (Chạy Offline)</label>
+                <input type="text" id="cfg-ollama-url" placeholder="http://localhost:11434" class="input input-sm input-bordered w-full text-xs font-mono" />
+              </div>
+              <div>
+                <label class="text-xs font-bold block mb-1">Model Ollama Mặc định</label>
+                <input type="text" id="cfg-ollama-model" placeholder="qwen2.5:7b" class="input input-sm input-bordered w-full text-xs font-mono" />
+              </div>
+              <button class="btn btn-sm btn-primary self-end" onclick="SettingsFullModule.saveAiConfig()">Lưu cấu hình AI</button>
+            </div>
+          </div>
+
+          <!-- 5. Cấu hình Excel & Đường dẫn -->
+          <div id="cd-excel" class="cd-subtab-pane hidden flex flex-col gap-4">
+            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+              <span>📊</span><span>Cấu hình Đường dẫn & Bảng tính Excel Tổng</span>
+            </h3>
+            <div class="bg-base-200 p-4 rounded-2xl border border-base-300 flex flex-col gap-3">
+              <div>
+                <label class="text-xs font-bold block mb-1">Đường dẫn file Master Excel</label>
+                <input type="text" id="cfg-excel-path" placeholder="C:\...\! Theo doi 06,07,08. HSMT, HD, TU,TT,QT.xlsm" class="input input-sm input-bordered w-full text-xs font-mono" />
+              </div>
+              <div>
+                <label class="text-xs font-bold block mb-1">Thư mục làm việc mặc định</label>
+                <input type="text" id="cfg-last-dir" placeholder="Z:/My Drive/VH/..." class="input input-sm input-bordered w-full text-xs font-mono" />
+              </div>
+              <button class="btn btn-sm btn-primary self-end" onclick="SettingsFullModule.saveExcelConfig()">Lưu đường dẫn</button>
+            </div>
+          </div>
+
+          <!-- 6. Lịch sử & Sao lưu -->
+          <div id="cd-backup" class="cd-subtab-pane hidden flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+                <span>💾</span><span>Nhật ký Thao tác (Action History Logs)</span>
+              </h3>
+              <button class="btn btn-xs btn-outline" onclick="SettingsFullModule.loadHistoryLogs()">Làm mới</button>
+            </div>
+            <div class="bg-base-200 rounded-2xl border border-base-300 overflow-hidden max-h-[500px] overflow-y-auto">
+              <table class="table table-xs w-full">
+                <thead><tr><th class="w-10 text-center">STT</th><th class="w-36">Thời gian</th><th class="w-24">Module</th><th>Nội dung thao tác</th><th class="w-24">Người dùng</th></tr></thead>
+                <tbody id="history-logs-tbody"><tr><td colspan="5" class="text-center py-6 text-base-content/50 text-xs">Đang tải...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+          <div id="cd-pane-links" class="cd-subtab-pane hidden flex flex-col gap-3">
+            <div class="flex items-center flex-wrap gap-2">
+              <button id="links-common-btn" class="btn btn-sm btn-outline" onclick="LinksModule.selectScope('__common__')">Chung</button>
+              <label for="links-project-select" class="font-bold text-sm">Link theo dự án:</label>
+              <select id="links-project-select" class="select select-sm select-bordered" onchange="LinksModule.selectScope(this.value)"></select>
+              <span id="links-scope-label" class="badge badge-outline"></span>
+            </div>
+            <div class="bg-base-300 rounded-lg p-3 flex flex-col gap-2">
+              <div class="flex items-center flex-wrap gap-2">
+                <strong class="text-sm">Google Drive</strong>
+                <button class="btn btn-xs btn-outline" onclick="document.getElementById('drive-help-modal').showModal()">Hướng dẫn đăng nhập</button>
+                <button class="btn btn-xs btn-outline" onclick="LinksModule.configureDrive()">Cấu hình OAuth Google</button>
+                <button id="drive-login-btn" class="btn btn-xs btn-primary" onclick="LinksModule.loginDrive()">Đăng nhập / Thêm tài khoản Google</button>
+                <select id="drive-account-select" class="select select-xs select-bordered" aria-label="Tài khoản Google Drive"><option value="">Tất cả tài khoản</option></select>
+                <button id="drive-sync-btn" class="btn btn-xs btn-success" onclick="LinksModule.syncDrive()">Lấy toàn bộ link tài liệu</button>
+              </div>
+              <div id="drive-accounts" class="flex flex-wrap gap-2 text-xs"></div>
+              <p id="drive-status" class="text-xs" role="status">Chưa kết nối Google Drive. Có thể sử dụng nhiều tài khoản.</p>
+            </div>
+            <div class="flex items-center justify-between gap-3 mb-2 flex-shrink-0">
+          <div class="flex items-center gap-2 flex-1">
+            <input type="text" id="links-search" placeholder="Tìm theo tên liên kết, URL, phân loại..." class="input input-xs input-bordered w-72 text-xs" oninput="LinksModule.onSearch(this.value)" />
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="links-count" class="badge badge-sm badge-ghost text-xs">0 liên kết</span>
+            <button class="btn btn-xs btn-primary gap-1" onclick="LinksModule.showAddModal()">
+              <span>+</span><span>Thêm liên kết</span>
+            </button>
+          </div>
+        </div>
+        <div class="tbl-container bg-base-200 rounded-xl border border-base-300 flex-1">
+          <table class="table table-xs data-table w-full">
+            <thead>
+              <tr>
+                <th class="w-10 text-center">STT</th>
+                <th>Tên liên kết / Thư mục</th>
+                <th>Đường dẫn / URL</th>
+                <th class="w-28">Phân loại</th>
+                <th>Ghi chú</th>
+                <th class="w-24 text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="links-tbody">
+              <!-- Injected by links.js -->
+            </tbody>
+          </table>
+        </div>
+      
+
+      <!-- ════════════════════════════════════════════════════════════════
+           PAGE 14: CÀI ĐẶT HỆ THỐNG (SETTINGS_FULL.JS)
+      ════════════════════════════════════════════════════════════════ -->
+          </div>
+        </div>
       </div>
     </section>
 
   </main>
 
-
-  <!-- ==========================================================================
-       FLOATING LAUNCHER BUTTON (GÓC DƯỚI BÊN PHẢI ĐỂ MỞ TRANG THỨ CẤP)
-       ========================================================================== -->
-  <div class="secondary-launcher-btn" id="secondaryLauncherBtn" onclick="openSecondaryAppModal()" title="Mở Trang Thứ Cấp (Super App v1)">
-    <span style="font-size:1.6rem;">🏗️</span>
-    <div style="display:flex; flex-direction:column; text-align:left;">
-      <strong style="font-size:0.85rem; color:#facc15; font-weight:700; white-space:nowrap;">Trang Thứ Cấp (Super App)</strong>
-      <span style="font-size:0.7rem; color:#cbd5e1; white-space:nowrap;">Click mở ứng dụng cũ v1</span>
+  <!-- ══════════════════════════════════════════════════════════════════════
+       4. BOTTOM STATUS BAR (Matching Desktop V386 Status Bar)
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <footer id="bottom-statusbar" class="flex items-center justify-between px-3 py-1 bg-[#1E1E1C] border-t border-[#2E2E2A] flex-shrink-0 text-xs z-30 select-none">
+    <div class="flex items-center gap-2">
+      <span class="inline-block w-2 h-2 rounded-full bg-[#2ECC71] animate-pulse"></span>
+      <span id="bottom-status-text" class="text-xs font-medium text-[#EDEDEA]">Sẵn sàng.</span>
     </div>
-  </div>
-
-
-  <!-- ==========================================================================
-       SECONDARY APP FULLSCREEN CONTAINER (TOÀN BỘ GIAO DIỆN & TÍNH NĂNG CŨ)
-       ========================================================================== -->
-  <div class="secondary-app-modal" id="secondaryAppModal" style="display:none;">
-    
-    <!-- SECONDARY APP TOPBAR BAR WITH CLOSE BUTTON -->
-    <div class="secondary-app-topbar">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <span style="font-size:1.4rem;">🏗️</span>
-        <div>
-          <strong style="color:#facc15; font-size:0.95rem;">TRANG THỨ CẤP — SUPER APP BQLDA ENTERPRISE (V1)</strong>
-          <div style="font-size:0.75rem; color:#94a3b8;">Bao gồm đầy đủ 8 module điều hành, 6 phân hệ quản lý dữ liệu, sticky notes, chat nội bộ...</div>
-        </div>
-      </div>
-      <button class="btn-primary btn-sm" onclick="closeSecondaryAppModal()" style="padding:8px 16px; font-weight:700; border-radius:8px;">
-        ✕ Đóng Trang Thứ Cấp (Về Trang Chính)
+    <div class="flex items-center gap-1.5">
+      <button class="btn btn-xs bg-[#FF9800] hover:bg-[#E68900] text-white font-bold border-none px-3" onclick="App.pauseProcess()">
+        <span>⏸️</span><span> TẠM DỪNG</span>
+      </button>
+      <button class="btn btn-xs bg-[#4CAF50] hover:bg-[#43A047] text-white font-bold border-none px-3" onclick="App.resumeProcess()">
+        <span>▶️</span><span> TIẾP TỤC</span>
+      </button>
+      <button class="btn btn-xs bg-[#F44336] hover:bg-[#E53935] text-white font-bold border-none px-3" onclick="App.cancelProcess()">
+        <span>⏹️</span><span> DỪNG TIẾN TRÌNH</span>
       </button>
     </div>
+  </footer>
 
-    <!-- INNER SECONDARY APP WRAPPER -->
-    <div style="padding: 10px 0; min-height: calc(100vh - 60px);">
+  <!-- ══════════════════════════════════════════════════════════════════════
+       MODALS & DIALOGS
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════════════════
+       MODALS & DIALOGS
+  ══════════════════════════════════════════════════════════════════════════ -->
 
-      <!-- LEFT SIDEBAR OVERLAY & DRAWER -->
-      <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleAppSidebar()"></div>
-      <aside class="app-sidebar" id="appSidebar">
-        <div class="sidebar-header">
-          <div class="sidebar-brand">
-            <span style="font-size:1.5rem;">🏗️</span>
-            <h2>MENU QUẢN TRỊ BQL</h2>
-          </div>
-          <button class="btn-close-note" onclick="toggleAppSidebar()">✕</button>
+  <!-- Modal: Auth / Login -->
+  <dialog id="modal-auth-login" class="modal">
+    <div class="modal-box max-w-sm">
+      <h3 class="font-bold text-base text-primary mb-3 flex items-center gap-2">
+        <span>🔐</span><span>Đăng nhập Tài khoản</span>
+      </h3>
+      <div class="flex flex-col gap-2.5">
+        <div>
+          <label class="text-xs font-semibold block mb-1">Tên đăng nhập</label>
+          <input type="text" id="auth-username" class="input input-sm input-bordered w-full text-xs" />
         </div>
-
-        <div class="sidebar-body">
-          <!-- GROUP 1: MAIN DASHBOARD -->
-          <div class="sidebar-group">
-            <div class="sidebar-group-title">📌 ĐIỀU HÀNH CHÍNH</div>
-            <a class="sidebar-item" onclick="scrollToModule('newsfeedModule'); toggleAppSidebar();">📢 Bảng Tin Giao Ban</a>
-            <a class="sidebar-item" onclick="scrollToModule('directivesModule'); toggleAppSidebar();">📋 Chỉ Đạo Giao Ban</a>
-            <a class="sidebar-item" onclick="scrollToModule('handoverModule'); toggleAppSidebar();">📊 Đảo Bàn Giao</a>
-            <a class="sidebar-item" onclick="scrollToModule('gisMapModule'); toggleAppSidebar();">🗺️ Bản Đồ GIS Real-time</a>
-            <a class="sidebar-item" onclick="openDeptManagementModal(); toggleAppSidebar();">🏢 Sơ Đồ Cây Tổ Chức</a>
-            <a class="sidebar-item" onclick="scrollToModule('stickyNotesWidget'); toggleAppSidebar();">📌 Ghi Chú Sticky Notes</a>
-          </div>
-
-          <!-- GROUP 2: DATA MANAGEMENT -->
-          <div class="sidebar-group">
-            <div class="sidebar-group-title">📊 PHÂN HỆ QUẢN LÝ DỮ LIỆU</div>
-            <a class="sidebar-item" onclick="switchDataTab('progress'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📅 Tiến Độ & Kế Hoạch</a>
-            <a class="sidebar-item" onclick="switchDataTab('design'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📐 Hồ Sơ Thiết Kế</a>
-            <a class="sidebar-item" onclick="switchDataTab('bidding'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📑 Hồ Sơ Mời Thầu (HSMT)</a>
-            <a class="sidebar-item" onclick="switchDataTab('contracts'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📜 Quản Lý Hợp Đồng</a>
-            <a class="sidebar-item" onclick="switchDataTab('contractors'); scrollToModule('dataManagementModule'); toggleAppSidebar();">🏗️ Quản Lý Nhà Thầu</a>
-            <a class="sidebar-item" onclick="switchDataTab('quantity'); scrollToModule('dataManagementModule'); toggleAppSidebar();">📊 Quản Lý Khối Lượng</a>
-          </div>
-
-          <!-- GROUP 3: SYSTEM SETTINGS & ADMIN -->
-          <div class="sidebar-group">
-            <div class="sidebar-group-title">⚙️ MENU CÀI ĐẶT & QUẢN TRỊ</div>
-            <a class="sidebar-item" onclick="openUserManagementModal(); toggleAppSidebar();">👥 Quản Lý Accounts</a>
-            <a class="sidebar-item" onclick="adminStudio.toggleEditMode(); toggleAppSidebar();">🛠️ Customizer Studio</a>
-            <a class="sidebar-item" onclick="openDeptManagementModal(); toggleAppSidebar();">🏢 Quản Lý Phòng Ban</a>
-            <a class="sidebar-item" onclick="openTitleManagementModal(); toggleAppSidebar();">💼 Quản Lý Chức Danh</a>
-            <a class="sidebar-item" onclick="openDataSourceModal(); toggleAppSidebar();">🗄️ Nguồn dữ liệu</a>
-            <a class="sidebar-item" onclick="openGASCodeModal(); toggleAppSidebar();">⚡ Mã Google Apps Script</a>
-          </div>
+        <div>
+          <label class="text-xs font-semibold block mb-1">Mật khẩu</label>
+          <input type="password" id="auth-password" class="input input-sm input-bordered w-full text-xs" />
+          <span class="text-[10px] text-base-content/50 mt-0.5 block">Mặc định Admin: 55555</span>
         </div>
-      </aside>
+      </div>
+      <div class="modal-action flex items-center justify-between">
+        <button class="btn btn-sm btn-ghost text-xs" onclick="AccountsModule.showRegisterModal()">Đăng ký</button>
+        <div class="flex items-center gap-2">
+          <form method="dialog"><button class="btn btn-sm btn-ghost">Hủy</button></form>
+          <button class="btn btn-sm btn-primary" onclick="AccountsModule.submitLogin()">Đăng nhập</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
 
-      <!-- TOP HEADER & NAVBAR FOR SECONDARY APP -->
-      <header class="app-header">
-        <div class="brand-box">
-          <button class="btn-primary btn-sm" onclick="toggleAppSidebar()" style="padding:6px 12px; font-weight:700;">
-            ☰ MENU
-          </button>
-          <div class="brand-logo">🏗️</div>
-          <div class="brand-text">
-            <h1>SUPER APP BQLDA</h1>
-            <span>Hệ thống Điều hành Thi công Thông minh Enterprise</span>
+  <!-- Modal: Auth / Register -->
+  <dialog id="modal-auth-register" class="modal">
+    <div class="modal-box max-w-md">
+      <h3 class="font-bold text-base text-primary mb-3 flex items-center gap-2">
+        <span>📝</span><span>Đăng ký Tài khoản Mới</span>
+      </h3>
+      <div class="flex flex-col gap-2.5 text-xs">
+        <div>
+          <label class="font-semibold block mb-1">Tên đăng nhập (3-30 ký tự, không dấu)</label>
+          <input type="text" id="reg-username" class="input input-sm input-bordered w-full text-xs font-mono" />
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Họ và tên</label>
+          <input type="text" id="reg-fullname" class="input input-sm input-bordered w-full text-xs" />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-semibold block mb-1">Email</label>
+            <input type="email" id="reg-email" class="input input-sm input-bordered w-full text-xs" />
+          </div>
+          <div>
+            <label class="font-semibold block mb-1">Số điện thoại</label>
+            <input type="text" id="reg-phone" class="input input-sm input-bordered w-full text-xs" />
           </div>
         </div>
+        <div>
+          <label class="font-semibold block mb-1">Mật khẩu</label>
+          <input type="password" id="reg-password" class="input input-sm input-bordered w-full text-xs" />
+        </div>
+      </div>
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-sm btn-ghost">Hủy</button></form>
+        <button class="btn btn-sm btn-primary" onclick="AccountsModule.submitRegister()">Tạo tài khoản</button>
+      </div>
+    </div>
+  </dialog>
 
-        <!-- AI SEARCH BAR -->
-        <div class="search-ai-box">
-          <span>🔍</span>
-          <input type="text" id="globalAiSearchInputSecondary" placeholder="Hỏi AI tra cứu HSMT, CAD, Hợp đồng, Công văn..." onkeydown="if(event.key==='Enter') triggerGlobalAISearch()">
+  <!-- Modal: Contractor Detail -->
+  <dialog id="modal-contractor-detail" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 id="modal-nt-name" class="font-bold text-base text-primary mb-1">CÔNG TY...</h3>
+      <div class="grid grid-cols-3 gap-3 p-3 bg-base-200 rounded-xl my-3 text-xs">
+        <div><span class="text-base-content/60">Tổng giá trị HĐ:</span><div id="modal-nt-total-val" class="font-bold text-sm text-primary">0 đ</div></div>
+        <div><span class="text-base-content/60">Đã thanh toán:</span><div id="modal-nt-paid-val" class="font-bold text-sm text-success">0 đ</div></div>
+        <div><span class="text-base-content/60">Còn lại:</span><div id="modal-nt-rem-val" class="font-bold text-sm text-warning">0 đ</div></div>
+      </div>
+      <h4 class="font-bold text-xs uppercase tracking-wider text-base-content/60 mb-2">Danh sách hợp đồng đã ký</h4>
+      <div class="max-h-64 overflow-y-auto bg-base-200 rounded-xl border border-base-300">
+        <table class="table table-xs w-full">
+          <thead><tr><th class="w-10 text-center">STT</th><th>Số HĐ</th><th>Nội dung</th><th class="text-right">Giá trị</th><th class="text-center">Ngày ký</th><th class="text-center">PDF</th></tr></thead>
+          <tbody id="modal-nt-contracts-tbody"></tbody>
+        </table>
+      </div>
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-sm btn-primary">Đóng</button></form>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Add Explorer Tab -->
+  <dialog id="modal-add-explorer-tab" class="modal">
+    <div class="modal-box max-w-md">
+      <h3 class="font-bold text-base text-primary mb-3">Thêm Tab Quản lý Thư mục Mới</h3>
+      <div class="flex flex-col gap-2.5 text-xs">
+        <div>
+          <label class="font-semibold block mb-1">Tên Tab hiển thị</label>
+          <input type="text" id="new-tab-name" placeholder="Ví dụ: 09. Nghiệm thu" class="input input-sm input-bordered w-full text-xs" />
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Đường dẫn thư mục</label>
+          <div class="flex items-center gap-1.5">
+            <input type="text" id="new-tab-path" placeholder="C:/... hoặc Z:/My Drive/..." class="input input-sm input-bordered flex-1 text-xs font-mono" />
+            <button class="btn btn-sm btn-outline" onclick="API.selectFolderDialog('Chọn thư mục').then(r => { if(r.ok) document.getElementById('new-tab-path').value = r.data; })">Chọn...</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-sm btn-ghost">Hủy</button></form>
+        <button class="btn btn-sm btn-primary" onclick="ExplorerModule.submitAddTab()">Thêm Tab</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Add/Edit Managed Link -->
+  <dialog id="drive-picker-modal" class="modal">
+ <div class="modal-box max-w-3xl flex flex-col" style="height:75vh">
+  <h3 id="drive-picker-title" class="font-bold text-lg">Chọn nguồn online</h3>
+  <p id="drive-picker-status" class="text-sm py-2" role="status"></p>
+  <div id="drive-picker-tree" class="overflow-auto flex-1 space-y-2" style="min-height:0"></div>
+  <div class="modal-action"><form method="dialog"><button class="btn btn-sm">Đóng</button></form><button id="drive-picker-add" class="btn btn-sm btn-primary" onclick="DrivePicker.add()" disabled>Thêm thư mục vào mục quản lý</button></div>
+ </div><form method="dialog" class="modal-backdrop"><button>Đóng</button></form>
+</dialog>
+<dialog id="drive-help-modal" class="modal" aria-labelledby="drive-help-title">
+    <div class="modal-box max-w-3xl" style="display:flex;flex-direction:column;max-height:85vh">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <h3 id="drive-help-title" class="font-bold text-lg">Hướng dẫn Google Drive — cấu hình và nhiều tài khoản</h3>
+        <form method="dialog"><button class="btn btn-sm btn-ghost" aria-label="Đóng hướng dẫn">✕</button></form>
+      </div>
+      <div class="overflow-y-auto text-sm space-y-4" style="min-height:0;line-height:1.7;user-select:text">
+        <p><strong>Bật Google Drive API chưa đủ để đăng nhập.</strong> Cần tạo cấu hình OAuth, nhập file JSON vào phần mềm, rồi mới đăng nhập. Cấu hình OAuth dành cho ứng dụng; mỗi người vẫn dùng tài khoản Google riêng.</p>
+        <details open class="bg-base-300 rounded-lg p-3">
+          <summary class="font-bold cursor-pointer">1. Thiết lập Google Cloud lần đầu</summary>
+          <ol class="list-decimal pl-5 mt-2 space-y-2">
+            <li>Mở <button class="link text-primary" onclick="API.openLink('https://console.cloud.google.com/')">Google Cloud Console</button>, đăng nhập và chọn dự án ở thanh trên cùng.</li>
+            <li>Vào <strong>APIs &amp; Services → Library</strong>, tìm <strong>Google Drive API → Enable</strong>. Nếu đã thấy Enabled hoặc Disable API thì bước này đã xong.</li>
+            <li>Bấm <strong>OAuth consent screen</strong> ở menu trái. Google có thể chuyển sang <strong>Google Auth Platform</strong>. Nếu chưa cấu hình, bấm <strong>Get started</strong>.</li>
+            <li>Trong <strong>Branding / App information</strong>, nhập tên ứng dụng, email hỗ trợ và email liên hệ. Trong <strong>Audience</strong>, chọn <strong>External</strong> để dùng Gmail và tài khoản ngoài tổ chức; Internal chỉ dành cho tổ chức Workspace. Hoàn tất thông tin rồi bấm Create / Save.</li>
+            <li>Nếu ứng dụng đang <strong>Testing</strong>: vào <strong>Audience → Test users → Add users</strong>, thêm email của bạn và từng người muốn đăng nhập, rồi Save.</li>
+            <li>Trong <strong>Data Access → Add or remove scopes</strong>, khai báo quyền <code>openid</code>, <code>userinfo.email</code>, <code>userinfo.profile</code> và <code>https://www.googleapis.com/auth/drive.metadata.readonly</code>. Phần mềm dùng quyền đọc danh sách và thông tin tài liệu để lấy link.</li>
+          </ol>
+        </details>
+        <details open class="bg-base-300 rounded-lg p-3">
+          <summary class="font-bold cursor-pointer">2. Tạo file JSON và nhập vào phần mềm</summary>
+          <ol class="list-decimal pl-5 mt-2 space-y-2">
+            <li>Vào <strong>Google Auth Platform → Clients → Create client</strong>. Với giao diện cũ: <strong>APIs &amp; Services → Credentials → Create credentials → OAuth client ID</strong>.</li>
+            <li>Chọn <strong>Application type: Desktop app</strong>, đặt tên, bấm <strong>Create</strong>. Phần mềm hiện tại cần đúng loại Desktop app.</li>
+            <li>Tải <strong>Download JSON</strong> của client vừa tạo và lưu file trên máy. Đây là file cấu hình OAuth, khác với API key hoặc file service account.</li>
+            <li>Quay về <strong>Cài đặt → Quản lý Link → Cấu hình OAuth Google</strong>, chọn file JSON. Đợi thông báo đã lưu cấu hình.</li>
+            <li>Bấm <strong>Đăng nhập / Thêm tài khoản Google</strong>, chọn tài khoản trong trình duyệt và cấp quyền. Trở lại phần mềm: email phải xuất hiện trong danh sách tài khoản.</li>
+          </ol>
+        </details>
+        <details open class="bg-base-300 rounded-lg p-3">
+          <summary class="font-bold cursor-pointer">3. Người khác hoặc tài khoản khác muốn dùng Drive</summary>
+          <p class="mt-2">Cùng một cấu hình ứng dụng có thể dùng nhiều tài khoản. Khi còn Testing, người quản lý dự án Google Cloud thêm email mới vào Test users trước. Người dùng bấm <strong>Đăng nhập / Thêm tài khoản Google → Use another account</strong> và tự xác thực. Không cần tạo dự án Cloud mới cho từng email.</p>
+          <p>Trên máy khác, nhập cấu hình OAuth do người quản lý cung cấp rồi đăng nhập tài khoản của người dùng đó. Mỗi tài khoản chỉ lấy được tài liệu mà nó có quyền truy cập.</p>
+          <p>Chọn một email hoặc <strong>Tất cả tài khoản → Lấy toàn bộ link tài liệu</strong>. Phần mềm gộp tài liệu trùng. Bấm <strong>×</strong> cạnh email để ngắt kết nối tại máy này; các link đã lưu vẫn được giữ.</p>
+        </details>
+        <details class="bg-base-300 rounded-lg p-3">
+          <summary class="font-bold cursor-pointer">4. Khi đăng nhập hoặc lấy link bị lỗi</summary>
+          <ul class="list-disc pl-5 mt-2 space-y-2">
+            <li><strong>401 / invalid_client:</strong> nhập lại JSON của OAuth Desktop client hiện hành. Bật API hoặc thử lại Gmail không thay thế cấu hình sai.</li>
+            <li><strong>403 / access_denied:</strong> kiểm tra email có trong Test users, lựa chọn External / Internal và chính sách của tổ chức.</li>
+            <li><strong>API chưa bật:</strong> bật Drive API trong đúng dự án đã tạo OAuth client.</li>
+            <li><strong>Phiên hết hạn:</strong> đăng nhập lại. Khi dùng Testing với quyền Drive, Google có thể giới hạn refresh token trong 7 ngày.</li>
+            <li><strong>Thiếu tài liệu:</strong> kiểm tra quyền chia sẻ trên Drive bằng đúng email đã chọn, rồi lấy link lại.</li>
+          </ul>
+        </details>
+        <p class="text-xs">Tài liệu Google:
+          <button class="link text-primary" onclick="API.openLink('https://developers.google.com/workspace/drive/api/quickstart/python')">Thiết lập Drive API</button> ·
+          <button class="link text-primary" onclick="API.openLink('https://developers.google.com/workspace/guides/configure-oauth-consent')">Consent và Test users</button> ·
+          <button class="link text-primary" onclick="API.openLink('https://developers.google.com/identity/protocols/oauth2/native-app')">OAuth Desktop</button>
+        </p>
+      </div>
+      <div class="modal-action"><form method="dialog"><button class="btn btn-sm btn-primary">Đã hiểu</button></form></div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>Đóng</button></form>
+  </dialog>
+
+  <dialog id="modal-edit-link" class="modal">
+    <div class="modal-box max-w-md">
+      <h3 id="link-modal-title" class="font-bold text-base text-primary mb-3">Thêm Đường link Mới</h3>
+      <input type="hidden" id="link-form-id" />
+      <div class="flex flex-col gap-2.5 text-xs">
+        <div>
+          <label class="font-semibold block mb-1">Tên liên kết</label>
+          <input type="text" id="link-form-name" class="input input-sm input-bordered w-full text-xs" />
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Đường dẫn / URL</label>
+          <input type="text" id="link-form-url" class="input input-sm input-bordered w-full text-xs font-mono" />
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Phân loại</label>
+          <input type="text" id="link-form-cat" class="input input-sm input-bordered w-full text-xs" />
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Ghi chú</label>
+          <input type="text" id="link-form-notes" class="input input-sm input-bordered w-full text-xs" />
+        </div>
+      </div>
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-sm btn-ghost">Hủy</button></form>
+        <button class="btn btn-sm btn-primary" onclick="LinksModule.submitSaveLink()">Lưu liên kết</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Payment Detail -->
+  <dialog id="payment-modal" class="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="font-bold text-base text-primary mb-3">Chi tiết Tạm ứng – Thanh toán</h3>
+      <div id="payment-modal-body" class="grid grid-cols-2 gap-2 text-xs"></div>
+      <div class="modal-action">
+        <button class="btn btn-sm btn-outline text-primary" id="btn-open-pmt-excel">Mở Excel</button>
+        <button class="btn btn-sm btn-outline" id="btn-open-pmt-folder">Mở Thư mục</button>
+        <form method="dialog"><button class="btn btn-sm btn-primary">Đóng</button></form>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: HSMT Detail -->
+  <dialog id="hsmt-modal" class="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="font-bold text-base text-primary mb-3">Chi tiết Hồ sơ mời thầu (HSMT)</h3>
+      <div id="hsmt-modal-body" class="grid grid-cols-2 gap-2 text-xs"></div>
+      <div class="modal-action">
+        <button class="btn btn-sm btn-outline text-primary" id="btn-open-hsmt-file">Mở file gốc</button>
+        <form method="dialog"><button class="btn btn-sm btn-primary">Đóng</button></form>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Contract Detail -->
+  <dialog id="contract-modal" class="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="font-bold text-base text-primary mb-3">Chi tiết Hợp đồng kinh tế</h3>
+      <div id="contract-modal-body" class="grid grid-cols-2 gap-2 text-xs"></div>
+      <div class="modal-action">
+        <button class="btn btn-sm btn-outline text-primary" id="btn-open-contract-file">Mở PDF HĐ</button>
+        <form method="dialog"><button class="btn btn-sm btn-primary">Đóng</button></form>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Progress Detail -->
+  <dialog id="progress-modal" class="modal">
+    <div class="modal-box max-w-xl">
+      <h3 class="font-bold text-base text-primary mb-3">Chi tiết Tiến độ gói thầu</h3>
+      <div id="progress-modal-body" class="flex flex-col gap-2 text-xs"></div>
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-sm btn-primary">Đóng</button></form>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Add Explorer Tab with Management Categories -->
+  <dialog id="modal-add-explorer-tab" class="modal">
+    <div class="modal-box max-w-lg">
+      <h3 class="font-bold text-base text-primary flex items-center gap-2 mb-3">
+        <span>➕</span><span>Thêm Tab Quản lý Hồ sơ Mới</span>
+      </h3>
+      <div class="flex flex-col gap-3 text-xs">
+        <div>
+          <label class="label py-1"><span class="label-text font-bold text-xs">Loại Quản lý Hồ sơ (*):</span></label>
+          <select id="modal-ql-category-select" class="select select-sm select-bordered w-full text-xs font-semibold" onchange="ExplorerModule.onCategorySelectChanged(this.value)">
+            <!-- Options dynamically filled by explorer.js -->
+          </select>
+          <p id="modal-ql-category-desc" class="text-[11px] text-base-content/60 mt-1 italic"></p>
         </div>
 
-        <!-- HEADER USER & ACTIONS -->
-        <div class="header-actions">
-          <button class="btn-outline btn-sm" onclick="openDataSourceModal()">🗄️ Nguồn dữ liệu</button>
-          <button class="btn-outline btn-sm" onclick="openGASCodeModal()">⚡ Mã GAS</button>
+        <div>
+          <label class="label py-1"><span class="label-text font-bold text-xs">Tên Tab hiển thị:</span></label>
+          <input type="text" id="modal-ql-tab-name" class="input input-sm input-bordered w-full text-xs" placeholder="Ví dụ: 01.01. Phê duyệt" />
+        </div>
 
-          <div class="user-badge" id="currentUserBadgeSecondary" onclick="openGmailLoginModal()">
-            <!-- Rendered by authEngine -->
+        <div>
+          <label class="label py-1"><span class="label-text font-bold text-xs">Đường dẫn thư mục nguồn:</span></label>
+          <div class="flex gap-2">
+            <input type="text" id="modal-ql-tab-path" class="input input-sm input-bordered flex-1 text-xs font-mono" placeholder="Z:/My Drive/VH/..." />
+            <button class="btn btn-sm btn-outline gap-1 flex-shrink-0" onclick="ExplorerModule.browseFolderForNewTab()">
+              <span>📁</span><span>Duyệt...</span>
+            </button>
           </div>
         </div>
-      </header>
 
-      <!-- MAIN APP MODULES CONTAINER FOR SECONDARY APP -->
-      <main class="main-container" id="mainModulesContainer">
+        <!-- Cấp hiển thị ban đầu -->
+        <div>
+          <label class="label py-1"><span class="label-text font-bold text-xs">Cấp thư mục hiển thị ban đầu:</span></label>
+          <div class="flex items-center gap-3 bg-base-200 p-2 rounded-lg border border-base-300">
+            <label class="flex items-center gap-1 cursor-pointer">
+              <input type="checkbox" id="modal-ql-chk-lvl1" class="checkbox checkbox-xs checkbox-primary" checked />
+              <span>Cấp 1</span>
+            </label>
+            <label class="flex items-center gap-1 cursor-pointer">
+              <input type="checkbox" id="modal-ql-chk-lvl2" class="checkbox checkbox-xs checkbox-primary" />
+              <span>Cấp 2</span>
+            </label>
+            <label class="flex items-center gap-1 cursor-pointer">
+              <input type="checkbox" id="modal-ql-chk-lvl3" class="checkbox checkbox-xs checkbox-primary" />
+              <span>Cấp 3</span>
+            </label>
+            <label class="flex items-center gap-1 cursor-pointer">
+              <input type="checkbox" id="modal-ql-chk-lvl4" class="checkbox checkbox-xs checkbox-primary" />
+              <span>Cấp 4</span>
+            </label>
+            <label class="flex items-center gap-1 cursor-pointer">
+              <input type="checkbox" id="modal-ql-chk-lvl5" class="checkbox checkbox-xs checkbox-primary" />
+              <span>Cấp 5</span>
+            </label>
+          </div>
+        </div>
 
-        <!-- MODULE 1: NEWSFEED & FLAGGED EMAILS -->
-        <section class="card-glass" id="newsfeedModule">
-          <div class="section-title">
-            <h3>📢 BẢNG TIN TỨC GIAO BAN SÁNG (FLAGGED EMAILS)</h3>
-            <button class="btn-sm btn-outline" onclick="renderNewsfeed()">🔄 Cập nhật Email</button>
-          </div>
-          <div class="newsfeed-grid" id="newsfeedList">
-            <!-- Rendered by app.js -->
-          </div>
-        </section>
+        <!-- Tùy chọn hiện tệp / thư mục -->
+        <div class="flex items-center gap-4 bg-base-200 p-2 rounded-lg border border-base-300">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="modal-ql-chk-dir" class="checkbox checkbox-xs checkbox-accent" checked />
+            <span class="font-medium">Hiển thị Thư mục</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="modal-ql-chk-file" class="checkbox checkbox-xs checkbox-accent" checked />
+            <span class="font-medium">Hiển thị File</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-sm btn-ghost">Hủy</button></form>
+        <button class="btn btn-sm btn-success text-white font-bold gap-1" onclick="ExplorerModule.submitAddTab()">
+          <span>💾</span><span>Lưu & Tạo Tab</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
 
-        <!-- MODULE 2: DIRECTIVES & MINUTES -->
-        <section class="card-glass" id="directivesModule">
-          <div class="section-title">
-            <h3>📋 CHỈ ĐẠO GIAO BAN SÁNG & TIẾN ĐỘ THỰC HIỆN</h3>
-            <button class="btn-sm btn-primary" onclick="addNewDirective()">➕ Thêm Lệnh Chỉ Đạo</button>
-          </div>
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>STT</th>
-                  <th>Hạng mục</th>
-                  <th>Nội dung Công việc</th>
-                  <th>Người TH (Gmail)</th>
-                  <th>Hạn TH</th>
-                  <th>Báo cáo Real-time (Hiện trường)</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody id="directivesTableBody">
-                <!-- Rendered by app.js -->
-              </tbody>
-            </table>
-          </div>
-        </section>
+  <!-- Modal: Rename Explorer Tab -->
+  <dialog id="modal-rename-explorer-tab" class="modal">
+    <div class="modal-box max-w-sm">
+      <h3 class="font-bold text-sm text-primary mb-2 flex items-center gap-1">
+        <span>✏️</span><span>Đổi tên Menu / Tab</span>
+      </h3>
+      <div class="py-2 text-xs">
+        <label class="label py-1"><span class="label-text font-semibold text-xs">Tên menu mới:</span></label>
+        <input type="text" id="modal-rename-input" class="input input-sm input-bordered w-full text-xs" />
+      </div>
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-sm btn-ghost">Hủy</button></form>
+        <button class="btn btn-sm btn-primary font-bold" onclick="ExplorerModule.submitRenameTab()">Lưu tên</button>
+      </div>
+    </div>
+  </dialog>
 
-        <!-- MODULE 3: HANDOVER PLAN & CUMULATIVE DASHBOARD -->
-        <section class="card-glass" id="handoverModule">
-          <div class="section-title">
-            <h3>📊 ĐẢO BÀN GIAO & KẾ HOẠCH BÁO CÁO (TTTM / THẤP TẦNG)</h3>
-            <button class="btn-sm btn-primary" onclick="registerNewHandover()">➕ Đăng ký Lịch Mời</button>
+  <!-- Modal: Change Tab Icon & Color -->
+  <dialog id="modal-icon-explorer-tab" class="modal">
+    <div class="modal-box max-w-sm">
+      <h3 class="font-bold text-sm text-primary mb-2 flex items-center gap-1">
+        <span>🎨</span><span>Đổi Icon & Màu sắc Tab</span>
+      </h3>
+      <div class="flex flex-col gap-3 py-2 text-xs">
+        <div>
+          <label class="label py-1"><span class="label-text font-semibold text-xs">Chọn Icon đại diện:</span></label>
+          <div class="grid grid-cols-6 gap-1.5 p-2 bg-base-200 rounded-lg text-lg text-center" id="modal-icon-picker-list">
+            <!-- Icon choices injected by explorer.js -->
           </div>
-          <div class="stats-bar" id="handoverStatsBar">
-            <!-- Cumulative stats rendered by app.js -->
+        </div>
+        <div>
+          <label class="label py-1"><span class="label-text font-semibold text-xs">Chọn Màu sắc:</span></label>
+          <div class="flex items-center gap-2" id="modal-color-picker-list">
+            <!-- Color choices injected by explorer.js -->
           </div>
-          <div class="handover-grid" id="handoverGrid">
-            <!-- Rendered by app.js -->
-          </div>
-        </section>
+        </div>
+      </div>
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-sm btn-ghost">Hủy</button></form>
+        <button class="btn btn-sm btn-primary font-bold" onclick="ExplorerModule.submitChangeIcon()">Áp dụng</button>
+      </div>
+    </div>
+  </dialog>
 
-        <!-- MODULE 4: INTERACTIVE GIS MASTER PLAN & FLOOR MAP -->
-        <section class="card-glass" id="gisMapModule">
-          <div class="section-title">
-            <h3>🗺️ SƠ ĐỒ PHÂN CÔNG TỔNG MẶT BẰNG & MẶT BẰNG TẦNG REAL-TIME</h3>
-            <div style="font-size:0.8rem; color:var(--text-muted);">
-              <span>Chú thích: 🟡 Dự kiến mời | 🟢 Đạt | 🔴 Không đạt</span>
+  <!-- Modal: Add Project to Bar -->
+  <dialog id="modal-add-project-bar" class="modal">
+    <div class="modal-box max-w-md">
+      <h3 class="font-bold text-base text-warning flex items-center gap-2 mb-2">
+        <span>🏢</span><span>Thêm Dự Án Vào Thanh Tab Làm Việc</span>
+      </h3>
+      <p class="text-xs text-base-content/60 mb-3">Chọn dự án từ danh mục 495+ dự án có sẵn hoặc nhập mới để đưa lên thanh Tab.</p>
+      <div class="flex flex-col gap-2.5 text-xs">
+        <div>
+          <label class="label py-1"><span class="label-text font-bold text-xs">Tên Dự Án (*):</span></label>
+          <input type="text" id="modal-prj-name-input" list="modal-prj-datalist" class="input input-sm input-bordered w-full text-xs" placeholder="Gõ để tìm trong 495+ dự án..." oninput="ExplorerModule.onProjectSelectChange(this.value)" />
+          <datalist id="modal-prj-datalist"></datalist>
+        </div>
+
+        <!-- Project info card -->
+        <div class="bg-base-200 border border-base-300 rounded-lg p-2.5 flex flex-col gap-1 text-[11px]">
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Mã Dự Án (SAP):</span>
+            <span id="modal-prj-code" class="font-bold text-success font-mono">—</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Chủ Đầu Tư:</span>
+            <span id="modal-prj-inv" class="font-semibold text-base-content/90 truncate max-w-[240px]">—</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Địa Chỉ / Vị Trí:</span>
+            <span id="modal-prj-loc" class="text-base-content/70 truncate max-w-[240px]">—</span>
+          </div>
+        </div>
+
+        <label class="flex items-center gap-2 cursor-pointer mt-1">
+          <input type="checkbox" id="modal-prj-chk-pin" class="checkbox checkbox-xs checkbox-primary" checked />
+          <span class="font-bold text-primary">Ghim hiển thị trên dòng Tab Dự Án</span>
+        </label>
+      </div>
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-sm btn-ghost">Hủy</button></form>
+        <button class="btn btn-sm btn-success text-white font-bold gap-1" onclick="ExplorerModule.submitAddProject()">
+          <span>➕</span><span>Đưa lên Tab</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="hidden">
+    <div class="flex flex-col items-center gap-3">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+      <span class="text-xs font-semibold">Đang xử lý dữ liệu...</span>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts in dependency order -->
+  <script src="js/runtime_config.js"></script>
+<script src="js/browser_runtime.js"></script>
+<script src="js/browser_menu_runtime.js"></script>
+<script src="js/api.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/payment.js"></script>
+  <script src="js/hsmt.js"></script>
+  <script src="js/contract.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/word.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/explorer.js"></script>
+<script src="js/drive_picker.js"></script>
+  <script src="js/contractor.js"></script>
+  <script src="js/sap.js"></script>
+  <script src="js/boq.js"></script>
+  <script src="js/contractor_data.js"></script>
+  <script src="js/chucnang.js"></script>
+  <script src="js/functions_full.js"></script>
+  <script src="js/tracking_workspace.js"></script>
+  <script src="js/links.js"></script>
+  <script src="js/accounts.js"></script>
+  <script src="js/settings_full.js"></script>
+  <script src="js/boq_extract.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- MODAL: Rename Tab -->
+  <dialog id="modal-app-rename-tab" class="modal">
+    <div class="modal-box bg-[#1F1D2E] text-[#E0DEF4] border border-[#2E2E2A] max-w-sm">
+      <h3 class="font-bold text-sm text-[#F39C12] mb-3 flex items-center gap-1.5">
+        <span>✏️</span><span>Đổi Tên Tab Menu</span>
+      </h3>
+      <div class="flex flex-col gap-2">
+        <label class="text-xs text-[#908CAA]">Nhập tên hiển thị mới:</label>
+        <input type="text" id="modal-rename-input" class="input input-sm bg-[#191724] border-[#312F44] text-xs text-[#E0DEF4] w-full" />
+      </div>
+      <div class="modal-action mt-4">
+        <button class="btn btn-xs bg-[#26233A] text-[#E0DEF4] border-none" onclick="document.getElementById('modal-app-rename-tab').close()">Hủy</button>
+        <button class="btn btn-xs bg-[#2ECC71] hover:bg-[#27AE60] text-black font-bold border-none" onclick="App.confirmRenameTab()">Lưu</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL: Icon Picker -->
+  <dialog id="modal-app-icon-picker" class="modal">
+    <div class="modal-box bg-[#1F1D2E] text-[#E0DEF4] border border-[#2E2E2A] max-w-md">
+      <h3 class="font-bold text-sm text-[#F39C12] mb-3 flex items-center gap-1.5">
+        <span>🎨</span><span>Chọn Biểu Tượng (Icon)</span>
+      </h3>
+      <div id="modal-icon-grid" class="grid grid-cols-6 gap-2 p-2 max-h-60 overflow-y-auto">
+        <!-- Rendered by App.openIconDialog -->
+      </div>
+      <div class="modal-action mt-4">
+        <button class="btn btn-xs bg-[#26233A] text-[#E0DEF4] border-none" onclick="document.getElementById('modal-app-icon-picker').close()">Đóng</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL: Check Update -->
+  <dialog id="modal-app-check-update" class="modal">
+    <div class="modal-box bg-[#1F1D2E] text-[#E0DEF4] border border-[#2E2E2A] max-w-sm">
+      <h3 class="font-bold text-sm text-[#2ECC71] mb-2 flex items-center gap-1.5">
+        <span>🚀</span><span>Kiểm Tra Bản Cập Nhật</span>
+      </h3>
+      <p class="text-xs text-[#908CAA] mb-3">Phiên bản hiện tại: <strong class="text-white">V386 (Webview 2.0)</strong></p>
+      <div class="p-3 bg-[#191724] rounded-lg border border-[#2E2E2A] text-xs space-y-1">
+        <div class="text-[#2ECC71] font-bold">✓ Hệ thống đang ở phiên bản mới nhất!</div>
+        <div class="text-[#908CAA] text-[11px]">Tất cả tính năng đã đồng bộ hoàn hảo với bản máy tính.</div>
+      </div>
+      <div class="modal-action mt-4">
+        <button class="btn btn-xs bg-[#2ECC71] text-black font-bold border-none" onclick="document.getElementById('modal-app-check-update').close()">Đã Hiểu</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="hidden">
+    <span class="loading loading-spinner loading-lg text-[#EBBCBA]"></span>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container"></div>
+
+  <!-- SCRIPT INCLUDES -->
+  
+
+  <dialog id="boq-decision-modal" class="modal">
+    <div class="modal-box max-w-4xl bg-[#1F1D2E] border border-[#2E2E2A] text-[#EDEDEA] rounded-xl">
+      <h3 class="font-bold text-lg text-[#F39C12]">⚠️ Cần xác nhận gán cột BOQ</h3>
+      <p class="text-xs text-[#908CAA] mb-4">Ứng dụng không chắc chắn về một số cột trong bảng, vui lòng xác nhận để tiếp tục xuất.</p>
+      <div class="flex flex-col gap-4">
+        <div class="bg-[#242421] p-3 rounded-lg border border-[#2E2E2A]">
+          <p class="text-xs text-[#908CAA] mb-1">File nguồn: <span id="boq-dec-file" class="text-[#EDEDEA] font-bold"></span></p>
+          <p class="text-xs text-[#908CAA]">Lý do: <span id="boq-dec-reason" class="text-warning"></span></p>
+        </div>
+        <div class="flex gap-4">
+          <div class="w-1/2">
+            <p class="text-xs font-bold mb-2 text-[#908CAA]">Hình ảnh PDF (Header)</p>
+            <div class="bg-white rounded overflow-hidden flex items-center justify-center min-h-[120px] border border-[#2E2E2A]">
+              <img id="boq-dec-img" src="" alt="Không có ảnh" class="max-w-full max-h-48 object-contain" />
             </div>
           </div>
-          <div class="gis-svg-wrapper" id="interactiveGisSvg">
-            <!-- SVG Interactive GIS Map rendered by app.js -->
-          </div>
-        </section>
-
-        <!-- MODULE NEW: DATA MANAGEMENT SUBSYSTEM (PHÂN HỆ QUẢN LÝ DỮ LIỆU) -->
-        <section class="card-glass" id="dataManagementModule">
-          <div class="section-title">
-            <h3>📊 PHÂN HỆ QUẢN LÝ DỮ LIỆU THI CÔNG & HỒ SƠ BQLDA</h3>
-            <button class="btn-sm btn-primary" onclick="addNewDataRecord()">➕ Thêm Dữ Liệu Mới</button>
-          </div>
-
-          <div class="data-tabs-bar">
-            <button class="data-tab-btn active" id="tab_progress" onclick="switchDataTab('progress')">📅 Tiến Độ & Kế Hoạch</button>
-            <button class="data-tab-btn" id="tab_design" onclick="switchDataTab('design')">📐 Hồ Sơ Thiết Kế</button>
-            <button class="data-tab-btn" id="tab_bidding" onclick="switchDataTab('bidding')">📑 Hồ Sơ Mời Thầu (HSMT)</button>
-            <button class="data-tab-btn" id="tab_contracts" onclick="switchDataTab('contracts')">📜 Quản Lý Hợp Đồng</button>
-            <button class="data-tab-btn" id="tab_contractors" onclick="switchDataTab('contractors')">🏗️ Quản Lý Nhà Thầu</button>
-            <button class="data-tab-btn" id="tab_quantity" onclick="switchDataTab('quantity')">📊 Quản Lý Khối Lượng</button>
-          </div>
-
-          <div id="dataManagementContent">
-            <!-- Rendered by app.js -->
-          </div>
-        </section>
-
-        <!-- MODULE 5: 3 DEPARTMENT TRACKS -->
-        <section class="card-glass" id="deptTracksModule">
-          <div class="section-title">
-            <h3>🧰 THANH ĐIỀU HƯỚNG BỘ MÔN BQL</h3>
-          </div>
-          <div class="dept-nav">
-            <button class="dept-tab-btn" onclick="switchDeptTab('hanh_chinh')">🏛️ HÀNH CHÍNH</button>
-            <button class="dept-tab-btn" onclick="switchDeptTab('noi_nghiep')">🏢 NỘI NGHIỆP</button>
-            <button class="dept-tab-btn active" onclick="switchDeptTab('hien_truong')">🏗️ HIỆN TRƯỜNG</button>
-          </div>
-          <div id="deptTrackContent">
-            <!-- Content rendered by app.js -->
-          </div>
-        </section>
-
-        <!-- MODULE 6: PERSONAL WORKSPACE & SUB-APP BUILDER -->
-        <section class="card-glass" id="personalAppsModule">
-          <div class="section-title">
-            <h3>👤 TRANG CÁ NHÂN & TRỢ LÝ TẠO APP CON (NO-CODE BUILDER)</h3>
-          </div>
-          <div class="subapps-grid" id="personalSubAppsGrid">
-            <!-- Rendered by app.js -->
-          </div>
-        </section>
-
-        <!-- MODULE 7: INTERNAL CHAT & TAGGING -->
-        <section class="card-glass" id="chatModule">
-          <div class="section-title">
-            <h3>💬 CHAT NỘI BỘ & THẺ TAGGING (@MENTION)</h3>
-          </div>
-          <div class="chat-container">
-            <div class="chat-messages" id="chatMessagesBox">
-              <!-- Chat bubbles rendered by app.js -->
-            </div>
-            <div class="chat-input-bar">
-              <input type="text" id="chatInput" placeholder="Nhập tin nhắn... Tag tên @cbgs.xaydung để gửi thông báo..." onkeydown="if(event.key==='Enter') sendChatMessage()">
-              <button class="btn-primary" onclick="sendChatMessage()">Gửi</button>
+          <div class="w-1/2 flex flex-col gap-2">
+            <p class="text-xs font-bold mb-1 text-[#908CAA]">Gán tiêu đề</p>
+            <div id="boq-dec-mappings" class="flex flex-col gap-2 max-h-48 overflow-y-auto">
+              <!-- Injected by JS -->
             </div>
           </div>
-        </section>
-
-        <!-- MODULE 8: DESKTOP STICKY NOTES WIDGET -->
-        <section class="card-glass sticky-widget-container" id="stickyNotesWidget">
-          <div class="section-title">
-            <h3>📝 WIDGET STICKY NOTES DESKTOP (PC LÃNH ĐẠO)</h3>
-            <div>
-              <button class="btn-sm btn-primary" onclick="createNewStickyNote()">➕ Note Mới</button>
-              <button class="btn-sm btn-outline" onclick="toggleStickyWidgetWindow()">📌 Floated Window</button>
-            </div>
-          </div>
-          <div class="sticky-notes-grid" id="stickyNotesGrid">
-            <!-- Rendered by app.js -->
-          </div>
-        </section>
-
-      </main>
-
-    </div>
-  </div>
-
-
-  <!-- ==========================================================================
-       ALL SYSTEM MODALS & OVERLAYS (SHARED BY MAIN & SECONDARY APP)
-       ========================================================================== -->
-
-  <!-- GMAIL LOGIN / RBAC MODAL -->
-  <div class="modal-overlay" id="gmailLoginModal" style="display:none; z-index: 100000;">
-    <div class="modal-content">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>🔑 ĐĂNG NHẬP BẰNG GMAIL / GOOGLE WORKSPACE</h3>
-        <button class="btn-close-note" onclick="document.getElementById('gmailLoginModal').style.display='none'">✕</button>
+        </div>
+        <div>
+          <p class="text-xs font-bold mb-2 text-[#908CAA]">Phạm vi áp dụng</p>
+          <select id="boq-dec-scope" class="select select-sm select-bordered bg-[#181816] text-[#EDEDEA] w-full">
+            <option value="table" selected>Chỉ áp dụng cho bảng này</option>
+            <option value="document">Áp dụng cho toàn bộ file này</option>
+            <option value="global">Lưu quy tắc cho mẫu này</option>
+          </select>
+        </div>
       </div>
-      <div class="modal-body">
-        <!-- Account cards rendered by app.js -->
+      <div class="modal-action mt-6">
+        <button class="btn btn-sm btn-ghost" onclick="document.getElementById('boq-decision-modal').close()">Đóng tạm</button>
+        <button class="btn btn-sm btn-primary" onclick="BoqExtractModule.submitDecision()">Xác nhận gán</button>
       </div>
     </div>
-  </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
 
-  <!-- USER MANAGEMENT DASHBOARD MODAL -->
-  <div class="modal-overlay" id="userManagementModal" style="display:none; z-index: 100000;">
-    <div class="modal-content" style="max-width: 1200px; width: 95vw;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>👥 TRANG QUẢN TRỊ TÀI KHOẢN & PHÂN QUYỀN TRUY CẬP (RBAC STUDIO)</h3>
-        <button class="btn-close-note" onclick="document.getElementById('userManagementModal').style.display='none'">✕</button>
-      </div>
-      <div class="modal-body" id="userManagementBody">
-        <!-- Form rendered by app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- USER FORM EDIT / CREATE MODAL -->
-  <div class="modal-overlay" id="userFormModal" style="display:none; z-index: 110000;">
-    <div class="modal-content" style="max-width: 600px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3 id="userFormModalTitle">📝 CHỈNH SỬA THÔNG TIN THÀNH VIÊN</h3>
-        <button class="btn-close-note" onclick="document.getElementById('userFormModal').style.display='none'">✕</button>
-      </div>
-      <div class="modal-body" id="userFormModalBody">
-        <!-- Form rendered by app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- DEPARTMENT & ORGANIZATIONAL TREE MANAGEMENT MODAL -->
-  <div class="modal-overlay" id="deptMgmtModal" style="display:none; z-index: 110000;">
-    <div class="modal-content" style="max-width: 1200px; width: 95vw;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>🌳 SƠ ĐỒ CÂY TỔ CHỨC & BỘ PHẬN ĐA CẤP (VISUAL ORG CHART STUDIO)</h3>
-        <button class="btn-close-note" onclick="document.getElementById('deptMgmtModal').style.display='none'">✕</button>
-      </div>
-      <div class="modal-body" id="deptMgmtBody">
-        <!-- Rendered by app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- TITLE / POSITION MANAGEMENT MODAL -->
-  <div class="modal-overlay" id="titleMgmtModal" style="display:none; z-index: 110000;">
-    <div class="modal-content" style="max-width: 550px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>💼 QUẢN LÝ DANH MỤC CHỨC DANH</h3>
-        <button class="btn-close-note" onclick="document.getElementById('titleMgmtModal').style.display='none'">✕</button>
-      </div>
-      <div class="modal-body" id="titleMgmtBody">
-        <!-- Rendered by app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- GOOGLE DRIVE MULTI-ACCOUNT & SUBSYSTEM MAPPING MODAL -->
-  <div class="modal-overlay" id="driveCloudMappingModal" style="display:none; z-index: 120000;">
-    <div class="modal-content" style="max-width: 850px; width: 92%;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>☁️ CẤU HÌNH KẾT NỐI GOOGLE DRIVE MULTI-ACCOUNT & KHO PHÂN HỆ</h3>
-        <button class="btn-close-note" onclick="document.getElementById('driveCloudMappingModal').style.display='none'">✕</button>
-      </div>
-      <div class="modal-body" id="driveCloudMappingModalBody">
-        <!-- Rendered by app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- ADMIN CUSTOM EXTRACT FIELDS CONFIGURATOR MODAL -->
-  <div class="modal-overlay" id="designScannerFieldsModal" style="display:none; z-index: 130000;">
-    <div class="modal-content" style="max-width: 650px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>⚙️ CÀI ĐẶT THUỘC TÍNH QUÉT TÙY BIẾN ADMIN (PHÂN HỆ THIẾT KẾ)</h3>
-        <button class="btn-close-note" onclick="document.getElementById('designScannerFieldsModal').style.display='none'">✕</button>
-      </div>
-      <div class="modal-body" id="designScannerFieldsModalBody">
-        <!-- Rendered by app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- LEVEL NAMING CONFIGURATION MODAL -->
-  <div class="modal-overlay" id="levelNamingModal" style="display:none; z-index: 120000;">
-    <div class="modal-content" style="max-width: 550px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>🏷️ ĐỔI TÊN CÁC CẤP CÂY TỔ CHỨC</h3>
-        <button class="btn-close-note" onclick="document.getElementById('levelNamingModal').style.display='none'">✕</button>
-      </div>
-      <div class="modal-body" id="levelNamingBody">
-        <!-- Rendered by app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- SOURCE DATA & DRIVE MODAL -->
-  <div class="modal-overlay" id="driveZModal" style="display:none; z-index: 120000;">
-    <div class="modal-content" style="max-width:750px; width:94%;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>🗄️ NGUỒN DỮ LIỆU & KẾT NỐI GOOGLE DRIVE</h3>
-        <button class="btn-close-note" onclick="document.getElementById('driveZModal').style.display='none'">✕</button>
-      </div>
-      <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
-        <!-- Rendered by app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- JARSCRIPT INCLUDES WITH CACHE-BUSTING -->
-  <script src="./js/masterData.js?v=21"></script>
-  <script src="./js/authEngine.js?v=21"></script>
-  <script src="./js/aiEngine.js?v=21"></script>
-  <script src="./js/storageEngine.js?v=21"></script>
-  <script src="./js/adminStudio.js?v=21"></script>
-  <script src="./js/driveEngine.js?v=21"></script>
-  <script src="./js/app.js?v=21"></script>
-
-  <script>
-    // Clear old service workers & cache if any
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        for (let registration of registrations) {
-          registration.update();
-        }
-      });
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=2')
-          .then(reg => {
-            console.log('PWA Service Worker registered:', reg.scope);
-            reg.update();
-          })
-          .catch(err => console.log('Service Worker registration failed:', err));
-      });
-    }
-
-    function triggerGlobalAISearch() {
-      const q = document.getElementById("globalAiSearchInput").value || document.getElementById("globalAiSearchInputSecondary").value;
-      if (!q) return;
-      showToast("🤖 Gemini AI đang truy vấn dữ liệu toàn dự án...");
-      aiEngine.askKnowledgeBase(q).then(ans => {
-        alert(ans);
-      });
-    }
-  </script>
 </body>
 </html>
+
+
