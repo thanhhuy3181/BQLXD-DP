@@ -85,7 +85,8 @@ function visibleProjects(user, projects) {
 
 function canEdit(user, state, permissionKey) {
   if (user?.role === 'Admin') return true;
-  const level = state.role_permissions?.permissions?.[user?.role]?.[permissionKey] || 'view';
+  // Use the same old-role compatibility rule as AwD navigation and AwM.
+  const level = require('./awm_rpc').permissionValue(user, state, permissionKey);
   return level === 'edit' || level === 'full' || level === true;
 }
 

@@ -34,7 +34,18 @@ window.PermissionCatalog = {
   ensure(data) {
     const permissions = data.permissions || (data.permissions = {});
     const roles = ['Admin','Văn phòng','Nội nghiệp','ĐTGS','CBGS'];
-    roles.forEach(role => { permissions[role] = permissions[role] || {}; });
+    // The persisted matrix predates the job-title role names.  Copy the old
+    // matrix only when the new role has never been configured; an explicit
+    // current-role setting (including "none") always wins.  This mirrors the
+    // API/AwM resolution so browser and mobile results cannot diverge.
+    const legacyRole = {'Nội nghiệp':'Phó nhóm',CBGS:'Thành viên'};
+    roles.forEach(role => {
+      if (!permissions[role] && legacyRole[role] && permissions[legacyRole[role]]) {
+        permissions[role] = {...permissions[legacyRole[role]]};
+      } else {
+        permissions[role] = permissions[role] || {};
+      }
+    });
     this.groups.flatMap(([, items]) => items).forEach(([key]) => {
       roles.forEach(role => {
         if (permissions[role][key] === true) permissions[role][key] = 'full';
