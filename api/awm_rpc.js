@@ -2,7 +2,17 @@ const crypto = require('crypto');
 const snapshots = require('./data/menu_workspace.json');
 const ok = data => ({ok:true,data,error:null});
 const fail = error => ({ok:false,data:null,error});
-const groups = {progress:['Tiến độ','td_progress'],hsmt:['HSMT','td_hsmt'],contract:['Hợp đồng','td_contract'],payment:['Thanh toán','td_payment'],boq:['BOQ','td_boq'],contractor:['Nhà thầu','td_contractor'],sap:['SAP','td_sap'],'chu-truong':['Chủ trương','ql_tab_phe_duyet'],bvtk:['BVTK','ql_tab_bvtk']};
+const groups = {
+  progress: ['Tiến độ', 'td_progress'],
+  'chu-truong': ['Chủ trương', 'ql_tab_phe_duyet', 'td_progress'],
+  bvtk: ['BVTK', 'ql_tab_bvtk', 'td_progress'],
+  hsmt: ['HSMT', 'td_hsmt'],
+  contract: ['Hợp đồng', 'td_contract'],
+  payment: ['Thanh toán', 'td_payment'],
+  boq: ['BOQ', 'td_boq'],
+  contractor: ['Nhà thầu', 'td_contractor'],
+  sap: ['SAP', 'td_sap']
+};
 // Keep the phone file areas aligned with every AwD Explorer tab that is
 // backed by a project Drive folder.  Permissions remain the same RBAC keys
 // used by AwD, so a phone never exposes a folder hidden on desktop.
@@ -71,7 +81,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  if(!method.startsWith('awm_'))return undefined;
  if(!active(user))return fail('Phiên đăng nhập không hợp lệ hoặc tài khoản chưa được kích hoạt.');
  const permission=key=>can(user,state,key);
- if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role,current_project:user.current_project||''},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),links:permission('cd_links')||permission('tab_cai_dat')||user?.role==='Admin',tracking:permission('tab_theo_doi'),todo:permission('tab_home')},files:{can_configure:canEdit(user,state,'ql_project_mgmt')},links_can_manage:canEdit(user,state,'cd_links')||canEdit(user,state,'tab_cai_dat')||user?.role==='Admin',groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&permission(g[1])).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
+ if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role,current_project:user.current_project||''},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),links:permission('cd_links')||permission('tab_cai_dat')||user?.role==='Admin',tracking:permission('tab_theo_doi'),todo:permission('tab_home')},files:{can_configure:canEdit(user,state,'ql_project_mgmt')},links_can_manage:canEdit(user,state,'cd_links')||canEdit(user,state,'tab_cai_dat')||user?.role==='Admin',groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&(permission(g[1])||(g[2]&&permission(g[2])))).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
  const project=String(args[0]||'');
  const todoKey=`awm:todo:${user.username}:${project}`;
  const todoAllowed=()=>allowedProject(user,project)&&permission('tab_home');
@@ -115,7 +125,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  }
  if(method==='awm_tracking'){
   const [,tab,query='',cursor=0]=args;
-  if(!allowedProject(user,project)||!permission('tab_theo_doi')||!groups[tab]||!permission(groups[tab][1]))return fail('Không có quyền đọc nhóm hồ sơ hoặc dự án này.');
+  if(!allowedProject(user,project)||!permission('tab_theo_doi')||!groups[tab]||!(permission(groups[tab][1])||(groups[tab][2]&&permission(groups[tab][2]))))return fail('Không có quyền đọc nhóm hồ sơ hoặc dự án này.');
   let snapshot=snapshots[project]?.[tab];if(snapshot?.shared)snapshot=snapshots[snapshot.shared];
   const stored=await read(sql,`tracking:${project}:${tab}:`,snapshot||{items:[],columns:snapshots.__columns?.[tab]||[]});
   const q=norm(String(query).slice(0,200));const rows=(stored.items||[]).filter(r=>!q||norm(Object.values(r).filter(v=>typeof v!=='object').join(' ')).includes(q)).sort((a,b)=>recordDate(b)-recordDate(a));
