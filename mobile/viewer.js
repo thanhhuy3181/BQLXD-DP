@@ -25,8 +25,19 @@ window.AwmViewer=(()=>{
      $('sheet-select').onchange=e=>{selected=Number(e.target.value);start=0;draw()};$('rows-prev').onclick=()=>{start=Math.max(0,start-100);draw()};$('rows-next').onclick=()=>{start+=100;draw()};draw();worker.terminate();worker=null;
     };worker.onerror=()=>{if(run===generation)$('viewer-body').textContent='Không tải được bộ đọc Excel.'};
    }else if(mime.startsWith('image/')){const image=document.createElement('img');const url=URL.createObjectURL(blob);image.src=url;image.onload=image.onerror=()=>URL.revokeObjectURL(url);$('viewer-body').replaceChildren(image)
-   }else if(ext==='dxf'){const text=await blob.text();if(run===generation)AwmCad.render(text,$('viewer-body'),$('viewer-controls'));
-   }else if(ext==='dwg'){throw Error('DWG cần bản chuyển đổi PDF hoặc dịch vụ CAD viewer. Nguồn hiện tại chưa có bản chuyển đổi.');
+   }else if(ext==='dxf'||ext==='dwg'){
+    try{
+      const text=await blob.text();
+      if(text.includes('ENTITIES')||text.includes('SECTION')||text.includes('AutoCAD')){
+        if(run===generation)AwmCad.render(text,$('viewer-body'),$('viewer-controls'));
+        return;
+      }
+    }catch(_){}
+    if(run===generation){
+      $('viewer-controls').innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;width:100%;flex-wrap:wrap;"><span class="badge online">📐 Bản vẽ CAD DWG</span><label class="button" style="display:inline-flex;align-items:center;padding:4px 8px;font-size:12px;background:#244438;color:#fff;border-radius:6px;cursor:pointer;">+ Nạp file nền (Xref/DXF)<input id="dwg-bg-loader" type="file" accept=".dxf,.dwg,.txt" hidden></label><a class="primary" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;margin-left:auto;" href="https://viewer.autodesk.com/" target="_blank" rel="noopener">Mở Autodesk CAD Viewer ↗</a></div>`;
+      $('viewer-body').innerHTML=`<div class="card" style="padding:16px;background:#182b29;color:#fff;border-radius:10px;margin-bottom:12px;"><div class="top"><span class="badge online">AutoCAD DWG</span><span class="code">${blob.size?Math.ceil(blob.size/1024)+' KB':''}</span></div><h3 style="margin:8px 0 4px 0;color:#d5e6b0;">${esc(name)}</h3><p style="font-size:12px;color:#a8c4b2;margin:0 0 10px 0;">Bản vẽ CAD DWG có hỗ trợ đối chiếu với file nền kiến trúc/hạ tầng. Bạn có thể bấm "+ Nạp file nền (Xref/DXF)" để đọc file nền hoặc mở bản vẽ trực tiếp trên ứng dụng CAD.</p></div><div id="dwg-bg-canvas"></div>`;
+      const bgLoader=$('dwg-bg-loader');if(bgLoader)bgLoader.onchange=async e=>{const bgFile=e.target.files[0];if(!bgFile)return;try{const bgText=await bgFile.text();AwmCad.render(bgText,$('dwg-bg-canvas'),$('viewer-controls'));}catch(err){alert('Không đọc được file nền: '+err.message)}};
+    }
    }else if(ext==='msg'){throw Error('Tệp MSG cần được AD chuyển thành nội dung email. Chưa có bộ chuyển đổi MSG trong nguồn này.');
    }else if(['txt','eml'].includes(ext)){const pre=document.createElement('pre');pre.textContent=await blob.text();if(run===generation)$('viewer-body').replaceChildren(pre)
    }else throw Error('Chưa hỗ trợ định dạng này. Hãy cung cấp bản PDF để xem trong AwM.');
@@ -37,14 +48,33 @@ window.AwmViewer=(()=>{
   const name=opt?.name||'Xem tài liệu',id=opt?.id||'',mime=opt?.mime||'';
   const ext=name.split('.').pop().toLowerCase();
   const isSheet=mime.includes('spreadsheet')||['xlsx','xls','csv'].includes(ext);
-  const previewUrl=id
-    ?(isSheet?`https://docs.google.com/spreadsheets/d/${id}/preview`:`https://drive.google.com/file/d/${id}/preview`)
-    :(opt?.url||'');
+  const isPdf=mime.includes('pdf')||ext==='pdf';
+  const isCad=mime.includes('dwg')||mime.includes('dxf')||['dwg','dxf'].includes(ext);
+  const previewUrl=id?`https://drive.google.com/file/d/${id}/preview`:(opt?.url||'');
   const directUrl=opt?.url||(id?(isSheet?`https://docs.google.com/spreadsheets/d/${id}/edit`:`https://drive.google.com/file/d/${id}/view`):previewUrl);
   $('viewer-title').textContent=name;
   $('viewer').showModal();
-  $('viewer-controls').innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;"><span class="badge ${isSheet?'online':'priority-low'}" style="font-size:12px;font-weight:600;">${isSheet?'📊 Bảng tính Excel Online':'📑 PDF Hợp đồng Online'}</span><a class="primary" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">Mở ngoài tab mới ↗</a></div>`;
-  $('viewer-body').innerHTML=`<div style="position:relative;width:100%;height:calc(100dvh - 120px);background:#fff;border-radius:8px;overflow:hidden;"><iframe src="${esc(previewUrl)}" style="width:100%;height:100%;border:0;display:block;" allow="autoplay" loading="lazy"></iframe></div>`;
+  const badgeText=isSheet?'📊 Bảng tính Excel':isPdf?'📑 PDF Hợp đồng':isCad?'📐 Bản vẽ CAD':'📄 Tài liệu';
+  const badgeCls=isSheet?'online':isCad?'badge-primary':'priority-low';
+  const openLabel=isSheet?'Mở bằng Google Sheets ↗':isCad?'Mở bản vẽ CAD ↗':'Mở tab mới ↗';
+  $('viewer-controls').innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;padding:4px 0;flex-wrap:wrap;"><span class="badge ${badgeCls}" style="font-size:12px;font-weight:600;">${badgeText}</span><div style="display:flex;gap:6px;align-items:center;">${isCad?`<label class="button" style="display:inline-flex;align-items:center;padding:4px 8px;font-size:12px;background:#244438;color:#fff;border-radius:6px;cursor:pointer;">+ Nạp file nền (Xref)<input id="cad-online-bg" type="file" accept=".dxf,.dwg,.txt" hidden></label>`:''}<a class="primary" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div></div>`;
+  $('viewer-body').innerHTML=`<div style="margin-bottom:8px;padding:6px 10px;background:#f3f6f0;border:1px solid #d8e2d2;border-radius:6px;font-size:11px;color:#435c4b;display:flex;align-items:center;justify-content:space-between;gap:6px;"><span>💡 Đang đọc trực tiếp online. Bấm <b>${openLabel}</b> để xem toàn màn hình.</span><a href="${esc(directUrl)}" target="_blank" rel="noopener" style="font-weight:600;color:#182b29;text-decoration:underline;white-space:nowrap;">Mở trực tiếp ↗</a></div><div style="position:relative;width:100%;height:calc(100dvh - 160px);background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);"><iframe src="${esc(previewUrl)}" style="width:100%;height:100%;border:0;display:block;" allow="autoplay" loading="lazy"></iframe></div>`;
+  if(isCad){
+    const bgInput=$('cad-online-bg');
+    if(bgInput){
+      bgInput.onchange=async e=>{
+        const bgFile=e.target.files[0];
+        if(!bgFile)return;
+        try{
+          const bgText=await bgFile.text();
+          const container=document.createElement('div');
+          container.style.marginTop='12px';
+          $('viewer-body').prepend(container);
+          AwmCad.render(bgText,container,$('viewer-controls'));
+        }catch(err){alert('Lỗi nạp file nền: '+err.message)}
+      };
+    }
+  }
  }
  return {open,openOnline,close};
 })();
