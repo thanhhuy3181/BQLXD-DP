@@ -67,6 +67,40 @@ const norm = s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').re
 // AwM is a reading interface, so each group opens with the newest document
 // first.  Different datasets use different date field names and older
 // records commonly store Vietnamese dd/mm/yyyy values.
+function resolveContractForHsmt(r, contracts) {
+ if (!r || !contracts || !contracts.length) return null;
+ const code = String(r.code || '').trim();
+ let m = contracts.find(h => h.hsmt1 === code || h.hsmt2 === code || h.hsmt3 === code || (h.name && h.name.includes(code)) || (h.folder_name && h.folder_name.includes(code)));
+ if (m) return m;
+ const maHd = r.ma_hd || r.ma_hd_1;
+ if (maHd) {
+  m = contracts.find(h => h.code === maHd || h.so_hd === maHd || (h.folder_name && h.folder_name.includes(maHd)) || (h.name && h.name.includes(maHd)));
+  if (m) return m;
+ }
+ const rawName = r.name || r.folder_name || '';
+ const matchPkg = rawName.match(/DP[._][A-Z0-9]+(?:\.[A-Z0-9]+)*/i) || rawName.match(/TC[._]?[0-9]+/i);
+ if (matchPkg) {
+  const pkg = matchPkg[0].replace(/_/g, '.').toUpperCase();
+  const pkgNorm = pkg.replace(/\./g, '');
+  const cands = contracts.filter(h => {
+   const hn = (h.folder_name || h.full_folder_name || h.name || '').toUpperCase().replace(/_/g, '.');
+   return hn.includes(pkg) || hn.replace(/\./g, '').includes(pkgNorm);
+  });
+  if (cands.length === 1) return cands[0];
+  if (cands.length > 1) {
+   const words = rawName.toLowerCase().split(/[\s_().,-]+/).filter(w => w.length >= 3 && !['rev1','rev2','rev3','rev','thi','cong','he','thong','goi','thau','vinhomes','dan','phuong'].includes(w));
+   let best = null, maxScore = -1;
+   for (const c of cands) {
+    const cn = (c.folder_name || c.full_folder_name || c.name || '').toLowerCase();
+    let score = 0;
+    for (const w of words) { if (cn.includes(w)) score++; }
+    if (score > maxScore) { maxScore = score; best = c; }
+   }
+   return best || cands[0];
+  }
+ }
+ return null;
+}
 function recordDate(row){
  for(const key of ['ngay_ph','date','date_sign','ngay_ky_hd','ngay_ph_hsmt','ngay_bd_tc_tt','updated_at','created_at']){
   const raw=String(row?.[key]||'').trim();if(!raw)continue;
@@ -129,9 +163,19 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   if(!allowedProject(user,project)||!permission('tab_theo_doi')||!groups[tab]||!(permission(groups[tab][1])||(groups[tab][2]&&permission(groups[tab][2]))))return fail('Không có quyền đọc nhóm hồ sơ hoặc dự án này.');
   let snapshot=snapshots[project]?.[tab];if(snapshot?.shared)snapshot=snapshots[snapshot.shared];
   const stored=await read(sql,`tracking:${project}:${tab}:`,snapshot||{items:[],columns:snapshots.__columns?.[tab]||[]});
-  const q=norm(String(query).slice(0,200));const rows=(stored.items||[]).filter(r=>!q||norm(Object.values(r).filter(v=>typeof v!=='object').join(' ')).includes(q)).sort((a,b)=>recordDate(b)-recordDate(a));
+  let items=stored.items||[],cols=stored.columns||snapshots.__columns?.[tab]||[];
+  if(tab==='hsmt'){
+   cols=cols.map(c=>c.key==='rev'?{...c,label:'HĐ liên quan'}:c);
+   const contracts=snapshots[project]?.contract?.items||[];
+   items=items.map(r=>{
+    if(r._related_contract)return r;
+    const c=resolveContractForHsmt(r,contracts);
+    return c?{...r,rev:c.folder_name||c.full_folder_name||c.name,_related_contract:{code:c.code,name:c.folder_name||c.full_folder_name||c.name}}:r;
+   });
+  }
+  const q=norm(String(query).slice(0,200));const rows=items.filter(r=>!q||norm(Object.values(r).filter(v=>typeof v!=='object').join(' ')).includes(q)).sort((a,b)=>recordDate(b)-recordDate(a));
   const start=Math.max(0,Number(cursor)||0),end=start+30;
-  return ok({project,columns:stored.columns||[],items:rows.slice(start,end),total:rows.length,next_cursor:end<rows.length?end:null,revision:stored.revision||'snapshot'});
+  return ok({project,columns:cols,items:rows.slice(start,end),total:rows.length,next_cursor:end<rows.length?end:null,revision:stored.revision||'snapshot'});
  }
  if(method==='awm_folders'||method==='awm_save_folder'){
   const menu=menus.find(m=>m[0]===args[1]);
@@ -172,6 +216,31 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  if(method==='awm_revoke_device'){
   await write(sql,`awm:device:${user.username}`,null);await write(sql,`awm:mail:${user.username}`,null);return ok({revoked:true});
  }
+ if(method==='awm_drive_list'){
+   if(!allowedProject(user,project)||!permission('tab_quan_ly'))return fail('Không có quyền truy cập Drive.');
+   const folderId = String(args[1] || '').trim();
+   const pageToken = String(args[2] || '').trim();
+   if(!folderId) return fail('Folder ID Google Drive không hợp lệ.');
+   try {
+     const gdrive = require('./gdrive_service');
+     const data = await gdrive.listFiles(folderId, pageToken);
+     return ok(data);
+   } catch(e) {
+     return fail(e.message);
+   }
+  }
+  if(method==='awm_find_file'){
+   const code = String(args[1] || '').trim();
+   const kind = String(args[2] || 'all').trim();
+   if(!code) return fail('Mã tra cứu trống.');
+   try {
+     const gdrive = require('./gdrive_service');
+     const files = await gdrive.findFile(code, kind);
+     return ok({ files });
+   } catch(e) {
+     return fail(e.message);
+   }
+  }
  return fail('AwM chưa hỗ trợ phương thức này.');
 };
 module.exports.can=can;
