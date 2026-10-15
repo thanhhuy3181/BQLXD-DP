@@ -4,7 +4,20 @@ const ok = data => ({ok:true,data,error:null});
 const fail = error => ({ok:false,data:null,error});
 const groups = {progress:['Tiến độ','td_progress'],hsmt:['HSMT','td_hsmt'],contract:['Hợp đồng','td_contract'],payment:['Thanh toán','td_payment'],boq:['BOQ','td_boq'],contractor:['Nhà thầu','td_contractor'],sap:['SAP','td_sap'],'chu-truong':['Chủ trương','ql_tab_phe_duyet'],bvtk:['BVTK','ql_tab_bvtk']};
 const menus = [['approval','Phê duyệt','ql_tab_phe_duyet'],['design','Bản vẽ thiết kế','ql_tab_bvtk'],['hsmt','HSMT','ql_tab_hsmt'],['contract','Hợp đồng','ql_tab_hop_dong'],['payment','Thanh toán','ql_tab_tu_tt']];
-function can(user,state,key){if(user?.role==='Admin')return true;const v=state.role_permissions?.permissions?.[user?.role]?.[key];return v===true||['view','edit','full'].includes(v);}
+// Accounts created before the current job-title scheme still have their RBAC
+// matrix stored under the former roles.  `publicUser` exposes the current
+// names, so resolve the old entry as a fallback until an admin saves the
+// matrix again.  This is shared by AwD RPCs and AwM; a phone must never get a
+// different permission result from the desktop for the same account.
+const legacyRole = {CBGS:'Thành viên','Nội nghiệp':'Phó nhóm'};
+function permissionValue(user,state,key){
+ const permissions=state.role_permissions?.permissions||{};
+ const role=user?.role;
+ if(!role)return undefined;
+ const current=permissions[role]?.[key];
+ return current===undefined ? permissions[legacyRole[role]]?.[key] : current;
+}
+function can(user,state,key){if(user?.role==='Admin')return true;const v=permissionValue(user,state,key);return v===true||['view','edit','full'].includes(v);}
 function active(user){return !!user&&user.username!=='guest'&&user.status==='Active';}
 const norm = s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();
 async function read(sql,key,fallback){const rows=await sql`SELECT value FROM bqlda_state WHERE key=${key}`;return rows[0]?.value??fallback;}
@@ -56,5 +69,6 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  return fail('AwM chưa hỗ trợ phương thức này.');
 };
 module.exports.can=can;
+module.exports.permissionValue=permissionValue;
 module.exports.active=active;
 module.exports.groups=groups;
