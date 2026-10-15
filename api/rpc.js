@@ -149,7 +149,7 @@ async function rpc(req) {
       const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`, {signal: AbortSignal.timeout(10000)});
       profile = await response.json();
     } catch (error) { return failure('Không thể xác thực tài khoản Google lúc này.'); }
-    const clientId = process.env.GOOGLE_WEB_CLIENT_ID || '893599506998-5o9a9t5b2v5bca51r89hb2sgegcijqu5.apps.googleusercontent.com';
+    const clientId = process.env.GOOGLE_WEB_CLIENT_ID || '300358329721-6kgrld7b75tqntm5imlsnqr3186ofmf2.apps.googleusercontent.com';
     if (!profile?.sub || !profile.email || profile.aud !== clientId || String(profile.email_verified) !== 'true' || !['accounts.google.com','https://accounts.google.com'].includes(profile.iss) || Number(profile.exp)*1000<=Date.now()) {
       return failure('Tài khoản Google chưa được xác thực hoặc OAuth Client không khớp.');
     }
