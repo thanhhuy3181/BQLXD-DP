@@ -319,6 +319,15 @@ const AccountsModule = (function() {
     const applied = (LEVEL_RANK[val] ?? 0) > (LEVEL_RANK[ceiling] ?? 0) ? ceiling : val;
     _permData.permissions[role][key] = applied;
     childKeys(key).forEach(child => { _permData.permissions[role][child] = applied; cascadeChildren(role, child); });
+    // “Tất cả Tab” is the true global shortcut.  It must also replace any
+    // older caps left in detailed areas, otherwise Full/Sửa at the top would
+    // misleadingly leave QL File, Theo dõi, Chức năng or Cài đặt restricted.
+    if (key === 'grp_tabs') {
+      GROUP_KEY.slice(1).forEach(groupKey => {
+        _permData.permissions[role][groupKey] = applied;
+        childKeys(groupKey).forEach(child => { _permData.permissions[role][child] = applied; });
+      });
+    }
     renderPermMatrix();
     savePermissions(true);
   }
