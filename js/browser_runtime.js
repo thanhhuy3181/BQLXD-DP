@@ -277,11 +277,20 @@ window.BrowserRuntime = (() => {
         if(u.startsWith('gdrive://')) return `https://drive.google.com/drive/folders/${u.split('/').pop()}`;
         const norm=u.toLowerCase().replace(/\\/g,'/');
         if(norm.includes('theo doi 06,07,08')||norm.includes('.xlsm')||norm.includes('theo doi tong')||norm.includes('theo doi tổng')) return 'https://docs.google.com/spreadsheets/d/1IRiE_8hau2hJgwPF3xcuaVC2Ih3mfNnX/edit';
+        if(norm.includes('01. chi dao')||norm.includes('01.01')||(norm.includes('01. phe duyet')&&norm.includes('chi dao'))) return 'https://drive.google.com/drive/folders/1n_5RbTM34UOlLPRaB-WE3kVjx9UiS7Sh';
+        if(norm.includes('01. phe duyet/02')||norm.includes('01.02')||(norm.includes('01. phe duyet')&&norm.includes('tien do'))) return 'https://drive.google.com/drive/folders/1X6TsO1_iSPAJvMWNsIWS20gZusVQJJpv';
+        if(norm.includes('03. yc ky thuat')||norm.includes('01.03')||norm.includes('yc kt')||norm.includes('yc ky thuat')) return 'https://drive.google.com/drive/folders/11Hrfa0ofMUME62ZF7wlbzxZ11C3aGGBH';
+        if(norm.includes('04. bvtk')||norm.includes('01.04')||norm.includes('ban ve thiet ke')) return 'https://drive.google.com/drive/folders/1_ulRVF99yuc3e7r1ek5hi2sn2Y7pIqG7';
+        if(norm.includes('01. phe duyet')) return 'https://drive.google.com/drive/folders/1IQ-Rpu0U16MdPQkaeIWqdmIIOscankKJ';
+        if(norm.includes('02.01')||norm.includes('02. phap ly')||norm.includes('phap ly')) return 'https://drive.google.com/drive/folders/1KIvbe3-cMi4ym6tXczbqE5j2aQUc2P3b';
+        if(norm.includes('03. cam nang')||norm.includes('cam nang')) return 'https://drive.google.com/drive/folders/1WNEiOL-4RLw5zsm3LYqBI_Xw4XqSUWlv';
+        if(norm.includes('04. chuan hoa')||norm.includes('chuan hoa')) return 'https://drive.google.com/drive/folders/1QdBbuuFE7onNgOdAQj8ehBJCECPlipbb';
         if(norm.includes('06.01')||norm.includes('da phat hanh')) return 'https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy';
         if(norm.includes('06. hsmt')||norm.includes('06.hsmt')) return 'https://drive.google.com/drive/folders/1vqyVkLfIFPzulWaeD6KGDxMvkLQVxT-w';
         if(norm.includes('07.01')||norm.includes('da ky ket')) return 'https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2';
         if(norm.includes('07. hop dong')||norm.includes('07.hop dong')||norm.includes('07. hopdong')) return 'https://drive.google.com/drive/folders/1zkfKeEvWHx7xOr6MrSuSDe_yyw7Zj1qN';
         if(norm.includes('08.01')||norm.includes('tu, tt')||norm.includes('tu,tt')||norm.includes('tam ung')) return 'https://drive.google.com/drive/folders/1hA7Zvi1r5XxmbFi-neLxGguV_clueBaS';
+        if(norm.includes('08.02')||norm.includes('quyet toan')||norm.includes('/qt')) return 'https://drive.google.com/drive/folders/1Dx93wqXdvaauKGglqoXo2oxKGG1Jif8y';
         if(norm.includes('/vh')||norm.includes('vinhomes')||norm.includes('dan phuong')||norm.includes('my drive')) return 'https://drive.google.com/drive/folders/1z3Il9qZ7N0yQ5UMjSYnWgluV2BwI-B_7';
         return '';
       }

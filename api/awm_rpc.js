@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const snapshots = require('./data/menu_workspace.json');
+const projectFoldersSeed = require('./data/project_folders.json');
 const ok = data => ({ok:true,data,error:null});
 const fail = error => ({ok:false,data:null,error});
 const groups = {
@@ -136,14 +137,12 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   const menu=menus.find(m=>m[0]===args[1]);
   if(!allowedProject(user,project)||!permission('tab_quan_ly'))return fail('Không có quyền xem QL hoặc dự án.');
   if(method==='awm_folders'){
-   // Folders belong to the project, not to one person. Anyone assigned to a
-   // project can read its configured file areas, while Drive itself still
-   // verifies that person's Google access. The legacy personal mapping stays
-   // as a temporary fallback for projects not configured yet.
+   const seed=projectFoldersSeed[project]||{};
    const data={};for(const [id,,key]of menus)if(permission(key)){
-    const shared=await read(sql,`awm:project-folder:${project}:${id}`,null);
+    const def=seed[id]?{id:seed[id].id,name:seed[id].name,path:seed[id].path,url:seed[id].url,subs:seed[id].subs||[],scope:'project',updated_by:'Hệ thống (AD)'}:null;
+    const shared=await read(sql,`awm:project-folder:${project}:${id}`,def);
     const personal=shared?null:await read(sql,`awm:folder:${user.username}:${project}:${id}`,null);
-    data[id]=shared?{...shared,scope:'project'}:personal?{...personal,scope:'personal'}:null;
+    data[id]=shared?{...def,...shared,scope:'project'}:personal?{...personal,scope:'personal'}:def;
    }
    return ok(data);
   }

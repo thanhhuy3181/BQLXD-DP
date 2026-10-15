@@ -929,23 +929,79 @@
     "Vinhomes Đan Phượng": [
       {
         "id": "l_drive",
-        "name": "Google Drive VH Dự án",
+        "name": "Google Drive VH Dự án Tổng",
         "url": "https://drive.google.com/drive/folders/1z3Il9qZ7N0yQ5UMjSYnWgluV2BwI-B_7",
         "display_path": "Z:/My Drive/VH",
-        "category": "Lưu trữ",
-        "notes": "Thư mục đồng bộ hồ sơ dự án"
+        "category": "Drive / Thư mục",
+        "notes": "Thư mục gốc đồng bộ hồ sơ dự án Vinhomes Đan Phượng"
       },
       {
         "id": "l_master_excel",
         "name": "File Excel Theo dõi Tổng",
         "url": "https://docs.google.com/spreadsheets/d/1IRiE_8hau2hJgwPF3xcuaVC2Ih3mfNnX/edit",
         "display_path": "! Theo doi 06,07,08. HSMT, HD, TU,TT,QT.xlsm",
-        "category": "Hồ sơ",
+        "category": "Drive / Tài liệu",
         "notes": "Bảng tính Master Excel 06, 07, 08"
       },
       {
+        "id": "l_approval",
+        "name": "01.01. Phê duyệt & Chủ trương",
+        "url": "https://drive.google.com/drive/folders/1n_5RbTM34UOlLPRaB-WE3kVjx9UiS7Sh",
+        "display_path": "Z:/My Drive/VH/01. Phe duyet/01. Chi dao",
+        "category": "Chủ trương",
+        "notes": "Thư mục Phê duyệt & Chỉ đạo"
+      },
+      {
+        "id": "l_progress",
+        "name": "01.02. Tiến độ dự án",
+        "url": "https://drive.google.com/drive/folders/1X6TsO1_iSPAJvMWNsIWS20gZusVQJJpv",
+        "display_path": "Z:/My Drive/VH/01. Phe duyet/02. Tien do",
+        "category": "Tiến độ",
+        "notes": "Tiến độ thi công và thiết kế"
+      },
+      {
+        "id": "l_technical",
+        "name": "01.03. Yêu cầu kỹ thuật",
+        "url": "https://drive.google.com/drive/folders/11Hrfa0ofMUME62ZF7wlbzxZ11C3aGGBH",
+        "display_path": "Z:/My Drive/VH/01. Phe duyet/03. YC Ky thuat",
+        "category": "Drive / Thư mục",
+        "notes": "Tài liệu yêu cầu kỹ thuật dự án"
+      },
+      {
+        "id": "l_design",
+        "name": "01.04. Bản vẽ thiết kế (BVTK)",
+        "url": "https://drive.google.com/drive/folders/1_ulRVF99yuc3e7r1ek5hi2sn2Y7pIqG7",
+        "display_path": "Z:/My Drive/VH/01. Phe duyet/04. BVTK",
+        "category": "BVTK",
+        "notes": "Bản vẽ thiết kế các giai đoạn"
+      },
+      {
+        "id": "l_legal",
+        "name": "02. Pháp lý dự án",
+        "url": "https://drive.google.com/drive/folders/1KIvbe3-cMi4ym6tXczbqE5j2aQUc2P3b",
+        "display_path": "Z:/My Drive/VH/02.01. Phap ly",
+        "category": "Drive / Thư mục",
+        "notes": "Hồ sơ pháp lý, chủ trương đầu tư, DTM"
+      },
+      {
+        "id": "l_guide",
+        "name": "03. Cẩm nang công việc",
+        "url": "https://drive.google.com/drive/folders/1WNEiOL-4RLw5zsm3LYqBI_Xw4XqSUWlv",
+        "display_path": "Z:/My Drive/VH/03. Cam nang",
+        "category": "Drive / Thư mục",
+        "notes": "Cẩm nang hướng dẫn và quy định"
+      },
+      {
+        "id": "l_standard",
+        "name": "04. Chuẩn hóa",
+        "url": "https://drive.google.com/drive/folders/1QdBbuuFE7onNgOdAQj8ehBJCECPlipbb",
+        "display_path": "Z:/My Drive/VH/04. Chuan hoa",
+        "category": "Drive / Thư mục",
+        "notes": "Hồ sơ tiêu chuẩn và quy chuẩn"
+      },
+      {
         "id": "l_hsmt_dir",
-        "name": "Thư mục 06. HSMT Đã phát hành",
+        "name": "06. HSMT Đã phát hành",
         "url": "https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy",
         "display_path": "Z:/My Drive/VH/06. HSMT/06.01. Da phat hanh",
         "category": "HSMT",
@@ -953,7 +1009,7 @@
       },
       {
         "id": "l_hd_dir",
-        "name": "Thư mục 07. Hợp đồng Đã ký kết",
+        "name": "07. Hợp đồng Đã ký kết",
         "url": "https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2",
         "display_path": "Z:/My Drive/VH/07. Hop dong/07.01. Da ky ket",
         "category": "Hợp đồng",
@@ -961,11 +1017,19 @@
       },
       {
         "id": "l_tu_tt",
-        "name": "Thư mục 08.01. Tạm ứng, Thanh toán",
+        "name": "08.01. Tạm ứng, Thanh toán",
         "url": "https://drive.google.com/drive/folders/1hA7Zvi1r5XxmbFi-neLxGguV_clueBaS",
         "display_path": "Z:/My Drive/VH/08.01. TU, TT",
         "category": "Thanh toán",
         "notes": "Hồ sơ tạm ứng và thanh toán đợt"
+      },
+      {
+        "id": "l_finalization",
+        "name": "08.02. Quyết toán (QT)",
+        "url": "https://drive.google.com/drive/folders/1Dx93wqXdvaauKGglqoXo2oxKGG1Jif8y",
+        "display_path": "Z:/My Drive/VH/08.02. QT",
+        "category": "Drive / Thư mục",
+        "notes": "Hồ sơ quyết toán công trình"
       }
     ]
   },
@@ -1265,16 +1329,17 @@
       "count": 897,
       "total_gia_tri": 82215561972634.4,
       "total_gia_tri_fmt": "82.215.561.972.634",
-      "total_tt": 619726996789.0,
+      "total_tt": 619726996789,
       "total_tt_fmt": "619.726.996.789"
     },
     "payment": {
       "count": 417,
-      "total_so_tien": 514912217165.0,
+      "total_so_tien": 514912217165,
       "total_so_tien_fmt": "514.912.217.165",
-      "total_gia_tri_hd": 3639252992437.0,
+      "total_gia_tri_hd": 3639252992437,
       "total_gia_tri_hd_fmt": "3.639.252.992.437",
       "loai_counts": {
+        "330000000": 1,
         "Thanh toán Quyết toán": 80,
         "Thanh toán Đợt 1": 12,
         "Thanh tạm ứng Đợt 1": 2,
@@ -1308,7 +1373,6 @@
         "Thanh toán Đợt 8": 1,
         "Thanh toán Đợt Tạm ứng": 1,
         "Thanh toán Đợt Quyết toán": 11,
-        "330000000": 1,
         "Thanh quyết toán": 22,
         "Thanh toán đột 2": 1,
         "Thanh toán đợt 1": 23,

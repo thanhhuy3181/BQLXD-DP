@@ -127,6 +127,22 @@ function coverOnlineLink(item) {
   if (!/^https?:\/\//i.test(rawUrl)) {
     if (norm.includes('theo doi 06,07,08') || norm.includes('.xlsm') || norm.includes('theo doi tong') || norm.includes('theo doi tổng')) {
       onlineUrl = 'https://docs.google.com/spreadsheets/d/1IRiE_8hau2hJgwPF3xcuaVC2Ih3mfNnX/edit';
+    } else if (norm.includes('01. chi dao') || norm.includes('01.01') || (norm.includes('01. phe duyet') && norm.includes('chi dao'))) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1n_5RbTM34UOlLPRaB-WE3kVjx9UiS7Sh';
+    } else if (norm.includes('01. phe duyet/02') || norm.includes('01.02') || (norm.includes('01. phe duyet') && norm.includes('tien do'))) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1X6TsO1_iSPAJvMWNsIWS20gZusVQJJpv';
+    } else if (norm.includes('03. yc ky thuat') || norm.includes('01.03') || norm.includes('yc kt') || norm.includes('yc ky thuat')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/11Hrfa0ofMUME62ZF7wlbzxZ11C3aGGBH';
+    } else if (norm.includes('04. bvtk') || norm.includes('01.04') || norm.includes('ban ve thiet ke')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1_ulRVF99yuc3e7r1ek5hi2sn2Y7pIqG7';
+    } else if (norm.includes('01. phe duyet')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1IQ-Rpu0U16MdPQkaeIWqdmIIOscankKJ';
+    } else if (norm.includes('02.01') || norm.includes('02. phap ly') || norm.includes('phap ly')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1KIvbe3-cMi4ym6tXczbqE5j2aQUc2P3b';
+    } else if (norm.includes('03. cam nang') || norm.includes('cam nang')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1WNEiOL-4RLw5zsm3LYqBI_Xw4XqSUWlv';
+    } else if (norm.includes('04. chuan hoa') || norm.includes('chuan hoa')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1QdBbuuFE7onNgOdAQj8ehBJCECPlipbb';
     } else if (norm.includes('06.01') || norm.includes('da phat hanh')) {
       onlineUrl = 'https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy';
     } else if (norm.includes('06. hsmt') || norm.includes('06.hsmt')) {
@@ -137,6 +153,8 @@ function coverOnlineLink(item) {
       onlineUrl = 'https://drive.google.com/drive/folders/1zkfKeEvWHx7xOr6MrSuSDe_yyw7Zj1qN';
     } else if (norm.includes('08.01') || norm.includes('tu, tt') || norm.includes('tu,tt') || norm.includes('tam ung')) {
       onlineUrl = 'https://drive.google.com/drive/folders/1hA7Zvi1r5XxmbFi-neLxGguV_clueBaS';
+    } else if (norm.includes('08.02') || norm.includes('quyet toan') || norm.includes('/qt')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1Dx93wqXdvaauKGglqoXo2oxKGG1Jif8y';
     } else if (norm.includes('/vh') || norm.includes('vinhomes') || norm.includes('dan phuong') || norm.includes('my drive')) {
       onlineUrl = 'https://drive.google.com/drive/folders/1z3Il9qZ7N0yQ5UMjSYnWgluV2BwI-B_7';
     }
