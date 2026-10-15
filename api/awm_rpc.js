@@ -26,8 +26,48 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  if(!method.startsWith('awm_'))return undefined;
  if(!active(user))return fail('Phiên đăng nhập không hợp lệ hoặc tài khoản chưa được kích hoạt.');
  const permission=key=>can(user,state,key);
- if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),tracking:permission('tab_theo_doi'),todo:true},groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&permission(g[1])).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
+ if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),tracking:permission('tab_theo_doi'),todo:permission('tab_home')},groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&permission(g[1])).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
  const project=String(args[0]||'');
+ const todoKey=`awm:todo:${user.username}:${project}`;
+ const todoAllowed=()=>allowedProject(user,project)&&permission('tab_home');
+ if(method==='awm_todos'){
+  if(!todoAllowed())return fail('Không có quyền xem việc của dự án này.');
+  const filter=String(args[1]||'open');
+  const items=await read(sql,todoKey,[]);
+  const filtered=items.filter(item=>filter==='all'||(filter==='done'?item.status==='done':item.status!=='done'));
+  filtered.sort((a,b)=>String(a.status==='done').localeCompare(String(b.status==='done'))||String(a.due_date||'9999-12-31').localeCompare(String(b.due_date||'9999-12-31'))||String(b.created_at).localeCompare(String(a.created_at)));
+  return ok({items:filtered,summary:{open:items.filter(x=>x.status!=='done').length,done:items.filter(x=>x.status==='done').length,overdue:items.filter(x=>x.status!=='done'&&x.due_date&&x.due_date<new Date().toISOString().slice(0,10)).length}});
+ }
+ if(method==='awm_save_todo'){
+  if(!todoAllowed())return fail('Không có quyền tạo việc cho dự án này.');
+  const input=args[1]||{},title=String(input.title||'').trim(),priority=String(input.priority||'normal'),due=String(input.due_date||'');
+  if(!title||title.length>180)return fail('Tên việc cần có từ 1 đến 180 ký tự.');
+  if(!['low','normal','high'].includes(priority)|| (due&&!/^\d{4}-\d{2}-\d{2}$/.test(due)))return fail('Thông tin việc không hợp lệ.');
+  const items=await read(sql,todoKey,[]),now=new Date().toISOString();
+  const item={id:crypto.randomUUID(),title,notes:String(input.notes||'').trim().slice(0,1000),priority,due_date:due,status:'open',created_at:now,updated_at:now};
+  items.push(item);await write(sql,todoKey,items);return ok(item);
+ }
+ if(method==='awm_update_todo'){
+  if(!todoAllowed())return fail('Không có quyền sửa việc của dự án này.');
+  const id=String(args[1]||''),patch=args[2]||{},items=await read(sql,todoKey,[]),item=items.find(x=>x.id===id);
+  if(!item)return fail('Không tìm thấy việc cần cập nhật.');
+  if(patch.status!==undefined){if(!['open','done'].includes(patch.status))return fail('Trạng thái không hợp lệ.');item.status=patch.status;}
+  if(patch.title!==undefined){const title=String(patch.title).trim();if(!title||title.length>180)return fail('Tên việc cần có từ 1 đến 180 ký tự.');item.title=title;}
+  if(patch.notes!==undefined)item.notes=String(patch.notes).trim().slice(0,1000);
+  if(patch.priority!==undefined){if(!['low','normal','high'].includes(patch.priority))return fail('Mức ưu tiên không hợp lệ.');item.priority=patch.priority;}
+  if(patch.due_date!==undefined){const due=String(patch.due_date||'');if(due&&!/^\d{4}-\d{2}-\d{2}$/.test(due))return fail('Ngày hạn không hợp lệ.');item.due_date=due;}
+  item.updated_at=new Date().toISOString();await write(sql,todoKey,items);return ok(item);
+ }
+ if(method==='awm_delete_todo'){
+  if(!todoAllowed())return fail('Không có quyền xóa việc của dự án này.');
+  const id=String(args[1]||''),items=await read(sql,todoKey,[]),next=items.filter(x=>x.id!==id);
+  if(next.length===items.length)return fail('Không tìm thấy việc cần xóa.');await write(sql,todoKey,next);return ok({deleted:true});
+ }
+ if(method==='awm_dashboard'){
+  if(!todoAllowed())return fail('Không có quyền xem tổng quan dự án này.');
+  const todos=await read(sql,todoKey,[]),mail=await read(sql,`awm:mail:${user.username}`,null),online=!!mail&&Date.now()-Date.parse(mail.updated_at)<90000;
+  return ok({todos:{open:todos.filter(x=>x.status!=='done').length,overdue:todos.filter(x=>x.status!=='done'&&x.due_date&&x.due_date<new Date().toISOString().slice(0,10)).length},mail:{online,last_sync:mail?.updated_at||null},groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&permission(g[1])).length,drive_menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).length});
+ }
  if(method==='awm_tracking'){
   const [,tab,query='',cursor=0]=args;
   if(!allowedProject(user,project)||!permission('tab_theo_doi')||!groups[tab]||!permission(groups[tab][1]))return fail('Không có quyền đọc nhóm hồ sơ hoặc dự án này.');
