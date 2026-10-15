@@ -236,7 +236,7 @@ const AccountsModule = (function() {
     if (!key) return '<td></td>';
     return `<td class="text-center"><select aria-label="${escapeAttr(label)} — ${escapeAttr(role)}" class="select select-bordered select-xs font-semibold" ${readOnly ? 'disabled' : ''}
       onchange="AccountsModule.setGroupPerm('${role}', '${key}', this.value)">
-      <option value="full" ${permissionValue(role, key) === 'full' ? 'selected' : ''}>Toàn bộ</option>
+      <option value="full" ${permissionValue(role, key) === 'full' ? 'selected' : ''}>Full</option>
       <option value="edit" ${permissionValue(role, key) === 'edit' ? 'selected' : ''}>Sửa</option>
       <option value="view" ${permissionValue(role, key) === 'view' ? 'selected' : ''}>Xem</option>
       <option value="none" ${permissionValue(role, key) === 'none' ? 'selected' : ''}>Khóa</option>
@@ -300,6 +300,18 @@ const AccountsModule = (function() {
   function setGroupPerm(role, key, val) {
     if (!_permData?.permissions) return;
     _permData.permissions[role] = _permData.permissions[role] || {};
+    // A quick selector represents the whole area.  Raise its direct tab
+    // parent together when needed, so choosing Full/Sửa does not appear to
+    // "snap back" merely because the parent still had an older lower value.
+    // The master “Tất cả Tab” selector remains the only deliberate global cap.
+    const directParent = {grp_ql_file:'tab_quan_ly',grp_theo_doi:'tab_theo_doi',grp_chuc_nang:'tab_chuc_nang',grp_cai_dat:'tab_cai_dat'}[key];
+    if (directParent && (LEVEL_RANK[val] ?? 0) > (LEVEL_RANK[permissionValue(role, directParent)] ?? 0)) {
+      const parentCeiling = parentKeys(directParent).reduce((lowest, parent) => {
+        const next = permissionValue(role, parent);
+        return (LEVEL_RANK[next] ?? 0) < (LEVEL_RANK[lowest] ?? 0) ? next : lowest;
+      }, 'full');
+      _permData.permissions[role][directParent] = (LEVEL_RANK[val] ?? 0) > (LEVEL_RANK[parentCeiling] ?? 0) ? parentCeiling : val;
+    }
     const ceiling = parentKeys(key).reduce((lowest, parent) => {
       const next = permissionValue(role, parent);
       return (LEVEL_RANK[next] ?? 0) < (LEVEL_RANK[lowest] ?? 0) ? next : lowest;
