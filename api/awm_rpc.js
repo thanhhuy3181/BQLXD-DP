@@ -20,6 +20,18 @@ function permissionValue(user,state,key){
 function can(user,state,key){if(user?.role==='Admin')return true;const v=permissionValue(user,state,key);return v===true||['view','edit','full'].includes(v);}
 function active(user){return !!user&&user.username!=='guest'&&user.status==='Active';}
 const norm = s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();
+// AwM is a reading interface, so each group opens with the newest document
+// first.  Different datasets use different date field names and older
+// records commonly store Vietnamese dd/mm/yyyy values.
+function recordDate(row){
+ for(const key of ['ngay_ph','date','date_sign','ngay_ky_hd','ngay_ph_hsmt','ngay_bd_tc_tt','updated_at','created_at']){
+  const raw=String(row?.[key]||'').trim();if(!raw)continue;
+  const vn=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(vn){const value=Date.UTC(Number(vn[3]),Number(vn[2])-1,Number(vn[1]));if(!Number.isNaN(value))return value;}
+  const value=Date.parse(raw);if(!Number.isNaN(value))return value;
+ }
+ return -Infinity;
+}
 async function read(sql,key,fallback){const rows=await sql`SELECT value FROM bqlda_state WHERE key=${key}`;return rows[0]?.value??fallback;}
 async function write(sql,key,value){await sql`INSERT INTO bqlda_state(key,value) VALUES(${key},${JSON.stringify(value)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;}
 module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects})=>{
@@ -73,7 +85,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   if(!allowedProject(user,project)||!permission('tab_theo_doi')||!groups[tab]||!permission(groups[tab][1]))return fail('Không có quyền đọc nhóm hồ sơ hoặc dự án này.');
   let snapshot=snapshots[project]?.[tab];if(snapshot?.shared)snapshot=snapshots[snapshot.shared];
   const stored=await read(sql,`tracking:${project}:${tab}:`,snapshot||{items:[],columns:snapshots.__columns?.[tab]||[]});
-  const q=norm(String(query).slice(0,200));const rows=(stored.items||[]).filter(r=>!q||norm(Object.values(r).filter(v=>typeof v!=='object').join(' ')).includes(q));
+  const q=norm(String(query).slice(0,200));const rows=(stored.items||[]).filter(r=>!q||norm(Object.values(r).filter(v=>typeof v!=='object').join(' ')).includes(q)).sort((a,b)=>recordDate(b)-recordDate(a));
   const start=Math.max(0,Number(cursor)||0),end=start+30;
   return ok({project,columns:stored.columns||[],items:rows.slice(start,end),total:rows.length,next_cursor:end<rows.length?end:null,revision:stored.revision||'snapshot'});
  }
@@ -110,5 +122,6 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
 };
 module.exports.can=can;
 module.exports.permissionValue=permissionValue;
+module.exports.recordDate=recordDate;
 module.exports.active=active;
 module.exports.groups=groups;
