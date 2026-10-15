@@ -35,6 +35,7 @@ function permissionValue(user,state,key){
  return value;
 }
 function can(user,state,key){if(user?.role==='Admin')return true;const v=permissionValue(user,state,key);return v===true||['view','edit','full'].includes(v);}
+function canEdit(user,state,key){if(user?.role==='Admin')return true;const v=permissionValue(user,state,key);return v===true||['edit','full'].includes(v);}
 function active(user){return !!user&&user.username!=='guest'&&user.status==='Active';}
 const norm = s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();
 // AwM is a reading interface, so each group opens with the newest document
@@ -55,7 +56,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  if(!method.startsWith('awm_'))return undefined;
  if(!active(user))return fail('Phiên đăng nhập không hợp lệ hoặc tài khoản chưa được kích hoạt.');
  const permission=key=>can(user,state,key);
- if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),tracking:permission('tab_theo_doi'),todo:permission('tab_home')},groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&permission(g[1])).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
+ if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),tracking:permission('tab_theo_doi'),todo:permission('tab_home')},files:{can_configure:canEdit(user,state,'ql_project_mgmt')},groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&permission(g[1])).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
  const project=String(args[0]||'');
  const todoKey=`awm:todo:${user.username}:${project}`;
  const todoAllowed=()=>allowedProject(user,project)&&permission('tab_home');
@@ -110,12 +111,21 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   const menu=menus.find(m=>m[0]===args[1]);
   if(!allowedProject(user,project)||!permission('tab_quan_ly'))return fail('Không có quyền xem QL hoặc dự án.');
   if(method==='awm_folders'){
-   const data={};for(const [id,,key]of menus)if(permission(key))data[id]=await read(sql,`awm:folder:${user.username}:${project}:${id}`,null);
+   // Folders belong to the project, not to one person. Anyone assigned to a
+   // project can read its configured file areas, while Drive itself still
+   // verifies that person's Google access. The legacy personal mapping stays
+   // as a temporary fallback for projects not configured yet.
+   const data={};for(const [id,,key]of menus)if(permission(key)){
+    const shared=await read(sql,`awm:project-folder:${project}:${id}`,null);
+    const personal=shared?null:await read(sql,`awm:folder:${user.username}:${project}:${id}`,null);
+    data[id]=shared?{...shared,scope:'project'}:personal?{...personal,scope:'personal'}:null;
+   }
    return ok(data);
   }
   if(!menu||!permission(menu[2]))return fail('Không có quyền truy cập menu.');
+  if(!canEdit(user,state,'ql_project_mgmt'))return fail('Chỉ người có quyền quản lý QL File mới được đặt thư mục chung của dự án.');
   const folder=String(args[2]||'').trim();if(!/^[a-zA-Z0-9_-]{10,200}$/.test(folder))return fail('Folder ID Google Drive không hợp lệ.');
-  await write(sql,`awm:folder:${user.username}:${project}:${menu[0]}`,{id:folder});return ok({saved:true});
+  await write(sql,`awm:project-folder:${project}:${menu[0]}`,{id:folder,updated_by:user.username,updated_at:new Date().toISOString()});return ok({saved:true,scope:'project'});
  }
  if(method==='awm_mail_status'||method==='awm_mail_list'){
   if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
@@ -138,6 +148,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  return fail('AwM chưa hỗ trợ phương thức này.');
 };
 module.exports.can=can;
+module.exports.canEdit=canEdit;
 module.exports.permissionValue=permissionValue;
 module.exports.recordDate=recordDate;
 module.exports.active=active;
