@@ -119,10 +119,16 @@ function projectRows(rows, project) {
 // keep the phone portal on the very same project folder automatically.
 const awmMenuByExplorerTab = Object.freeze({
   _0101_phe_duyet_: 'approval',
+  _0102_tien_do_: 'progress',
+  _0103_yc_kt_: 'technical',
   _0104_bvtk_: 'design',
+  _02_phap_ly_: 'legal',
+  _03_cam_nang_: 'guide',
+  _04_chuan_hoa_: 'standard',
   _06_hsmt_: 'hsmt',
   _07_hop_dong_: 'contract',
-  __tu_tt_: 'payment'
+  __tu_tt_: 'payment',
+  __tqt_: 'finalization'
 });
 
 async function rpc(req) {

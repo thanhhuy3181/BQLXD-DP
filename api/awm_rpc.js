@@ -3,7 +3,22 @@ const snapshots = require('./data/menu_workspace.json');
 const ok = data => ({ok:true,data,error:null});
 const fail = error => ({ok:false,data:null,error});
 const groups = {progress:['Tiến độ','td_progress'],hsmt:['HSMT','td_hsmt'],contract:['Hợp đồng','td_contract'],payment:['Thanh toán','td_payment'],boq:['BOQ','td_boq'],contractor:['Nhà thầu','td_contractor'],sap:['SAP','td_sap'],'chu-truong':['Chủ trương','ql_tab_phe_duyet'],bvtk:['BVTK','ql_tab_bvtk']};
-const menus = [['approval','Phê duyệt','ql_tab_phe_duyet'],['design','Bản vẽ thiết kế','ql_tab_bvtk'],['hsmt','HSMT','ql_tab_hsmt'],['contract','Hợp đồng','ql_tab_hop_dong'],['payment','Thanh toán','ql_tab_tu_tt']];
+// Keep the phone file areas aligned with every AwD Explorer tab that is
+// backed by a project Drive folder.  Permissions remain the same RBAC keys
+// used by AwD, so a phone never exposes a folder hidden on desktop.
+const menus = [
+ ['approval','Phê duyệt','ql_tab_phe_duyet'],
+ ['progress','Tiến độ','ql_tab_tien_do'],
+ ['technical','YC kỹ thuật','ql_tab_yc_kt'],
+ ['design','Bản vẽ thiết kế','ql_tab_bvtk'],
+ ['legal','Pháp lý','ql_tab_phap_ly'],
+ ['guide','Cẩm nang','ql_tab_cam_nang'],
+ ['standard','Chuẩn hóa','ql_tab_chuan_hoa'],
+ ['hsmt','HSMT','ql_tab_hsmt'],
+ ['contract','Hợp đồng','ql_tab_hop_dong'],
+ ['payment','Thanh toán','ql_tab_tu_tt'],
+ ['finalization','Quyết toán','ql_tab_tqt']
+];
 // Accounts created before the current job-title scheme still have their RBAC
 // matrix stored under the former roles.  `publicUser` exposes the current
 // names, so resolve the old entry as a fallback until an admin saves the
