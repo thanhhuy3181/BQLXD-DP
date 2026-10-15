@@ -51,7 +51,11 @@ const AccountsModule = (function() {
     if (key === 'grp_tabs') return [];
     const groupParent = {grp_ql_file:'tab_quan_ly',grp_theo_doi:'tab_theo_doi',grp_chuc_nang:'tab_chuc_nang',grp_cai_dat:'tab_cai_dat'}[key];
     if (groupParent) return [groupParent];
-    if (NAV_PERMISSIONS && Object.values(NAV_PERMISSIONS).includes(key)) return ['grp_tabs'];
+    // grp_tabs is a bulk-edit shortcut, not a permanent ceiling.  Each main
+    // tab is its own real parent; otherwise choosing Xem in the shortcut
+    // would silently prevent an administrator from later granting Full to a
+    // single area such as Cài đặt.
+    if (NAV_PERMISSIONS && Object.values(NAV_PERMISSIONS).includes(key)) return [];
     const group = window.PermissionCatalog?.groups?.find(([, items]) => items.some(([itemKey]) => itemKey === key));
     if (!group) return [];
     const title = group[0];

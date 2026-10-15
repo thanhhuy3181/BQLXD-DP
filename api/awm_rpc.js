@@ -18,7 +18,10 @@ const detailParents={
  cn_tab_b1_word:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b2_hsmt:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b3_hd:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b4_heading:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b5_skill_hsmt:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b5_skill_hd:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b6_ai:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b7_search:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b8_central:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b9_merge_boq:['grp_chuc_nang','tab_chuc_nang'],cn_down_hd:['grp_chuc_nang','tab_chuc_nang'],cn_down_cks:['grp_chuc_nang','tab_chuc_nang'],cn_export_excel:['grp_chuc_nang','tab_chuc_nang'],
  cd_theme:['grp_cai_dat','tab_cai_dat'],cd_hm_ctr:['grp_cai_dat','tab_cai_dat'],cd_ql_acc:['grp_cai_dat','tab_cai_dat'],cd_perm:['grp_cai_dat','tab_cai_dat'],cd_ai_engine:['grp_cai_dat','tab_cai_dat'],cd_excel_cfg:['grp_cai_dat','tab_cai_dat'],cd_links:['grp_cai_dat','tab_cai_dat'],cd_data_matrix:['grp_cai_dat','tab_cai_dat'],cd_backup:['grp_cai_dat','tab_cai_dat']
 };
-function parentKeys(key){if(key==='grp_tabs')return [];if(key==='grp_ql_file')return ['tab_quan_ly'];if(key==='grp_theo_doi')return ['tab_theo_doi'];if(key==='grp_chuc_nang')return ['tab_chuc_nang'];if(key==='grp_cai_dat')return ['tab_cai_dat'];if(mainTabs.has(key))return ['grp_tabs'];return detailParents[key]||[];}
+// grp_tabs is a desktop bulk-edit convenience only. It must not become a
+// server-side cap, or a role set to Xem there could never receive Full for a
+// specific primary tab and its detailed mobile area.
+function parentKeys(key){if(key==='grp_tabs')return [];if(key==='grp_ql_file')return ['tab_quan_ly'];if(key==='grp_theo_doi')return ['tab_theo_doi'];if(key==='grp_chuc_nang')return ['tab_chuc_nang'];if(key==='grp_cai_dat')return ['tab_cai_dat'];if(mainTabs.has(key))return [];return detailParents[key]||[];}
 function permissionValue(user,state,key){
  const permissions=state.role_permissions?.permissions||{};
  const role=user?.role;
