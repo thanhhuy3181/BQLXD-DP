@@ -71,7 +71,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  if(!method.startsWith('awm_'))return undefined;
  if(!active(user))return fail('Phiên đăng nhập không hợp lệ hoặc tài khoản chưa được kích hoạt.');
  const permission=key=>can(user,state,key);
- if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),tracking:permission('tab_theo_doi'),todo:permission('tab_home')},files:{can_configure:canEdit(user,state,'ql_project_mgmt')},groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&permission(g[1])).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
+ if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role,current_project:user.current_project||''},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),links:permission('cd_links')||permission('tab_cai_dat')||user?.role==='Admin',tracking:permission('tab_theo_doi'),todo:permission('tab_home')},files:{can_configure:canEdit(user,state,'ql_project_mgmt')},links_can_manage:canEdit(user,state,'cd_links')||canEdit(user,state,'tab_cai_dat')||user?.role==='Admin',groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&permission(g[1])).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
  const project=String(args[0]||'');
  const todoKey=`awm:todo:${user.username}:${project}`;
  const todoAllowed=()=>allowedProject(user,project)&&permission('tab_home');
@@ -138,8 +138,11 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
    return ok(data);
   }
   if(!menu||!permission(menu[2]))return fail('Không có quyền truy cập menu.');
-  if(!canEdit(user,state,'ql_project_mgmt'))return fail('Chỉ người có quyền quản lý QL File mới được đặt thư mục chung của dự án.');
   const folder=String(args[2]||'').trim();if(!/^[a-zA-Z0-9_-]{10,200}$/.test(folder))return fail('Folder ID Google Drive không hợp lệ.');
+  if(!canEdit(user,state,'ql_project_mgmt')){
+   await write(sql,`awm:folder:${user.username}:${project}:${menu[0]}`,{id:folder,updated_at:new Date().toISOString()});
+   return ok({saved:true,scope:'personal'});
+  }
   await write(sql,`awm:project-folder:${project}:${menu[0]}`,{id:folder,updated_by:user.username,updated_at:new Date().toISOString()});return ok({saved:true,scope:'project'});
  }
  if(method==='awm_mail_status'||method==='awm_mail_list'){

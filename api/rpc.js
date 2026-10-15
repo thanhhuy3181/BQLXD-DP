@@ -78,9 +78,20 @@ function allowedProject(user, project) {
 }
 
 function visibleProjects(user, projects) {
-  if (user?.role === 'Admin' || user?.allowed_projects?.includes('*')) return projects;
-  const allowed = new Set(user?.allowed_projects || []);
-  return projects.filter(project => allowed.has(project));
+  let list;
+  if (user?.role === 'Admin' || user?.allowed_projects?.includes('*')) {
+    list = [...projects];
+  } else {
+    const allowed = new Set(user?.allowed_projects || []);
+    list = projects.filter(project => allowed.has(project));
+  }
+  const target = (user?.role !== 'Admin' && user?.current_project && list.includes(user.current_project))
+    ? user.current_project
+    : (list.includes('Vinhomes Đan Phượng') ? 'Vinhomes Đan Phượng' : list[0]);
+  if (target && list.includes(target)) {
+    list = [target, ...list.filter(p => p !== target)];
+  }
+  return list;
 }
 
 function canEdit(user, state, permissionKey) {
@@ -91,10 +102,20 @@ function canEdit(user, state, permissionKey) {
 }
 
 function currentProject(user, state) {
-  const preferred = user?.current_project || state.projects?.current_project;
+  const all = state.projects?.all_projects || [];
+  let preferred;
+  if (user?.role === 'Admin') {
+    preferred = all.includes('Vinhomes Đan Phượng') ? 'Vinhomes Đan Phượng' : (all[0] || '');
+  } else if (user?.current_project && allowedProject(user, user.current_project)) {
+    preferred = user.current_project;
+  } else {
+    const visible = visibleProjects(user, all);
+    preferred = visible[0] || '';
+  }
   if (allowedProject(user, preferred)) return preferred;
-  return visibleProjects(user, state.projects?.all_projects || [])[0] || '';
+  return visibleProjects(user, all)[0] || '';
 }
+
 
 const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
 function searchRows(rows, query) {
@@ -293,10 +314,24 @@ async function rpc(req) {
     const query=String(args[0]||'').toLowerCase(),scope=String(args[1]||currentProject(user,state)); if(scope!=='__common__'&&!allowedProject(user,scope))return failure('Không có quyền xem dự án.');
     const rows=(state.links?.[scope]||[]).filter(row=>!query||JSON.stringify(row).toLowerCase().includes(query));return result(rows);
   }
-  if (method === 'save_managed_link' || method === 'delete_managed_link') {
-    if(!canEdit(user,state,'tab_cai_dat'))return failure('Tài khoản không có quyền sửa Quản lý Link.');
+  if (method === 'save_managed_link' || method === 'delete_managed_link' || method === 'batch_save_managed_links') {
+    if(!canEdit(user,state,'tab_cai_dat') && !canEdit(user,state,'cd_links'))return failure('Tài khoản không có quyền sửa Quản lý Link.');
     const scope=String(args[1]||currentProject(user,state)); if(scope!=='__common__'&&!allowedProject(user,scope))return failure('Không có quyền sửa dự án.');
     state.links=state.links||{};let rows=[...(state.links[scope]||[])];
+    if(method==='batch_save_managed_links'){
+      const newItems = Array.isArray(args[0]) ? args[0] : [];
+      const map = new Map(rows.map(r => [r.id, r]));
+      for(const item of newItems){
+        if(!item || !item.url) continue;
+        const id = item.id || `link_${crypto.randomUUID()}`;
+        const old = map.get(id) || {};
+        map.set(id, {...old, ...item, id});
+      }
+      rows = Array.from(map.values());
+      state.links[scope] = rows;
+      await saveState(sql, state);
+      return result({saved: true, count: newItems.length});
+    }
     if(method==='save_managed_link'){const row={...(args[0]||{})};row.id=row.id||`link_${crypto.randomUUID()}`;rows=rows.filter(x=>x.id!==row.id).concat(row);state.links[scope]=rows;await saveState(sql,state);return result(row);}
     rows=rows.filter(x=>x.id!==args[0]);state.links[scope]=rows;await saveState(sql,state);return result({deleted:args[0]});
   }
@@ -353,3 +388,8 @@ module.exports = async (req,res) => {
   try { return res.status(200).json(await rpc(req)); }
   catch(error) { console.error(error); return res.status(500).json(failure(error)); }
 };
+module.exports.rpc = rpc;
+module.exports.visibleProjects = visibleProjects;
+module.exports.currentProject = currentProject;
+module.exports.allowedProject = allowedProject;
+
