@@ -117,6 +117,41 @@ function currentProject(user, state) {
 }
 
 
+function coverOnlineLink(item) {
+  if (!item) return item;
+  const rawUrl = String(item.url || '').trim();
+  const displayPath = item.display_path || rawUrl;
+  let onlineUrl = rawUrl;
+  const norm = rawUrl.toLowerCase().replace(/\\/g, '/');
+
+  if (!/^https?:\/\//i.test(rawUrl)) {
+    if (norm.includes('theo doi 06,07,08') || norm.includes('.xlsm') || norm.includes('theo doi tong') || norm.includes('theo doi tổng')) {
+      onlineUrl = 'https://docs.google.com/spreadsheets/d/1IRiE_8hau2hJgwPF3xcuaVC2Ih3mfNnX/edit';
+    } else if (norm.includes('06.01') || norm.includes('da phat hanh')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy';
+    } else if (norm.includes('06. hsmt') || norm.includes('06.hsmt')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1vqyVkLfIFPzulWaeD6KGDxMvkLQVxT-w';
+    } else if (norm.includes('07.01') || norm.includes('da ky ket')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2';
+    } else if (norm.includes('07. hop dong') || norm.includes('07.hop dong') || norm.includes('07. hopdong')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1zkfKeEvWHx7xOr6MrSuSDe_yyw7Zj1qN';
+    } else if (norm.includes('08.01') || norm.includes('tu, tt') || norm.includes('tu,tt') || norm.includes('tam ung')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1hA7Zvi1r5XxmbFi-neLxGguV_clueBaS';
+    } else if (norm.includes('/vh') || norm.includes('vinhomes') || norm.includes('dan phuong') || norm.includes('my drive')) {
+      onlineUrl = 'https://drive.google.com/drive/folders/1z3Il9qZ7N0yQ5UMjSYnWgluV2BwI-B_7';
+    }
+  }
+  return {
+    ...item,
+    url: onlineUrl,
+    display_path: displayPath,
+    category: (!item.category || item.category === 'Lưu trữ' || item.category === 'Hồ sơ')
+      ? (onlineUrl.includes('/folders/') ? 'Drive / Thư mục' : (onlineUrl.includes('/spreadsheets/') || onlineUrl.includes('/file/') ? 'Drive / Tài liệu' : item.category))
+      : item.category,
+    original_desktop_path: displayPath !== onlineUrl ? displayPath : (item.original_desktop_path || '')
+  };
+}
+
 const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
 function searchRows(rows, query) {
   const q=norm(query).trim(); if(!q)return rows.slice();
@@ -312,7 +347,11 @@ async function rpc(req) {
   if (method === 'get_link_scopes') return result({current_project:currentProject(user,state),projects:visibleProjects(user,Object.keys(state.links||{}).filter(k=>k!=='__common__'))});
   if (method === 'get_managed_links') {
     const query=String(args[0]||'').toLowerCase(),scope=String(args[1]||currentProject(user,state)); if(scope!=='__common__'&&!allowedProject(user,scope))return failure('Không có quyền xem dự án.');
-    const rows=(state.links?.[scope]||[]).filter(row=>!query||JSON.stringify(row).toLowerCase().includes(query));return result(rows);
+    const stateRows = (state.links?.[scope] || []);
+    const seedRows = (seed.links?.[scope] || []);
+    const sourceRows = stateRows.length ? stateRows : seedRows;
+    const rows=sourceRows.map(coverOnlineLink).filter(row=>!query||JSON.stringify(row).toLowerCase().includes(query));
+    return result(rows);
   }
   if (method === 'save_managed_link' || method === 'delete_managed_link' || method === 'batch_save_managed_links') {
     if(!canEdit(user,state,'tab_cai_dat') && !canEdit(user,state,'cd_links'))return failure('Tài khoản không có quyền sửa Quản lý Link.');
@@ -323,16 +362,17 @@ async function rpc(req) {
       const map = new Map(rows.map(r => [r.id, r]));
       for(const item of newItems){
         if(!item || !item.url) continue;
-        const id = item.id || `link_${crypto.randomUUID()}`;
+        const covered = coverOnlineLink(item);
+        const id = covered.id || `link_${crypto.randomUUID()}`;
         const old = map.get(id) || {};
-        map.set(id, {...old, ...item, id});
+        map.set(id, {...old, ...covered, id});
       }
       rows = Array.from(map.values());
       state.links[scope] = rows;
       await saveState(sql, state);
       return result({saved: true, count: newItems.length});
     }
-    if(method==='save_managed_link'){const row={...(args[0]||{})};row.id=row.id||`link_${crypto.randomUUID()}`;rows=rows.filter(x=>x.id!==row.id).concat(row);state.links[scope]=rows;await saveState(sql,state);return result(row);}
+    if(method==='save_managed_link'){const row=coverOnlineLink({...args[0]});row.id=row.id||`link_${crypto.randomUUID()}`;rows=rows.filter(x=>x.id!==row.id).concat(row);state.links[scope]=rows;await saveState(sql,state);return result(row);}
     rows=rows.filter(x=>x.id!==args[0]);state.links[scope]=rows;await saveState(sql,state);return result({deleted:args[0]});
   }
   if (method === 'get_users_list') {
@@ -392,4 +432,5 @@ module.exports.rpc = rpc;
 module.exports.visibleProjects = visibleProjects;
 module.exports.currentProject = currentProject;
 module.exports.allowedProject = allowedProject;
+module.exports.coverOnlineLink = coverOnlineLink;
 

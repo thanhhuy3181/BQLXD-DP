@@ -930,35 +930,40 @@
       {
         "id": "l_drive",
         "name": "Google Drive VH Dự án",
-        "url": "Z:/My Drive/VH",
+        "url": "https://drive.google.com/drive/folders/1z3Il9qZ7N0yQ5UMjSYnWgluV2BwI-B_7",
+        "display_path": "Z:/My Drive/VH",
         "category": "Lưu trữ",
         "notes": "Thư mục đồng bộ hồ sơ dự án"
       },
       {
         "id": "l_master_excel",
         "name": "File Excel Theo dõi Tổng",
-        "url": "! Theo doi 06,07,08. HSMT, HD, TU,TT,QT.xlsm",
+        "url": "https://docs.google.com/spreadsheets/d/1IRiE_8hau2hJgwPF3xcuaVC2Ih3mfNnX/edit",
+        "display_path": "! Theo doi 06,07,08. HSMT, HD, TU,TT,QT.xlsm",
         "category": "Hồ sơ",
         "notes": "Bảng tính Master Excel 06, 07, 08"
       },
       {
         "id": "l_hsmt_dir",
         "name": "Thư mục 06. HSMT Đã phát hành",
-        "url": "Z:/My Drive/VH/06. HSMT/06.01. Da phat hanh",
+        "url": "https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy",
+        "display_path": "Z:/My Drive/VH/06. HSMT/06.01. Da phat hanh",
         "category": "HSMT",
         "notes": "Hồ sơ mời thầu đã phát hành"
       },
       {
         "id": "l_hd_dir",
         "name": "Thư mục 07. Hợp đồng Đã ký kết",
-        "url": "Z:/My Drive/VH/07. Hop dong/07.01. Da ky ket",
+        "url": "https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2",
+        "display_path": "Z:/My Drive/VH/07. Hop dong/07.01. Da ky ket",
         "category": "Hợp đồng",
         "notes": "Hồ sơ hợp đồng và phụ lục đã ký"
       },
       {
         "id": "l_tu_tt",
         "name": "Thư mục 08.01. Tạm ứng, Thanh toán",
-        "url": "Z:/My Drive/VH/08.01. TU, TT",
+        "url": "https://drive.google.com/drive/folders/1hA7Zvi1r5XxmbFi-neLxGguV_clueBaS",
+        "display_path": "Z:/My Drive/VH/08.01. TU, TT",
         "category": "Thanh toán",
         "notes": "Hồ sơ tạm ứng và thanh toán đợt"
       }

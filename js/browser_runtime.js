@@ -271,15 +271,38 @@ window.BrowserRuntime = (() => {
       }
       if(method==='sync_drive_links') return err('Bản web dùng “Chọn nguồn online” để thêm đúng thư mục cần quản lý.');
       if(method==='import_drive_oauth_config') return err('OAuth Web được cấu hình sẵn trên máy chủ, không cần chọn file JSON.');
-      if(method==='open_link'||method==='open_path') {const u=String(args[0]||''); if(!u)return err('Đường dẫn trống'); if(/^https?:/.test(u))window.open(u,'_blank','noopener'); else if(u.startsWith('gdrive://'))window.open(`https://drive.google.com/drive/folders/${u.split('/').pop()}`,'_blank','noopener'); else return err('Đường dẫn ổ cứng chỉ mở được trong ứng dụng desktop'); return ok({url:u});}
-      if(method==='path_exists') return ok(String(args[0]||'').startsWith('gdrive://'));
+      function coverOnlineDriveUrl(rawUrl){
+        const u=String(rawUrl||'').trim();
+        if(/^https?:/.test(u)) return u;
+        if(u.startsWith('gdrive://')) return `https://drive.google.com/drive/folders/${u.split('/').pop()}`;
+        const norm=u.toLowerCase().replace(/\\/g,'/');
+        if(norm.includes('theo doi 06,07,08')||norm.includes('.xlsm')||norm.includes('theo doi tong')||norm.includes('theo doi tổng')) return 'https://docs.google.com/spreadsheets/d/1IRiE_8hau2hJgwPF3xcuaVC2Ih3mfNnX/edit';
+        if(norm.includes('06.01')||norm.includes('da phat hanh')) return 'https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy';
+        if(norm.includes('06. hsmt')||norm.includes('06.hsmt')) return 'https://drive.google.com/drive/folders/1vqyVkLfIFPzulWaeD6KGDxMvkLQVxT-w';
+        if(norm.includes('07.01')||norm.includes('da ky ket')) return 'https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2';
+        if(norm.includes('07. hop dong')||norm.includes('07.hop dong')||norm.includes('07. hopdong')) return 'https://drive.google.com/drive/folders/1zkfKeEvWHx7xOr6MrSuSDe_yyw7Zj1qN';
+        if(norm.includes('08.01')||norm.includes('tu, tt')||norm.includes('tu,tt')||norm.includes('tam ung')) return 'https://drive.google.com/drive/folders/1hA7Zvi1r5XxmbFi-neLxGguV_clueBaS';
+        if(norm.includes('/vh')||norm.includes('vinhomes')||norm.includes('dan phuong')||norm.includes('my drive')) return 'https://drive.google.com/drive/folders/1z3Il9qZ7N0yQ5UMjSYnWgluV2BwI-B_7';
+        return '';
+      }
+      if(method==='open_link'||method==='open_path') {
+        const raw=String(args[0]||'');
+        if(!raw) return err('Đường dẫn trống');
+        const targetUrl = coverOnlineDriveUrl(raw) || (/^https?:/.test(raw) ? raw : '');
+        if(targetUrl){
+          window.open(targetUrl,'_blank','noopener');
+          return ok({url:targetUrl});
+        }
+        return err('Đường dẫn ổ cứng chưa được ánh xạ sang Google Drive online.');
+      }
+      if(method==='path_exists') return ok(String(args[0]||'').startsWith('gdrive://') || !!coverOnlineDriveUrl(args[0]));
       if(method==='open_master_excel') {
-        const defaultMasterSheet = 'https://docs.google.com/spreadsheets/d/1_MasterData_DanPhuong_Official/edit';
+        const defaultMasterSheet = 'https://docs.google.com/spreadsheets/d/1IRiE_8hau2hJgwPF3xcuaVC2Ih3mfNnX/edit';
         window.open(defaultMasterSheet, '_blank', 'noopener');
         return ok({ path: defaultMasterSheet });
       }
       if(method==='open_project_folder') {
-        const defaultDriveFolder = 'https://drive.google.com/drive/folders/1_DanPhuong_ProjectVault_Official';
+        const defaultDriveFolder = 'https://drive.google.com/drive/folders/1z3Il9qZ7N0yQ5UMjSYnWgluV2BwI-B_7';
         window.open(defaultDriveFolder, '_blank', 'noopener');
         return ok({ path: defaultDriveFolder });
       }
