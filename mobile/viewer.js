@@ -32,5 +32,19 @@ window.AwmViewer=(()=>{
    }else throw Error('Chưa hỗ trợ định dạng này. Hãy cung cấp bản PDF để xem trong AwM.');
   }catch(e){if(run===generation)$('viewer-body').innerHTML='<div class="message error">'+esc(e.message)+'</div>'}
  }
- return {open,close};
+ async function openOnline(opt){
+  close();const run=++generation;
+  const name=opt?.name||'Xem tài liệu',id=opt?.id||'',mime=opt?.mime||'';
+  const ext=name.split('.').pop().toLowerCase();
+  const isSheet=mime.includes('spreadsheet')||['xlsx','xls','csv'].includes(ext);
+  const previewUrl=id
+    ?(isSheet?`https://docs.google.com/spreadsheets/d/${id}/preview`:`https://drive.google.com/file/d/${id}/preview`)
+    :(opt?.url||'');
+  const directUrl=opt?.url||(id?(isSheet?`https://docs.google.com/spreadsheets/d/${id}/edit`:`https://drive.google.com/file/d/${id}/view`):previewUrl);
+  $('viewer-title').textContent=name;
+  $('viewer').showModal();
+  $('viewer-controls').innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;"><span class="badge ${isSheet?'online':'priority-low'}" style="font-size:12px;font-weight:600;">${isSheet?'📊 Bảng tính Excel Online':'📑 PDF Hợp đồng Online'}</span><a class="primary" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">Mở ngoài tab mới ↗</a></div>`;
+  $('viewer-body').innerHTML=`<div style="position:relative;width:100%;height:calc(100dvh - 120px);background:#fff;border-radius:8px;overflow:hidden;"><iframe src="${esc(previewUrl)}" style="width:100%;height:100%;border:0;display:block;" allow="autoplay" loading="lazy"></iframe></div>`;
+ }
+ return {open,openOnline,close};
 })();

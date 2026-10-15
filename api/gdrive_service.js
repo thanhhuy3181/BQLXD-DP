@@ -79,7 +79,52 @@ async function findFile(query, kind = 'all') {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error?.message || 'Lỗi tìm kiếm Google Drive.');
-  return data.files || [];
+  const directFiles = data.files || [];
+  if (directFiles.length > 0) return directFiles;
+
+  // Fallback: If no direct file found and query relates to a contract/HSMT folder,
+  // find the folder first and inspect its child files.
+  if (kind === 'pdf' || kind === 'excel') {
+    const fParams = new URLSearchParams({
+      q: `name contains '${cleanQ}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: 'files(id,name)',
+      pageSize: '5',
+      orderBy: 'modifiedTime desc',
+      supportsAllDrives: 'true',
+      includeItemsFromAllDrives: 'true'
+    });
+    const fRes = await fetch('https://www.googleapis.com/drive/v3/files?' + fParams, {
+      headers: { Authorization: 'Bearer ' + token },
+      signal: AbortSignal.timeout(15000)
+    });
+    const fData = await fRes.json();
+    const folders = fData.files || [];
+    for (const folder of folders) {
+      const folderContents = await listFiles(folder.id);
+      let cands = folderContents.files || [];
+      if (kind === 'pdf') {
+        cands = cands.filter(f => f.mimeType === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+        if (cands.length) {
+          cands.sort((a, b) => {
+            const score = f => {
+              let s = 0;
+              const n = (f.name || '').toLowerCase();
+              if (n.includes('hđ') || n.includes('hd') || n.includes('hợp đồng') || n.includes('hop dong')) s += 10;
+              if (n.includes('pl') || n.includes('phụ lục') || n.includes('dieu chinh')) s += 8;
+              if (f.size) s += Math.min(Number(f.size) / 1000000, 5);
+              return s;
+            };
+            return score(b) - score(a);
+          });
+          return cands;
+        }
+      } else if (kind === 'excel') {
+        cands = cands.filter(f => f.mimeType === 'application/vnd.google-apps.spreadsheet' || f.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
+        if (cands.length) return cands;
+      }
+    }
+  }
+  return [];
 }
 
 module.exports = {
