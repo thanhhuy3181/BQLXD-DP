@@ -245,7 +245,7 @@ async function rpc(req) {
     return result({current_project:project,tabs:state.tabs_by_project?.[project]||[]});
   }
   if (['save_explorer_tabs','add_explorer_tab','update_explorer_tab','move_explorer_tab','remove_explorer_tab'].includes(method)) {
-    if(!canEdit(user,state,'ql_file'))return failure('Tài khoản chỉ có quyền xem Quản lý File.');
+    if(!canEdit(user,state,'tab_quan_ly'))return failure('Tài khoản chỉ có quyền xem Quản lý File.');
     let project=currentProject(user,state), tabs=[...(state.tabs_by_project?.[project]||[])]; state.tabs_by_project=state.tabs_by_project||{};
     if(method==='save_explorer_tabs') tabs=Array.isArray(args[0])?args[0]:[];
     if(method==='add_explorer_tab') {const [name,path,category='custom',options={}] = args;tabs.push({id:`tab_${crypto.randomUUID()}`,name,path,category_code:category,show_dir:true,show_file:true,level_1:true,level_2:false,level_3:false,level_4:false,level_5:false,...options});}
@@ -262,7 +262,7 @@ async function rpc(req) {
     const rows=(state.links?.[scope]||[]).filter(row=>!query||JSON.stringify(row).toLowerCase().includes(query));return result(rows);
   }
   if (method === 'save_managed_link' || method === 'delete_managed_link') {
-    if(!canEdit(user,state,'cai_dat'))return failure('Tài khoản không có quyền sửa Quản lý Link.');
+    if(!canEdit(user,state,'tab_cai_dat'))return failure('Tài khoản không có quyền sửa Quản lý Link.');
     const scope=String(args[1]||currentProject(user,state)); if(scope!=='__common__'&&!allowedProject(user,scope))return failure('Không có quyền sửa dự án.');
     state.links=state.links||{};let rows=[...(state.links[scope]||[])];
     if(method==='save_managed_link'){const row={...(args[0]||{})};row.id=row.id||`link_${crypto.randomUUID()}`;rows=rows.filter(x=>x.id!==row.id).concat(row);state.links[scope]=rows;await saveState(sql,state);return result(row);}
@@ -309,7 +309,7 @@ async function rpc(req) {
   if (method === 'get_role_permissions') return result(state.role_permissions);
   if (method === 'save_role_permissions') {if(user.role!=='Admin')return failure('Chỉ Admin được sửa phân quyền.');state.role_permissions.permissions=args[0]||{};await saveState(sql,state);return result({saved:true});}
   if (method === 'get_app_config_full') return result(state.app_config||{});
-  if (method === 'save_app_config_full') {if(!canEdit(user,state,'cai_dat'))return failure('Không có quyền sửa cài đặt.');state.app_config={...(state.app_config||{}),...(args[0]||{})};await saveState(sql,state);return result(state.app_config);}
+  if (method === 'save_app_config_full') {if(!canEdit(user,state,'tab_cai_dat'))return failure('Không có quyền sửa cài đặt.');state.app_config={...(state.app_config||{}),...(args[0]||{})};await saveState(sql,state);return result(state.app_config);}
   if (method === 'save_theme') {state.theme={theme:args[0],font_size:args[1],compact:!!args[2]};await saveState(sql,state);return result(state.theme);}
   return failure(`API máy chủ chưa hỗ trợ: ${method}`);
 }

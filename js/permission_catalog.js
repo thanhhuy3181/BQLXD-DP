@@ -3,6 +3,15 @@
 // Single source of truth for every navigable web area.  The matrix is built
 // from this catalog so a visible page cannot silently be absent from RBAC.
 window.PermissionCatalog = {
+  // Persisted permission ceilings for the five fast selectors in the RBAC
+  // matrix. They cap an area without discarding its detailed permissions.
+  groupControls: [
+    {key:'grp_tabs', label:'Tất cả Tab', parent:null},
+    {key:'grp_ql_file', label:'QL File', parent:'tab_quan_ly'},
+    {key:'grp_theo_doi', label:'Theo dõi', parent:'tab_theo_doi'},
+    {key:'grp_chuc_nang', label:'Chức năng', parent:'tab_chuc_nang'},
+    {key:'grp_cai_dat', label:'Cài đặt', parent:'tab_cai_dat'}
+  ],
   groups: [
     ['🧭 TAB CHÍNH', [
       ['tab_home','Trang chủ'], ['tab_mail','Email'], ['tab_quan_ly','QL File'], ['tab_theo_doi','Theo dõi'],
@@ -56,6 +65,11 @@ window.PermissionCatalog = {
         if (permissions[role][key] === undefined) permissions[role][key] = 'none';
       });
     });
+    // Matrices saved before group selectors existed retain their grants until
+    // an administrator explicitly picks an area-wide ceiling.
+    this.groupControls.forEach(({key}) => roles.forEach(role => {
+      if (permissions[role][key] === undefined) permissions[role][key] = 'full';
+    }));
     return data;
   }
 };

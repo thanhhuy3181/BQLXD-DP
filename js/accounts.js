@@ -13,6 +13,8 @@ const AccountsModule = (function() {
   // Keep AwD's display rule aligned with the API/AwM rule while older saved
   // matrices still use the former role names.
   const LEGACY_ROLE = {CBGS:'Thành viên','Nội nghiệp':'Phó nhóm'};
+  const LEVEL_RANK = {none:0,view:1,edit:2,full:3};
+  const GROUP_KEY = ['grp_tabs','grp_ql_file','grp_theo_doi','grp_chuc_nang','grp_cai_dat'];
   const SETTINGS_PERMISSIONS = {'cd-theme':'cd_theme','cd-hm-ctr':'cd_hm_ctr','cd-acc':'cd_ql_acc','cd-perm':'cd_perm','cd-ai':'cd_ai_engine','cd-excel':'cd_excel_cfg','cd-links':'cd_links','cd-data-matrix':'cd_data_matrix','cd-backup':'cd_backup'};
   const FUNCTION_PERMISSIONS = {word:'cn_tab_b1_word','cn-down-hd':'cn_down_hd','cn-down-cks':'cn_down_cks','cn-skill-hsmt':'cn_tab_b5_skill_hsmt','cn-b9-merge-boq':'cn_tab_b9_merge_boq','cn-skill-hd':'cn_tab_b5_skill_hd','cn-extract-boq':'cn_tab_b9_merge_boq','cn-b2':'cn_tab_b2_hsmt','cn-b3':'cn_tab_b3_hd','cn-b8':'cn_tab_b8_central','cn-b7':'cn_tab_b7_search','cn-b6':'cn_tab_b6_ai','cn-b4':'cn_tab_b4_heading'};
 
@@ -25,26 +27,48 @@ const AccountsModule = (function() {
 
   function canAccess(permissionKey) {
     if (!permissionKey || _currentUser?.role === 'Admin') return true;
-    const role = _currentUser?.role;
-    const own = _permData?.permissions?.[role]?.[permissionKey];
-    const level = own === undefined ? _permData?.permissions?.[LEGACY_ROLE[role]]?.[permissionKey] : own;
+    const level = permissionValue(_currentUser?.role, permissionKey);
     return level === 'view' || level === 'edit' || level === 'full' || level === true;
   }
 
   function canEdit(permissionKey) {
     if (!permissionKey || _currentUser?.role === 'Admin') return true;
-    const role = _currentUser?.role;
-    const own = _permData?.permissions?.[role]?.[permissionKey];
-    const level = own === undefined ? _permData?.permissions?.[LEGACY_ROLE[role]]?.[permissionKey] : own;
+    const level = permissionValue(_currentUser?.role, permissionKey);
     return level === 'edit' || level === 'full' || level === true;
   }
 
   function navAllowed(tab) {
     const key = NAV_PERMISSIONS[tab];
-    // Settings is a container: it stays visible if the person can view any
-    // child setting, even when the broad tab flag itself is locked.
-    if (tab === 'cai_dat') return canAccess(key) || Object.values(SETTINGS_PERMISSIONS).some(canAccess);
     return canAccess(key);
+  }
+
+  function ownPermission(role, key) {
+    const own = _permData?.permissions?.[role]?.[key];
+    return own === undefined ? _permData?.permissions?.[LEGACY_ROLE[role]]?.[key] : own;
+  }
+
+  function parentKeys(key) {
+    if (key === 'grp_tabs') return [];
+    const groupParent = {grp_ql_file:'tab_quan_ly',grp_theo_doi:'tab_theo_doi',grp_chuc_nang:'tab_chuc_nang',grp_cai_dat:'tab_cai_dat'}[key];
+    if (groupParent) return [groupParent];
+    if (NAV_PERMISSIONS && Object.values(NAV_PERMISSIONS).includes(key)) return ['grp_tabs'];
+    const group = window.PermissionCatalog?.groups?.find(([, items]) => items.some(([itemKey]) => itemKey === key));
+    if (!group) return [];
+    const title = group[0];
+    if (title.includes('QL FILE')) return ['grp_ql_file', 'tab_quan_ly'];
+    if (title.includes('THEO DÕI')) return ['grp_theo_doi', 'tab_theo_doi'];
+    if (title.includes('CHỨC NĂNG')) return ['grp_chuc_nang', 'tab_chuc_nang'];
+    if (title.includes('CÀI ĐẶT')) return ['grp_cai_dat', 'tab_cai_dat'];
+    return [];
+  }
+
+  function permissionValue(role, key) {
+    let value = ownPermission(role, key) || 'none';
+    parentKeys(key).forEach(parent => {
+      const parentValue = permissionValue(role, parent);
+      if ((LEVEL_RANK[parentValue] ?? 0) < (LEVEL_RANK[value] ?? 0)) value = parentValue;
+    });
+    return value;
   }
 
   function denyAccess() {
@@ -185,10 +209,13 @@ const AccountsModule = (function() {
 
     const roles = ['Admin','Văn phòng','Nội nghiệp','ĐTGS','CBGS'];
     let html = '';
-    groups.forEach(([grpTitle, grpItems]) => {
+    groups.forEach(([grpTitle, grpItems], groupIndex) => {
+      const control = window.PermissionCatalog?.groupControls?.[groupIndex];
       html += `
         <tr class="bg-base-200/80 font-bold text-xs">
-          <td colspan="6" class="py-2 px-3 text-primary">${escapeHtml(grpTitle)}</td>
+          <td class="py-2 px-3 text-primary">${escapeHtml(grpTitle)}</td>
+          <td class="text-center text-success">👑 Full quyền</td>
+          ${roles.slice(1).map(role => groupPermissionSelect(role, control?.key, control?.label || grpTitle, readOnly)).join('')}
         </tr>
       `;
       grpItems.forEach(([pkey, pdesc]) => {
@@ -197,12 +224,23 @@ const AccountsModule = (function() {
           <tr class="hover text-xs border-b border-base-200">
             <td class="pl-6 font-medium">${escapeHtml(pdesc)}</td>
             <td class="text-center font-bold text-success">${getPermLabel(adminVal)}</td>
-            ${roles.slice(1).map(role => permissionSelect(role, pkey, perms[role]?.[pkey] || 'none', readOnly)).join('')}
+          ${roles.slice(1).map(role => permissionSelect(role, pkey, permissionValue(role, pkey), readOnly)).join('')}
           </tr>
         `;
       });
     });
     tbody.innerHTML = html;
+  }
+
+  function groupPermissionSelect(role, key, label, readOnly) {
+    if (!key) return '<td></td>';
+    return `<td class="text-center"><select aria-label="${escapeAttr(label)} — ${escapeAttr(role)}" class="select select-bordered select-xs font-semibold" ${readOnly ? 'disabled' : ''}
+      onchange="AccountsModule.setGroupPerm('${role}', '${key}', this.value)">
+      <option value="full" ${permissionValue(role, key) === 'full' ? 'selected' : ''}>Toàn bộ</option>
+      <option value="edit" ${permissionValue(role, key) === 'edit' ? 'selected' : ''}>Sửa</option>
+      <option value="view" ${permissionValue(role, key) === 'view' ? 'selected' : ''}>Xem</option>
+      <option value="none" ${permissionValue(role, key) === 'none' ? 'selected' : ''}>Khóa</option>
+    </select></td>`;
   }
 
   function permissionSelect(role, pkey, val, readOnly) {
@@ -225,7 +263,51 @@ const AccountsModule = (function() {
   function setPermVal(role, pkey, val) {
     if (!_permData?.permissions) return;
     _permData.permissions[role] = _permData.permissions[role] || {};
-    _permData.permissions[role][pkey] = val;
+    const ceiling = parentKeys(pkey).reduce((lowest, parent) => {
+      const next = permissionValue(role, parent);
+      return (LEVEL_RANK[next] ?? 0) < (LEVEL_RANK[lowest] ?? 0) ? next : lowest;
+    }, 'full');
+    _permData.permissions[role][pkey] = (LEVEL_RANK[val] ?? 0) > (LEVEL_RANK[ceiling] ?? 0) ? ceiling : val;
+    cascadeChildren(role, pkey);
+    renderPermMatrix();
+    savePermissions(true);
+  }
+
+  function childKeys(parent) {
+    const catalog = window.PermissionCatalog;
+    if (parent === 'grp_tabs') return Object.values(NAV_PERMISSIONS);
+    const groupIndex = GROUP_KEY.indexOf(parent);
+    if (groupIndex < 1) return [];
+    return (catalog?.groups?.[groupIndex]?.[1] || []).map(([key]) => key);
+  }
+
+  function cascadeChildren(role, parent) {
+    const parentValue = permissionValue(role, parent);
+    childKeys(parent).forEach(child => {
+      const current = ownPermission(role, child) || 'none';
+      if ((LEVEL_RANK[current] ?? 0) > (LEVEL_RANK[parentValue] ?? 0)) _permData.permissions[role][child] = parentValue;
+      cascadeChildren(role, child);
+    });
+    // A primary tab also caps the matching detailed group selector.
+    const matching = {tab_quan_ly:'grp_ql_file',tab_theo_doi:'grp_theo_doi',tab_chuc_nang:'grp_chuc_nang',tab_cai_dat:'grp_cai_dat'}[parent];
+    if (matching) {
+      const current = ownPermission(role, matching) || 'none';
+      if ((LEVEL_RANK[current] ?? 0) > (LEVEL_RANK[parentValue] ?? 0)) _permData.permissions[role][matching] = parentValue;
+      cascadeChildren(role, matching);
+    }
+  }
+
+  function setGroupPerm(role, key, val) {
+    if (!_permData?.permissions) return;
+    _permData.permissions[role] = _permData.permissions[role] || {};
+    const ceiling = parentKeys(key).reduce((lowest, parent) => {
+      const next = permissionValue(role, parent);
+      return (LEVEL_RANK[next] ?? 0) < (LEVEL_RANK[lowest] ?? 0) ? next : lowest;
+    }, 'full');
+    const applied = (LEVEL_RANK[val] ?? 0) > (LEVEL_RANK[ceiling] ?? 0) ? ceiling : val;
+    _permData.permissions[role][key] = applied;
+    childKeys(key).forEach(child => { _permData.permissions[role][child] = applied; cascadeChildren(role, child); });
+    renderPermMatrix();
     savePermissions(true);
   }
 
@@ -475,6 +557,7 @@ const AccountsModule = (function() {
     showCreateProjectModal,
     createProject,
     setPermVal,
+    setGroupPerm,
     savePermissions
   };
 })();

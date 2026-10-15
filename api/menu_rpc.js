@@ -33,7 +33,7 @@ module.exports=async({method,args,sql,user,state,project,allowedProject,visibleP
  if(method==='save_tracking_cell'){
   const [tab,target,token,key,value]=args;
   if(target!==project||!allowedProject(user,target))return err('Dự án đã thay đổi; nạp lại bảng.');
-  if(!['progress','hsmt','contract','payment','contractor-data'].includes(tab)||!canEdit(user,state,'theo_doi'))return err('Không có quyền sửa bảng này.');
+  if(!['progress','hsmt','contract','payment','contractor-data'].includes(tab)||!canEdit(user,state,'tab_theo_doi'))return err('Không có quyền sửa bảng này.');
   if(typeof key!=='string'||key.startsWith('_')||/(path|folder|file)/.test(key))return err('Không được sửa cột này.');
   let seed=snapshots[target]?.[tab];if(seed?.shared)seed=snapshots[seed.shared];if(!seed)return err('Không có bảng nguồn.');
   const storage=`tracking:${target}:${tab}:`,previous=await read(sql,storage,seed),next=copy(previous);
@@ -48,7 +48,7 @@ module.exports=async({method,args,sql,user,state,project,allowedProject,visibleP
   return ok({project:target,projects:visibleProjects(user,state.projects?.all_projects||[]),categories});
  }
  if(method==='save_settings_categories'){
-  const[target,data]=args;if(!allowedProject(user,target)||!canEdit(user,state,'cai_dat'))return err('Không có quyền sửa danh mục.');
+  const[target,data]=args;if(!allowedProject(user,target)||!canEdit(user,state,'tab_cai_dat'))return err('Không có quyền sửa danh mục.');
   if(!data||Array.isArray(data)||typeof data!=='object'||Object.values(data).some(g=>!g||!Array.isArray(g.items)))return err('Danh mục không hợp lệ.');
   await write(sql,`categories:${target}`,data);return ok({saved:true});
  }
@@ -81,7 +81,7 @@ module.exports=async({method,args,sql,user,state,project,allowedProject,visibleP
   await sql`DELETE FROM bqlda_state WHERE key=${key}`;return ok({restored:true});
  }
  if(method==='test_ai_connection'){
-  if(!canEdit(user,state,'cai_dat'))return err('Không có quyền kiểm tra cấu hình AI.');
+  if(!canEdit(user,state,'tab_cai_dat'))return err('Không có quyền kiểm tra cấu hình AI.');
   if(args[0]!=='gemini')return err('Ollama cục bộ được kiểm tra từ trình duyệt trên máy của bạn.');
   const key=state.app_config?.gemini_api_key||process.env.GEMINI_API_KEY;if(!key)return err('Chưa cấu hình Gemini API Key.');
   const response=await fetch('https://generativelanguage.googleapis.com/v1beta/models',{headers:{'x-goog-api-key':key},signal:AbortSignal.timeout(15000)});

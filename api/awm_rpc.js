@@ -10,12 +10,26 @@ const menus = [['approval','Phê duyệt','ql_tab_phe_duyet'],['design','Bản v
 // matrix again.  This is shared by AwD RPCs and AwM; a phone must never get a
 // different permission result from the desktop for the same account.
 const legacyRole = {CBGS:'Thành viên','Nội nghiệp':'Phó nhóm'};
+const levelRank={none:0,view:1,edit:2,full:3};
+const mainTabs=new Set(['tab_home','tab_mail','tab_quan_ly','tab_theo_doi','tab_bao_cao','tab_so_sanh','tab_thanh_toan','tab_chuc_nang','tab_cai_dat']);
+const detailParents={
+ ql_tab_phe_duyet:['grp_ql_file','tab_quan_ly'],ql_tab_tien_do:['grp_ql_file','tab_quan_ly'],ql_tab_yc_kt:['grp_ql_file','tab_quan_ly'],ql_tab_bvtk:['grp_ql_file','tab_quan_ly'],ql_tab_phap_ly:['grp_ql_file','tab_quan_ly'],ql_tab_cam_nang:['grp_ql_file','tab_quan_ly'],ql_tab_chuan_hoa:['grp_ql_file','tab_quan_ly'],ql_tab_hsmt:['grp_ql_file','tab_quan_ly'],ql_tab_hop_dong:['grp_ql_file','tab_quan_ly'],ql_tab_tu_tt:['grp_ql_file','tab_quan_ly'],ql_tab_tqt:['grp_ql_file','tab_quan_ly'],ql_project_mgmt:['grp_ql_file','tab_quan_ly'],
+ td_progress:['grp_theo_doi','tab_theo_doi'],td_hsmt:['grp_theo_doi','tab_theo_doi'],td_contract:['grp_theo_doi','tab_theo_doi'],td_boq:['grp_theo_doi','tab_theo_doi'],td_payment:['grp_theo_doi','tab_theo_doi'],td_contractor:['grp_theo_doi','tab_theo_doi'],td_sap:['grp_theo_doi','tab_theo_doi'],td_contractor_data:['grp_theo_doi','tab_theo_doi'],
+ cn_tab_b1_word:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b2_hsmt:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b3_hd:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b4_heading:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b5_skill_hsmt:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b5_skill_hd:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b6_ai:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b7_search:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b8_central:['grp_chuc_nang','tab_chuc_nang'],cn_tab_b9_merge_boq:['grp_chuc_nang','tab_chuc_nang'],cn_down_hd:['grp_chuc_nang','tab_chuc_nang'],cn_down_cks:['grp_chuc_nang','tab_chuc_nang'],cn_export_excel:['grp_chuc_nang','tab_chuc_nang'],
+ cd_theme:['grp_cai_dat','tab_cai_dat'],cd_hm_ctr:['grp_cai_dat','tab_cai_dat'],cd_ql_acc:['grp_cai_dat','tab_cai_dat'],cd_perm:['grp_cai_dat','tab_cai_dat'],cd_ai_engine:['grp_cai_dat','tab_cai_dat'],cd_excel_cfg:['grp_cai_dat','tab_cai_dat'],cd_links:['grp_cai_dat','tab_cai_dat'],cd_data_matrix:['grp_cai_dat','tab_cai_dat'],cd_backup:['grp_cai_dat','tab_cai_dat']
+};
+function parentKeys(key){if(key==='grp_tabs')return [];if(key==='grp_ql_file')return ['tab_quan_ly'];if(key==='grp_theo_doi')return ['tab_theo_doi'];if(key==='grp_chuc_nang')return ['tab_chuc_nang'];if(key==='grp_cai_dat')return ['tab_cai_dat'];if(mainTabs.has(key))return ['grp_tabs'];return detailParents[key]||[];}
 function permissionValue(user,state,key){
  const permissions=state.role_permissions?.permissions||{};
  const role=user?.role;
  if(!role)return undefined;
  const current=permissions[role]?.[key];
- return current===undefined ? permissions[legacyRole[role]]?.[key] : current;
+ let value=current===undefined ? permissions[legacyRole[role]]?.[key] : current;
+ // Existing saved matrices have no group-control records; absence means an
+ // unrestricted ceiling, not a newly introduced denial.
+ value=value===undefined?(key.startsWith('grp_')?'full':'none'):value;
+ for(const parent of parentKeys(key)){const parentValue=permissionValue(user,state,parent);if((levelRank[parentValue]??0)<(levelRank[value]??0))value=parentValue;}
+ return value;
 }
 function can(user,state,key){if(user?.role==='Admin')return true;const v=permissionValue(user,state,key);return v===true||['view','edit','full'].includes(v);}
 function active(user){return !!user&&user.username!=='guest'&&user.status==='Active';}
