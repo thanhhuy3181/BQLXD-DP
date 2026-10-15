@@ -114,6 +114,17 @@ function projectRows(rows, project) {
   return rows.filter(row=>[row.project,row.du_an,row.ten_du_an,row.project_name].some(v=>v===project));
 }
 
+// These are the five AwD file areas that have a matching AwM menu.  Once an
+// administrator selects a Google Drive folder as an online source in AwD,
+// keep the phone portal on the very same project folder automatically.
+const awmMenuByExplorerTab = Object.freeze({
+  _0101_phe_duyet_: 'approval',
+  _0104_bvtk_: 'design',
+  _06_hsmt_: 'hsmt',
+  _07_hop_dong_: 'contract',
+  __tu_tt_: 'payment'
+});
+
 async function rpc(req) {
   const sql = await ensureDb();
   const { method, args=[] } = req.body || {};
@@ -253,7 +264,18 @@ async function rpc(req) {
     let project=currentProject(user,state), tabs=[...(state.tabs_by_project?.[project]||[])]; state.tabs_by_project=state.tabs_by_project||{};
     if(method==='save_explorer_tabs') tabs=Array.isArray(args[0])?args[0]:[];
     if(method==='add_explorer_tab') {const [name,path,category='custom',options={}] = args;tabs.push({id:`tab_${crypto.randomUUID()}`,name,path,category_code:category,show_dir:true,show_file:true,level_1:true,level_2:false,level_3:false,level_4:false,level_5:false,...options});}
-    if(method==='update_explorer_tab') {const [id,data,explicitProject='']=args;project=explicitProject||project;if(!allowedProject(user,project))return failure('Không có quyền sửa dự án.');tabs=[...(state.tabs_by_project[project]||[])].map(t=>t.id===id?{...t,...data}:t);}
+    if(method==='update_explorer_tab') {
+      const [id,data,explicitProject='']=args;project=explicitProject||project;
+      if(!allowedProject(user,project))return failure('Không có quyền sửa dự án.');
+      tabs=[...(state.tabs_by_project[project]||[])].map(t=>t.id===id?{...t,...data}:t);
+      const awmMenu=awmMenuByExplorerTab[id], updated=tabs.find(t=>t.id===id);
+      const activePath=updated?.active_online_source;
+      const source=(updated?.online_sources||[]).find(x=>x.path===activePath)||updated?.online_sources?.at(-1);
+      if(awmMenu&&source?.folder_id&&canEdit(user,state,'ql_project_mgmt')) {
+        const value={id:String(source.folder_id),updated_by:user.username,updated_at:new Date().toISOString(),source:'awd-online-source'};
+        await sql`INSERT INTO bqlda_state(key,value) VALUES(${`awm:project-folder:${project}:${awmMenu}`},${JSON.stringify(value)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;
+      }
+    }
     if(method==='move_explorer_tab') {const [id,direction]=args,index=tabs.findIndex(t=>t.id===id),target=direction==='up'?index-1:index+1;if(index>=0&&target>=0&&target<tabs.length)[tabs[index],tabs[target]]=[tabs[target],tabs[index]];}
     if(method==='remove_explorer_tab') tabs=tabs.filter(t=>t.id!==args[0]);
     state.tabs_by_project[project]=tabs;await saveState(sql,state);
