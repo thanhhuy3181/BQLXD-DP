@@ -22,6 +22,15 @@ window.AwmDrive=(()=>{
   return (await request('files?'+params)).json();
  }
  async function metadata(id){return(await request('files/'+encodeURIComponent(id)+'?fields=id,name,mimeType,size')).json()}
+ async function findByName(name,kind='file'){
+  const escaped=String(name||'').replace(/'/g,"\\'");
+  const clauses=[`name contains '${escaped}'`,'trashed = false'];
+  if(kind==='folder')clauses.push("mimeType = 'application/vnd.google-apps.folder'");
+  if(kind==='pdf')clauses.push("mimeType = 'application/pdf'");
+  if(kind==='excel')clauses.push("(mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType = 'application/vnd.google-apps.spreadsheet')");
+  const params=new URLSearchParams({q:clauses.join(' and '),fields:'files(id,name,mimeType,size,modifiedTime)',pageSize:'20',orderBy:'modifiedTime desc',supportsAllDrives:'true',includeItemsFromAllDrives:'true'});
+  const data=await(await request('files?'+params)).json();return data.files||[];
+ }
  async function blob(file){
   if(Number(file.size)>30*1024*1024)throw Error('Tệp lớn hơn 30 MB. Chưa hỗ trợ đọc trực tiếp trên điện thoại.');
   let path='files/'+encodeURIComponent(file.id)+'?alt=media';
@@ -29,5 +38,5 @@ window.AwmDrive=(()=>{
   else if(file.mimeType.startsWith('application/vnd.google-apps.'))path='files/'+encodeURIComponent(file.id)+'/export?mimeType=application/pdf';
   const r=await request(path),size=Number(r.headers.get('content-length'));if(size>30*1024*1024)throw Error('Tệp quá lớn để đọc trên điện thoại.');const b=await r.blob();if(b.size>30*1024*1024)throw Error('Tệp quá lớn để đọc trên điện thoại.');return b;
  }
- return {connect,clear,list,metadata,blob,connected:()=>!!token&&Date.now()<expires,identity:()=>identity};
+ return {connect,clear,list,metadata,findByName,blob,connected:()=>!!token&&Date.now()<expires,identity:()=>identity};
 })();
