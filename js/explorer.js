@@ -155,21 +155,47 @@ const ExplorerModule = (function() {
     if (modal) modal.showModal();
   }
 
+  function nonAccentVietnamese(str) {
+    return String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase()
+      .trim();
+  }
+
   function onProjectSelectChange(typed) {
     const codeEl = document.getElementById('modal-prj-code');
     const invEl = document.getElementById('modal-prj-inv');
     const locEl = document.getElementById('modal-prj-loc');
+    const sugEl = document.getElementById('modal-prj-suggestions');
     if (!codeEl) return;
 
-    if (!typed) {
+    if (!typed || !typed.trim()) {
       codeEl.textContent = '—';
       invEl.textContent = '—';
       locEl.textContent = '—';
+      if (sugEl) { sugEl.innerHTML = ''; sugEl.classList.add('hidden'); }
       return;
     }
     codeEl.textContent = 'Đang tra cứu...';
     invEl.textContent = 'Công ty Cổ phần Vinhomes';
     locEl.textContent = '—';
+
+    if (sugEl && Array.isArray(_allProjects) && _allProjects.length) {
+      const q = nonAccentVietnamese(typed);
+      const matches = _allProjects.filter(p => nonAccentVietnamese(p).includes(q));
+      if (matches.length > 0 && !(matches.length === 1 && matches[0] === typed)) {
+        sugEl.innerHTML = matches.slice(0, 8).map(p => {
+          return `<button type="button" class="btn btn-xs btn-ghost justify-between text-left w-full normal-case text-xs truncate bg-base-100 hover:bg-base-300 border border-base-300 py-1 px-2 h-auto" onclick="document.getElementById('modal-prj-name-input').value='${escapeHtml(p)}';ExplorerModule.onProjectSelectChange('${escapeHtml(p)}');"><span>🏢 ${escapeHtml(p)}</span><span class="text-[10px] text-primary font-bold">Chọn ↵</span></button>`;
+        }).join('');
+        sugEl.classList.remove('hidden');
+      } else {
+        sugEl.innerHTML = '';
+        sugEl.classList.add('hidden');
+      }
+    }
   }
 
   async function submitAddProject() {
