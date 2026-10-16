@@ -35,12 +35,156 @@
  function driveId(s){const text=String(s);const match=text.match(/https:\/\/drive\.google\.com\/(?:file\/d\/|drive\/(?:u\/\d+\/)?folders\/)([a-zA-Z0-9_-]+)/)||text.match(/https:\/\/docs\.google\.com\/(?:spreadsheets|document|presentation)\/d\/([a-zA-Z0-9_-]+)/);return match?.[1]||''}
  function fileName(path){return String(path||'').split(/[\\/]/).filter(Boolean).at(-1)||''}
  function signatures(raw){return String(raw||'').split(';').map(x=>x.trim()).map(x=>x.match(/^(.*?)\s*-\s*Ngày ký\s*:\s*(.+)$/i)).filter(Boolean).slice(0,2).flatMap((m,i)=>[['Người ký '+(i+1),m[1].trim()],['Ngày ký '+(i+1),m[2].trim()]]);}
-  function detail(row){const labels=new Map(columns.map(c=>[c.key,c.label])),isHsmt=tab==='hsmt',isContract=tab==='contract'||tab==='contractor:detail',code=String(row.code||''),fileKind=isHsmt?'excel':'pdf',folderName=row.folder_name||fileName(row.folder_path||row.full_path),folderLabel=isHsmt&&code?'Thư mục HSMT '+code:isContract&&code?'Thư mục HĐ '+code:folderName,hidden=new Set(['code','folder_path','full_path','full_folder_name','folder_name','cks_info',...(isHsmt?['lan_pd','_related_contract']:['_related_contract']),...(isContract?['hd_hsmt','cong_trinh','hang_muc','ma_ccm','ma_plhd','lo','phan_khu','loai_goi','phong_ban','stt','exists','nt_unmatched','_row_token','ten_cdt_tat','ten_nt_tat','ten_sap','vendor','ma_nt','gia_tri_hd','tam_ung','tt_tong_da_tt','tt_ty_le_tt','tt_con_lai','tt_so_dot','tt_ma_pr','tt_vuot_hd','tt_da_quyet_toan','tt_status']:[])]);const docs=Object.values(row).filter(v=>typeof v==='string').map(driveId).filter(Boolean);const linkedCode=(isHsmt||isContract)&&code?`<dt>${isHsmt?'Mã HSMT':'Mã HĐ'}</dt><dd><button class="record-link" id="open-main-file" title="Mở trực tiếp ${isHsmt?'file BOQ Excel':'file PDF hợp đồng'}" style="text-align:left;color:#c66a19;font-weight:700;padding:6px 12px;background:#fef7ea;border:1px solid #fed7aa;border-radius:6px;width:100%;font-size:14px;cursor:pointer;">${esc(code)} ↗ (Mở ${isHsmt?'file BOQ Excel':'file PDF hợp đồng'})</button></dd>`:'';const folder=folderName?`<dt>Thư mục</dt><dd><button class="folder-link" id="open-folder">▱ ${esc(folderLabel)} ↗</button></dd>`:'';const cks=signatures(row.cks_info).map(([label,value])=>`<dt>${esc(label)}</dt><dd class="detail-value">${esc(value)}</dd>`).join('');const contractFinanceCard=isContract?`<div class="card contract-finance-card" style="background:#f4f8f4;border:1px solid #d2e4d0;padding:12px 14px;margin:12px 0;border-radius:10px;"><div style="font-size:12px;font-weight:700;color:#2c5b3e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>💰</span><span>Giá trị HĐ &amp; Thanh toán</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;"><div><div style="font-size:11px;color:#5a6e5e;">Giá trị HĐ / PO</div><div style="font-weight:700;color:#182b29;font-size:15px;margin-top:2px;">${esc(row.gia_tri_hd||'-')}</div></div><div><div style="font-size:11px;color:#5a6e5e;">Tổng đã thanh toán</div><div style="font-weight:700;color:#1a73e8;font-size:15px;margin-top:2px;">${esc(row.tt_tong_da_tt||row.tam_ung||'-')}</div></div><div><div style="font-size:11px;color:#5a6e5e;">Tỷ lệ đã TT</div><div style="font-weight:600;color:#2c5b3e;font-size:14px;margin-top:2px;">${esc(row.tt_ty_le_tt||'-')}</div></div><div><div style="font-size:11px;color:#5a6e5e;">Giá trị còn lại</div><div style="font-weight:600;color:#c66a19;font-size:14px;margin-top:2px;">${esc(row.tt_con_lai||'-')}</div></div>${row.tam_ung?`<div><div style="font-size:11px;color:#5a6e5e;">Tạm ứng</div><div style="font-size:13px;font-weight:600;">${esc(row.tam_ung)}</div></div>`:''}${row.tt_so_dot?`<div><div style="font-size:11px;color:#5a6e5e;">Số đợt TT</div><div style="font-size:13px;font-weight:600;">${esc(row.tt_so_dot)}</div></div>`:''}${row.tt_ma_pr?`<div><div style="font-size:11px;color:#5a6e5e;">Mã PR</div><div style="font-size:13px;">${esc(row.tt_ma_pr)}</div></div>`:''}${row.tt_da_quyet_toan?`<div><div style="font-size:11px;color:#5a6e5e;">Quyết toán</div><div style="font-size:13px;">${esc(row.tt_da_quyet_toan)}</div></div>`:''}${row.tt_vuot_hd?`<div><div style="font-size:11px;color:#5a6e5e;">Vượt giá trị HĐ</div><div style="font-size:13px;color:#d32f2f;font-weight:600;">${esc(row.tt_vuot_hd)}</div></div>`:''}</div></div>`:'';const labelFallback={ben_a:'Tên CĐT',nha_thau:'Tên NT',so_hd:'Số HĐ / PO',date_sign:'Ngày ký HĐ',so_plhd:'Số PLHĐ / PO / TT / QT',date_sign_plhd:'Ngày ký PLHĐ/PO/TT/QT',site_info:'Thông tin hiện trường',td_bat_dau:'Tiến độ bắt đầu',td_ket_thuc:'Tiến độ kết thúc',bao_lanh_bh:'Bảo lãnh BH',tg_bao_hanh:'Thời gian BH'};const values=Object.entries(row).filter(([k,v])=>!k.startsWith('_')&&!hidden.has(k)&&v!==''&&v!==null).map(([k,v])=>{if(isHsmt&&(k==='date'||k==='ngay_ph')){return `<dt>${esc(labels.get(k)||'Ngày PH')}</dt><dd><button id="open-hsmt-folder-online" class="folder-link" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗ (Mở thư mục online)</button></dd>`;}if(isContract&&(k==='date'||k==='ngay')){return `<dt>${esc(labels.get(k)||'Ngày')}</dt><dd><button class="open-contract-folder-online folder-link" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗ (Mở thư mục online)</button></dd>`;}if(isHsmt&&k==='rev'){const rel=row._related_contract;const relCode=rel?.code||(typeof v==='string'&&v.match(/^HD\d+/)?.[0])||'';const relName=rel?.name||v||'Chưa có HĐ ký kết';return `<dt>HĐ liên quan</dt><dd>${relCode?`<button class="record-link" data-open-contract="${esc(relCode)}" style="text-align:left;color:#1a73e8;font-weight:600;padding:6px 10px;background:#eef4fc;border:1px solid #c7dcfa;border-radius:6px;width:100%;font-size:13px;line-height:1.4;cursor:pointer;">${esc(relName)} ↗</button>`:`<span class="muted">${esc(relName)}</span>`}</dd>`;}return `<dt>${esc(labels.get(k)||labelFallback[k]||k)}</dt><dd class="detail-value">${esc(typeof v==='object'?JSON.stringify(v):v)}</dd>`;}).join('');sheet(`<div class="eyebrow">${esc(project)}</div><h2>${esc(row.name||row.ten_goi_thau||row.noi_dung||code||'Chi tiết hồ sơ')}</h2>${contractFinanceCard}<dl>${linkedCode}${values}${folder}${cks}</dl>${[...new Set(docs)].map(id=>`<button class="card" data-doc="${id}">Đọc tài liệu Drive →</button>`).join('')}<button class="card" id="related">Mở kho hồ sơ liên quan →</button>`);document.querySelectorAll('[data-doc]').forEach(b=>b.onclick=async()=>{try{if(window.AwmViewer?.openOnline){AwmViewer.openOnline({id:b.dataset.doc});return;}if(!AwmDrive.connected()){window.open(`https://drive.google.com/file/d/${b.dataset.doc}/view`,'_blank','noopener');return;}const file=await AwmDrive.metadata(b.dataset.doc);await openFile(file)}catch(e){notice(e.message)}});if($('open-main-file'))$('open-main-file').onclick=()=>openRecordFile(code,fileKind);if($('open-folder'))$('open-folder').onclick=()=>isContract?openContractFolderOnline(row):openRecordFolder(folderName);if($('open-hsmt-folder-online'))$('open-hsmt-folder-online').onclick=()=>openHsmtFolderOnline(row);document.querySelectorAll('.open-contract-folder-online').forEach(b=>b.onclick=()=>openContractFolderOnline(row));document.querySelectorAll('[data-open-contract]').forEach(b=>{b.onclick=()=>{const contractCode=b.dataset.openContract;$('sheet').close();page='tracking';tab='contract';query=contractCode;trail=[];render();};});$('related').onclick=()=>{$('sheet').close();menu=trackingMenu[tab]||bootstrap.menus.find(m=>m.id===tab)?.id||bootstrap.menus[0]?.id||'';page='files';trail=[];render()};}
-  async function openRecordFile(code,kind){try{notice('Đang tìm '+(kind==='excel'?'file BOQ Excel':'file PDF hợp đồng')+' trên Google Drive…');const res=await rpc('awm_find_file',[project,code,kind]);const file=res?.files?.[0];if(file){notice('Đã tìm thấy: '+file.name);if(window.AwmViewer?.openOnline){AwmViewer.openOnline({id:file.id,url:file.webViewLink,name:file.name,mime:file.mimeType});}else{const url=file.webViewLink||(file.mimeType?.includes('spreadsheet')?`https://docs.google.com/spreadsheets/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`);window.open(url,'_blank','noopener');}return;}window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(code),'_blank','noopener');}catch(e){window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(code),'_blank','noopener');}}
-  async function openHsmtFolderOnline(row){try{const code=String(row.code||'');notice('Đang tìm thư mục online…');const res=await rpc('awm_find_file',[project,code,'folder']);const folder=res?.files?.[0];if(folder){window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');return;}const covered=coverOnlineUrl(row.folder_name||row.full_path||'06.01');window.open(/^https?:\/\//i.test(covered)?covered:'https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy','_blank','noopener');}catch(e){window.open('https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy','_blank','noopener');}}
-  async function openContractFolderOnline(row){try{const code=String(row.code||'');notice('Đang tìm thư mục HĐ online…');const res=await rpc('awm_find_file',[project,code,'folder']);const folder=res?.files?.[0];if(folder){window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');return;}const covered=coverOnlineUrl(row.folder_name||row.folder_path||row.full_path||'07.01');window.open(/^https?:\/\//i.test(covered)?covered:'https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2','_blank','noopener');}catch(e){window.open('https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2','_blank','noopener');}}
-  async function openRecordFolder(name){try{const covered=coverOnlineUrl(name);if(/^https?:\/\//i.test(covered)){window.open(covered,'_blank','noopener');return;}notice('Đang tìm thư mục trong Google Drive…');const res=await rpc('awm_find_file',[project,name,'folder']);const folder=res?.files?.[0];if(folder){window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');return;}window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(name),'_blank','noopener');}catch(e){notice(e.message)}}
- async function mail(run){$('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><button id="refresh-mail" class="primary">Làm mới ↻</button><div id="mail-list"></div>';$('refresh-mail').onclick=()=>render();try{const status=await rpc('awm_mail_status');if(run!==epoch)return;$('mail-state').className='message';$('mail-state').innerHTML=`<span class="badge ${status.online?'online':'warn'}">${status.online?'AD đang kết nối':'AD chưa kết nối'}</span><p>${status.online?esc(status.source):'Mở AD trên máy tính và bật đồng bộ Mail.'}</p><div class="muted">${status.last_sync?'Lần đồng bộ: '+esc(new Date(status.last_sync).toLocaleString('vi-VN')):'Chưa có dữ liệu đồng bộ.'}</div>`;if(status.online){const data=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;$('mail-list').innerHTML=data.items.length?data.items.map((r,i)=>`<button class="card" data-mail="${i}"><span class="code">${esc(r.sender)}</span><h3>${esc(r.subject)}</h3><div class="muted">${esc(r.date)}</div></button>`).join(''):'<div class="empty">Chưa có thư thuộc dự án này.</div>';document.querySelectorAll('[data-mail]').forEach(b=>b.onclick=async()=>{try{const latest=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;const original=data.items[Number(b.dataset.mail)],r=latest.items.find(x=>x.id===original.id);if(!r)throw Error('Thư không còn khả dụng.');sheet(`<div class="eyebrow">${esc(r.sender)}</div><h2>${esc(r.subject)}</h2><p class="muted">${esc(r.date)}</p><div class="detail-value">${esc(r.body)}</div>`)}catch(e){notice(e.message)}})}timer=setTimeout(()=>{if(page==='mail'&&run===epoch){$('sheet').close();render()}},30000);}catch(e){if(run===epoch)$('mail-state').innerHTML=error(e)}}
+  function detail(row){
+    const labels=new Map(columns.map(c=>[c.key,c.label])),
+    isHsmt=tab==='hsmt',
+    isContract=tab==='contract'||tab==='contractor:detail',
+    code=String(row.code||''),
+    fileKind=isHsmt?'excel':'pdf',
+    folderName=row.folder_name||fileName(row.folder_path||row.full_path),
+    folderLabel=isHsmt&&code?'Thư mục HSMT '+code:isContract&&code?'Thư mục HĐ '+code:folderName,
+    currentGroup=bootstrap?.groups?.find(g=>g.id===tab)?.name||(tab==='chu-truong'?'Chủ trương':tab==='bvtk'?'BVTK':tab==='progress'?'Tiến độ':tab==='hsmt'?'HSMT':tab==='contract'?'Hợp đồng':tab==='payment'?'Thanh toán':''),
+    hidden=new Set(['code','folder_path','full_path','full_folder_name','folder_name','cks_info',...(isHsmt?['lan_pd','_related_contract']:['_related_contract']),...(isContract?['hd_hsmt','cong_trinh','hang_muc','ma_ccm','ma_plhd','lo','phan_khu','loai_goi','phong_ban','stt','exists','nt_unmatched','_row_token','ten_cdt_tat','ten_nt_tat','ten_sap','vendor','ma_nt','gia_tri_hd','tam_ung','tt_tong_da_tt','tt_ty_le_tt','tt_con_lai','tt_so_dot','tt_ma_pr','tt_vuot_hd','tt_da_quyet_toan','tt_status']:[])]);
+    const docs=Object.values(row).filter(v=>typeof v==='string').map(driveId).filter(Boolean);
+    const linkedCode=(isHsmt||isContract)&&code?`<dt>${isHsmt?'Mã HSMT':'Mã HĐ'}</dt><dd><button class="record-link" id="open-main-file" title="Mở trực tiếp ${isHsmt?'file BOQ Excel':'file PDF hợp đồng'}" style="text-align:left;color:#c66a19;font-weight:700;padding:6px 12px;background:#fef7ea;border:1px solid #fed7aa;border-radius:6px;width:100%;font-size:14px;cursor:pointer;">${esc(code)} ↗ (Mở ${isHsmt?'file BOQ Excel':'file PDF hợp đồng'})</button></dd>`:'';
+    const folder=folderName?`<dt>Thư mục</dt><dd><button class="folder-link" id="open-folder">▱ ${esc(folderLabel)} ↗</button></dd>`:'';
+    const cks=signatures(row.cks_info).map(([label,value])=>`<dt>${esc(label)}</dt><dd class="detail-value">${esc(value)}</dd>`).join('');
+    const contractFinanceCard=isContract?`<div class="card contract-finance-card" style="background:#f4f8f4;border:1px solid #d2e4d0;padding:12px 14px;margin:12px 0;border-radius:10px;"><div style="font-size:12px;font-weight:700;color:#2c5b3e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>💰</span><span>Giá trị HĐ &amp; Thanh toán</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;"><div><div style="font-size:11px;color:#5a6e5e;">Giá trị HĐ / PO</div><div style="font-weight:700;color:#182b29;font-size:15px;margin-top:2px;">${esc(row.gia_tri_hd||'-')}</div></div><div><div style="font-size:11px;color:#5a6e5e;">Tổng đã thanh toán</div><div style="font-weight:700;color:#1a73e8;font-size:15px;margin-top:2px;">${esc(row.tt_tong_da_tt||row.tam_ung||'-')}</div></div><div><div style="font-size:11px;color:#5a6e5e;">Tỷ lệ đã TT</div><div style="font-weight:600;color:#2c5b3e;font-size:14px;margin-top:2px;">${esc(row.tt_ty_le_tt||'-')}</div></div><div><div style="font-size:11px;color:#5a6e5e;">Giá trị còn lại</div><div style="font-weight:600;color:#c66a19;font-size:14px;margin-top:2px;">${esc(row.tt_con_lai||'-')}</div></div>${row.tam_ung?`<div><div style="font-size:11px;color:#5a6e5e;">Tạm ứng</div><div style="font-size:13px;font-weight:600;">${esc(row.tam_ung)}</div></div>`:''}${row.tt_so_dot?`<div><div style="font-size:11px;color:#5a6e5e;">Số đợt TT</div><div style="font-size:13px;font-weight:600;">${esc(row.tt_so_dot)}</div></div>`:''}${row.tt_ma_pr?`<div><div style="font-size:11px;color:#5a6e5e;">Mã PR</div><div style="font-size:13px;">${esc(row.tt_ma_pr)}</div></div>`:''}${row.tt_da_quyet_toan?`<div><div style="font-size:11px;color:#5a6e5e;">Quyết toán</div><div style="font-size:13px;">${esc(row.tt_da_quyet_toan)}</div></div>`:''}${row.tt_vuot_hd?`<div><div style="font-size:11px;color:#5a6e5e;">Vượt giá trị HĐ</div><div style="font-size:13px;color:#d32f2f;font-weight:600;">${esc(row.tt_vuot_hd)}</div></div>`:''}</div></div>`:'';
+    const labelFallback={ben_a:'Tên CĐT',nha_thau:'Tên NT',so_hd:'Số HĐ / PO',date_sign:'Ngày ký HĐ',so_plhd:'Số PLHĐ / PO / TT / QT',date_sign_plhd:'Ngày ký PLHĐ/PO/TT/QT',site_info:'Thông tin hiện trường',td_bat_dau:'Tiến độ bắt đầu',td_ket_thuc:'Tiến độ kết thúc',bao_lanh_bh:'Bảo lãnh BH',tg_bao_hanh:'Thời gian BH'};
+    const values=Object.entries(row).filter(([k,v])=>!k.startsWith('_')&&!hidden.has(k)&&v!==''&&v!==null).map(([k,v])=>{
+      if(isHsmt&&(k==='date'||k==='ngay_ph')){
+        return `<dt>${esc(labels.get(k)||'Ngày PH')}</dt><dd><button id="open-hsmt-folder-online" class="folder-link" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗ (Mở thư mục online)</button></dd>`;
+      }
+      if(isContract&&(k==='date'||k==='ngay')){
+        return `<dt>${esc(labels.get(k)||'Ngày')}</dt><dd><button class="open-contract-folder-online folder-link" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗ (Mở thư mục online)</button></dd>`;
+      }
+      if(isHsmt&&k==='rev'){
+        const rel=row._related_contract;
+        const relCode=rel?.code||(typeof v==='string'&&v.match(/^HD\d+/)?.[0])||'';
+        const relName=rel?.name||v||'Chưa có HĐ ký kết';
+        return `<dt>HĐ liên quan</dt><dd>${relCode?`<button class="record-link" data-open-contract="${esc(relCode)}" style="text-align:left;color:#1a73e8;font-weight:600;padding:6px 10px;background:#eef4fc;border:1px solid #c7dcfa;border-radius:6px;width:100%;font-size:13px;line-height:1.4;cursor:pointer;">${esc(relName)} ↗</button>`:`<span class="muted">${esc(relName)}</span>`}</dd>`;
+      }
+      if(k==='ten_tai_lieu'||k==='tai_lieu'||k==='file_names'||(typeof v==='string'&&(v.includes('.pdf')||v.includes('.msg')||v.includes('.xlsx')||v.includes('.docx')))){
+        const lines=String(v||'').split(/\r?\n|;/).map(l=>l.trim().replace(/^[-*•]\s*/,'')).filter(Boolean);
+        const items=lines.map(fileLine=>{
+          const ext=fileLine.split('.').pop().toLowerCase();
+          const isPdf=ext==='pdf',isMsg=ext==='msg',isSheet=['xlsx','xls','csv'].includes(ext),isCad=['dwg','dxf'].includes(ext),isDoc=['docx','doc'].includes(ext);
+          const icon=isPdf?'📑':isMsg?'✉️':isSheet?'📊':isCad?'📐':isDoc?'📄':'📁';
+          const tag=isPdf?'PDF':isMsg?'Email MSG':isSheet?'Excel':isCad?'CAD':isDoc?'Word':'Tài liệu';
+          return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;margin:6px 0;background:#f5f8f5;border:1px solid #dbe6d8;border-radius:8px;"><div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;"><span style="font-size:18px;">${icon}</span><div style="min-width:0;"><div style="font-size:13px;font-weight:600;color:#182b29;word-break:break-word;line-height:1.3;">${esc(fileLine)}</div><div style="font-size:11px;color:#5a6e5e;margin-top:2px;">${tag}</div></div></div><button type="button" class="primary text-button open-named-file-btn" data-named-file="${esc(fileLine)}" style="padding:6px 10px;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;border-radius:6px;background:#182b29;color:#fff;border:none;">Mở tệp ↗</button></div>`;
+        }).join('');
+        return `<dt>${esc(labels.get(k)||'Tên tài liệu')}</dt><dd style="margin:4px 0 10px 0;">${items}</dd>`;
+      }
+      if(k==='path'||k==='folder'||k==='duong_dan'||k==='thu_muc'){
+        return `<dt>${esc(labels.get(k)||(k==='path'?'Đường dẫn':'Thư mục'))}</dt><dd><button type="button" class="folder-link open-row-folder-btn" data-folder-path="${esc(v)}" style="color:#1a73e8;font-weight:600;padding:4px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:13px;text-align:left;word-break:break-word;">▱ Mở thư mục online ↗<br><span style="color:#555;font-weight:normal;font-size:12px;">${esc(v)}</span></button></dd>`;
+      }
+      return `<dt>${esc(labels.get(k)||labelFallback[k]||k)}</dt><dd class="detail-value">${esc(typeof v==='object'?JSON.stringify(v):v)}</dd>`;
+    }).join('');
+    sheet(`<div class="eyebrow">${esc(project)}${currentGroup?' / '+esc(currentGroup):''}</div><h2>${esc(row.name||row.ten_goi_thau||row.noi_dung||code||'Chi tiết hồ sơ')}</h2>${contractFinanceCard}<dl>${linkedCode}${values}${folder}${cks}</dl>${[...new Set(docs)].map(id=>`<button class="card" data-doc="${id}">Đọc tài liệu Drive →</button>`).join('')}<button class="card" id="related">Mở kho hồ sơ liên quan →</button>`);
+    document.querySelectorAll('[data-doc]').forEach(b=>b.onclick=async()=>{try{if(window.AwmViewer?.openOnline){AwmViewer.openOnline({id:b.dataset.doc});return;}if(!AwmDrive.connected()){window.open(`https://drive.google.com/file/d/${b.dataset.doc}/view`,'_blank','noopener');return;}const file=await AwmDrive.metadata(b.dataset.doc);await openFile(file)}catch(e){notice(e.message)}});
+    if($('open-main-file'))$('open-main-file').onclick=()=>openRecordFile(code,fileKind);
+    if($('open-folder'))$('open-folder').onclick=()=>isContract?openContractFolderOnline(row):openRecordFolder(folderName,row);
+    if($('open-hsmt-folder-online'))$('open-hsmt-folder-online').onclick=()=>openHsmtFolderOnline(row);
+    document.querySelectorAll('.open-contract-folder-online').forEach(b=>b.onclick=()=>openContractFolderOnline(row));
+    document.querySelectorAll('[data-open-contract]').forEach(b=>{b.onclick=()=>{const contractCode=b.dataset.openContract;$('sheet').close();page='tracking';tab='contract';query=contractCode;trail=[];render();};});
+    document.querySelectorAll('.open-named-file-btn').forEach(b=>{b.onclick=()=>openNamedFile(b.dataset.namedFile,row);});
+    document.querySelectorAll('.open-row-folder-btn').forEach(b=>{b.onclick=()=>openRecordFolder(b.dataset.folderPath,row);});
+    $('related').onclick=()=>{$('sheet').close();menu=trackingMenu[tab]||bootstrap.menus.find(m=>m.id===tab)?.id||bootstrap.menus[0]?.id||'';page='files';trail=[];render()};
+  }
+  async function openRecordFile(code,kind){
+    try{
+      notice('Đang tìm '+(kind==='excel'?'file BOQ Excel':'file PDF hợp đồng')+' trên Google Drive…');
+      const res=await rpc('awm_find_file',[project,code,kind]);
+      const file=res?.files?.[0];
+      if(file){
+        notice('Đang mở: '+file.name);
+        const url=file.webViewLink||(file.mimeType?.includes('spreadsheet')?`https://docs.google.com/spreadsheets/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`);
+        const win=window.open(url,'_blank','noopener');
+        if(!win||win.closed||typeof win.closed==='undefined'){
+          if(window.AwmViewer?.openOnline)AwmViewer.openOnline({id:file.id,url,name:file.name,mime:file.mimeType});
+        }
+        return;
+      }
+      window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(code),'_blank','noopener');
+    }catch(e){
+      window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(code),'_blank','noopener');
+    }
+  }
+  async function openNamedFile(rawName,row){
+    const fileName=String(rawName||'').trim().replace(/^[-*•]\s*/,'');
+    if(!fileName)return;
+    notice('Đang tìm tệp: '+fileName+'…');
+    try{
+      const ext=fileName.split('.').pop().toLowerCase();
+      const kind=ext==='pdf'?'pdf':(ext==='xlsx'||ext==='xls')?'excel':'all';
+      const res=await rpc('awm_find_file',[project,fileName,kind]);
+      const file=res?.files?.[0];
+      if(file?.webViewLink){
+        notice('Đang mở: '+file.name);
+        const win=window.open(file.webViewLink,'_blank','noopener');
+        if(!win||win.closed||typeof win.closed==='undefined'){
+          if(window.AwmViewer?.openOnline)AwmViewer.openOnline({id:file.id,url:file.webViewLink,name:file.name,mime:file.mimeType});
+        }
+        return;
+      }
+      window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(fileName),'_blank','noopener');
+    }catch(e){
+      window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(fileName),'_blank','noopener');
+    }
+  }
+  async function openHsmtFolderOnline(row){
+    try{
+      const code=String(row.code||'');
+      notice('Đang tìm thư mục online…');
+      const res=await rpc('awm_find_file',[project,code,'folder']);
+      const folder=res?.files?.[0];
+      if(folder){
+        window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');
+        return;
+      }
+      const covered=coverOnlineUrl(row.folder_name||row.full_path||'06.01');
+      window.open(/^https?:\/\//i.test(covered)?covered:'https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy','_blank','noopener');
+    }catch(e){
+      window.open('https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy','_blank','noopener');
+    }
+  }
+  async function openContractFolderOnline(row){
+    try{
+      const code=String(row.code||'');
+      notice('Đang tìm thư mục HĐ online…');
+      const res=await rpc('awm_find_file',[project,code,'folder']);
+      const folder=res?.files?.[0];
+      if(folder){
+        window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');
+        return;
+      }
+      const covered=coverOnlineUrl(row.folder_name||row.folder_path||row.full_path||'07.01');
+      window.open(/^https?:\/\//i.test(covered)?covered:'https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2','_blank','noopener');
+    }catch(e){
+      window.open('https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2','_blank','noopener');
+    }
+  }
+  async function openRecordFolder(name,row=null){
+    try{
+      const covered=coverOnlineUrl(name);
+      if(/^https?:\/\//i.test(covered)){
+        window.open(covered,'_blank','noopener');
+        return;
+      }
+      notice('Đang tìm thư mục trên Google Drive…');
+      const cleanName=String(name||'').split(/[\\/]/).filter(Boolean).pop()||name;
+      const res=await rpc('awm_find_file',[project,cleanName,'folder']);
+      const folder=res?.files?.[0];
+      if(folder?.webViewLink||folder?.id){
+        window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');
+        return;
+      }
+      window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(cleanName),'_blank','noopener');
+    }catch(e){
+      notice(e.message);
+    }
+  }
+  async function mail(run){$('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><button id="refresh-mail" class="primary">Làm mới ↻</button><div id="mail-list"></div>';$('refresh-mail').onclick=()=>render();try{const status=await rpc('awm_mail_status');if(run!==epoch)return;$('mail-state').className='message';$('mail-state').innerHTML=`<span class="badge ${status.online?'online':'warn'}">${status.online?'AD đang kết nối':'AD chưa kết nối'}</span><p>${status.online?esc(status.source):'Mở AD trên máy tính và bật đồng bộ Mail.'}</p><div class="muted">${status.last_sync?'Lần đồng bộ: '+esc(new Date(status.last_sync).toLocaleString('vi-VN')):'Chưa có dữ liệu đồng bộ.'}</div>`;if(status.online){const data=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;$('mail-list').innerHTML=data.items.length?data.items.map((r,i)=>`<button class="card" data-mail="${i}"><span class="code">${esc(r.sender)}</span><h3>${esc(r.subject)}</h3><div class="muted">${esc(r.date)}</div></button>`).join(''):'<div class="empty">Chưa có thư thuộc dự án này.</div>';document.querySelectorAll('[data-mail]').forEach(b=>b.onclick=async()=>{try{const latest=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;const original=data.items[Number(b.dataset.mail)],r=latest.items.find(x=>x.id===original.id);if(!r)throw Error('Thư không còn khả dụng.');sheet(`<div class="eyebrow">${esc(r.sender)}</div><h2>${esc(r.subject)}</h2><p class="muted">${esc(r.date)}</p><div class="detail-value">${esc(r.body)}</div>`)}catch(e){notice(e.message)}})}timer=setTimeout(()=>{if(page==='mail'&&run===epoch){$('sheet').close();render()}},30000);}catch(e){if(run===epoch)$('mail-state').innerHTML=error(e)}}
  async function files(run){$('main').innerHTML='<div class="eyebrow">KHO HỒ SƠ DỰ ÁN</div><h1>Quản lý hồ sơ</h1><div class="chips">'+bootstrap.menus.map(m=>`<button data-menu="${m.id}" class="${menu===m.id?'active':''}">${esc(m.name)}</button>`).join('')+'</div><div class="actions"><span class="badge online" style="display:inline-flex;align-items:center;padding:7px 12px;font-size:12px;font-weight:600;">☁️ bqlxddp@gmail.com</span><button id="open-drive-direct" class="primary">Mở Google Drive ↗</button>'+(bootstrap.files?.can_configure?'<button id="configure">Đặt thư mục dự án</button>':'')+'<button id="drive-refresh">Làm mới ↻</button></div><div id="crumb" class="breadcrumb"></div><div id="drive-list" aria-live="polite"></div><button id="drive-more" hidden class="primary">Tải thêm</button>';
   document.querySelectorAll('[data-menu]').forEach(b=>b.onclick=()=>{menu=b.dataset.menu;trail=[];render()});if($('configure'))$('configure').onclick=configure;$('drive-refresh').onclick=()=>loadDrive(false);$('drive-more').onclick=()=>loadDrive(true);
   try{folders=await rpc('awm_folders',[project]);if(run!==epoch)return;if(!menu){$('drive-list').innerHTML='<div class="message">Chưa có menu được cấp quyền.</div>';return}const configured=folders[menu];if(!configured){$('drive-list').innerHTML='<div class="message"><b>Chưa có nguồn Drive được ánh xạ cho dự án này.</b><br>Ánh xạ được lưu riêng theo dự án. Người có quyền quản lý QL File hãy chọn nguồn online trong AwD hoặc bấm “Đặt thư mục dự án” tại đây.</div>';return}const folderUrl=configured.url||(configured.id?`https://drive.google.com/drive/folders/${encodeURIComponent(configured.id)}`:'https://drive.google.com/drive/');if($('open-drive-direct'))$('open-drive-direct').onclick=()=>window.open(folderUrl,'_blank','noopener');$('crumb').innerHTML=`<div class="source-note">✓ Đã ánh xạ ${configured.scope==='project'?'từ AD / dùng chung dự án':'cho tài khoản này'}${configured.updated_by?` · ${esc(configured.updated_by)}`:''}<a href="${esc(folderUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a></div>`;if(!trail.length)trail=[{id:configured.id,name:bootstrap.menus.find(m=>m.id===menu)?.name||menu,url:folderUrl,path:configured.path||'',subs:configured.subs||[]}];await loadDrive(false)}catch(e){if(run===epoch)$('drive-list').innerHTML=error(e)}

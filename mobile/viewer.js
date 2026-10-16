@@ -51,15 +51,16 @@ window.AwmViewer=(()=>{
   const isPdf=mime.includes('pdf')||ext==='pdf';
   const isCad=mime.includes('dwg')||mime.includes('dxf')||['dwg','dxf'].includes(ext);
   const previewUrl=id?`https://drive.google.com/file/d/${id}/preview`:(opt?.url||'');
+  const isMsg=mime.includes('outlook')||ext==='msg'||ext==='eml';
   const directUrl=opt?.url||(id?(isSheet?`https://docs.google.com/spreadsheets/d/${id}/edit`:`https://drive.google.com/file/d/${id}/view`):previewUrl);
   $('viewer-title').textContent=name;
   $('viewer').showModal();
-  const badgeText=isSheet?'📊 Bảng tính Excel':isPdf?'📑 PDF Hợp đồng':isCad?'📐 Bản vẽ CAD':'📄 Tài liệu';
-  const badgeCls=isSheet?'online':isCad?'badge-primary':'priority-low';
-  const openLabel=isSheet?'Mở bằng Google Sheets ↗':isCad?'Mở bản vẽ CAD ↗':'Mở tab mới ↗';
-  $('viewer-controls').innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;padding:4px 0;flex-wrap:wrap;"><span class="badge ${badgeCls}" style="font-size:12px;font-weight:600;">${badgeText}</span><div style="display:flex;gap:6px;align-items:center;">${isCad?`<label class="button" style="display:inline-flex;align-items:center;padding:4px 8px;font-size:12px;background:#244438;color:#fff;border-radius:6px;cursor:pointer;">+ Nạp file nền (Xref)<input id="cad-online-bg" type="file" accept=".dxf,.dwg,.txt" hidden></label>`:''}<a class="primary" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div></div>`;
-  $('viewer-body').innerHTML=`<div style="margin-bottom:8px;padding:6px 10px;background:#f3f6f0;border:1px solid #d8e2d2;border-radius:6px;font-size:11px;color:#435c4b;display:flex;align-items:center;justify-content:space-between;gap:6px;"><span>💡 Đang đọc trực tiếp online. Bấm <b>${openLabel}</b> để xem toàn màn hình.</span><a href="${esc(directUrl)}" target="_blank" rel="noopener" style="font-weight:600;color:#182b29;text-decoration:underline;white-space:nowrap;">Mở trực tiếp ↗</a></div><div style="position:relative;width:100%;height:calc(100dvh - 160px);background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);"><iframe src="${esc(previewUrl)}" style="width:100%;height:100%;border:0;display:block;" allow="autoplay" loading="lazy"></iframe></div>`;
+  const badgeText=isSheet?'📊 Bảng tính Excel':isPdf?'📑 PDF Hợp đồng':isCad?'📐 Bản vẽ CAD':isMsg?'✉️ Email MSG':'📄 Tài liệu';
+  const badgeCls=isSheet?'online':isCad?'badge-primary':isMsg?'priority-normal':'priority-low';
+  const openLabel=isSheet?'Mở bằng Google Sheets ↗':isPdf?'Mở file PDF ↗':isCad?'Mở bản vẽ CAD ↗':isMsg?'Mở email MSG ↗':'Mở tài liệu ↗';
+  $('viewer-controls').innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;padding:4px 0;flex-wrap:wrap;"><span class="badge ${badgeCls}" style="font-size:12px;font-weight:600;">${badgeText}</span><div style="display:flex;gap:6px;align-items:center;">${isCad?`<label class="button" style="display:inline-flex;align-items:center;padding:6px 10px;font-size:12px;background:#244438;color:#fff;border-radius:6px;cursor:pointer;">+ Nạp file nền (Xref)<input id="cad-online-bg" type="file" accept=".dxf,.dwg,.txt" hidden></label>`:''}<a class="primary button" style="display:inline-flex;align-items:center;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div></div>`;
   if(isCad){
+    $('viewer-body').innerHTML=`<div class="card" style="padding:16px;background:#182b29;color:#fff;border-radius:10px;margin-bottom:12px;"><div class="top"><span class="badge online">AutoCAD DWG</span><span class="code">Bản vẽ CAD</span></div><h3 style="margin:8px 0 4px 0;color:#d5e6b0;">${esc(name)}</h3><p style="font-size:12px;color:#a8c4b2;margin:0 0 10px 0;">Bản vẽ CAD hỗ trợ đối chiếu file nền kiến trúc/hạ tầng. Bấm nút "+ Nạp file nền (Xref)" hoặc mở trực tiếp trên Autodesk/Drive.</p><a class="primary button" style="display:inline-flex;align-items:center;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;border-radius:6px;background:#244438;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div><div id="cad-online-canvas"></div>`;
     const bgInput=$('cad-online-bg');
     if(bgInput){
       bgInput.onchange=async e=>{
@@ -67,13 +68,12 @@ window.AwmViewer=(()=>{
         if(!bgFile)return;
         try{
           const bgText=await bgFile.text();
-          const container=document.createElement('div');
-          container.style.marginTop='12px';
-          $('viewer-body').prepend(container);
-          AwmCad.render(bgText,container,$('viewer-controls'));
+          AwmCad.render(bgText,$('cad-online-canvas'),$('viewer-controls'));
         }catch(err){alert('Lỗi nạp file nền: '+err.message)}
       };
     }
+  }else{
+    $('viewer-body').innerHTML=`<div class="card" style="margin:24px 8px;padding:28px 16px;text-align:center;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border:1px solid #e2ebd8;"><div style="font-size:52px;margin-bottom:12px;">${isSheet?'📊':isPdf?'📑':isMsg?'✉️':'📄'}</div><h3 style="margin:0 0 10px 0;font-size:16px;color:#182b29;word-break:break-word;line-height:1.4;">${esc(name)}</h3><div class="badge ${badgeCls}" style="display:inline-block;margin-bottom:16px;font-size:12px;font-weight:600;">${badgeText}</div><p class="muted" style="font-size:13px;line-height:1.5;margin:0 0 20px 0;">${isSheet?'Tệp bảng tính Excel BOQ lưu trữ trên Google Drive dự án.':isPdf?'Tệp PDF hợp đồng lưu trữ trên Google Drive dự án.':isMsg?'Tệp thư điện tử MSG lưu trữ trên Google Drive dự án.':'Tài liệu lưu trữ trên Google Drive dự án.'}</p><a class="primary button" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;background:#182b29;color:#fff;width:100%;box-sizing:border-box;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div>`;
   }
  }
  return {open,openOnline,close};
