@@ -1,9 +1,10 @@
 'use strict';
 window.AwmViewer=(()=>{
  const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- let generation=0,pdf=null,loadingTask=null,worker=null,renderTask=null;
- function close(){generation++;renderTask?.cancel();renderTask=null;loadingTask?.destroy().catch(()=>{});loadingTask=null;pdf=null;worker?.terminate();worker=null;$('viewer-body').replaceChildren();$('viewer-controls').replaceChildren();$('viewer').close()}
- $('viewer-close').onclick=close;$('viewer').addEventListener('cancel',e=>{e.preventDefault();close()});
+ let generation=0,pdf=null,loadingTask=null,worker=null,renderTask=null,historyStack=[],currentMsg=null;
+ function close(clearHist=true){generation++;if(clearHist)historyStack=[];currentMsg=null;renderTask?.cancel();renderTask=null;loadingTask?.destroy().catch(()=>{});loadingTask=null;pdf=null;worker?.terminate();worker=null;$('viewer-body').replaceChildren();$('viewer-controls').replaceChildren();$('viewer').close()}
+ $('viewer-close').onclick=()=>close(true);$('viewer').addEventListener('cancel',e=>{e.preventDefault();close(true)});
+ function goBack(){if(historyStack.length>0){const prev=historyStack.pop();if(prev.type==='msg')openMsg(prev.data,false);else if(prev.type==='online')openOnline(prev.data,false);}else{close(true);}}
  async function open(blob,name,mime=''){
   close();const run=++generation;$('viewer-title').textContent=name;$('viewer').showModal();$('viewer-body').innerHTML='<div class="loading">Đang đọc tài liệu…</div>';
   try{
@@ -140,15 +141,20 @@ window.AwmViewer=(()=>{
   const nestedMessages=Array.isArray(msg.nested_messages)?msg.nested_messages:[];
 
   $('viewer-controls').innerHTML=`
-   <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;padding:4px 0;flex-wrap:wrap;">
-     <span class="badge online" style="font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;background:#0078d4;color:#fff;padding:4px 8px;border-radius:6px;">
-       ✉️ Outlook Classic
-     </span>
+   <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px;padding:4px 0;flex-wrap:wrap;">
+     <div style="display:flex;align-items:center;gap:6px;">
+       ${historyStack.length>0?`<button id="viewer-msg-back" class="button" style="padding:6px 12px;font-size:12px;background:#0f2c59;color:#fff;border-radius:6px;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:none;">← Quay lại</button>`:''}
+       <span class="badge online" style="font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;background:#0078d4;color:#fff;padding:4px 8px;border-radius:6px;">
+         ✉️ Outlook Classic
+       </span>
+     </div>
      <div style="display:flex;gap:6px;align-items:center;">
        ${directUrl?`<a class="primary button" style="padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;display:inline-flex;align-items:center;gap:4px;" href="${esc(directUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a>`:''}
      </div>
    </div>
   `;
+  const msgBackBtn = $('viewer-msg-back');
+  if(msgBackBtn) msgBackBtn.onclick = goBack;
 
   $('viewer-body').innerHTML=`
    <div class="outlook-mail-card" style="padding:16px;background:#fff;border-radius:10px;margin:10px 4px;border:1px solid #d0d7de;box-shadow:0 2px 8px rgba(0,0,0,0.06);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -184,22 +190,35 @@ window.AwmViewer=(()=>{
      </div>
 
      ${attachments.length>0?`
-       <div style="margin-bottom:14px;background:#f1f5f9;border-radius:8px;padding:10px 12px;border:1px solid #cbd5e1;">
-         <div style="font-size:12px;font-weight:700;color:#0f2c59;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+       <div style="margin-bottom:16px;background:#f1f5f9;border-radius:10px;padding:12px;border:1px solid #cbd5e1;">
+         <div style="font-size:12px;font-weight:700;color:#0f2c59;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
            <span>📎</span><span>TỆP ĐÍNH KÈM (${attachments.length}):</span>
          </div>
-         <div style="display:flex;flex-wrap:wrap;gap:8px;">
+         <div style="display:flex;flex-direction:column;gap:8px;">
            ${attachments.map((att,idx)=>{
              const attName=typeof att==='string'?att:(att.name||'attachment');
              const attSize=typeof att==='object'&&att.size?formatSize(att.size):'';
              const icon=getAttIcon(attName);
-             const isMsg=typeof att==='object'?(att.is_msg||attName.toLowerCase().endsWith('.msg')):attName.toLowerCase().endsWith('.msg');
+             const ext=attName.split('.').pop().toLowerCase();
+             const isMsg=typeof att==='object'?(att.is_msg||ext==='msg'):ext==='msg';
+             const actionLabel = isMsg ? 'Đọc thư' : ext==='pdf' ? 'Mở PDF' : (ext==='xlsx'||ext==='xls') ? 'Mở Excel' : (ext==='dwg'||ext==='dxf') ? 'Mở CAD' : 'Mở tệp';
+             const badgeColor = isMsg ? '#0078d4' : ext==='pdf' ? '#e11d48' : (ext==='xlsx'||ext==='xls') ? '#0F6E56' : (ext==='dwg'||ext==='dxf') ? '#d97706' : '#334155';
              return `
-               <div class="outlook-att-chip" style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid ${isMsg?'#f59e0b':'#94a3b8'};border-radius:6px;padding:6px 10px;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);cursor:pointer;" ${isMsg?`onclick="document.getElementById('nested-msg-${idx}')?.scrollIntoView({behavior:'smooth'})"`:''}>
-                 <span style="font-size:15px;">${icon}</span>
-                 <span style="font-weight:600;color:#1e293b;word-break:break-all;">${esc(attName)}</span>
-                 ${attSize?`<span style="color:#64748b;font-size:10.5px;">(${esc(attSize)})</span>`:''}
-                 ${isMsg?`<span style="background:#fef3c7;color:#b45309;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:700;">Xem thư ↓</span>`:''}
+               <div class="outlook-att-chip"
+                    onclick="AwmViewer.openAttachment('${esc(attName)}', ${idx})"
+                    style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1.5px solid ${badgeColor};border-radius:8px;padding:10px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.06);cursor:pointer;box-sizing:border-box;">
+                 <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+                   <span style="font-size:24px;flex-shrink:0;">${icon}</span>
+                   <div style="min-width:0;display:flex;flex-direction:column;">
+                     <span style="font-weight:700;color:#0f2c59;font-size:13px;word-break:break-all;line-height:1.35;">${esc(attName)}</span>
+                     ${attSize?`<span style="color:#64748b;font-size:11px;margin-top:2px;">Dung lượng: ${esc(attSize)}</span>`:''}
+                   </div>
+                 </div>
+                 <div style="flex-shrink:0;margin-left:10px;">
+                   <span style="background:${badgeColor};color:#fff;font-size:12px;padding:6px 12px;border-radius:6px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;box-shadow:0 1px 3px rgba(0,0,0,0.15);">
+                     ${actionLabel} ↗
+                   </span>
+                 </div>
                </div>
              `;
            }).join('')}
@@ -221,8 +240,9 @@ window.AwmViewer=(()=>{
          </div>
          ${nestedMessages.map((nmsg,idx)=>`
            <div id="nested-msg-${idx}" style="margin-bottom:14px;background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #0078d4;border-radius:8px;padding:12px;">
-             <div style="font-size:14px;font-weight:700;color:#0f2c59;margin-bottom:6px;">
-               ✉️ ${esc(nmsg.subject||'(Không có tiêu đề)')}
+             <div style="font-size:14px;font-weight:700;color:#0f2c59;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+               <span>✉️ ${esc(nmsg.subject||'(Không có tiêu đề)')}</span>
+               <button onclick="AwmViewer.openAttachment('${esc(nmsg.subject||'email.msg')}', ${idx})" class="button" style="padding:4px 8px;font-size:11.5px;background:#0078d4;color:#fff;border-radius:6px;border:none;font-weight:600;cursor:pointer;">Đọc riêng thư này ↗</button>
              </div>
              <div style="font-size:11.5px;color:#64748b;display:grid;gap:3px;margin-bottom:10px;background:#fff;padding:8px;border-radius:6px;border:1px solid #e2e8f0;">
                <div><span style="font-weight:600;">Người gửi:</span> <strong style="color:#1e293b;">${esc(nmsg.sender||'')}</strong></div>
@@ -239,27 +259,147 @@ window.AwmViewer=(()=>{
    </div>
   `;
  }
- function openMsg(opt){
-  close();const run=++generation;
+ function openMsg(opt, clearHist=true){
+  if(clearHist)close(true);else{generation++;renderTask?.cancel();renderTask=null;$('viewer-body').replaceChildren();$('viewer-controls').replaceChildren();}
+  const run=++generation;
   const name=opt?.name||'Thư điện tử';
   $('viewer-title').textContent=name;
   $('viewer').showModal();
   const msg={
+   name: name,
    subject:opt?.subject||name.replace(/\.msg$/i,''),
-   senderName:opt?.sender||'',
+   senderName:opt?.sender||opt?.senderName||'',
    senderEmail:opt?.senderEmail||'',
    to:opt?.to||'',
    cc:opt?.cc||'',
    bcc:opt?.bcc||'',
-   sentDate:opt?.date||'',
+   sentDate:opt?.date||opt?.sentDate||'',
    body:opt?.body||'',
    attachments:opt?.attachments||[],
-   nested_messages:opt?.nested_messages||[]
+   nested_messages:opt?.nested_messages||[],
+   url:opt?.url||''
   };
+  currentMsg = msg;
   renderMsgView(msg,name,opt?.url||'');
  }
- async function openOnline(opt){
-  close();const run=++generation;
+ async function openAttachment(attName, idx){
+  if(!attName)return;
+  const ext=String(attName).split('.').pop().toLowerCase();
+  if(currentMsg){
+    historyStack.push({type:'msg', data:{...currentMsg}, name:$('viewer-title').textContent, url:currentMsg.url||''});
+  }
+  if(ext==='msg'){
+    const nested=(currentMsg?.nested_messages||[])[idx] ||
+                 (currentMsg?.nested_messages||[]).find(n=>n.subject&&attName.toLowerCase().includes(n.subject.toLowerCase()));
+    if(nested){
+      openMsg({
+        name: attName,
+        subject: nested.subject,
+        sender: nested.sender,
+        to: nested.to,
+        cc: nested.cc,
+        date: nested.date,
+        body: nested.body,
+        attachments: (nested.attachments||[]).map(a=>typeof a==='string'?{name:a}:a),
+        nested_messages: []
+      }, false);
+      return;
+    }
+    if(window.AwmLive?.rpc){
+      const project = window.AwmLive.getProject ? window.AwmLive.getProject() : 'Vinhomes Đan Phượng';
+      try {
+        const cleanNoExt = attName.replace(/\.msg$/i, '').trim();
+        const msgRes = await window.AwmLive.rpc('awm_get_msg', [project, attName, cleanNoExt]);
+        const msgData = (msgRes?.ok && msgRes?.data) ? msgRes.data : (msgRes?.data || msgRes);
+        if(msgData && (msgData.subject || msgData.body || msgData.sender)){
+          openMsg({
+            name: attName,
+            subject: msgData.subject || cleanNoExt,
+            sender: msgData.sender || 'Cán bộ phát hành / AD',
+            senderEmail: msgData.sender_email || '',
+            to: msgData.to || '',
+            cc: msgData.cc || '',
+            bcc: msgData.bcc || '',
+            date: msgData.date || '',
+            body: msgData.body || '',
+            attachments: msgData.attachments || [],
+            nested_messages: msgData.nested_messages || [],
+            is_encrypted: !!msgData.is_encrypted,
+            url: ''
+          }, false);
+          return;
+        }
+      } catch(_) {}
+    }
+    if(window.AwmLive?.openNamedFile){
+      await window.AwmLive.openNamedFile(attName);
+      return;
+    }
+  }
+
+  $('viewer-title').textContent = attName;
+  $('viewer-controls').innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px;width:100%;padding:4px 0;">
+      <button id="viewer-att-back" class="button" style="padding:6px 12px;font-size:12px;background:#0f2c59;color:#fff;border-radius:6px;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:none;">← Quay lại thư</button>
+      <span class="badge online" style="font-size:12px;font-weight:600;">Đang tải tệp đính kèm...</span>
+    </div>
+  `;
+  const backBtn = $('viewer-att-back');
+  if(backBtn) backBtn.onclick = goBack;
+
+  $('viewer-body').innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 16px;gap:12px;color:#0f2c59;">
+      <div style="font-size:36px;">⏳</div>
+      <strong style="font-size:15px;">Đang tìm và mở tệp đính kèm:</strong>
+      <span style="font-size:13px;color:#475569;word-break:break-all;text-align:center;">${esc(attName)}</span>
+    </div>
+  `;
+
+  try {
+    const kind = ext==='pdf' ? 'pdf' : (['xlsx','xls','csv'].includes(ext) ? 'excel' : 'all');
+    let file = null;
+    if(window.AwmLive?.rpc){
+      const project = window.AwmLive.getProject ? window.AwmLive.getProject() : 'Vinhomes Đan Phượng';
+      const res = await window.AwmLive.rpc('awm_find_file', [project, attName, kind]);
+      file = res?.files?.[0];
+      if(!file){
+        const cleanNoExt = attName.replace(/\.[^/.]+$/, '').trim();
+        const res2 = await window.AwmLive.rpc('awm_find_file', [project, cleanNoExt, kind]);
+        file = res2?.files?.[0];
+      }
+    }
+
+    if(file?.id || file?.webViewLink){
+      await openOnline({
+        id: file.id,
+        url: file.webViewLink,
+        name: file.name || attName,
+        mime: file.mimeType || (ext==='pdf'?'application/pdf':'')
+      }, false);
+      return;
+    }
+
+    const searchUrl = 'https://drive.google.com/drive/search?q=' + encodeURIComponent(attName);
+    await openOnline({
+      id: '',
+      url: searchUrl,
+      name: attName,
+      mime: ''
+    }, false);
+  } catch(e) {
+    $('viewer-body').innerHTML = `
+      <div class="message error" style="margin:20px 8px;padding:16px;">
+        <p><strong>Lỗi mở tệp:</strong> ${esc(e.message)}</p>
+        <button id="viewer-err-back" class="button" style="margin-top:10px;padding:8px 14px;background:#0f2c59;color:#fff;border-radius:6px;border:none;cursor:pointer;">← Quay lại thư</button>
+      </div>
+    `;
+    const errBack = $('viewer-err-back');
+    if(errBack) errBack.onclick = goBack;
+  }
+ }
+ async function openOnline(opt, clearHist=true){
+  if(clearHist)close(true);else{generation++;renderTask?.cancel();renderTask=null;$('viewer-body').replaceChildren();$('viewer-controls').replaceChildren();}
+  const run=++generation;
   const name=opt?.name||'Xem tài liệu',id=opt?.id||'',mime=opt?.mime||'';
   const ext=name.split('.').pop().toLowerCase();
   const isSheet=mime.includes('spreadsheet')||['xlsx','xls','csv'].includes(ext);
@@ -281,7 +421,22 @@ window.AwmViewer=(()=>{
   const badgeText=isSheet?'📊 Bảng tính Excel':isPdf?'📑 PDF Hợp đồng':isCad?'📐 Bản vẽ CAD':isMsg?'✉️ Email MSG':'📄 Tài liệu';
   const badgeCls=isSheet?'online':isCad?'badge-primary':isMsg?'priority-normal':'priority-low';
   const openLabel=isSheet?'Mở bằng Google Sheets ↗':isPdf?'Mở file PDF ↗':isCad?'Mở bản vẽ CAD ↗':isMsg?'Mở email MSG ↗':'Mở tài liệu ↗';
-  $('viewer-controls').innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;padding:4px 0;flex-wrap:wrap;"><span class="badge ${badgeCls}" style="font-size:12px;font-weight:600;">${badgeText}</span><div style="display:flex;gap:6px;align-items:center;">${isCad?`<label class="button" style="display:inline-flex;align-items:center;padding:6px 10px;font-size:12px;background:#244438;color:#fff;border-radius:6px;cursor:pointer;">+ Nạp file nền (Xref)<input id="cad-online-bg" type="file" accept=".dxf,.dwg,.txt" hidden></label>`:''}<a class="primary button" style="display:inline-flex;align-items:center;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div></div>`;
+
+  $('viewer-controls').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px;padding:4px 0;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${historyStack.length>0?`<button id="viewer-online-back" class="button" style="padding:6px 12px;font-size:12px;background:#0f2c59;color:#fff;border-radius:6px;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:none;">← Quay lại thư</button>`:''}
+        <span class="badge ${badgeCls}" style="font-size:12px;font-weight:600;">${badgeText}</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        ${isCad?`<label class="button" style="display:inline-flex;align-items:center;padding:6px 10px;font-size:12px;background:#244438;color:#fff;border-radius:6px;cursor:pointer;">+ Nạp file nền (Xref)<input id="cad-online-bg" type="file" accept=".dxf,.dwg,.txt" hidden></label>`:''}
+        <a class="primary button" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a>
+      </div>
+    </div>
+  `;
+  const backBtn = $('viewer-online-back');
+  if(backBtn) backBtn.onclick = goBack;
+
   if(isCad){
     $('viewer-body').innerHTML=`<div class="card" style="padding:16px;background:#182b29;color:#fff;border-radius:10px;margin-bottom:12px;"><div class="top"><span class="badge online">AutoCAD DWG</span><span class="code">Bản vẽ CAD</span></div><h3 style="margin:8px 0 4px 0;color:#d5e6b0;">${esc(name)}</h3><p style="font-size:12px;color:#a8c4b2;margin:0 0 10px 0;">Bản vẽ CAD hỗ trợ đối chiếu file nền kiến trúc/hạ tầng. Bấm nút "+ Nạp file nền (Xref)" hoặc mở trực tiếp trên Autodesk/Drive.</p><a class="primary button" style="display:inline-flex;align-items:center;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;border-radius:6px;background:#244438;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div><div id="cad-online-canvas"></div>`;
     const bgInput=$('cad-online-bg');
@@ -295,9 +450,15 @@ window.AwmViewer=(()=>{
         }catch(err){alert('Lỗi nạp file nền: '+err.message)}
       };
     }
+  }else if(id){
+    $('viewer-body').innerHTML=`
+      <div style="width:100%;height:calc(85vh - 55px);background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.1);display:flex;flex-direction:column;">
+        <iframe src="https://drive.google.com/file/d/${id}/preview" style="width:100%;height:100%;border:none;" allow="autoplay" loading="lazy"></iframe>
+      </div>
+    `;
   }else{
     $('viewer-body').innerHTML=`<div class="card" style="margin:24px 8px;padding:28px 16px;text-align:center;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border:1px solid #e2ebd8;"><div style="font-size:52px;margin-bottom:12px;">${isSheet?'📊':isPdf?'📑':isMsg?'✉️':'📄'}</div><h3 style="margin:0 0 10px 0;font-size:16px;color:#182b29;word-break:break-word;line-height:1.4;">${esc(name)}</h3><div class="badge ${badgeCls}" style="display:inline-block;margin-bottom:16px;font-size:12px;font-weight:600;">${badgeText}</div><p class="muted" style="font-size:13px;line-height:1.5;margin:0 0 20px 0;">${isSheet?'Tệp bảng tính Excel BOQ lưu trữ trên Google Drive dự án.':isPdf?'Tệp PDF hợp đồng lưu trữ trên Google Drive dự án.':isMsg?'Tệp thư điện tử MSG lưu trữ trên Google Drive dự án.':'Tài liệu lưu trữ trên Google Drive dự án.'}</p><a class="primary button" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;background:#182b29;color:#fff;width:100%;box-sizing:border-box;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div>`;
   }
  }
- return {open,openOnline,openMsg,close};
+ return {open,openOnline,openMsg,openAttachment,goBack,close};
 })();

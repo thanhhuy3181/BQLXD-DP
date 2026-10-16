@@ -167,15 +167,24 @@
       const file=res?.files?.[0];
       if(file?.webViewLink){
         notice('Đang mở: '+file.name);
-        const win=window.open(file.webViewLink,'_blank','noopener');
-        if(!win||win.closed||typeof win.closed==='undefined'){
-          if(window.AwmViewer?.openOnline)AwmViewer.openOnline({id:file.id,url:file.webViewLink,name:file.name,mime:file.mimeType,row});
+        if(window.AwmViewer?.openOnline){
+          AwmViewer.openOnline({id:file.id,url:file.webViewLink,name:file.name,mime:file.mimeType,row});
+        }else{
+          window.open(file.webViewLink,'_blank','noopener');
         }
         return;
       }
-      window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(fileName),'_blank','noopener');
+      if(window.AwmViewer?.openOnline){
+        AwmViewer.openOnline({id:'',url:'https://drive.google.com/drive/search?q='+encodeURIComponent(fileName),name:fileName,mime:'',row});
+      }else{
+        window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(fileName),'_blank','noopener');
+      }
     }catch(e){
-      window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(fileName),'_blank','noopener');
+      if(window.AwmViewer?.openOnline){
+        AwmViewer.openOnline({id:'',url:'https://drive.google.com/drive/search?q='+encodeURIComponent(fileName),name:fileName,mime:'',row});
+      }else{
+        window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(fileName),'_blank','noopener');
+      }
     }
   }
   async function openHsmtFolderOnline(row){
@@ -448,6 +457,6 @@
  // scroll position when they return.  A fresh bootstrap still runs only on
  // an explicit reload, login, project change, or access refresh.
  document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer)});
- window.AwmLive = { openNamedFile, openFile };
+ window.AwmLive = { openNamedFile, openFile, rpc, getProject: () => project, notice };
  if(sessionStorage.getItem(TOKEN))boot();else auth();
 })();

@@ -1,10 +1,14 @@
 /**
  * outlook_viewer.js — Trình xem Thư điện tử Outlook Classic trên Desktop Web
  * Hiển thị đầy đủ 100%: From, To, Cc, Bcc, Subject, Date, Attachments, Body & Nested Emails
+ * Hỗ trợ mở tệp đính kèm: PDF, Excel, CAD, MSG đệ quy với nút Quay lại thư trước
  */
 'use strict';
 
 const OutlookViewer = (function() {
+  let desktopHistoryStack = [];
+  let currentDesktopMsg = null;
+
   function esc(s) {
     if (s === null || s === undefined) return '';
     return String(s)
@@ -56,7 +60,19 @@ const OutlookViewer = (function() {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
-  async function openMsg(fileName, fullPath) {
+  function goBack() {
+    if (desktopHistoryStack.length > 0) {
+      const prev = desktopHistoryStack.pop();
+      renderMessageView(prev.msgData, prev.fileName, prev.fullPath, prev.driveUrl, false);
+    }
+  }
+
+  function renderMessageView(msgData, fileName, fullPath, driveUrl, clearHist = true) {
+    if (clearHist) {
+      desktopHistoryStack = [];
+    }
+    currentDesktopMsg = { msgData, fileName, fullPath, driveUrl };
+
     const modal = document.getElementById('modal-outlook-msg');
     const titleEl = document.getElementById('desktop-msg-modal-title');
     const driveLink = document.getElementById('desktop-msg-drive-link');
@@ -68,42 +84,28 @@ const OutlookViewer = (function() {
     }
 
     const cleanTitle = (fileName || 'Thư điện tử').replace(/\.msg$/i, '');
-    if (titleEl) titleEl.textContent = `Outlook Classic — ${fileName || cleanTitle}`;
+    if (titleEl) {
+      titleEl.innerHTML = `
+        <div class="flex items-center gap-2">
+          ${desktopHistoryStack.length > 0 ? `
+            <button type="button" class="btn btn-xs bg-white text-[#0078d4] hover:bg-slate-100 font-bold border-none rounded px-2" onclick="OutlookViewer.goBack()">
+              ← Quay lại thư trước
+            </button>
+          ` : ''}
+          <span class="truncate max-w-lg">Outlook Classic — ${esc(fileName || cleanTitle)}</span>
+        </div>
+      `;
+    }
 
     if (driveLink) {
-      driveLink.classList.add('hidden');
-      driveLink.href = '#';
-    }
-
-    contentEl.innerHTML = `
-      <div class="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
-        <span class="loading loading-spinner loading-lg text-[#0078d4]"></span>
-        <span class="text-sm font-medium">Đang tải và trích xuất nội dung thư theo chuẩn Outlook Classic...</span>
-      </div>
-    `;
-
-    modal.showModal();
-
-    let msgData = null;
-    let driveUrl = '';
-
-    // 1. Fetch message data via RPC
-    try {
-      const res = await API.call('awm_get_msg', 'Vinhomes Đan Phượng', fileName, cleanTitle);
-      msgData = (res && res.ok && res.data) ? res.data : (res?.data || res);
-    } catch (e) {
-      console.warn('awm_get_msg error:', e);
-    }
-
-    // 2. Fetch Drive link in parallel
-    try {
-      const driveRes = await API.call('awm_find_file', 'Vinhomes Đan Phượng', fileName, 'all');
-      driveUrl = driveRes?.files?.[0]?.webViewLink || '';
-      if (driveUrl && driveLink) {
+      if (driveUrl) {
         driveLink.href = driveUrl;
         driveLink.classList.remove('hidden');
+      } else {
+        driveLink.classList.add('hidden');
+        driveLink.href = '#';
       }
-    } catch (_) {}
+    }
 
     // Fallbacks if extraction returned empty
     const subject = msgData?.subject || cleanTitle;
@@ -182,14 +184,24 @@ const OutlookViewer = (function() {
                 const attName = typeof att === 'string' ? att : (att.name || 'attachment');
                 const attSize = typeof att === 'object' && att.size ? formatSize(att.size) : '';
                 const icon = getAttIcon(attName);
-                const isMsg = typeof att === 'object' ? (att.is_msg || attName.toLowerCase().endsWith('.msg')) : attName.toLowerCase().endsWith('.msg');
+                const ext = attName.split('.').pop().toLowerCase();
+                const isMsg = typeof att === 'object' ? (att.is_msg || ext === 'msg' || ext === 'eml') : (ext === 'msg' || ext === 'eml');
+                const isPdf = ext === 'pdf';
+                const isSheet = ['xlsx', 'xls', 'csv'].includes(ext);
+                const isCad = ['dwg', 'dxf'].includes(ext);
+                const actionBadge = isMsg ? 'Đọc thư ↗' : isPdf ? 'Mở PDF ↗' : isSheet ? 'Mở Excel ↗' : isCad ? 'Mở CAD ↗' : 'Mở tệp ↗';
+                const badgeCls = isMsg ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                                 isPdf ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
+                                 isSheet ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
+                                 isCad ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' :
+                                 'bg-slate-700/60 text-slate-300 border-slate-600';
                 return `
-                  <div class="inline-flex items-center gap-2 bg-[#0f172a] border ${isMsg ? 'border-amber-500 hover:border-amber-400' : 'border-slate-600 hover:border-sky-400'} rounded-lg px-3 py-1.5 text-xs shadow-sm cursor-pointer transition-all"
-                       onclick="${isMsg ? `document.getElementById('desktop-nested-msg-${idx}')?.scrollIntoView({behavior:'smooth'})` : `OutlookViewer.openAttachmentFile('${esc(attName)}')`}">
+                  <div class="inline-flex items-center gap-2 bg-[#0f172a] border border-slate-700 hover:border-[#0078d4] rounded-lg px-3 py-1.5 text-xs shadow-sm cursor-pointer transition-all"
+                       onclick="OutlookViewer.openAttachment('${esc(attName)}', ${idx})">
                     <span class="text-base">${icon}</span>
                     <span class="font-semibold text-slate-100 max-w-xs truncate">${esc(attName)}</span>
                     ${attSize ? `<span class="text-slate-400 text-[11px]">(${esc(attSize)})</span>` : ''}
-                    ${isMsg ? `<span class="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold">Xem thư ↓</span>` : ''}
+                    <span class="${badgeCls} border text-[10px] px-1.5 py-0.5 rounded font-bold">${actionBadge}</span>
                   </div>
                 `;
               }).join('')}
@@ -238,24 +250,132 @@ const OutlookViewer = (function() {
     `;
   }
 
-  async function openAttachmentFile(attName) {
-    if (!attName) return;
+  async function openMsg(fileName, fullPath) {
+    const modal = document.getElementById('modal-outlook-msg');
+    const titleEl = document.getElementById('desktop-msg-modal-title');
+    const driveLink = document.getElementById('desktop-msg-drive-link');
+    const contentEl = document.getElementById('desktop-msg-content');
+
+    if (!modal || !contentEl) {
+      alert('Không tìm thấy hộp thoại đọc thư Outlook');
+      return;
+    }
+
+    const cleanTitle = (fileName || 'Thư điện tử').replace(/\.msg$/i, '');
+    if (titleEl) titleEl.textContent = `Outlook Classic — ${fileName || cleanTitle}`;
+
+    if (driveLink) {
+      driveLink.classList.add('hidden');
+      driveLink.href = '#';
+    }
+
+    contentEl.innerHTML = `
+      <div class="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
+        <span class="loading loading-spinner loading-lg text-[#0078d4]"></span>
+        <span class="text-sm font-medium">Đang tải và trích xuất nội dung thư theo chuẩn Outlook Classic...</span>
+      </div>
+    `;
+
+    modal.showModal();
+
+    let msgData = null;
+    let driveUrl = '';
+    const currentProject = localStorage.getItem('bqlda_current_project') || 'Vinhomes Đan Phượng';
+
+    // 1. Fetch message data via RPC
     try {
-      const ext = attName.split('.').pop().toLowerCase();
-      const kind = ext === 'pdf' ? 'pdf' : (ext === 'xlsx' || ext === 'xls') ? 'excel' : 'all';
-      const res = await API.call('awm_find_file', 'Vinhomes Đan Phượng', attName, kind);
-      const file = res?.files?.[0];
+      const res = await API.call('awm_get_msg', currentProject, fileName, cleanTitle);
+      msgData = (res && res.ok && res.data) ? res.data : (res?.data || res);
+    } catch (e) {
+      console.warn('awm_get_msg error:', e);
+    }
+
+    // 2. Fetch Drive link in parallel
+    try {
+      const driveRes = await API.call('awm_find_file', currentProject, fileName, 'all');
+      driveUrl = driveRes?.files?.[0]?.webViewLink || '';
+    } catch (_) {}
+
+    renderMessageView(msgData, fileName, fullPath, driveUrl, true);
+  }
+
+  async function openAttachment(attName, idx) {
+    if (!attName) return;
+    const ext = String(attName).split('.').pop().toLowerCase();
+    const currentProject = localStorage.getItem('bqlda_current_project') || 'Vinhomes Đan Phượng';
+
+    // 1. If attachment is a .msg / .eml email
+    if (ext === 'msg' || ext === 'eml') {
+      if (currentDesktopMsg) {
+        desktopHistoryStack.push({ ...currentDesktopMsg });
+      }
+      const nested = (currentDesktopMsg?.msgData?.nested_messages || [])[idx] ||
+                     (currentDesktopMsg?.msgData?.nested_messages || []).find(n => n.subject && attName.toLowerCase().includes(n.subject.toLowerCase()));
+      if (nested) {
+        renderMessageView({
+          subject: nested.subject,
+          sender: nested.sender,
+          to: nested.to,
+          cc: nested.cc,
+          date: nested.date,
+          body: nested.body,
+          attachments: (nested.attachments || []).map(a => typeof a === 'string' ? { name: a } : a),
+          nested_messages: []
+        }, attName, '', currentDesktopMsg?.driveUrl || '', false);
+        return;
+      }
+      try {
+        const cleanNoExt = attName.replace(/\.msg$/i, '').trim();
+        const res = await API.call('awm_get_msg', currentProject, attName, cleanNoExt);
+        const data = (res && res.ok && res.data) ? res.data : (res?.data || res);
+        if (data && (data.subject || data.body || data.sender)) {
+          renderMessageView(data, attName, '', currentDesktopMsg?.driveUrl || '', false);
+          return;
+        }
+      } catch (e) {
+        console.warn('Cannot fetch attached msg via RPC:', e);
+      }
+    }
+
+    // 2. For non-msg attachments (PDF, Excel, CAD, Word, etc.)
+    const kind = ext === 'pdf' ? 'pdf' : (ext === 'xlsx' || ext === 'xls' || ext === 'csv') ? 'excel' : 'all';
+    const newWin = window.open('about:blank', '_blank');
+    if (newWin) {
+      newWin.document.write(`
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;color:#0f2c59;background:#f8fafc;">
+          <div style="font-size:36px;">⏳</div>
+          <h2 style="margin:0;font-size:16px;">Đang tìm và mở tệp...</h2>
+          <p style="margin:0;font-size:13px;color:#64748b;">${esc(attName)}</p>
+        </div>
+      `);
+    }
+
+    try {
+      let file = null;
+      const res = await API.call('awm_find_file', currentProject, attName, kind);
+      file = res?.files?.[0];
+      if (!file) {
+        const cleanNoExt = attName.replace(/\.[^/.]+$/, '').trim();
+        const res2 = await API.call('awm_find_file', currentProject, cleanNoExt, kind);
+        file = res2?.files?.[0];
+      }
       if (file?.webViewLink) {
-        window.open(file.webViewLink, '_blank', 'noopener');
+        if (newWin) newWin.location.href = file.webViewLink;
+        else window.open(file.webViewLink, '_blank', 'noopener');
         return;
       }
     } catch (_) {}
-    window.open(`https://drive.google.com/drive/search?q=${encodeURIComponent(attName)}`, '_blank', 'noopener');
+
+    const searchUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(attName)}`;
+    if (newWin) newWin.location.href = searchUrl;
+    else window.open(searchUrl, '_blank', 'noopener');
   }
 
   return {
     openMsg,
-    openAttachmentFile
+    openAttachment,
+    openAttachmentFile: (attName, idx) => openAttachment(attName, idx || 0),
+    goBack
   };
 })();
 
