@@ -11,13 +11,19 @@
   if(/Windows NT|Macintosh|CrOS|X11/i.test(ua))return false;
   return nav.userAgentData?.mobile===true;
  }
- function targetUrl(href,scriptUrl,nav){
+ function targetUrl(href,scriptUrl,nav,storage){
   const current=new URL(href);if(!['http:','https:'].includes(current.protocol))return null;
   const base=new URL('../',scriptUrl),desktop=new URL('index.html',base),mobile=new URL('mobile/',base);
   const isDesktop=[base.pathname,desktop.pathname].includes(current.pathname);
   const isMobile=[mobile.pathname,mobile.pathname+'index.html'].includes(current.pathname);
   if(!isDesktop&&!isMobile)return null;
-  const override=current.searchParams.get('view');
+  let override=current.searchParams.get('view');
+  const store=storage||(typeof localStorage!=='undefined'?localStorage:null);
+  if(override){
+   try{store?.setItem('bqlda_view_mode',override)}catch(_){}
+  }else{
+   try{override=store?.getItem('bqlda_view_mode')}catch(_){}
+  }
   const phone=override==='mobile'?true:override==='desktop'?false:detectPhone(nav);
   if(phone&&isMobile||!phone&&isDesktop)return null;
   const target=phone?mobile:desktop;target.search=current.search;target.hash=current.hash;return target.href;
@@ -25,5 +31,5 @@
  if(typeof module==='object'&&module.exports){module.exports={detectPhone,targetUrl};return}
  if(root.pywebview)return;
  const script=document.currentScript;if(!script?.src)return;
- const target=targetUrl(location.href,script.src,navigator);if(target)location.replace(target);
+ const target=targetUrl(location.href,script.src,navigator,typeof localStorage!=='undefined'?localStorage:null);if(target)location.replace(target);
 })(typeof window==='undefined'?{}:window);

@@ -385,6 +385,13 @@
 
     <!-- Quick Action Toolbar -->
     <div class="flex items-center gap-2">
+      <!-- Nút Chuyển đổi Web Mobile (AwD ⇄ AwM) -->
+      <a id="header-switch-mobile" href="mobile/?view=mobile" class="flex items-center gap-1.5 px-2.5 py-1 bg-[#182B29] hover:bg-[#203B32] text-[#DCECAA] font-bold rounded text-xs border border-[#3E5C4E] transition-all shadow-sm" title="Chuyển sang phiên bản Web Mobile (AwM)" onclick="try{localStorage.setItem('bqlda_view_mode','mobile');}catch(_){}">
+        <span class="text-[#84968A] text-[10px] font-normal">AwD</span>
+        <span class="text-[#DCECAA]">⇄</span>
+        <span class="font-extrabold text-[#DCECAA]">AwM 📱</span>
+      </a>
+
       <!-- Cụm thu phóng cỡ chữ & giao diện (Zoom 80% - 150%) -->
       <div class="flex items-center gap-1 bg-[#232320] px-2 py-0.5 rounded border border-[#2E2E2A] text-xs">
         <span class="text-[#908CAA] text-[11px] font-bold">🔍 Size:</span>

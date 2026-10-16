@@ -29,5 +29,10 @@
 .project-item.active .project-item-name{color:#142823;font-weight:700}
 .project-item-check{color:#276749;font-weight:800;font-size:15px;flex-shrink:0}
 .project-match-highlight{background:#fff3a8;color:#8c5700;border-radius:2px;padding:0 2px}
+.view-switch-btn{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.3px;color:#dcecaa;background:rgba(255,255,255,0.08);border:1px solid rgba(220,236,170,0.38);border-radius:6px;padding:4px 8px;text-decoration:none;display:inline-flex;align-items:center;gap:3px;flex-shrink:0;cursor:pointer;transition:background .15s,border-color .15s}
+.view-switch-btn:hover,.view-switch-btn:active{background:rgba(220,236,170,0.22);border-color:#dcecaa;color:#fff}
+.view-switch-btn .cur-view{color:#9cb3a8;font-size:9px;font-weight:500}
+.view-switch-btn .arrow{color:#dcecaa;font-size:10px}
+.view-switch-btn .target-view{color:#f0f8e2;font-weight:800}
 
 
