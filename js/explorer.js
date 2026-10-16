@@ -686,6 +686,12 @@ const ExplorerModule = (function() {
         window.openDesktopOutlookMsg(fileName, path);
         return;
       }
+      const lowerFn = fileName.toLowerCase();
+      if ((lowerFn.endsWith('.dwg') || lowerFn.endsWith('.dxf')) && typeof window.openDesktopCadViewer === 'function') {
+        const file = _filesData.find(f => f.path === path);
+        window.openDesktopCadViewer(fileName, path, file?.url);
+        return;
+      }
       if(path.startsWith('gdrive://')){
         const file=_filesData.find(f=>f.path===path);
         API.openLink(file?.url || 'https://drive.google.com/file/d/'+path.split('/').pop()+'/view');

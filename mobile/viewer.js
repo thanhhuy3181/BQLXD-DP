@@ -50,9 +50,9 @@ window.AwmViewer=(()=>{
       }
     }catch(_){}
     if(run===generation){
-      $('viewer-controls').innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;width:100%;flex-wrap:wrap;"><span class="badge online">📐 Bản vẽ CAD DWG</span><label class="button" style="display:inline-flex;align-items:center;padding:4px 8px;font-size:12px;background:#244438;color:#fff;border-radius:6px;cursor:pointer;">+ Nạp file nền (Xref/DXF)<input id="dwg-bg-loader" type="file" accept=".dxf,.dwg,.txt" hidden></label><a class="primary" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;margin-left:auto;" href="https://viewer.autodesk.com/" target="_blank" rel="noopener">Mở Autodesk CAD Viewer ↗</a></div>`;
-      $('viewer-body').innerHTML=`<div class="card" style="padding:16px;background:#182b29;color:#fff;border-radius:10px;margin-bottom:12px;"><div class="top"><span class="badge online">AutoCAD DWG</span><span class="code">${blob.size?Math.ceil(blob.size/1024)+' KB':''}</span></div><h3 style="margin:8px 0 4px 0;color:#d5e6b0;">${esc(name)}</h3><p style="font-size:12px;color:#a8c4b2;margin:0 0 10px 0;">Bản vẽ CAD DWG có hỗ trợ đối chiếu với file nền kiến trúc/hạ tầng. Bạn có thể bấm "+ Nạp file nền (Xref/DXF)" để đọc file nền hoặc mở bản vẽ trực tiếp trên ứng dụng CAD.</p></div><div id="dwg-bg-canvas"></div>`;
-      const bgLoader=$('dwg-bg-loader');if(bgLoader)bgLoader.onchange=async e=>{const bgFile=e.target.files[0];if(!bgFile)return;try{const bgText=await bgFile.text();AwmCad.render(bgText,$('dwg-bg-canvas'),$('viewer-controls'));}catch(err){alert('Không đọc được file nền: '+err.message)}};
+      if(window.AwmCad && typeof window.AwmCad.renderCadWorkspace === 'function'){
+        AwmCad.renderCadWorkspace({name, directUrl:'', mime}, $('viewer-body'), $('viewer-controls'));
+      }
     }
    }else if(ext==='msg'){
      try{
@@ -456,17 +456,9 @@ window.AwmViewer=(()=>{
   if(backBtn) backBtn.onclick = goBack;
 
   if(isCad){
-    $('viewer-body').innerHTML=`<div class="card" style="padding:16px;background:#182b29;color:#fff;border-radius:10px;margin-bottom:12px;"><div class="top"><span class="badge online">AutoCAD DWG</span><span class="code">Bản vẽ CAD</span></div><h3 style="margin:8px 0 4px 0;color:#d5e6b0;">${esc(name)}</h3><p style="font-size:12px;color:#a8c4b2;margin:0 0 10px 0;">Bản vẽ CAD hỗ trợ đối chiếu file nền kiến trúc/hạ tầng. Bấm nút "+ Nạp file nền (Xref)" hoặc mở trực tiếp trên Autodesk/Drive.</p><a class="primary button" style="display:inline-flex;align-items:center;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;border-radius:6px;background:#244438;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div><div id="cad-online-canvas"></div>`;
-    const bgInput=$('cad-online-bg');
-    if(bgInput){
-      bgInput.onchange=async e=>{
-        const bgFile=e.target.files[0];
-        if(!bgFile)return;
-        try{
-          const bgText=await bgFile.text();
-          AwmCad.render(bgText,$('cad-online-canvas'),$('viewer-controls'));
-        }catch(err){alert('Lỗi nạp file nền: '+err.message)}
-      };
+    if(window.AwmCad && typeof window.AwmCad.renderCadWorkspace === 'function'){
+      window.AwmCad.renderCadWorkspace({name, id, url: opt?.url, directUrl, mime}, $('viewer-body'), $('viewer-controls'));
+      return;
     }
   }else if(id){
     $('viewer-body').innerHTML=`

@@ -337,7 +337,20 @@ const OutlookViewer = (function() {
       }
     }
 
-    // 2. For non-msg attachments (PDF, Excel, CAD, Word, etc.)
+    // 2. If attachment is CAD (DWG / DXF)
+    if ((ext === 'dwg' || ext === 'dxf') && typeof window.openDesktopCadViewer === 'function') {
+      try {
+        const res = await API.call('awm_find_file', currentProject, attName, 'all');
+        const file = res?.files?.[0];
+        window.openDesktopCadViewer(attName, '', file?.webViewLink || '');
+        return;
+      } catch (_) {
+        window.openDesktopCadViewer(attName, '', '');
+        return;
+      }
+    }
+
+    // 3. For other non-msg attachments (PDF, Excel, Word, etc.)
     const kind = ext === 'pdf' ? 'pdf' : (ext === 'xlsx' || ext === 'xls' || ext === 'csv') ? 'excel' : 'all';
     const newWin = window.open('about:blank', '_blank');
     if (newWin) {

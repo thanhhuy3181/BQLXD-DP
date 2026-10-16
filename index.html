@@ -3265,6 +3265,8 @@
   <script src="js/word.js"></script>
   <script src="js/mail.js"></script>
   <script src="js/outlook_viewer.js"></script>
+  <script src="js/cad.js"></script>
+  <script src="js/cad_viewer.js"></script>
   <script src="js/home.js"></script>
   <script src="js/explorer.js"></script>
   <script src="js/drive_picker.js"></script>
@@ -3393,6 +3395,26 @@
       </div>
       <div class="p-5 overflow-y-auto flex-1 bg-[#0f172a] text-slate-200" id="desktop-msg-content" style="max-height: calc(90vh - 60px);">
         <!-- Content injected dynamically -->
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <!-- AutoCAD CAD Viewer Modal (Desktop) -->
+  <dialog id="modal-cad-viewer" class="modal">
+    <div class="modal-box w-11/12 max-w-6xl bg-[#0f172a] text-slate-100 p-0 border border-slate-700 shadow-2xl rounded-xl overflow-hidden flex flex-col" style="max-height: 94vh;">
+      <div class="bg-[#182b29] text-white px-4 py-2.5 flex items-center justify-between select-none shadow-sm flex-shrink-0 border-b border-emerald-900/50">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📐</span>
+          <span class="font-bold text-sm tracking-wide text-[#d5e6b0]" id="desktop-cad-modal-title">AutoCAD CAD Viewer — Bản Vẽ Kỹ Thuật</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn btn-xs btn-circle btn-ghost text-white text-base font-bold" onclick="document.getElementById('modal-cad-viewer').close()">✕</button>
+        </div>
+      </div>
+      <div id="desktop-cad-controls" class="bg-[#1e293b] px-4 py-2 flex items-center justify-between border-b border-slate-700 text-xs">
+        <!-- Controls injected dynamically -->
+      </div>
+      <div class="p-3 overflow-hidden flex-1 bg-[#13191c] text-slate-200 flex flex-col" id="desktop-cad-content" style="min-height: 70vh;">
+        <!-- Canvas / SVG / ShareCAD injected dynamically -->
       </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
