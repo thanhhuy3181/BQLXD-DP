@@ -2,11 +2,26 @@
 window.AwmViewer=(()=>{
  const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let generation=0,pdf=null,loadingTask=null,worker=null,renderTask=null,historyStack=[],currentMsg=null;
- function close(clearHist=true){generation++;if(clearHist)historyStack=[];currentMsg=null;renderTask?.cancel();renderTask=null;loadingTask?.destroy().catch(()=>{});loadingTask=null;pdf=null;worker?.terminate();worker=null;$('viewer-body').replaceChildren();$('viewer-controls').replaceChildren();$('viewer').close()}
+ function close(clearHist=true,fromPopstate=false){
+  generation++;if(clearHist)historyStack=[];currentMsg=null;renderTask?.cancel();renderTask=null;loadingTask?.destroy().catch(()=>{});loadingTask=null;pdf=null;worker?.terminate();worker=null;
+  $('viewer-body').replaceChildren();$('viewer-controls').replaceChildren();$('viewer').style.transform='';
+  if($('viewer').open)$('viewer').close();
+  if(!fromPopstate&&history.state?.awm_modal==='viewer')history.back();
+ }
  $('viewer-close').onclick=()=>close(true);$('viewer').addEventListener('cancel',e=>{e.preventDefault();close(true)});
- function goBack(){if(historyStack.length>0){const prev=historyStack.pop();if(prev.type==='msg')openMsg(prev.data,false);else if(prev.type==='online')openOnline(prev.data,false);}else{close(true);}}
+ function goBack(fromPopstate=false){
+  if(historyStack.length>0){
+   const prev=historyStack.pop();
+   if(!fromPopstate&&history.state?.awm_modal==='viewer_att')history.back();
+   if(prev.type==='msg')openMsg(prev.data,false);else if(prev.type==='online')openOnline(prev.data,false);
+  }else{
+   close(true,fromPopstate);
+  }
+ }
  async function open(blob,name,mime=''){
-  close();const run=++generation;$('viewer-title').textContent=name;$('viewer').showModal();$('viewer-body').innerHTML='<div class="loading">Đang đọc tài liệu…</div>';
+  close();const run=++generation;$('viewer-title').textContent=name;
+  if(history.state?.awm_modal!=='viewer'&&history.state?.awm_modal!=='viewer_att')history.pushState({awm_modal:'viewer'},'');
+  $('viewer').showModal();$('viewer-body').innerHTML='<div class="loading">Đang đọc tài liệu…</div>';
   try{
    if(blob.size>30*1024*1024)throw Error('Giới hạn đọc trực tiếp là 30 MB.');
    const ext=name.split('.').pop().toLowerCase();
@@ -264,6 +279,7 @@ window.AwmViewer=(()=>{
   const run=++generation;
   const name=opt?.name||'Thư điện tử';
   $('viewer-title').textContent=name;
+  if(history.state?.awm_modal!=='viewer'&&history.state?.awm_modal!=='viewer_att')history.pushState({awm_modal:'viewer'},'');
   $('viewer').showModal();
   const msg={
    name: name,
@@ -287,6 +303,7 @@ window.AwmViewer=(()=>{
   const ext=String(attName).split('.').pop().toLowerCase();
   if(currentMsg){
     historyStack.push({type:'msg', data:{...currentMsg}, name:$('viewer-title').textContent, url:currentMsg.url||''});
+    history.pushState({awm_modal:'viewer_att'},'');
   }
   if(ext==='msg'){
     const nested=(currentMsg?.nested_messages||[])[idx] ||
@@ -409,6 +426,7 @@ window.AwmViewer=(()=>{
   const isMsg=mime.includes('outlook')||ext==='msg'||ext==='eml';
   const directUrl=opt?.url||(id?(isSheet?`https://docs.google.com/spreadsheets/d/${id}/edit`:`https://drive.google.com/file/d/${id}/view`):previewUrl);
   $('viewer-title').textContent=name;
+  if(history.state?.awm_modal!=='viewer'&&history.state?.awm_modal!=='viewer_att')history.pushState({awm_modal:'viewer'},'');
   $('viewer').showModal();
   if(isMsg&&(opt.body||opt.row||opt.subject)){
     const subject=opt.subject||opt.row?.noi_dung||name.replace(/\.msg$/i,'');
@@ -460,5 +478,33 @@ window.AwmViewer=(()=>{
     $('viewer-body').innerHTML=`<div class="card" style="margin:24px 8px;padding:28px 16px;text-align:center;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border:1px solid #e2ebd8;"><div style="font-size:52px;margin-bottom:12px;">${isSheet?'📊':isPdf?'📑':isMsg?'✉️':'📄'}</div><h3 style="margin:0 0 10px 0;font-size:16px;color:#182b29;word-break:break-word;line-height:1.4;">${esc(name)}</h3><div class="badge ${badgeCls}" style="display:inline-block;margin-bottom:16px;font-size:12px;font-weight:600;">${badgeText}</div><p class="muted" style="font-size:13px;line-height:1.5;margin:0 0 20px 0;">${isSheet?'Tệp bảng tính Excel BOQ lưu trữ trên Google Drive dự án.':isPdf?'Tệp PDF hợp đồng lưu trữ trên Google Drive dự án.':isMsg?'Tệp thư điện tử MSG lưu trữ trên Google Drive dự án.':'Tài liệu lưu trữ trên Google Drive dự án.'}</p><a class="primary button" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;background:#182b29;color:#fff;width:100%;box-sizing:border-box;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div>`;
   }
  }
- return {open,openOnline,openMsg,openAttachment,goBack,close};
+ let vTouchX=0,vTouchY=0,vTouchT=0,vSwiping=false;
+ $('viewer').addEventListener('touchstart',e=>{
+  if(e.touches.length!==1)return;
+  vTouchX=e.touches[0].clientX;vTouchY=e.touches[0].clientY;vTouchT=Date.now();vSwiping=false;
+  $('viewer').style.transition='none';
+ },{passive:true});
+ $('viewer').addEventListener('touchmove',e=>{
+  if(e.touches.length!==1)return;
+  const cx=e.touches[0].clientX,cy=e.touches[0].clientY,dx=cx-vTouchX,dy=cy-vTouchY;
+  if(dx>15&&dx>Math.abs(dy)*1.2&&vTouchX<120){
+   vSwiping=true;$('viewer').style.transform=`translateX(${Math.max(0,dx)}px)`;
+  }
+ },{passive:true});
+ $('viewer').addEventListener('touchend',e=>{
+  if(!vSwiping){$('viewer').style.transform='';return;}
+  const cx=e.changedTouches[0].clientX,cy=e.changedTouches[0].clientY,dx=cx-vTouchX,dy=cy-vTouchY,dt=Date.now()-vTouchT;
+  if((dx>80&&dx>Math.abs(dy))||(dx>40&&dt<300&&dx>Math.abs(dy))){
+   $('viewer').style.transition='transform .2s cubic-bezier(.2,.9,.3,1)';$('viewer').style.transform='translateX(100%)';
+   setTimeout(()=>{
+    $('viewer').style.transform='';$('viewer').style.transition='';
+    if(historyStack.length>0)goBack();else close(true);
+   },190);
+  }else{
+   $('viewer').style.transition='transform .2s ease-out';$('viewer').style.transform='';
+   setTimeout(()=>{$('viewer').style.transition='';},200);
+  }
+  vSwiping=false;
+ },{passive:true});
+ return {open,openOnline,openMsg,openAttachment,goBack,close,hasHistory:()=>historyStack.length>0};
 })();
