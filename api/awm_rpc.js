@@ -232,7 +232,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   if(method==='awm_find_file'){
    const code = String(args[1] || '').trim();
    const kind = String(args[2] || 'all').trim();
-   if(!code) return fail('Mã tra cứu trống.');
+   if(!code) return ok({ files: [] });
    try {
      const gdrive = require('./gdrive_service');
      const files = await gdrive.findFile(code, kind);

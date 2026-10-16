@@ -37,7 +37,7 @@
  async function todos(run){$('main').innerHTML='<div class="eyebrow">VIỆC CÁ NHÂN</div><div class="page-title"><h1>To do</h1><button id="todo-add" class="primary">+ Việc mới</button></div><div class="chips"><button data-todo-filter="open" class="active">Đang làm</button><button data-todo-filter="done">Hoàn thành</button><button data-todo-filter="all">Tất cả</button></div><div id="todo-summary" class="stats"></div><div id="todo-list" class="loading">Đang tải việc…</div>';$('todo-add').onclick=todoForm;document.querySelectorAll('[data-todo-filter]').forEach(b=>b.onclick=()=>{todoFilter=b.dataset.todoFilter;todos(run);});await loadTodos(run)}
  async function loadTodos(run){try{const data=await rpc('awm_todos',[project,todoFilter]);if(run!==epoch)return;todoItems=data.items;document.querySelectorAll('[data-todo-filter]').forEach(b=>b.classList.toggle('active',b.dataset.todoFilter===todoFilter));$('todo-summary').innerHTML=`<div class="stat"><span>Đang làm</span><strong>${data.summary.open}</strong><small>${project}</small></div><div class="stat"><span>Quá hạn</span><strong>${data.summary.overdue}</strong><small>Cần xử lý</small></div><div class="stat"><span>Hoàn thành</span><strong>${data.summary.done}</strong><small>Trong dự án</small></div>`;$('todo-list').innerHTML=data.items.length?data.items.map((item,i)=>`<button class="card todo-card ${item.status==='done'?'done':''}" data-todo="${i}"><div class="top"><span class="badge priority-${esc(item.priority)}">${item.priority==='high'?'Ưu tiên cao':item.priority==='low'?'Ưu tiên thấp':'Bình thường'}</span><span class="code">${item.due_date?'Hạn '+esc(item.due_date):'Chưa đặt hạn'}</span></div><h3>${esc(item.title)}</h3>${item.notes?`<div class="muted">${esc(item.notes)}</div>`:''}<div class="foot"><span>${item.status==='done'?'✓ Hoàn thành':'Đang thực hiện'}</span><span>Chi tiết ↗</span></div></button>`).join(''):'<div class="empty">Chưa có việc phù hợp. Tạo việc đầu tiên cho dự án này.</div>';document.querySelectorAll('[data-todo]').forEach(b=>b.onclick=()=>todoForm(todoItems[Number(b.dataset.todo)]))}catch(e){if(run===epoch)$('todo-list').innerHTML=error(e)}}
   function todoForm(item=null){const editing=!!item;sheet(`<div class="eyebrow">${esc(project)}</div><h2>${editing?'Cập nhật việc':'Việc mới'}</h2><form id="todo-form" class="form"><label>Tên việc<input id="todo-title" required maxlength="180" value="${esc(item?.title||'')}" placeholder="Ví dụ: Kiểm tra hồ sơ hợp đồng"></label><label>Hạn xử lý<input id="todo-due" type="date" value="${esc(item?.due_date||'')}"></label><label>Ưu tiên<select id="todo-priority"><option value="high" ${item?.priority==='high'?'selected':''}>Cao</option><option value="normal" ${!item||item?.priority==='normal'?'selected':''}>Bình thường</option><option value="low" ${item?.priority==='low'?'selected':''}>Thấp</option></select></label><label>Ghi chú<textarea id="todo-notes" maxlength="1000" placeholder="Thông tin cần nhớ">${esc(item?.notes||'')}</textarea></label><button class="primary">${editing?'Lưu thay đổi':'Tạo việc'}</button></form>${editing?`<div class="actions"><button id="todo-toggle">${item.status==='done'?'Mở lại việc':'Đánh dấu hoàn thành'}</button><button id="todo-delete" class="danger">Xóa việc</button></div>`:''}`);$('todo-form').onsubmit=async e=>{e.preventDefault();const payload={title:$('todo-title').value,due_date:$('todo-due').value,priority:$('todo-priority').value,notes:$('todo-notes').value};try{if(editing)await rpc('awm_update_todo',[project,item.id,payload]);else await rpc('awm_save_todo',[project,payload]);closeSheet();todos(++epoch)}catch(e){notice(e.message)}};if(editing){$('todo-toggle').onclick=async()=>{try{await rpc('awm_update_todo',[project,item.id,{status:item.status==='done'?'open':'done'}]);closeSheet();todos(++epoch)}catch(e){notice(e.message)}};$('todo-delete').onclick=async()=>{if(!confirm('Xóa việc này?'))return;try{await rpc('awm_delete_todo',[project,item.id]);closeSheet();todos(++epoch)}catch(e){notice(e.message)}}}}
- async function loadRows(append){if(!tab){$('list').innerHTML='<div class="message">Chưa được cấp quyền cho nhóm hồ sơ nào.</div>';return}const run=++epoch;if(!append){records=[];$('list').innerHTML='<div class="loading">Đang tải hồ sơ…</div>'}$('more-rows').disabled=true;try{const data=await rpc('awm_tracking',[project,tab,query,append?cursor:0]);if(run!==epoch)return;records=append?[...records,...data.items]:data.items;columns=data.columns;cursor=data.next_cursor;$('count').textContent=`${data.total} hồ sơ · ${records.length} đã tải`;$('list').innerHTML=records.length?records.map((r,i)=>{const title=r.name||r.ten_goi_thau||r.noi_dung||r.ten_nha_thau||r.code||'Hồ sơ';const code=String(r.code||r.ma_hsmt||r.ma_goi_thau||'');const dateVal=String(r.date||r.ngay_ph||r.date_sign||'');return `<button class="card" data-record="${i}"><div class="top">${code?`<span class="code" data-quick-file="${i}" style="color:#c66a19;text-decoration:underline;cursor:pointer;" title="Mở trực tiếp ${tab==='hsmt'?'BOQ Excel':'PDF hợp đồng'}">${esc(code)} ↗</span>`:'<span class="code">Hồ sơ</span>'}<span class="badge">${esc(r.trang_thai_hd||r.tt_hop_dong||r.trang_thai_ph_hsmt||'Tra cứu')}</span></div><h3>${esc(title)}</h3><div class="muted">${esc(r.nha_thau||r.ten_nha_thau||r.cdt||r.cap_thu_muc||'')}</div><div class="foot">${dateVal?`<span data-quick-folder="${i}" style="color:#1a73e8;font-weight:600;text-decoration:underline;cursor:pointer;" title="Mở thư mục online">${esc(dateVal)} ↗</span>`:'<span>-</span>'}<span>Chi tiết ↗</span></div></button>`}).join(''):'<div class="empty">Không có hồ sơ phù hợp.</div>';$('more-rows').hidden=cursor===null;document.querySelectorAll('[data-record]').forEach(b=>b.onclick=()=>detail(records[Number(b.dataset.record)]));document.querySelectorAll('[data-quick-file]').forEach(b=>b.onclick=e=>{e.stopPropagation();const r=records[Number(b.dataset.quickFile)];const code=String(r.code||r.ma_hsmt||'');if(code)openRecordFile(code,tab==='hsmt'?'excel':'pdf');});document.querySelectorAll('[data-quick-folder]').forEach(b=>b.onclick=e=>{e.stopPropagation();const r=records[Number(b.dataset.quickFolder)];if(tab==='hsmt')openHsmtFolderOnline(r);else if(tab==='contract'||tab==='contractor:detail')openContractFolderOnline(r);else openRecordFolder(r.folder_name||r.name);});}catch(e){if(run===epoch)$('list').innerHTML=error(e)}finally{if(run===epoch)$('more-rows').disabled=false}}
+ async function loadRows(append){if(!tab){$('list').innerHTML='<div class="message">Chưa được cấp quyền cho nhóm hồ sơ nào.</div>';return}const run=++epoch;if(!append){records=[];$('list').innerHTML='<div class="loading">Đang tải hồ sơ…</div>'}$('more-rows').disabled=true;try{const data=await rpc('awm_tracking',[project,tab,query,append?cursor:0]);if(run!==epoch)return;records=append?[...records,...data.items]:data.items;columns=data.columns;cursor=data.next_cursor;$('count').textContent=`${data.total} hồ sơ · ${records.length} đã tải`;$('list').innerHTML=records.length?records.map((r,i)=>{const title=r.name||r.ten_goi_thau||r.noi_dung||r.ten_nha_thau||r.code||'Hồ sơ';const code=String(r.code||r.ma_hsmt||r.ma_goi_thau||'');const dateVal=String(r.date||r.ngay_ph||r.date_sign||'');return `<button class="card" data-record="${i}"><div class="top">${code?`<span class="code" data-quick-file="${i}" style="color:#c66a19;text-decoration:underline;cursor:pointer;" title="Mở trực tiếp ${tab==='hsmt'?'BOQ Excel':'PDF hợp đồng'}">${esc(code)} ↗</span>`:'<span class="code">Hồ sơ</span>'}<span class="badge">${esc(r.trang_thai_hd||r.tt_hop_dong||r.trang_thai_ph_hsmt||'Tra cứu')}</span></div><h3>${esc(title)}</h3><div class="muted">${esc(r.nha_thau||r.ten_nha_thau||r.cdt||r.cap_thu_muc||'')}</div><div class="foot">${dateVal?`<span data-quick-folder="${i}" style="color:#1a73e8;font-weight:600;text-decoration:underline;cursor:pointer;" title="Mở thư mục online">${esc(dateVal)} ↗</span>`:'<span>-</span>'}<span>Chi tiết ↗</span></div></button>`}).join(''):'<div class="empty">Không có hồ sơ phù hợp.</div>';$('more-rows').hidden=cursor===null;document.querySelectorAll('[data-record]').forEach(b=>b.onclick=()=>detail(records[Number(b.dataset.record)]));document.querySelectorAll('[data-quick-file]').forEach(b=>b.onclick=e=>{e.stopPropagation();const r=records[Number(b.dataset.quickFile)];const code=String(r.code||r.ma_hsmt||'');if(code)openRecordFile(code,tab==='hsmt'?'excel':'pdf');});document.querySelectorAll('[data-quick-folder]').forEach(b=>b.onclick=e=>{e.stopPropagation();const r=records[Number(b.dataset.quickFolder)];if(tab==='hsmt')openHsmtFolderOnline(r);else if(tab==='contract'||tab==='contractor:detail')openContractFolderOnline(r);else{const target=r.folder||r.path||r.folder_name||r.folder_path||r.full_path||r.noi_dung||r.name||r.code||'';openRecordFolder(target,r);}});}catch(e){if(run===epoch)$('list').innerHTML=error(e)}finally{if(run===epoch)$('more-rows').disabled=false}}
  function closeSheet(fromPopstate=false){if(!$('sheet')?.open)return;$('sheet').close();$('sheet').style.transform='';if(!fromPopstate&&history.state?.awm_modal==='sheet')history.back();}
  function sheet(html){$('detail').innerHTML=html;$('sheet').showModal();$('sheet').scrollTop=0;$('sheet').style.transform='';if(history.state?.awm_modal!=='sheet')history.pushState({awm_modal:'sheet'},'');}
  function isOutsideSheet(e){const r=$('sheet').getBoundingClientRect();return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom;}
@@ -207,15 +207,19 @@
   }
   async function openHsmtFolderOnline(row){
     try{
-      const code=String(row.code||'');
+      const code=String(row?.code||row?.ma_hsmt||'').trim();
       notice('Đang tìm thư mục online…');
-      const res=await rpc('awm_find_file',[project,code,'folder']);
-      const folder=res?.files?.[0];
-      if(folder){
-        window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');
-        return;
+      if(code){
+        try{
+          const res=await rpc('awm_find_file',[project,code,'folder']);
+          const folder=res?.files?.[0];
+          if(folder?.webViewLink||folder?.id){
+            window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');
+            return;
+          }
+        }catch(_){}
       }
-      const covered=coverOnlineUrl(row.folder_name||row.full_path||'06.01');
+      const covered=coverOnlineUrl(row?.folder_name||row?.folder_path||row?.full_path||row?.folder||row?.path||'06.01');
       window.open(/^https?:\/\//i.test(covered)?covered:'https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy','_blank','noopener');
     }catch(e){
       window.open('https://drive.google.com/drive/folders/19IbTJq4pOgoUf8vNdeufnBp5Gddn0uLy','_blank','noopener');
@@ -223,15 +227,19 @@
   }
   async function openContractFolderOnline(row){
     try{
-      const code=String(row.code||'');
+      const code=String(row?.code||row?.so_hd||'').trim();
       notice('Đang tìm thư mục HĐ online…');
-      const res=await rpc('awm_find_file',[project,code,'folder']);
-      const folder=res?.files?.[0];
-      if(folder){
-        window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');
-        return;
+      if(code){
+        try{
+          const res=await rpc('awm_find_file',[project,code,'folder']);
+          const folder=res?.files?.[0];
+          if(folder?.webViewLink||folder?.id){
+            window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');
+            return;
+          }
+        }catch(_){}
       }
-      const covered=coverOnlineUrl(row.folder_name||row.folder_path||row.full_path||'07.01');
+      const covered=coverOnlineUrl(row?.folder_name||row?.folder_path||row?.full_path||row?.folder||row?.path||'07.01');
       window.open(/^https?:\/\//i.test(covered)?covered:'https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2','_blank','noopener');
     }catch(e){
       window.open('https://drive.google.com/drive/folders/1vIFykY_-heKaR_JHVAyThd6pcaOSJik2','_blank','noopener');
@@ -239,26 +247,34 @@
   }
   async function openRecordFolder(name,row=null){
     try{
-      if(/^https?:\/\//i.test(name)){
-        window.open(name,'_blank','noopener');
+      const target=String(name||row?.folder||row?.path||row?.folder_path||row?.full_path||row?.noi_dung||row?.folder_name||row?.name||row?.code||'').trim();
+      if(/^https?:\/\//i.test(target)){
+        window.open(target,'_blank','noopener');
         return;
       }
       notice('Đang tìm thư mục trên Google Drive…');
-      const cleanName=String(name||'').split(/[\\/]/).filter(Boolean).pop()||name;
-      const res=await rpc('awm_find_file',[project,cleanName,'folder']);
-      const folder=res?.files?.[0];
-      if(folder?.webViewLink||folder?.id){
-        window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');
-        return;
+      const cleanName=target.split(/[\\/]/).filter(Boolean).pop()||target;
+      const searchCode=(row?.code||cleanName.match(/^\d{6}/)?.[0]||cleanName).trim();
+      const covered=coverOnlineUrl(target)||(row?.cap_thu_muc?coverOnlineUrl(row.cap_thu_muc):'')||(tab?coverOnlineUrl(tab):'');
+      if(searchCode){
+        try{
+          const res=await rpc('awm_find_file',[project,searchCode,'folder']);
+          const folder=res?.files?.[0];
+          if(folder?.webViewLink||folder?.id){
+            window.open(folder.webViewLink||`https://drive.google.com/drive/folders/${folder.id}`,'_blank','noopener');
+            return;
+          }
+        }catch(_){}
       }
-      const covered=coverOnlineUrl(name);
       if(/^https?:\/\//i.test(covered)){
         window.open(covered,'_blank','noopener');
         return;
       }
-      window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(cleanName),'_blank','noopener');
+      window.open('https://drive.google.com/drive/search?q='+encodeURIComponent(searchCode||cleanName),'_blank','noopener');
     }catch(e){
-      notice(e.message);
+      const fallbackUrl=coverOnlineUrl(row?.cap_thu_muc||tab||'01. phe duyet');
+      if(/^https?:\/\//i.test(fallbackUrl))window.open(fallbackUrl,'_blank','noopener');
+      else notice(e.message);
     }
   }
   async function mail(run){$('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><button id="refresh-mail" class="primary">Làm mới ↻</button><div id="mail-list"></div>';$('refresh-mail').onclick=()=>render();try{const status=await rpc('awm_mail_status');if(run!==epoch)return;$('mail-state').className='message';$('mail-state').innerHTML=`<span class="badge ${status.online?'online':'warn'}">${status.online?'AD đang kết nối':'AD chưa kết nối'}</span><p>${status.online?esc(status.source):'Mở AD trên máy tính và bật đồng bộ Mail.'}</p><div class="muted">${status.last_sync?'Lần đồng bộ: '+esc(new Date(status.last_sync).toLocaleString('vi-VN')):'Chưa có dữ liệu đồng bộ.'}</div>`;if(status.online){const data=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;$('mail-list').innerHTML=data.items.length?data.items.map((r,i)=>`<button class="card" data-mail="${i}"><span class="code">${esc(r.sender)}</span><h3>${esc(r.subject)}</h3><div class="muted">${esc(r.date)}</div></button>`).join(''):'<div class="empty">Chưa có thư thuộc dự án này.</div>';document.querySelectorAll('[data-mail]').forEach(b=>b.onclick=async()=>{try{const latest=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;const original=data.items[Number(b.dataset.mail)],r=latest.items.find(x=>x.id===original.id);if(!r)throw Error('Thư không còn khả dụng.');sheet(`<div class="eyebrow">${esc(r.sender)}</div><h2>${esc(r.subject)}</h2><p class="muted">${esc(r.date)}</p><div class="detail-value">${esc(r.body)}</div>`)}catch(e){notice(e.message)}})}timer=setTimeout(()=>{if(page==='mail'&&run===epoch){$('sheet').close();render()}},30000);}catch(e){if(run===epoch)$('mail-state').innerHTML=error(e)}}
@@ -277,10 +293,10 @@
     if(/^https?:\/\//i.test(rawUrl)) return rawUrl;
     const norm = rawUrl.toLowerCase().replace(/\\/g, '/');
     if(norm.includes('theo doi 06,07,08') || norm.includes('.xlsm') || norm.includes('theo doi tong') || norm.includes('theo doi tổng')) return 'https://docs.google.com/spreadsheets/d/1IRiE_8hau2hJgwPF3xcuaVC2Ih3mfNnX/edit';
-    if(norm.includes('01. chi dao') || norm.includes('01.01') || (norm.includes('01. phe duyet') && norm.includes('chi dao'))) return 'https://drive.google.com/drive/folders/1n_5RbTM34UOlLPRaB-WE3kVjx9UiS7Sh';
-    if(norm.includes('01. phe duyet/02') || norm.includes('01.02') || (norm.includes('01. phe duyet') && norm.includes('tien do'))) return 'https://drive.google.com/drive/folders/1X6TsO1_iSPAJvMWNsIWS20gZusVQJJpv';
+    if(norm==='chu-truong' || norm.includes('chu-truong') || norm.includes('chủ trương') || norm.includes('01. chi dao') || norm.includes('01.01') || (norm.includes('01. phe duyet') && norm.includes('chi dao'))) return 'https://drive.google.com/drive/folders/1n_5RbTM34UOlLPRaB-WE3kVjx9UiS7Sh';
+    if(norm==='progress' || norm.includes('tiến độ') || norm.includes('01. phe duyet/02') || norm.includes('01.02') || (norm.includes('01. phe duyet') && norm.includes('tien do'))) return 'https://drive.google.com/drive/folders/1X6TsO1_iSPAJvMWNsIWS20gZusVQJJpv';
     if(norm.includes('03. yc ky thuat') || norm.includes('01.03') || norm.includes('yc kt') || norm.includes('yc ky thuat')) return 'https://drive.google.com/drive/folders/11Hrfa0ofMUME62ZF7wlbzxZ11C3aGGBH';
-    if(norm.includes('04. bvtk') || norm.includes('01.04') || norm.includes('ban ve thiet ke')) return 'https://drive.google.com/drive/folders/1_ulRVF99yuc3e7r1ek5hi2sn2Y7pIqG7';
+    if(norm==='bvtk' || norm.includes('bản vẽ') || norm.includes('04. bvtk') || norm.includes('01.04') || norm.includes('ban ve thiet ke')) return 'https://drive.google.com/drive/folders/1_ulRVF99yuc3e7r1ek5hi2sn2Y7pIqG7';
     if(norm.includes('01. phe duyet')) return 'https://drive.google.com/drive/folders/1IQ-Rpu0U16MdPQkaeIWqdmIIOscankKJ';
     if(norm.includes('02.01') || norm.includes('02. phap ly') || norm.includes('phap ly')) return 'https://drive.google.com/drive/folders/1KIvbe3-cMi4ym6tXczbqE5j2aQUc2P3b';
     if(norm.includes('03. cam nang') || norm.includes('cam nang')) return 'https://drive.google.com/drive/folders/1WNEiOL-4RLw5zsm3LYqBI_Xw4XqSUWlv';
