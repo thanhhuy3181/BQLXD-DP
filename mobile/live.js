@@ -1,11 +1,11 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const TOKEN='awm_session',trackingMenu={progress:'progress',hsmt:'hsmt',contract:'contract','contractor:detail':'contract',payment:'payment',boq:'hsmt','chu-truong':'approval',bvtk:'design'};let bootstrap=null,page='home',project='',tab='',query='',epoch=0,records=[],columns=[],cursor=null,folders={},menu='',trail=[],driveFiles=[],driveNext='',timer=null,todoFilter='open',todoItems=[],linkScope='project',linkItems=[],linkSearch='',driveSyncing=false;
+ const TOKEN='awm_session',trackingMenu={progress:'progress',hsmt:'hsmt',contract:'contract','contractor:detail':'contract',payment:'payment',boq:'hsmt','chu-truong':'approval',bvtk:'design'};let bootstrap=null,page='home',project='',tab='',query='',epoch=0,records=[],columns=[],cursor=null,folders={},menu='',trail=[],driveFiles=[],driveNext='',timer=null,todoFilter='open',todoItems=[],linkScope='project',linkItems=[],linkSearch='',driveSyncing=false,driveSearch='',driveSort='za';
  function notice(s){$('toast').textContent=s;$('toast').style.display='block';clearTimeout(notice.timer);notice.timer=setTimeout(()=>$('toast').style.display='none',4000)}
  async function rpc(method,args=[]){const token=sessionStorage.getItem(TOKEN);const r=await fetch('/api/rpc',{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({method,args}),signal:AbortSignal.timeout(25000)});const data=await r.json();if(!r.ok||!data.ok)throw Error(data.error||'Không thể kết nối server.');if(data.session_token)sessionStorage.setItem(TOKEN,data.session_token);return data.data}
  const error=(e)=>'<div class="message error">'+esc(e.message)+'</div>';
- function reset(){epoch++;clearTimeout(timer);bootstrap=null;records=[];folders={};driveFiles=[];trail=[];linkItems=[];linkSearch='';driveSyncing=false;AwmDrive.clear();AwmViewer.close();$('sheet').close();$('project').replaceChildren();$('nav').replaceChildren();document.querySelector('.projectbar').hidden=true}
+ function reset(){epoch++;clearTimeout(timer);bootstrap=null;records=[];folders={};driveFiles=[];trail=[];driveSearch='';driveSort='za';linkItems=[];linkSearch='';driveSyncing=false;AwmDrive.clear();AwmViewer.close();$('sheet').close();$('project').replaceChildren();$('nav').replaceChildren();document.querySelector('.projectbar').hidden=true}
  function auth(message=''){
   reset();$('settings').hidden=true;$('main').innerHTML=`<section class="auth"><span class="logo">B</span><div class="eyebrow">BQLDA / AwM</div><h1>Dự án của bạn.<br>Trong tầm tay.</h1><p class="muted">Đăng nhập Google để xem hồ sơ, Drive và dữ liệu dự án được cấp quyền.</p><div id="google-button"></div><div class="auth-divider"><span>hoặc đăng nhập tài khoản hệ thống</span></div><form id="system-login-form" class="form auth-system"><label>Tên đăng nhập hoặc email<input id="auth-username" autocomplete="username" required maxlength="120" placeholder="admin hoặc email"></label><label>Mật khẩu<input id="auth-password" type="password" autocomplete="current-password" required maxlength="200" placeholder="Nhập mật khẩu"></label><button class="primary" id="auth-system-submit">Đăng nhập tài khoản hệ thống</button></form><div id="auth-message" role="status">${message?error({message}):''}</div><button id="retry-google" class="text-button">Tải lại đăng nhập Google</button><p class="muted">Tài khoản mới cần được quản trị viên phê duyệt. Kết nối Drive được cấp riêng sau đăng nhập.</p></section>`;
   $('retry-google').onclick=()=>location.reload();$('system-login-form').onsubmit=async e=>{e.preventDefault();const target=$('auth-message');target.textContent='Đang đăng nhập…';$('auth-system-submit').disabled=true;try{await rpc('login_user',[$('auth-username').value.trim(),$('auth-password').value]);await boot()}catch(err){target.innerHTML=error(err);$('auth-system-submit').disabled=false}};setupGoogle();
@@ -255,9 +255,14 @@
     }
   }
   async function mail(run){$('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><button id="refresh-mail" class="primary">Làm mới ↻</button><div id="mail-list"></div>';$('refresh-mail').onclick=()=>render();try{const status=await rpc('awm_mail_status');if(run!==epoch)return;$('mail-state').className='message';$('mail-state').innerHTML=`<span class="badge ${status.online?'online':'warn'}">${status.online?'AD đang kết nối':'AD chưa kết nối'}</span><p>${status.online?esc(status.source):'Mở AD trên máy tính và bật đồng bộ Mail.'}</p><div class="muted">${status.last_sync?'Lần đồng bộ: '+esc(new Date(status.last_sync).toLocaleString('vi-VN')):'Chưa có dữ liệu đồng bộ.'}</div>`;if(status.online){const data=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;$('mail-list').innerHTML=data.items.length?data.items.map((r,i)=>`<button class="card" data-mail="${i}"><span class="code">${esc(r.sender)}</span><h3>${esc(r.subject)}</h3><div class="muted">${esc(r.date)}</div></button>`).join(''):'<div class="empty">Chưa có thư thuộc dự án này.</div>';document.querySelectorAll('[data-mail]').forEach(b=>b.onclick=async()=>{try{const latest=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;const original=data.items[Number(b.dataset.mail)],r=latest.items.find(x=>x.id===original.id);if(!r)throw Error('Thư không còn khả dụng.');sheet(`<div class="eyebrow">${esc(r.sender)}</div><h2>${esc(r.subject)}</h2><p class="muted">${esc(r.date)}</p><div class="detail-value">${esc(r.body)}</div>`)}catch(e){notice(e.message)}})}timer=setTimeout(()=>{if(page==='mail'&&run===epoch){$('sheet').close();render()}},30000);}catch(e){if(run===epoch)$('mail-state').innerHTML=error(e)}}
- async function files(run){$('main').innerHTML='<div class="eyebrow">KHO HỒ SƠ DỰ ÁN</div><h1>Quản lý hồ sơ</h1><div class="chips">'+bootstrap.menus.map(m=>`<button data-menu="${m.id}" class="${menu===m.id?'active':''}">${esc(m.name)}</button>`).join('')+'</div><div class="actions"><span class="badge online" style="display:inline-flex;align-items:center;padding:7px 12px;font-size:12px;font-weight:600;">☁️ bqlxddp@gmail.com</span><button id="open-drive-direct" class="primary">Mở Google Drive ↗</button>'+(bootstrap.files?.can_configure?'<button id="configure">Đặt thư mục dự án</button>':'')+'<button id="drive-refresh">Làm mới ↻</button></div><div id="crumb" class="breadcrumb"></div><div id="drive-list" aria-live="polite"></div><button id="drive-more" hidden class="primary">Tải thêm</button>';
-  document.querySelectorAll('[data-menu]').forEach(b=>b.onclick=()=>{menu=b.dataset.menu;trail=[];render()});if($('configure'))$('configure').onclick=configure;$('drive-refresh').onclick=()=>loadDrive(false);$('drive-more').onclick=()=>loadDrive(true);
-  try{folders=await rpc('awm_folders',[project]);if(run!==epoch)return;if(!menu){$('drive-list').innerHTML='<div class="message">Chưa có menu được cấp quyền.</div>';return}const configured=folders[menu];if(!configured){$('drive-list').innerHTML='<div class="message"><b>Chưa có nguồn Drive được ánh xạ cho dự án này.</b><br>Ánh xạ được lưu riêng theo dự án. Người có quyền quản lý QL File hãy chọn nguồn online trong AwD hoặc bấm “Đặt thư mục dự án” tại đây.</div>';return}const folderUrl=configured.url||(configured.id?`https://drive.google.com/drive/folders/${encodeURIComponent(configured.id)}`:'https://drive.google.com/drive/');if($('open-drive-direct'))$('open-drive-direct').onclick=()=>window.open(folderUrl,'_blank','noopener');$('crumb').innerHTML=`<div class="source-note">✓ Đã ánh xạ ${configured.scope==='project'?'từ AD / dùng chung dự án':'cho tài khoản này'}${configured.updated_by?` · ${esc(configured.updated_by)}`:''}<a href="${esc(folderUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a></div>`;if(!trail.length)trail=[{id:configured.id,name:bootstrap.menus.find(m=>m.id===menu)?.name||menu,url:folderUrl,path:configured.path||'',subs:configured.subs||[]}];await loadDrive(false)}catch(e){if(run===epoch)$('drive-list').innerHTML=error(e)}
+ async function files(run){
+  $('main').innerHTML='<div class="eyebrow">KHO HỒ SƠ DỰ ÁN</div><h1>Quản lý hồ sơ</h1><div class="chips">'+bootstrap.menus.map(m=>`<button data-menu="${m.id}" class="${menu===m.id?'active':''}">${esc(m.name)}</button>`).join('')+'</div>'+(bootstrap.files?.can_configure?'<div style="margin:4px 0 6px 0;"><button id="configure" class="text-button" style="font-size:12px;">⚙️ Đặt thư mục dự án</button></div>':'')+'<div id="crumb" class="breadcrumb"></div><div class="drive-toolbar"><label class="search" style="margin:0;flex:1;min-width:0;display:flex;align-items:center;background:#fff;border:1px solid #ced9c6;border-radius:8px;padding:0 10px;height:38px;"><span style="color:#718477;font-size:14px;margin-right:6px;">⌕</span><input id="drive-search" type="search" placeholder="Tìm kiếm tệp, thư mục…" value="'+esc(driveSearch)+'" style="border:none;outline:none;background:transparent;width:100%;font-size:13px;padding:6px 0;margin:0;"></label><div class="sort-grp"><button id="sort-za" class="sort-btn '+(driveSort==='za'?'active':'')+'">ZA</button><button id="sort-az" class="sort-btn '+(driveSort==='az'?'active':'')+'">AZ</button></div><button id="drive-refresh" class="icon-btn" title="Làm mới" style="border:1px solid #ced9c6;background:#fff;border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:#3c5b52;flex-shrink:0;">↻</button></div><div id="drive-list" aria-live="polite"></div><button id="drive-more" hidden class="primary">Tải thêm</button>';
+  document.querySelectorAll('[data-menu]').forEach(b=>b.onclick=()=>{menu=b.dataset.menu;trail=[];driveSearch='';render()});
+  if($('configure'))$('configure').onclick=configure;
+  if($('drive-refresh'))$('drive-refresh').onclick=()=>loadDrive(false);
+  if($('drive-more'))$('drive-more').onclick=()=>loadDrive(true);
+  bindDriveToolbar();
+  try{folders=await rpc('awm_folders',[project]);if(run!==epoch)return;if(!menu){$('drive-list').innerHTML='<div class="message">Chưa có menu được cấp quyền.</div>';return}const configured=folders[menu];if(!configured){$('drive-list').innerHTML='<div class="message"><b>Chưa có nguồn Drive được ánh xạ cho dự án này.</b><br>Ánh xạ được lưu riêng theo dự án. Người có quyền quản lý QL File hãy chọn nguồn online trong AwD hoặc bấm “Đặt thư mục dự án” tại đây.</div>';return}const folderUrl=configured.url||(configured.id?`https://drive.google.com/drive/folders/${encodeURIComponent(configured.id)}`:'https://drive.google.com/drive/');if(!trail.length)trail=[{id:configured.id,name:bootstrap.menus.find(m=>m.id===menu)?.name||menu,url:folderUrl,path:configured.path||'',subs:configured.subs||[]}];await loadDrive(false)}catch(e){if(run===epoch)$('drive-list').innerHTML=error(e)}
  }
  function configure(){if(!menu)return notice('Chưa được cấp menu QL.');sheet(`<h2>Thư mục dùng chung của dự án</h2><p class="muted">${esc(project)} / ${esc(menu)}</p><form id="folder-form" class="form"><label>URL hoặc ID thư mục Google Drive<input id="folder-id" required value="${esc(folders[menu]?.id||'')}" placeholder="https://drive.google.com/drive/folders/…"></label><button class="primary">Lưu cho dự án</button></form><p class="muted">Mọi tài khoản được cấp dự án đều dùng địa chỉ này. Google vẫn kiểm tra quyền đọc tệp theo tài khoản Google của từng người.</p>`);$('folder-form').onsubmit=async e=>{e.preventDefault();let id=$('folder-id').value.trim();id=driveId(id)||id;try{await rpc('awm_save_folder',[project,menu,id]);$('sheet').close();trail=[];render()}catch(e){notice(e.message)}}}
  function coverOnlineUrl(rawUrl){
@@ -403,34 +408,73 @@
     };
     render();
   }).catch(e=>notice(e.message));
-} async function loadDrive(append){
-  const run=++epoch;if(!trail.length)return;
-  const curFolder=trail.at(-1);
-  const folderUrl=curFolder?.url||(curFolder?.id?`https://drive.google.com/drive/folders/${encodeURIComponent(curFolder.id)}`:'https://drive.google.com/drive/');
-  if($('open-drive-direct'))$('open-drive-direct').onclick=()=>window.open(folderUrl,'_blank','noopener');
-  $('drive-more').disabled=true;
-  if(!append){driveFiles=[];$('drive-list').innerHTML='<div class="loading">Đang tải dữ liệu từ Google Drive…</div>'}
-  try{
-    const res=await rpc('awm_drive_list',[project,curFolder.id,append?driveNext:'']);
-    if(run!==epoch)return;
-    const items=res?.files||[];
-    driveFiles=append?[...driveFiles,...items]:items;
-    driveNext=res?.nextPageToken||'';
-    $('crumb').innerHTML=trail.map((t,i)=>`<button data-crumb="${i}">${esc(t.name)} ›</button>`).join('')+`<span class="source-note" style="margin-left:auto;"><a href="${esc(folderUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a></span>`;
-    document.querySelectorAll('[data-crumb]').forEach(b=>b.onclick=()=>{trail=trail.slice(0,Number(b.dataset.crumb)+1);loadDrive(false)});
-    if(driveFiles.length){
-      $('drive-list').innerHTML=driveFiles.map((f,i)=>{
-        const isFolder=f.mimeType==='application/vnd.google-apps.folder';
-        const isSheet=f.mimeType==='application/vnd.google-apps.spreadsheet'||f.name.endsWith('.xlsx')||f.name.endsWith('.xls')||f.name.endsWith('.XLSX');
-        const isPdf=f.mimeType==='application/pdf'||f.name.endsWith('.pdf');
-        const isCad=f.mimeType?.includes('dwg')||f.mimeType?.includes('dxf')||/\.(dwg|dxf)$/i.test(f.name);
-        const icon=isFolder?'📁':isSheet?'📊':isPdf?'📑':isCad?'📐':'📄';
-        return `<div class="card file-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><button class="text-button" data-file-open="${i}" style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;text-align:left;padding:0;background:none;border:none;cursor:pointer;"><b style="font-size:18px;">${icon}</b><div style="min-width:0;"><h3 style="margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(f.name)}</h3><span class="muted" style="font-size:11px;">${isFolder?'Thư mục con':(f.size?Math.ceil(Number(f.size)/1024)+' KB':'Tài liệu')}</span></div></button><a class="primary text-button" style="padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap;text-decoration:none;" href="${esc(f.webViewLink||`https://drive.google.com/file/d/${f.id}/view`)}" target="_blank" rel="noopener">Mở ↗</a></div>`;
-      }).join('');
-      document.querySelectorAll('[data-file-open]').forEach(b=>b.onclick=async()=>{
-        const f=driveFiles[Number(b.dataset.fileOpen)];
+}
+ function bindDriveToolbar(){
+  const s=$('drive-search');
+  if(s)s.oninput=e=>{driveSearch=e.target.value;renderDriveItems();};
+  const za=$('sort-za'),az=$('sort-az');
+  if(za)za.onclick=()=>{driveSort='za';updateSortButtons();renderDriveItems();};
+  if(az)az.onclick=()=>{driveSort='az';updateSortButtons();renderDriveItems();};
+ }
+ function updateSortButtons(){
+  const za=$('sort-za'),az=$('sort-az');
+  if(za){
+    za.style.background=driveSort==='za'?'#182b29':'transparent';
+    za.style.color=driveSort==='za'?'#fff':'#3c5b52';
+    za.classList.toggle('active',driveSort==='za');
+  }
+  if(az){
+    az.style.background=driveSort==='az'?'#182b29':'transparent';
+    az.style.color=driveSort==='az'?'#fff':'#3c5b52';
+    az.classList.toggle('active',driveSort==='az');
+  }
+ }
+ function renderCrumb(){
+  const crumbEl=$('crumb');
+  if(!crumbEl)return;
+  crumbEl.innerHTML=trail.map((t,i)=>{
+    const isLast=(i===trail.length-1);
+    return `<button class="crumb-btn ${isLast?'active':''}" data-crumb="${i}" title="${esc(t.name)}">${esc(t.name)}</button>`;
+  }).join('<span class="crumb-sep"> \\ </span>');
+  document.querySelectorAll('[data-crumb]').forEach(b=>b.onclick=()=>{
+    trail=trail.slice(0,Number(b.dataset.crumb)+1);
+    driveSearch='';
+    if($('drive-search'))$('drive-search').value='';
+    loadDrive(false);
+  });
+  crumbEl.scrollLeft=crumbEl.scrollWidth;
+ }
+ function renderDriveItems(){
+  const listEl=$('drive-list');
+  if(!listEl)return;
+  let items=[...driveFiles];
+  if(driveSearch.trim()){
+    const q=driveSearch.trim().toLowerCase();
+    items=items.filter(f=>String(f.name||'').toLowerCase().includes(q));
+  }
+  items.sort((a,b)=>{
+    const isFolderA=a.mimeType==='application/vnd.google-apps.folder';
+    const isFolderB=b.mimeType==='application/vnd.google-apps.folder';
+    if(isFolderA!==isFolderB)return isFolderA?-1:1;
+    const cmp=String(a.name||'').localeCompare(String(b.name||''),'vi',{numeric:true,sensitivity:'base'});
+    return driveSort==='za'?-cmp:cmp;
+  });
+  if(items.length){
+    listEl.innerHTML=items.map((f,i)=>{
+      const isFolder=f.mimeType==='application/vnd.google-apps.folder';
+      const isSheet=f.mimeType==='application/vnd.google-apps.spreadsheet'||/\.(xlsx|xls)$/i.test(f.name);
+      const isPdf=f.mimeType==='application/pdf'||/\.pdf$/i.test(f.name);
+      const isCad=f.mimeType?.includes('dwg')||f.mimeType?.includes('dxf')||/\.(dwg|dxf)$/i.test(f.name);
+      const icon=isFolder?'📁':isSheet?'📊':isPdf?'📑':isCad?'📐':'📄';
+      return `<div class="card file-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><button class="text-button" data-file-open="${i}" style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;text-align:left;padding:0;background:none;border:none;cursor:pointer;"><b style="font-size:18px;">${icon}</b><div style="min-width:0;"><h3 style="margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(f.name)}</h3><span class="muted" style="font-size:11px;">${isFolder?'Thư mục con':(f.size?Math.ceil(Number(f.size)/1024)+' KB':'Tài liệu')}</span></div></button><a class="primary text-button" style="padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap;text-decoration:none;" href="${esc(f.webViewLink||`https://drive.google.com/file/d/${f.id}/view`)}" target="_blank" rel="noopener">Mở ↗</a></div>`;
+    }).join('');
+    document.querySelectorAll('[data-file-open]').forEach(b=>{
+      b.onclick=async()=>{
+        const f=items[Number(b.dataset.fileOpen)];
         if(f.mimeType==='application/vnd.google-apps.folder'){
           trail.push({id:f.id,name:f.name,url:f.webViewLink||`https://drive.google.com/drive/folders/${f.id}`});
+          driveSearch='';
+          if($('drive-search'))$('drive-search').value='';
           loadDrive(false);
         }else{
           if(window.AwmViewer?.openOnline){
@@ -439,28 +483,59 @@
             window.open(f.webViewLink||`https://drive.google.com/file/d/${f.id}/view`,'_blank','noopener');
           }
         }
-      });
-    }else{
-      $('drive-list').innerHTML='<div class="empty">Thư mục trống.</div>';
+      };
+    });
+  }else{
+    listEl.innerHTML=driveSearch.trim()
+      ? `<div class="empty">Không tìm thấy tệp hoặc thư mục nào khớp với “${esc(driveSearch)}”.</div>`
+      : '<div class="empty">Thư mục trống.</div>';
+  }
+ }
+ function renderDriveFallback(curFolder,folderUrl){
+  const subs=curFolder?.subs||[];
+  const headerCard=`<div class="card" style="margin-bottom:12px;background:#f6f8f5;border:1px solid #d4ded0;"><div class="top"><span class="code">Google Drive Online</span><span class="badge online">Ánh xạ từ AD</span></div><h3 style="margin:4px 0 6px 0;">${esc(curFolder.name)}</h3>${curFolder.path?`<div class="muted" style="font-size:12px;margin-bottom:8px;">📁 AD: ${esc(curFolder.path)}</div>`:''}<a class="primary button" style="display:inline-block;padding:10px 16px;text-align:center;text-decoration:none;color:#fff;background:#182b29;border-radius:8px;font-weight:600;font-size:14px;" href="${esc(folderUrl)}" target="_blank" rel="noopener">Mở thư mục trên Google Drive ↗</a></div>`;
+  if(subs.length){
+    let items=[...subs];
+    if(driveSearch.trim()){
+      const q=driveSearch.trim().toLowerCase();
+      items=items.filter(s=>String(s.name||'').toLowerCase().includes(q));
     }
+    items.sort((a,b)=>{
+      const cmp=String(a.name||'').localeCompare(String(b.name||''),'vi',{numeric:true,sensitivity:'base'});
+      return driveSort==='za'?-cmp:cmp;
+    });
+    const subCards=items.map(sub=>`<div class="card file-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;"><b style="font-size:18px;">📁</b><div style="min-width:0;"><h3 style="margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(sub.name)}</h3><span class="muted" style="font-size:11px;">Thư mục con Google Drive</span></div></div><a class="primary text-button" style="padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap;text-decoration:none;" href="${esc(sub.url||`https://drive.google.com/drive/folders/${sub.id}`)}" target="_blank" rel="noopener">Mở ↗</a></div>`).join('');
+    $('drive-list').innerHTML=headerCard+`<div class="sectionhead"><span class="muted">${items.length} thư mục nhánh</span></div>`+(items.length?subCards:'<div class="empty">Không có thư mục phù hợp.</div>');
+  }else{
+    $('drive-list').innerHTML=headerCard+'<div class="message" style="margin-top:8px;">Nhấn nút “Mở thư mục trên Google Drive ↗” để xem và duyệt các tệp trực tiếp trong ứng dụng Google Drive hoặc trình duyệt di động.</div>';
+  }
+ }
+ async function loadDrive(append){
+  const run=++epoch;if(!trail.length)return;
+  const curFolder=trail.at(-1);
+  const folderUrl=curFolder?.url||(curFolder?.id?`https://drive.google.com/drive/folders/${encodeURIComponent(curFolder.id)}`:'https://drive.google.com/drive/');
+  $('drive-more').disabled=true;
+  if(!append){driveFiles=[];$('drive-list').innerHTML='<div class="loading">Đang tải dữ liệu từ Google Drive…</div>'}
+  try{
+    const res=await rpc('awm_drive_list',[project,curFolder.id,append?driveNext:'']);
+    if(run!==epoch)return;
+    const items=res?.files||[];
+    driveFiles=append?[...driveFiles,...items]:items;
+    driveNext=res?.nextPageToken||'';
+    renderCrumb();
+    renderDriveItems();
     $('drive-more').hidden=!driveNext;
   }catch(err){
     if(run!==epoch)return;
-    const subs=curFolder?.subs||[];
-    const headerCard=`<div class="card" style="margin-bottom:12px;background:#f6f8f5;border:1px solid #d4ded0;"><div class="top"><span class="code">Google Drive Online</span><span class="badge online">Ánh xạ từ AD</span></div><h3 style="margin:4px 0 6px 0;">${esc(curFolder.name)}</h3>${curFolder.path?`<div class="muted" style="font-size:12px;margin-bottom:8px;">📁 AD: ${esc(curFolder.path)}</div>`:''}<a class="primary button" style="display:inline-block;padding:10px 16px;text-align:center;text-decoration:none;color:#fff;background:#182b29;border-radius:8px;font-weight:600;font-size:14px;" href="${esc(folderUrl)}" target="_blank" rel="noopener">Mở thư mục trên Google Drive ↗</a></div>`;
-    if(subs.length){
-      const subCards=subs.map(sub=>`<div class="card file-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;"><b style="font-size:18px;">▱</b><div style="min-width:0;"><h3 style="margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(sub.name)}</h3><span class="muted" style="font-size:11px;">Thư mục con Google Drive</span></div></div><a class="primary text-button" style="padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap;text-decoration:none;" href="${esc(sub.url||`https://drive.google.com/drive/folders/${sub.id}`)}" target="_blank" rel="noopener">Mở ↗</a></div>`).join('');
-      $('drive-list').innerHTML=headerCard+`<div class="sectionhead"><span class="muted">${subs.length} thư mục nhánh</span></div>`+subCards;
-    }else{
-      $('drive-list').innerHTML=headerCard+'<div class="message" style="margin-top:8px;">Nhấn nút “Mở thư mục trên Google Drive ↗” để xem và duyệt các tệp trực tiếp trong ứng dụng Google Drive hoặc trình duyệt di động.</div>';
-    }
+    renderCrumb();
+    renderDriveFallback(curFolder,folderUrl);
     $('drive-more').hidden=true;
   }finally{
     if(run===epoch)$('drive-more').disabled=false;
   }
  }
  async function openFile(file){const run=epoch;notice('Đang tải tài liệu…');const blob=await AwmDrive.blob(file);if(run!==epoch||!bootstrap)return;let name=file.name;if(file.mimeType==='application/vnd.google-apps.spreadsheet')name+='.xlsx';else if(file.mimeType.startsWith('application/vnd.google-apps.'))name+='.pdf';await AwmViewer.open(blob,name,file.mimeType)}
- $('close').onclick=()=>closeSheet();$('project').onchange=e=>{project=e.target.value;records=[];trail=[];folders={};query='';AwmViewer.close();closeSheet();render()};
+ $('close').onclick=()=>closeSheet();$('project').onchange=e=>{project=e.target.value;records=[];trail=[];folders={};query='';driveSearch='';driveSort='za';AwmViewer.close();closeSheet();render()};
   $('settings').onclick=()=>{if(!bootstrap)return;const admin=String(bootstrap.user.role||'').trim().toLowerCase()==='admin',canManage=admin||!!bootstrap.files?.can_configure,canSeeFiles=admin||allowed('files');sheet(`<h2>Cài đặt</h2><dl><dt>Tài khoản đăng nhập</dt><dd>${esc(bootstrap.user.username||bootstrap.user.email)}</dd><dt>Email Google</dt><dd>${esc(bootstrap.user.email||'Chưa liên kết')}</dd><dt>Vai trò</dt><dd>${esc(bootstrap.user.role)}</dd></dl><div class="actions"><button id="settings-drive">Nguồn Google Drive</button><button id="refresh-access">Cập nhật quyền</button></div><button class="card" id="settings-links">🔗 Quản lý Link & Google Drive →</button>${canSeeFiles?`<section class="admin-panel"><b>${canManage?'Quản lý':'Xem'} nguồn Drive dự án</b><p>${canManage?'Kiểm tra nguồn đã ánh xạ, đặt thư mục dùng chung hoặc mở AwD để chọn nguồn online.':'Xem các nguồn Drive đã ánh xạ cho dự án. Liên hệ người quản lý QL File để thay đổi.'}</p><button class="card" id="drive-management">${canManage?'Quản lý':'Xem'} thư mục dự án →</button>${canManage?'<a class="card" href="../index.html?view=desktop">Mở QL File trên AwD →</a>':''}</section>`:''}${admin?'<section class="admin-panel"><b>Quản trị hệ thống</b><p>Thiết lập tài khoản, vai trò và ma trận phân quyền trực tiếp trên điện thoại.</p><button class="card" id="rbac-management">Phân quyền RBAC trên AwM →</button><a class="card" href="../index.html?view=desktop">Mở Cài đặt quản trị AwD →</a></section>':''}${allowed('mail')?'<button class="card" id="pair">Liên kết thiết bị AD</button><button class="card" id="revoke">Thu hồi thiết bị AD</button>':''}<label class="card">Mở tài liệu trên thiết bị<input id="local-file" type="file" accept=".pdf,.xlsx,.xls,.csv,.eml,.txt,.dwg,.dxf,.msg,image/*"></label><button class="card" id="logout">Đăng xuất</button>`);$('settings-drive').onclick=()=>{sheet(`<h2>Nguồn Google Drive</h2><dl><dt>Dự án</dt><dd>${esc(project)}</dd><dt>Tài khoản Drive dự án</dt><dd>bqlxddp@gmail.com</dd><dt>Trạng thái</dt><dd>✓ Đã ánh xạ 11/11 menu QL File</dd></dl><p class="muted">Toàn bộ 11 thư mục hồ sơ của dự án Vinhomes Đan Phượng đã được liên kết với Google Drive trực tuyến. Không cần đăng nhập OAuth token trên điện thoại.</p><div class="actions"><a class="primary" style="display:inline-block;padding:12px 18px;text-align:center;text-decoration:none;color:#fff;background:#182b29;border-radius:8px;font-weight:600;" href="https://drive.google.com/drive/folders/1z3Il9qZ7N0yQ5UMjSYnWgluV2BwI-B_7" target="_blank" rel="noopener">Mở thư mục tổng VH trên Drive ↗</a></div>`)};if($('settings-links'))$('settings-links').onclick=()=>{closeSheet();page='links';render()};$('refresh-access').onclick=()=>{closeSheet();boot()};if($('drive-management'))$('drive-management').onclick=()=>{closeSheet();page='files';render()};if($('rbac-management'))$('rbac-management').onclick=rbacScreen;$('local-file').onchange=async e=>{const file=e.target.files[0];if(file)await AwmViewer.open(file,file.name,file.type)};$('logout').onclick=async()=>{const token=sessionStorage.getItem(TOKEN);sessionStorage.removeItem(TOKEN);auth();try{await fetch('/api/rpc',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({method:'logout_user',args:[]})})}catch{}};if($('pair'))$('pair').onclick=async()=>{try{const r=await rpc('awm_pair_device');sheet(`<h2>Liên kết AD</h2><p>Nhập token này vào connector AD. Token mới thay thế thiết bị cũ.</p><dl><dt>Server</dt><dd class="mono">${esc(location.origin)}</dd><dt>Username</dt><dd>${esc(bootstrap.user.username)}</dd><dt>Token thiết bị (chỉ hiện lần này)</dt><dd class="mono">${esc(r.device_token)}</dd></dl><p class="muted">Không chia sẻ token. AD cần gửi heartbeat trong khi hoạt động.</p>`)}catch(e){notice(e.message)}};if($('revoke'))$('revoke').onclick=async()=>{try{await rpc('awm_revoke_device');notice('Đã thu hồi thiết bị và dữ liệu Mail.')}catch(e){notice(e.message)}};};
  // Going to another phone app must not throw away the current document or
  // detail sheet.  iOS/Android commonly fire visibilitychange for a brief
