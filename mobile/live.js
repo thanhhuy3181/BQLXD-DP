@@ -44,9 +44,9 @@
     folderName=row.folder_name||fileName(row.folder_path||row.full_path),
     folderLabel=isHsmt&&code?'Thư mục HSMT '+code:isContract&&code?'Thư mục HĐ '+code:folderName,
     currentGroup=bootstrap?.groups?.find(g=>g.id===tab)?.name||(tab==='chu-truong'?'Chủ trương':tab==='bvtk'?'BVTK':tab==='progress'?'Tiến độ':tab==='hsmt'?'HSMT':tab==='contract'?'Hợp đồng':tab==='payment'?'Thanh toán':''),
-    hidden=new Set(['code','folder_path','full_path','full_folder_name','folder_name','cks_info','path','folder','duong_dan','thu_muc','folder_url',...(isHsmt?['lan_pd','_related_contract']:['_related_contract']),...(isContract?['hd_hsmt','cong_trinh','hang_muc','ma_ccm','ma_plhd','lo','phan_khu','loai_goi','phong_ban','stt','exists','nt_unmatched','_row_token','ten_cdt_tat','ten_nt_tat','ten_sap','vendor','ma_nt','gia_tri_hd','tam_ung','tt_tong_da_tt','tt_ty_le_tt','tt_con_lai','tt_so_dot','tt_ma_pr','tt_vuot_hd','tt_da_quyet_toan','tt_status']:[])]);
+    hidden=new Set(['code','folder_path','full_path','full_folder_name','folder_name','cks_info','path','folder','duong_dan','thu_muc','folder_url','cap_thu_muc',...(isHsmt?['lan_pd','_related_contract']:['_related_contract']),...(isContract?['hd_hsmt','cong_trinh','hang_muc','ma_ccm','ma_plhd','lo','phan_khu','loai_goi','phong_ban','stt','exists','nt_unmatched','_row_token','ten_cdt_tat','ten_nt_tat','ten_sap','vendor','ma_nt','gia_tri_hd','tam_ung','tt_tong_da_tt','tt_ty_le_tt','tt_con_lai','tt_so_dot','tt_ma_pr','tt_vuot_hd','tt_da_quyet_toan','tt_status']:[])]);
     const docs=Object.values(row).filter(v=>typeof v==='string').map(driveId).filter(Boolean);
-    const linkedCode=(isHsmt||isContract)&&code?`<dt>${isHsmt?'Mã HSMT':'Mã HĐ'}</dt><dd><button class="record-link" id="open-main-file" title="Mở trực tiếp ${isHsmt?'file BOQ Excel':'file PDF hợp đồng'}" style="text-align:left;color:#c66a19;font-weight:700;padding:6px 12px;background:#fef7ea;border:1px solid #fed7aa;border-radius:6px;width:100%;font-size:14px;cursor:pointer;">${esc(code)} ↗ (Mở ${isHsmt?'file BOQ Excel':'file PDF hợp đồng'})</button></dd>`:'';
+    const linkedCode=(isHsmt||isContract)&&code?`<dt>${isHsmt?'Mã HSMT':'Mã HĐ'}</dt><dd><button class="record-link" id="open-main-file" title="Mở trực tiếp ${isHsmt?'file BOQ Excel':'file PDF hợp đồng'}" style="text-align:left;color:#c66a19;font-weight:700;padding:6px 12px;background:#fef7ea;border:1px solid #fed7aa;border-radius:6px;font-size:14px;cursor:pointer;">${esc(code)} ↗</button></dd>`:'';
     const cks=signatures(row.cks_info).map(([label,value])=>`<dt>${esc(label)}</dt><dd class="detail-value">${esc(value)}</dd>`).join('');
     const contractFinanceCard=isContract?`<div class="card contract-finance-card" style="background:#f4f8f4;border:1px solid #d2e4d0;padding:12px 14px;margin:12px 0;border-radius:10px;"><div style="font-size:12px;font-weight:700;color:#2c5b3e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>💰</span><span>Giá trị HĐ &amp; Thanh toán</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;"><div><div style="font-size:11px;color:#5a6e5e;">Giá trị HĐ / PO</div><div style="font-weight:700;color:#182b29;font-size:15px;margin-top:2px;">${esc(row.gia_tri_hd||'-')}</div></div><div><div style="font-size:11px;color:#5a6e5e;">Tổng đã thanh toán</div><div style="font-weight:700;color:#1a73e8;font-size:15px;margin-top:2px;">${esc(row.tt_tong_da_tt||row.tam_ung||'-')}</div></div><div><div style="font-size:11px;color:#5a6e5e;">Tỷ lệ đã TT</div><div style="font-weight:600;color:#2c5b3e;font-size:14px;margin-top:2px;">${esc(row.tt_ty_le_tt||'-')}</div></div><div><div style="font-size:11px;color:#5a6e5e;">Giá trị còn lại</div><div style="font-weight:600;color:#c66a19;font-size:14px;margin-top:2px;">${esc(row.tt_con_lai||'-')}</div></div>${row.tam_ung?`<div><div style="font-size:11px;color:#5a6e5e;">Tạm ứng</div><div style="font-size:13px;font-weight:600;">${esc(row.tam_ung)}</div></div>`:''}${row.tt_so_dot?`<div><div style="font-size:11px;color:#5a6e5e;">Số đợt TT</div><div style="font-size:13px;font-weight:600;">${esc(row.tt_so_dot)}</div></div>`:''}${row.tt_ma_pr?`<div><div style="font-size:11px;color:#5a6e5e;">Mã PR</div><div style="font-size:13px;">${esc(row.tt_ma_pr)}</div></div>`:''}${row.tt_da_quyet_toan?`<div><div style="font-size:11px;color:#5a6e5e;">Quyết toán</div><div style="font-size:13px;">${esc(row.tt_da_quyet_toan)}</div></div>`:''}${row.tt_vuot_hd?`<div><div style="font-size:11px;color:#5a6e5e;">Vượt giá trị HĐ</div><div style="font-size:13px;color:#d32f2f;font-weight:600;">${esc(row.tt_vuot_hd)}</div></div>`:''}</div></div>`:'';
     const labelFallback={ben_a:'Tên CĐT',nha_thau:'Tên NT',so_hd:'Số HĐ / PO',date_sign:'Ngày ký HĐ',so_plhd:'Số PLHĐ / PO / TT / QT',date_sign_plhd:'Ngày ký PLHĐ/PO/TT/QT',site_info:'Thông tin hiện trường',td_bat_dau:'Tiến độ bắt đầu',td_ket_thuc:'Tiến độ kết thúc',bao_lanh_bh:'Bảo lãnh BH',tg_bao_hanh:'Thời gian BH'};
@@ -54,13 +54,13 @@
       if(k==='date'||k==='ngay_ph'||k==='ngay'){
         const label=esc(labels.get(k)||(k==='ngay_ph'?'Ngày PH':'Ngày'));
         if(isHsmt){
-          return `<dt>${label}</dt><dd><button id="open-hsmt-folder-online" class="folder-link" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗ (Mở thư mục online)</button></dd>`;
+          return `<dt>${label}</dt><dd><button id="open-hsmt-folder-online" class="folder-link" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗</button></dd>`;
         }
         if(isContract&&(k==='date'||k==='ngay')){
-          return `<dt>${label}</dt><dd><button class="open-contract-folder-online folder-link" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗ (Mở thư mục online)</button></dd>`;
+          return `<dt>${label}</dt><dd><button class="open-contract-folder-online folder-link" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗</button></dd>`;
         }
         const folderTarget=row.folder||row.path||row.folder_name||row.folder_path||row.full_path||row.noi_dung||row.name||'';
-        return `<dt>${label}</dt><dd><button type="button" class="folder-link open-row-folder-btn" data-folder-path="${esc(folderTarget)}" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗ (Mở thư mục online)</button></dd>`;
+        return `<dt>${label}</dt><dd><button type="button" class="folder-link open-row-folder-btn" data-folder-path="${esc(folderTarget)}" style="color:#1a73e8;font-weight:600;padding:2px 0;background:none;border:none;text-decoration:underline;cursor:pointer;font-size:14px;text-align:left;">${esc(v)} ↗</button></dd>`;
       }
       if(isHsmt&&k==='rev'){
         const rel=row._related_contract;
@@ -114,9 +114,30 @@
   async function openNamedFile(rawName,row){
     const fileName=String(rawName||'').trim().replace(/^[-*•]\s*/,'');
     if(!fileName)return;
+    const ext=fileName.split('.').pop().toLowerCase();
+    if(ext==='msg'){
+      notice('Đang mở thư điện tử…');
+      let driveUrl='';
+      try{
+        const res=await rpc('awm_find_file',[project,fileName,'all']);
+        driveUrl=res?.files?.[0]?.webViewLink||'';
+      }catch(_){}
+      const cleanTitle=fileName.replace(/\.msg$/i,'');
+      const bodyContent=row?.field_6||row?.noi_dung||cleanTitle;
+      if(window.AwmViewer?.openMsg){
+        AwmViewer.openMsg({
+          name: fileName,
+          subject: cleanTitle,
+          sender: row?.field_1||row?.field_3||'Cán bộ phát hành / AD',
+          date: row?.ngay_ph||row?.date||'',
+          body: bodyContent,
+          url: driveUrl
+        });
+        return;
+      }
+    }
     notice('Đang tìm tệp: '+fileName+'…');
     try{
-      const ext=fileName.split('.').pop().toLowerCase();
       const kind=ext==='pdf'?'pdf':(ext==='xlsx'||ext==='xls')?'excel':'all';
       const res=await rpc('awm_find_file',[project,fileName,kind]);
       const file=res?.files?.[0];
@@ -124,7 +145,7 @@
         notice('Đang mở: '+file.name);
         const win=window.open(file.webViewLink,'_blank','noopener');
         if(!win||win.closed||typeof win.closed==='undefined'){
-          if(window.AwmViewer?.openOnline)AwmViewer.openOnline({id:file.id,url:file.webViewLink,name:file.name,mime:file.mimeType});
+          if(window.AwmViewer?.openOnline)AwmViewer.openOnline({id:file.id,url:file.webViewLink,name:file.name,mime:file.mimeType,row});
         }
         return;
       }
