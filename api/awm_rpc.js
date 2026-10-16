@@ -241,6 +241,104 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
      return fail(e.message);
    }
   }
+  if(method==='awm_get_msg'){
+    const fileName = String(args[1] || '').trim();
+    const noiDung = String(args[2] || '').trim();
+    if(!fileName && !noiDung) return fail('Tên tệp hoặc nội dung trống.');
+
+    const normKey = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    const cleanFn = fileName.replace(/^[-*•]\s*/, '').trim();
+    const cleanNoExt = cleanFn.replace(/\.msg$/i, '').trim();
+    const kFn = cleanFn.toLowerCase();
+    const kNoExt = cleanNoExt.toLowerCase();
+    const kNormFn = normKey(cleanNoExt);
+    const kNormNd = normKey(noiDung);
+
+    let store = {};
+    try {
+      store = require('./data/msg_store.json');
+    } catch(_) {}
+
+    let hit = store[cleanFn] || store[cleanNoExt] || store[kFn] || store[kNoExt] || store[kNormFn] || store[kNormNd] || store[noiDung];
+    if(!hit) {
+      const keys = Object.keys(store);
+      for(const k of keys){
+        const nk = normKey(k);
+        if((kNormFn && nk.length > 5 && (nk.includes(kNormFn) || kNormFn.includes(nk))) ||
+           (kNormNd && nk.length > 5 && (nk.includes(kNormNd) || kNormNd.includes(nk)))) {
+          hit = store[k];
+          break;
+        }
+      }
+    }
+
+    if(hit) {
+      return ok({
+        subject: hit.subject || cleanNoExt || noiDung,
+        sender: hit.sender || 'Cán bộ phát hành',
+        to: hit.to || '',
+        cc: hit.cc || '',
+        date: hit.date || '',
+        body: hit.body || '(Thư không có nội dung văn bản)',
+        attachments: hit.attachments || [],
+        is_encrypted: !!hit.is_encrypted,
+        file_name: hit.file_name || cleanFn
+      });
+    }
+
+    if(process.platform === 'win32'){
+      try {
+        const { execFileSync } = require('child_process');
+        const path = require('path');
+        const fs = require('fs');
+        const scriptPath = path.resolve(__dirname, '../scripts/extract_single_msg.py');
+        let foundPath = '';
+        const dp = snapshots[project || 'Vinhomes Đan Phượng'] || {};
+        for(const tab of Object.values(dp)){
+          const items = Array.isArray(tab) ? tab : (tab?.items || []);
+          for(const it of items){
+            const ten = String(it.ten_tai_lieu || '');
+            if(ten.includes(cleanFn) || (cleanNoExt && ten.includes(cleanNoExt))){
+              const fld = it.folder || it.path || '';
+              if(fld){
+                const p = path.join(fld, cleanFn.endsWith('.msg') ? cleanFn : (cleanFn + '.msg'));
+                if(fs.existsSync(p)){ foundPath = p; break; }
+              }
+            }
+          }
+          if(foundPath) break;
+        }
+        if(foundPath && fs.existsSync(scriptPath)){
+          const stdout = execFileSync('python', [scriptPath, foundPath], { encoding: 'utf8', timeout: 5000 });
+          const parsed = JSON.parse(stdout);
+          if(parsed){
+            return ok({
+              subject: parsed.subject || cleanNoExt || noiDung,
+              sender: parsed.sender || 'Cán bộ phát hành',
+              to: parsed.to || '',
+              cc: parsed.cc || '',
+              date: parsed.date || '',
+              body: parsed.body || '(Thư không có nội dung văn bản)',
+              attachments: parsed.attachments || [],
+              is_encrypted: !!parsed.is_encrypted,
+              file_name: parsed.file_name || cleanFn
+            });
+          }
+        }
+      } catch(_) {}
+    }
+
+    return ok({
+      subject: cleanNoExt || noiDung || 'Thư điện tử',
+      sender: 'Cán bộ phát hành / AD',
+      to: '',
+      cc: '',
+      date: '',
+      body: `[THÔNG TIN THƯ]:\n- Tệp đính kèm: ${cleanFn}\n- Dự án: ${project || 'Vinhomes Đan Phượng'}\n${noiDung ? `- Nội dung: ${noiDung}\n` : ''}\n(Nội dung chi tiết đang được đồng bộ)`,
+      file_name: cleanFn,
+      attachments: [cleanFn]
+    });
+  }
  return fail('AwM chưa hỗ trợ phương thức này.');
 };
 module.exports.can=can;

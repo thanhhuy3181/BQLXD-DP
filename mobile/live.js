@@ -116,24 +116,39 @@
     if(!fileName)return;
     const ext=fileName.split('.').pop().toLowerCase();
     if(ext==='msg'){
-      notice('Đang mở thư điện tử…');
+      notice('Đang tải nội dung thư…');
       let driveUrl='';
       try{
         const res=await rpc('awm_find_file',[project,fileName,'all']);
         driveUrl=res?.files?.[0]?.webViewLink||'';
       }catch(_){}
       const cleanTitle=fileName.replace(/\.msg$/i,'');
-      const bodyContent=row?.field_6||row?.noi_dung||cleanTitle;
-      if(window.AwmViewer?.openMsg){
-        AwmViewer.openMsg({
-          name: fileName,
-          subject: cleanTitle,
-          sender: row?.field_1||row?.field_3||'Cán bộ phát hành / AD',
-          date: row?.ngay_ph||row?.date||'',
-          body: bodyContent,
-          url: driveUrl
-        });
-        return;
+      try{
+        const msgRes=await rpc('awm_get_msg',[project,fileName,row?.noi_dung||'']);
+        const msgData=(msgRes?.ok&&msgRes?.data)?msgRes.data:(msgRes?.data||msgRes);
+        if(window.AwmViewer?.openMsg){
+          AwmViewer.openMsg({
+            name: fileName,
+            subject: msgData?.subject||cleanTitle,
+            sender: msgData?.sender||row?.field_1||row?.field_3||'Cán bộ phát hành / AD',
+            date: msgData?.date||row?.ngay_ph||row?.date||'',
+            body: msgData?.body||row?.field_6||row?.noi_dung||cleanTitle,
+            url: driveUrl
+          });
+          return;
+        }
+      }catch(e){
+        if(window.AwmViewer?.openMsg){
+          AwmViewer.openMsg({
+            name: fileName,
+            subject: cleanTitle,
+            sender: row?.field_1||row?.field_3||'Cán bộ phát hành / AD',
+            date: row?.ngay_ph||row?.date||'',
+            body: row?.field_6||row?.noi_dung||cleanTitle,
+            url: driveUrl
+          });
+          return;
+        }
       }
     }
     notice('Đang tìm tệp: '+fileName+'…');
