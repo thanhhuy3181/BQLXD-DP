@@ -131,9 +131,9 @@
   }
   async function openNamedFile(rawName,row){
     const fileName=String(rawName||'').trim().replace(/^[-*•]\s*/,'');
-    if(!fileName)return;
     const ext=fileName.split('.').pop().toLowerCase();
-    if(ext==='msg'){
+    const isEmail=ext==='msg'||fileName.toLowerCase().endsWith('.msg')||fileName.toLowerCase().includes('.msg')||/^(fw|re)\s*[:\s]/i.test(fileName);
+    if(isEmail){
       notice('Đang tải nội dung thư…');
       let driveUrl='';
       try{

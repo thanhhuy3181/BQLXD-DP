@@ -154,6 +154,7 @@ window.AwmViewer=(()=>{
   const bodyText=msg.body||'';
   const attachments=Array.isArray(msg.attachments)?msg.attachments:[];
   const nestedMessages=Array.isArray(msg.nested_messages)?msg.nested_messages:[];
+  const isEncrypted=!!msg.is_encrypted||attachments.some(a=>String(a.name||a||'').toLowerCase().includes('.rpmsg'));
 
   $('viewer-controls').innerHTML=`
    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px;padding:4px 0;flex-wrap:wrap;">
@@ -173,6 +174,16 @@ window.AwmViewer=(()=>{
 
   $('viewer-body').innerHTML=`
    <div class="outlook-mail-card" style="padding:16px;background:#fff;border-radius:10px;margin:10px 4px;border:1px solid #d0d7de;box-shadow:0 2px 8px rgba(0,0,0,0.06);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+     ${isEncrypted?`
+       <div style="background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:8px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;">
+         <span style="font-size:22px;line-height:1;flex-shrink:0;">🔒</span>
+         <div style="font-size:13px;line-height:1.5;color:#92400e;">
+           <strong style="display:block;margin-bottom:2px;font-size:13.5px;">Thư được bảo vệ quyền truy cập (Microsoft Purview / RMS)</strong>
+           Nội dung thư và tài liệu đính kèm đã được mã hóa theo tài khoản Microsoft cơ quan của người nhận.
+           ${directUrl?`<div style="margin-top:6px;"><a href="${esc(directUrl)}" target="_blank" rel="noopener" style="color:#0078d4;font-weight:700;text-decoration:underline;">Mở / Tải tệp .msg trên Drive để xác thực tài khoản trong Outlook ↗</a></div>`:''}
+         </div>
+       </div>
+     `:''}
      <h2 style="margin:0 0 14px 0;font-size:17px;line-height:1.4;color:#0f2c59;font-weight:700;word-break:break-word;border-bottom:2px solid #0078d4;padding-bottom:10px;">
        ${esc(subject)}
      </h2>
@@ -245,7 +256,7 @@ window.AwmViewer=(()=>{
        <span>📝</span><span>Nội dung thư:</span>
      </div>
      <div class="msg-body" style="font-size:13.5px;line-height:1.65;color:#1e293b;white-space:pre-wrap;word-break:break-word;background:#fafbfa;border:1px solid #e2e8f0;border-radius:8px;padding:14px;max-height:50vh;overflow-y:auto;user-select:text;">
-       ${linkify(bodyText)||'<span class="muted">(Thư không có nội dung văn bản)</span>'}
+       ${bodyText ? linkify(bodyText) : (isEncrypted ? '<div style="color:#92400e;line-height:1.5;">🔒 <i>Nội dung thư nằm trong tệp đính kèm mã hóa <b>message.rpmsg</b> (bảo vệ bởi Microsoft Purview). Vui lòng mở bằng ứng dụng Outlook có tài khoản được phân quyền để đọc toàn văn.</i></div>' : '<span class="muted">(Thư không có nội dung văn bản)</span>')}
      </div>
 
      ${nestedMessages.length>0?`
@@ -304,6 +315,35 @@ window.AwmViewer=(()=>{
   if(currentMsg){
     historyStack.push({type:'msg', data:{...currentMsg}, name:$('viewer-title').textContent, url:currentMsg.url||''});
     history.pushState({awm_modal:'viewer_att'},'');
+  }
+  if(ext==='rpmsg'){
+    $('viewer-title').textContent = attName;
+    $('viewer-controls').innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;width:100%;padding:4px 0;">
+        <button id="viewer-att-back" class="button" style="padding:6px 12px;font-size:12px;background:#0f2c59;color:#fff;border-radius:6px;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:none;">← Quay lại thư</button>
+        <span class="badge priority-normal" style="font-size:12px;font-weight:600;">🔒 Tệp bảo mật RMS</span>
+      </div>
+    `;
+    const backBtn = $('viewer-att-back');
+    if(backBtn) backBtn.onclick = goBack;
+
+    $('viewer-body').innerHTML = `
+      <div class="card" style="margin:24px 8px;padding:28px 16px;text-align:center;background:#fff;border-radius:12px;border:1px solid #fcd34d;background:#fffbeb;">
+        <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+        <h3 style="margin:0 0 10px 0;color:#92400e;font-size:16px;word-break:break-all;">${esc(attName)}</h3>
+        <div class="badge priority-normal" style="display:inline-block;margin-bottom:14px;font-size:12px;font-weight:600;">Microsoft Purview / RMS Encryption</div>
+        <p style="font-size:13px;color:#78350f;line-height:1.6;margin:0 0 20px 0;text-align:left;">
+          Tệp <b>${esc(attName)}</b> chứa toàn bộ nội dung và tệp đính kèm được bảo vệ theo chính sách bảo mật nội bộ Vinhomes.<br>
+          Hệ thống web không thể giải mã trực tiếp nếu không có chứng chỉ bảo mật của người nhận.<br>
+          <b>Hướng dẫn:</b> Tải thư về máy hoặc mở ứng dụng Microsoft Outlook trên máy tính / điện thoại đã đăng nhập tài khoản Vinhomes để giải mã và đọc toàn văn.
+        </p>
+        ${currentMsg?.url ? `<a class="primary button" style="display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;font-size:13.5px;font-weight:700;text-decoration:none;border-radius:8px;background:#0f2c59;color:#fff;width:100%;box-sizing:border-box;margin-bottom:12px;" href="${esc(currentMsg.url)}" target="_blank" rel="noopener">Mở tệp .msg gốc trên Google Drive ↗</a>` : ''}
+        <button id="viewer-rpmsg-back" class="button" style="padding:8px 16px;font-size:13px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;">← Quay lại xem thư</button>
+      </div>
+    `;
+    const rpmsgBack = $('viewer-rpmsg-back');
+    if(rpmsgBack) rpmsgBack.onclick = goBack;
+    return;
   }
   if(ext==='msg'){
     const nested=(currentMsg?.nested_messages||[])[idx] ||
@@ -428,17 +468,67 @@ window.AwmViewer=(()=>{
   $('viewer-title').textContent=name;
   if(history.state?.awm_modal!=='viewer'&&history.state?.awm_modal!=='viewer_att')history.pushState({awm_modal:'viewer'},'');
   $('viewer').showModal();
-  if(isMsg&&(opt.body||opt.row||opt.subject)){
-    const subject=opt.subject||opt.row?.noi_dung||name.replace(/\.msg$/i,'');
-    const sender=opt.sender||opt.row?.field_1||opt.row?.field_3||'Cán bộ phát hành / AD';
-    const date=opt.date||opt.row?.ngay_ph||opt.row?.date||'';
-    const bodyText=opt.body||opt.row?.field_6||opt.row?.noi_dung||'';
-    renderMsgView({subject,senderName:sender,sentDate:date,body:bodyText},name,directUrl);
+  if(isMsg){
+    let subject = opt.subject || opt.row?.noi_dung || name.replace(/\.msg$/i, '').trim();
+    let sender = opt.sender || opt.senderName || opt.row?.field_1 || opt.row?.field_3 || '';
+    let senderEmail = opt.senderEmail || '';
+    let toRecipients = opt.to || '';
+    let ccRecipients = opt.cc || '';
+    let bccRecipients = opt.bcc || '';
+    let date = opt.date || opt.sentDate || opt.row?.ngay_ph || opt.row?.date || '';
+    let bodyText = opt.body || opt.row?.field_6 || '';
+    let attachments = Array.isArray(opt.attachments) ? opt.attachments : [];
+    let nestedMessages = Array.isArray(opt.nested_messages) ? opt.nested_messages : [];
+    let isEncrypted = !!opt.is_encrypted;
+
+    if((!bodyText || !sender || !attachments.length) && (window.AwmLive?.rpc || window.AwmViewer?.rpc)){
+      $('viewer-body').innerHTML = '<div class="loading" style="padding:48px 16px;text-align:center;color:#0f2c59;">Đang đọc nội dung thư Outlook…</div>';
+      const rpcFn = window.AwmLive?.rpc || window.AwmViewer?.rpc;
+      const project = window.AwmLive?.getProject ? window.AwmLive.getProject() : (opt.project || 'Vinhomes Đan Phượng');
+      const cleanNoExt = name.replace(/\.msg$/i, '').trim();
+      try {
+        const msgRes = await rpcFn('awm_get_msg', [project, name, opt.row?.noi_dung || cleanNoExt]);
+        const msgData = (msgRes?.ok && msgRes?.data) ? msgRes.data : (msgRes?.data || msgRes);
+        if(msgData){
+          if(msgData.subject) subject = msgData.subject;
+          if(msgData.sender) sender = msgData.sender;
+          if(msgData.sender_email) senderEmail = msgData.sender_email;
+          if(msgData.to) toRecipients = msgData.to;
+          if(msgData.cc) ccRecipients = msgData.cc;
+          if(msgData.bcc) bccRecipients = msgData.bcc;
+          if(msgData.date) date = msgData.date;
+          if(msgData.body) bodyText = msgData.body;
+          if(Array.isArray(msgData.attachments) && msgData.attachments.length) attachments = msgData.attachments;
+          if(Array.isArray(msgData.nested_messages) && msgData.nested_messages.length) nestedMessages = msgData.nested_messages;
+          if(msgData.is_encrypted) isEncrypted = true;
+        }
+      } catch(_) {}
+    }
+
+    if(run !== generation) return;
+
+    currentMsg = {
+      name,
+      subject: subject || name.replace(/\.msg$/i, '') || 'Thư điện tử',
+      senderName: sender || 'Cán bộ phát hành / AD',
+      senderEmail,
+      to: toRecipients,
+      cc: ccRecipients,
+      bcc: bccRecipients,
+      sentDate: date,
+      body: bodyText,
+      attachments,
+      nested_messages: nestedMessages,
+      is_encrypted: isEncrypted,
+      url: directUrl
+    };
+
+    renderMsgView(currentMsg, name, directUrl);
     return;
   }
-  const badgeText=isSheet?'📊 Bảng tính Excel':isPdf?'📑 PDF Hợp đồng':isCad?'📐 Bản vẽ CAD':isMsg?'✉️ Email MSG':'📄 Tài liệu';
-  const badgeCls=isSheet?'online':isCad?'badge-primary':isMsg?'priority-normal':'priority-low';
-  const openLabel=isSheet?'Mở bằng Google Sheets ↗':isPdf?'Mở file PDF ↗':isCad?'Mở bản vẽ CAD ↗':isMsg?'Mở email MSG ↗':'Mở tài liệu ↗';
+  const badgeText=isSheet?'📊 Bảng tính Excel':isPdf?'📑 PDF Hợp đồng':isCad?'📐 Bản vẽ CAD':'📄 Tài liệu';
+  const badgeCls=isSheet?'online':isCad?'badge-primary':'priority-low';
+  const openLabel=isSheet?'Mở bằng Google Sheets ↗':isPdf?'Mở file PDF ↗':isCad?'Mở bản vẽ CAD ↗':'Mở tài liệu ↗';
 
   $('viewer-controls').innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px;padding:4px 0;flex-wrap:wrap;">
@@ -463,7 +553,11 @@ window.AwmViewer=(()=>{
   }else if(id){
     $('viewer-body').innerHTML=`
       <div style="width:100%;height:calc(85vh - 55px);background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.1);display:flex;flex-direction:column;">
-        <iframe src="https://drive.google.com/file/d/${id}/preview" style="width:100%;height:100%;border:none;" allow="autoplay" loading="lazy"></iframe>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;flex-shrink:0;">
+          <span>Nếu Google Drive chặn cookie xem trước:</span>
+          <a href="${esc(directUrl)}" target="_blank" rel="noopener" style="color:#0078d4;font-weight:700;text-decoration:underline;white-space:nowrap;margin-left:8px;">Mở trực tiếp trên Drive ↗</a>
+        </div>
+        <iframe src="https://drive.google.com/file/d/${id}/preview" style="width:100%;height:100%;border:none;flex:1;" allow="autoplay" loading="lazy"></iframe>
       </div>
     `;
   }else{
