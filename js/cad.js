@@ -241,16 +241,22 @@ window.AwmCad = {
 
   renderCloudViewer(downloadUrl, containerEl) {
     if (!containerEl) return;
-    const cleanUrl = String(downloadUrl || '').trim();
+    let cleanUrl = String(downloadUrl || '').trim();
     if (!cleanUrl) {
       containerEl.innerHTML = '<div class="message error">Không có URL tệp để hiển thị Cloud CAD.</div>';
       return;
     }
-    const shareUrl = `https://sharecad.org/cadframe/load?url=${encodeURIComponent(cleanUrl)}`;
+    const gdMatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (gdMatch && !cleanUrl.includes('export=download')) {
+      cleanUrl = `https://drive.google.com/uc?export=download&id=${gdMatch[1]}`;
+    }
+    const shareUrl = `https://iframe.sharecad.org/cadframe/load?url=${encodeURIComponent(cleanUrl)}`;
+    const autodeskUrl = 'https://viewer.autodesk.com/';
     containerEl.innerHTML = `
       <div style="width:100%;height:72dvh;min-height:480px;background:#182b29;border-radius:8px;overflow:hidden;position:relative;">
-        <div style="position:absolute;top:8px;right:8px;z-index:2;display:flex;gap:6px;">
+        <div style="position:absolute;top:8px;right:8px;z-index:2;display:flex;gap:6px;flex-wrap:wrap;">
           <a class="button" style="padding:4px 8px;font-size:11px;background:rgba(255,255,255,0.2);color:#fff;border-radius:4px;text-decoration:none;" href="${shareUrl}" target="_blank" rel="noopener">Mở toàn màn hình ↗</a>
+          <a class="button" style="padding:4px 8px;font-size:11px;background:rgba(255,255,255,0.2);color:#d5e6b0;border-radius:4px;text-decoration:none;" href="${autodeskUrl}" target="_blank" rel="noopener">Autodesk Viewer ↗</a>
         </div>
         <iframe src="${shareUrl}" style="width:100%;height:100%;border:none;background:#182b29;" allowfullscreen loading="lazy"></iframe>
       </div>
@@ -276,7 +282,8 @@ window.AwmCad = {
               <button id="cad-tab-vector" class="button ${activeTab==='vector'?'active':''}" style="padding:5px 10px;font-size:12px;font-weight:700;border-radius:6px;border:none;cursor:pointer;background:${activeTab==='vector'?'#182b29':'#e2ebd8'};color:${activeTab==='vector'?'#fff':'#214739'};">📐 Vector 2D & File nền</button>
               <button id="cad-tab-cloud" class="button ${activeTab==='cloud'?'active':''}" style="padding:5px 10px;font-size:12px;font-weight:700;border-radius:6px;border:none;cursor:pointer;background:${activeTab==='cloud'?'#182b29':'#e2ebd8'};color:${activeTab==='cloud'?'#fff':'#214739'};">🌐 Cloud CAD (ShareCAD)</button>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+            <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
+              <a class="button" style="display:inline-flex;align-items:center;padding:5px 10px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#d5e6b0;" href="https://viewer.autodesk.com/" target="_blank" rel="noopener">Autodesk Viewer ↗</a>
               ${downloadUrl ? `<a class="button" style="display:inline-flex;align-items:center;padding:5px 10px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#244438;color:#fff;" href="${downloadUrl}" target="_blank" download="${name}">⬇ Tải tệp DWG</a>` : ''}
               <label class="button" style="display:inline-flex;align-items:center;padding:5px 10px;font-size:12px;background:#182b29;color:#fff;border-radius:6px;cursor:pointer;">
                 + Nạp file nền (Xref)
