@@ -278,9 +278,11 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
         sender: hit.sender || 'Cán bộ phát hành',
         to: hit.to || '',
         cc: hit.cc || '',
+        bcc: hit.bcc || '',
         date: hit.date || '',
         body: hit.body || '(Thư không có nội dung văn bản)',
         attachments: hit.attachments || [],
+        nested_messages: hit.nested_messages || [],
         is_encrypted: !!hit.is_encrypted,
         file_name: hit.file_name || cleanFn
       });
@@ -317,9 +319,11 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
               sender: parsed.sender || 'Cán bộ phát hành',
               to: parsed.to || '',
               cc: parsed.cc || '',
+              bcc: parsed.bcc || '',
               date: parsed.date || '',
               body: parsed.body || '(Thư không có nội dung văn bản)',
               attachments: parsed.attachments || [],
+              nested_messages: parsed.nested_messages || [],
               is_encrypted: !!parsed.is_encrypted,
               file_name: parsed.file_name || cleanFn
             });

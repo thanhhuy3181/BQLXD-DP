@@ -3264,6 +3264,7 @@
   <script src="js/progress.js"></script>
   <script src="js/word.js"></script>
   <script src="js/mail.js"></script>
+  <script src="js/outlook_viewer.js"></script>
   <script src="js/home.js"></script>
   <script src="js/explorer.js"></script>
   <script src="js/drive_picker.js"></script>
@@ -3370,6 +3371,28 @@
       <div class="modal-action mt-6">
         <button class="btn btn-sm btn-ghost" onclick="document.getElementById('boq-decision-modal').close()">Đóng tạm</button>
         <button class="btn btn-sm btn-primary" onclick="BoqExtractModule.submitDecision()">Xác nhận gán</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <!-- Outlook Classic Email Modal (Desktop) -->
+  <dialog id="modal-outlook-msg" class="modal">
+    <div class="modal-box w-11/12 max-w-4xl bg-[#1e293b] text-slate-100 p-0 border border-slate-700 shadow-2xl rounded-xl overflow-hidden flex flex-col" style="max-height: 90vh;">
+      <div class="bg-[#0078d4] text-white px-4 py-2.5 flex items-center justify-between select-none shadow-sm flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">✉️</span>
+          <span class="font-bold text-sm tracking-wide" id="desktop-msg-modal-title">Outlook Classic — Đọc Thư Điện Tử</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <a id="desktop-msg-drive-link" href="#" target="_blank" rel="noopener" class="btn btn-xs bg-white/20 hover:bg-white/30 text-white border-none rounded hidden">
+            <span>Mở trên Drive ↗</span>
+          </a>
+          <button type="button" class="btn btn-xs btn-circle btn-ghost text-white text-base font-bold" onclick="document.getElementById('modal-outlook-msg').close()">✕</button>
+        </div>
+      </div>
+      <div class="p-5 overflow-y-auto flex-1 bg-[#0f172a] text-slate-200" id="desktop-msg-content" style="max-height: calc(90vh - 60px);">
+        <!-- Content injected dynamically -->
       </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>

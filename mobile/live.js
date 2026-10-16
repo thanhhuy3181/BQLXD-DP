@@ -131,8 +131,15 @@
             name: fileName,
             subject: msgData?.subject||cleanTitle,
             sender: msgData?.sender||row?.field_1||row?.field_3||'Cán bộ phát hành / AD',
+            senderEmail: msgData?.sender_email||'',
+            to: msgData?.to||'',
+            cc: msgData?.cc||'',
+            bcc: msgData?.bcc||'',
             date: msgData?.date||row?.ngay_ph||row?.date||'',
             body: msgData?.body||row?.field_6||row?.noi_dung||cleanTitle,
+            attachments: msgData?.attachments||[],
+            nested_messages: msgData?.nested_messages||[],
+            is_encrypted: !!msgData?.is_encrypted,
             url: driveUrl
           });
           return;
@@ -145,6 +152,8 @@
             sender: row?.field_1||row?.field_3||'Cán bộ phát hành / AD',
             date: row?.ngay_ph||row?.date||'',
             body: row?.field_6||row?.noi_dung||cleanTitle,
+            attachments: [],
+            nested_messages: [],
             url: driveUrl
           });
           return;
@@ -439,5 +448,6 @@
  // scroll position when they return.  A fresh bootstrap still runs only on
  // an explicit reload, login, project change, or access refresh.
  document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer)});
+ window.AwmLive = { openNamedFile, openFile };
  if(sessionStorage.getItem(TOKEN))boot();else auth();
 })();

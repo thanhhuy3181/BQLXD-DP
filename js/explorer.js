@@ -681,6 +681,11 @@ const ExplorerModule = (function() {
     if (isDir) {
       selectSubFolder(path);
     } else {
+      const fileName = String(path || '').split('/').pop().split('\\').pop();
+      if (fileName.toLowerCase().endsWith('.msg') && typeof window.openDesktopOutlookMsg === 'function') {
+        window.openDesktopOutlookMsg(fileName, path);
+        return;
+      }
       if(path.startsWith('gdrive://')){
         const file=_filesData.find(f=>f.path===path);
         API.openLink(file?.url || 'https://drive.google.com/file/d/'+path.split('/').pop()+'/view');

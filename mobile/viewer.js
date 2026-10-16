@@ -103,26 +103,160 @@ window.AwmViewer=(()=>{
    }
    return res;
  }
+ function formatInitials(name){
+  if(!name)return 'OL';
+  const clean=String(name).replace(/<[^>]+>/g,'').replace(/\([^)]*\)/g,'').trim();
+  const words=clean.split(/\s+/).filter(Boolean);
+  if(words.length>=2) return (words[0][0]+words[words.length-1][0]).toUpperCase();
+  return (clean.slice(0,2)||'OL').toUpperCase();
+ }
+ function formatSize(bytes){
+  if(!bytes||isNaN(bytes))return '';
+  if(bytes<1024)return bytes+' B';
+  if(bytes<1024*1024)return (bytes/1024).toFixed(1)+' KB';
+  return (bytes/(1024*1024)).toFixed(1)+' MB';
+ }
+ function getAttIcon(name){
+  const ext=String(name||'').split('.').pop().toLowerCase();
+  if(['pdf'].includes(ext))return '📑';
+  if(['xlsx','xls','csv'].includes(ext))return '📊';
+  if(['docx','doc'].includes(ext))return '📝';
+  if(['dwg','dxf'].includes(ext))return '📐';
+  if(['msg','eml'].includes(ext))return '✉️';
+  if(['zip','rar','7z'].includes(ext))return '📦';
+  if(['png','jpg','jpeg','gif'].includes(ext))return '🖼️';
+  return '📄';
+ }
  function renderMsgView(msg,name,directUrl=''){
-   const subject=msg.subject||name.replace(/\.msg$/i,'')||'Thư điện tử';
-   const sender=msg.senderName?(msg.senderEmail?`${msg.senderName} <${msg.senderEmail}>`:msg.senderName):(msg.senderEmail||'Cán bộ phát hành / AD');
-   const date=msg.sentDate||'';
-   const bodyText=msg.body||'';
-   $('viewer-controls').innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;padding:4px 0;"><span class="badge online" style="font-size:12px;font-weight:600;">✉️ Thư Outlook MSG</span>${directUrl?`<a class="primary button" style="padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a>`:''}</div>`;
-   $('viewer-body').innerHTML=`<div class="card" style="padding:16px;background:#fff;border-radius:10px;margin:10px 4px;border:1px solid #d8e3d5;box-shadow:0 1px 4px rgba(0,0,0,0.05);"><h3 style="margin:0 0 10px 0;font-size:16px;line-height:1.4;color:#182b29;font-weight:700;">${esc(subject)}</h3><div style="background:#f6f8f5;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px;display:grid;gap:6px;"><div><span style="color:#666;">Người gửi:</span> <strong style="color:#182b29;">${esc(sender)}</strong></div>${date?`<div><span style="color:#666;">Thời gian:</span> <span style="color:#333;">${esc(date)}</span></div>`:''}</div><div style="font-size:12px;font-weight:700;color:#2c5b3e;text-transform:uppercase;margin-bottom:6px;">Nội dung thư:</div><div class="msg-body" style="font-size:14px;line-height:1.6;color:#1e293b;white-space:pre-wrap;word-break:break-word;background:#fafbfa;border:1px solid #eef2ec;border-radius:8px;padding:12px;max-height:55vh;overflow-y:auto;">${linkify(bodyText)||'<span class="muted">(Thư không có nội dung văn bản)</span>'}</div></div>`;
+  const subject=msg.subject||name.replace(/\.msg$/i,'')||'Thư điện tử';
+  const sender=msg.senderName?(msg.senderEmail?`${msg.senderName} <${msg.senderEmail}>`:msg.senderName):(msg.senderEmail||'Cán bộ phát hành / AD');
+  const senderInitials=formatInitials(msg.senderName||msg.senderEmail||sender);
+  const date=msg.sentDate||'';
+  const toRecipients=msg.to||'';
+  const ccRecipients=msg.cc||'';
+  const bccRecipients=msg.bcc||'';
+  const bodyText=msg.body||'';
+  const attachments=Array.isArray(msg.attachments)?msg.attachments:[];
+  const nestedMessages=Array.isArray(msg.nested_messages)?msg.nested_messages:[];
+
+  $('viewer-controls').innerHTML=`
+   <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;padding:4px 0;flex-wrap:wrap;">
+     <span class="badge online" style="font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;background:#0078d4;color:#fff;padding:4px 8px;border-radius:6px;">
+       ✉️ Outlook Classic
+     </span>
+     <div style="display:flex;gap:6px;align-items:center;">
+       ${directUrl?`<a class="primary button" style="padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;display:inline-flex;align-items:center;gap:4px;" href="${esc(directUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a>`:''}
+     </div>
+   </div>
+  `;
+
+  $('viewer-body').innerHTML=`
+   <div class="outlook-mail-card" style="padding:16px;background:#fff;border-radius:10px;margin:10px 4px;border:1px solid #d0d7de;box-shadow:0 2px 8px rgba(0,0,0,0.06);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+     <h2 style="margin:0 0 14px 0;font-size:17px;line-height:1.4;color:#0f2c59;font-weight:700;word-break:break-word;border-bottom:2px solid #0078d4;padding-bottom:10px;">
+       ${esc(subject)}
+     </h2>
+
+     <div style="display:flex;gap:12px;margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+       <div style="width:42px;height:42px;border-radius:50%;background:#0078d4;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;box-shadow:0 2px 4px rgba(0,120,212,0.3);">
+         ${esc(senderInitials)}
+       </div>
+       <div style="flex:1;min-width:0;display:grid;gap:4px;font-size:12.5px;">
+         <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+           <strong style="color:#0f172a;font-size:14px;">${esc(sender)}</strong>
+           ${date?`<span style="color:#64748b;font-size:11.5px;font-family:Consolas,monospace;">${esc(date)}</span>`:''}
+         </div>
+         ${toRecipients?`
+           <div style="color:#334155;word-break:break-word;line-height:1.4;">
+             <span style="color:#64748b;font-weight:600;">Kính gửi (To):</span> ${esc(toRecipients)}
+           </div>
+         `:''}
+         ${ccRecipients?`
+           <div style="color:#334155;word-break:break-word;line-height:1.4;">
+             <span style="color:#64748b;font-weight:600;">Đồng kính gửi (Cc):</span> ${esc(ccRecipients)}
+           </div>
+         `:''}
+         ${bccRecipients?`
+           <div style="color:#334155;word-break:break-word;line-height:1.4;">
+             <span style="color:#64748b;font-weight:600;">Bcc:</span> ${esc(bccRecipients)}
+           </div>
+         `:''}
+       </div>
+     </div>
+
+     ${attachments.length>0?`
+       <div style="margin-bottom:14px;background:#f1f5f9;border-radius:8px;padding:10px 12px;border:1px solid #cbd5e1;">
+         <div style="font-size:12px;font-weight:700;color:#0f2c59;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+           <span>📎</span><span>TỆP ĐÍNH KÈM (${attachments.length}):</span>
+         </div>
+         <div style="display:flex;flex-wrap:wrap;gap:8px;">
+           ${attachments.map((att,idx)=>{
+             const attName=typeof att==='string'?att:(att.name||'attachment');
+             const attSize=typeof att==='object'&&att.size?formatSize(att.size):'';
+             const icon=getAttIcon(attName);
+             const isMsg=typeof att==='object'?(att.is_msg||attName.toLowerCase().endsWith('.msg')):attName.toLowerCase().endsWith('.msg');
+             return `
+               <div class="outlook-att-chip" style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid ${isMsg?'#f59e0b':'#94a3b8'};border-radius:6px;padding:6px 10px;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);cursor:pointer;" ${isMsg?`onclick="document.getElementById('nested-msg-${idx}')?.scrollIntoView({behavior:'smooth'})"`:''}>
+                 <span style="font-size:15px;">${icon}</span>
+                 <span style="font-weight:600;color:#1e293b;word-break:break-all;">${esc(attName)}</span>
+                 ${attSize?`<span style="color:#64748b;font-size:10.5px;">(${esc(attSize)})</span>`:''}
+                 ${isMsg?`<span style="background:#fef3c7;color:#b45309;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:700;">Xem thư ↓</span>`:''}
+               </div>
+             `;
+           }).join('')}
+         </div>
+       </div>
+     `:''}
+
+     <div style="font-size:12px;font-weight:700;color:#0f2c59;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
+       <span>📝</span><span>Nội dung thư:</span>
+     </div>
+     <div class="msg-body" style="font-size:13.5px;line-height:1.65;color:#1e293b;white-space:pre-wrap;word-break:break-word;background:#fafbfa;border:1px solid #e2e8f0;border-radius:8px;padding:14px;max-height:50vh;overflow-y:auto;user-select:text;">
+       ${linkify(bodyText)||'<span class="muted">(Thư không có nội dung văn bản)</span>'}
+     </div>
+
+     ${nestedMessages.length>0?`
+       <div style="margin-top:20px;border-top:2px dashed #0078d4;padding-top:14px;">
+         <div style="font-size:13px;font-weight:700;color:#0078d4;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+           <span>📩</span><span>Thư đính kèm trong email (${nestedMessages.length} thư):</span>
+         </div>
+         ${nestedMessages.map((nmsg,idx)=>`
+           <div id="nested-msg-${idx}" style="margin-bottom:14px;background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #0078d4;border-radius:8px;padding:12px;">
+             <div style="font-size:14px;font-weight:700;color:#0f2c59;margin-bottom:6px;">
+               ✉️ ${esc(nmsg.subject||'(Không có tiêu đề)')}
+             </div>
+             <div style="font-size:11.5px;color:#64748b;display:grid;gap:3px;margin-bottom:10px;background:#fff;padding:8px;border-radius:6px;border:1px solid #e2e8f0;">
+               <div><span style="font-weight:600;">Người gửi:</span> <strong style="color:#1e293b;">${esc(nmsg.sender||'')}</strong></div>
+               ${nmsg.date?`<div><span style="font-weight:600;">Thời gian:</span> ${esc(nmsg.date)}</div>`:''}
+               ${nmsg.to?`<div><span style="font-weight:600;">Kính gửi:</span> ${esc(nmsg.to)}</div>`:''}
+             </div>
+             <div style="font-size:13px;line-height:1.6;color:#1e293b;white-space:pre-wrap;word-break:break-word;background:#fff;padding:10px;border-radius:6px;border:1px solid #e2e8f0;max-height:40vh;overflow-y:auto;">
+               ${linkify(nmsg.body||'(Không có nội dung)')}
+             </div>
+           </div>
+         `).join('')}
+       </div>
+     `:''}
+   </div>
+  `;
  }
  function openMsg(opt){
-   close();const run=++generation;
-   const name=opt?.name||'Thư điện tử';
-   $('viewer-title').textContent=name;
-   $('viewer').showModal();
-   const msg={
-     subject:opt?.subject||name.replace(/\.msg$/i,''),
-     senderName:opt?.sender||'',
-     sentDate:opt?.date||'',
-     body:opt?.body||''
-   };
-   renderMsgView(msg,name,opt?.url||'');
+  close();const run=++generation;
+  const name=opt?.name||'Thư điện tử';
+  $('viewer-title').textContent=name;
+  $('viewer').showModal();
+  const msg={
+   subject:opt?.subject||name.replace(/\.msg$/i,''),
+   senderName:opt?.sender||'',
+   senderEmail:opt?.senderEmail||'',
+   to:opt?.to||'',
+   cc:opt?.cc||'',
+   bcc:opt?.bcc||'',
+   sentDate:opt?.date||'',
+   body:opt?.body||'',
+   attachments:opt?.attachments||[],
+   nested_messages:opt?.nested_messages||[]
+  };
+  renderMsgView(msg,name,opt?.url||'');
  }
  async function openOnline(opt){
   close();const run=++generation;

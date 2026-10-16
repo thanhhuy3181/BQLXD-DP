@@ -231,6 +231,10 @@ Chủ tịch HĐQT đã ký ban hành Quyết định phê duyệt Chủ trươn
     const detailContainer = document.getElementById('mail-detail-container');
     if (!detailContainer) return;
 
+    const initials = (msg.sender || 'V').replace(/\(.*?\)/g, '').trim().slice(0, 2).toUpperCase() || 'VH';
+    const attachments = Array.isArray(msg.attachments) ? msg.attachments : [];
+    const nestedMessages = Array.isArray(msg.nested_messages) ? msg.nested_messages : [];
+
     detailContainer.innerHTML = `
       <div class="flex flex-col h-full overflow-hidden bg-[#181816] rounded-xl border border-[#2E2E2A]">
         <!-- Mail Header Toolbar -->
@@ -245,42 +249,77 @@ Chủ tịch HĐQT đã ký ban hành Quyết định phê duyệt Chủ trươn
             <button class="btn btn-xs bg-[#242421] hover:bg-[#312F44] text-[#E0DEF4] border border-[#312F44] rounded gap-1" onclick="MailModule.exportMailText('${msg.id}')">
               <span>📋</span><span>Sao chép thư</span>
             </button>
+            <button class="btn btn-xs bg-[#0078d4] hover:bg-[#005a9e] text-white font-bold border-none rounded gap-1" onclick="window.OutlookViewer?.openMsg('${window.escapeHtml(msg.subject)}', '')">
+              <span>✉️</span><span>Cửa sổ Outlook Classic</span>
+            </button>
           </div>
           <span class="text-xs text-[#908CAA] font-mono">${msg.date}</span>
         </div>
 
-        <!-- Subject & Sender Info -->
-        <div class="p-4 border-b border-[#2E2E2A] flex flex-col gap-2 bg-[#1B1B18] flex-shrink-0">
-          <h2 class="text-base font-extrabold text-[#EDEDEA] leading-snug">${window.escapeHtml(msg.subject)}</h2>
-          <div class="flex items-center justify-between text-xs text-[#908CAA]">
-            <div class="flex items-center gap-2">
-              <span class="font-bold text-[#E0DEF4]">${window.escapeHtml(msg.sender)}</span>
-              <span>&lt;${window.escapeHtml(msg.email)}&gt;</span>
+        <!-- Subject & Sender Info (Outlook Classic Header) -->
+        <div class="p-4 border-b border-[#2E2E2A] flex flex-col gap-2.5 bg-[#1B1B18] flex-shrink-0">
+          <div class="border-b border-[#0078d4] pb-2">
+            <h2 class="text-base font-extrabold text-[#EDEDEA] leading-snug">${window.escapeHtml(msg.subject)}</h2>
+          </div>
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-full bg-[#0078d4] text-white font-bold flex items-center justify-center text-xs shadow flex-shrink-0">
+              ${initials}
             </div>
-            <span class="bg-[#242421] text-[#F39C12] border border-[#312F44] px-2 py-0.5 rounded text-[11px] font-bold">
-              🏢 ${window.escapeHtml(msg.project)}
-            </span>
+            <div class="flex-1 min-w-0 flex flex-col gap-1 text-xs">
+              <div class="flex items-center justify-between text-xs text-[#908CAA] flex-wrap gap-2">
+                <div>
+                  <span class="font-bold text-[#E0DEF4]">${window.escapeHtml(msg.sender)}</span>
+                  ${msg.email ? `<span class="text-[#908CAA] ml-1">&lt;${window.escapeHtml(msg.email)}&gt;</span>` : ''}
+                </div>
+                <span class="bg-[#242421] text-[#F39C12] border border-[#312F44] px-2 py-0.5 rounded text-[11px] font-bold">
+                  🏢 ${window.escapeHtml(msg.project || 'Vinhomes Đan Phượng')}
+                </span>
+              </div>
+              ${msg.to ? `<div class="text-[#CCCCCC]"><span class="text-[#888780] font-semibold">Kính gửi (To):</span> ${window.escapeHtml(msg.to)}</div>` : ''}
+              ${msg.cc ? `<div class="text-[#CCCCCC]"><span class="text-[#888780] font-semibold">Đồng kính gửi (Cc):</span> ${window.escapeHtml(msg.cc)}</div>` : ''}
+              ${msg.bcc ? `<div class="text-[#CCCCCC]"><span class="text-[#888780] font-semibold">Bcc:</span> ${window.escapeHtml(msg.bcc)}</div>` : ''}
+            </div>
           </div>
         </div>
 
         <!-- Attachments List -->
-        ${(msg.attachments && msg.attachments.length) ? `
+        ${attachments.length ? `
           <div class="px-4 py-2 bg-[#20201D] border-b border-[#2E2E2A] flex items-center gap-2 flex-wrap flex-shrink-0 text-xs">
             <span class="font-bold text-[#F1C40F] flex items-center gap-1">
-              <span>📎</span><span>Tệp đính kèm (${msg.attachments.length}):</span>
+              <span>📎</span><span>Tệp đính kèm (${attachments.length}):</span>
             </span>
-            ${msg.attachments.map(att => `
-              <span class="bg-[#2A2A27] border border-[#3A3A37] text-[#E0DEF4] px-2.5 py-1 rounded flex items-center gap-1.5 cursor-pointer hover:border-[#0F6E56]" onclick="toast('Mở file đính kèm: ${window.escapeHtml(att)}', 'info')">
-                <span>📄</span><span>${window.escapeHtml(att)}</span>
-              </span>
-            `).join('')}
+            ${attachments.map(att => {
+              const attName = typeof att === 'string' ? att : (att.name || 'attachment');
+              const isMsg = typeof att === 'object' ? att.is_msg : attName.toLowerCase().endsWith('.msg');
+              return `
+                <span class="bg-[#2A2A27] border ${isMsg ? 'border-amber-500 hover:border-amber-400' : 'border-[#3A3A37] hover:border-[#0F6E56]'} text-[#E0DEF4] px-2.5 py-1 rounded flex items-center gap-1.5 cursor-pointer" onclick="OutlookViewer?.openAttachmentFile ? OutlookViewer.openAttachmentFile('${window.escapeHtml(attName)}') : toast('Mở tệp: ${window.escapeHtml(attName)}')">
+                  <span>${isMsg ? '✉️' : '📄'}</span><span>${window.escapeHtml(attName)}</span>
+                </span>
+              `;
+            }).join('')}
           </div>
         ` : ''}
 
         <!-- Mail Body Content -->
-        <div class="flex-1 p-4 overflow-y-auto text-xs text-[#EDEDEA] leading-relaxed whitespace-pre-wrap select-text font-sans">
+        <div class="flex-1 p-4 overflow-y-auto text-xs text-[#EDEDEA] leading-relaxed whitespace-pre-wrap select-text font-sans bg-[#141412]">
           ${window.escapeHtml(msg.body)}
         </div>
+
+        <!-- Nested Attached Messages (Thư đính kèm phía dưới) -->
+        ${nestedMessages.length ? `
+          <div class="p-4 border-t border-[#0078d4] bg-[#181816] flex flex-col gap-3 flex-shrink-0 max-h-48 overflow-y-auto">
+            <span class="text-xs font-bold text-[#0078d4] uppercase flex items-center gap-1">
+              <span>📩</span><span>Thư đính kèm (${nestedMessages.length} thư):</span>
+            </span>
+            ${nestedMessages.map(n => `
+              <div class="p-2.5 bg-[#1F1F1C] border border-[#2E2E2A] rounded text-xs flex flex-col gap-1">
+                <div class="font-bold text-[#EDEDEA]">✉️ ${window.escapeHtml(n.subject || '')}</div>
+                <div class="text-[11px] text-[#908CAA]">Từ: ${window.escapeHtml(n.sender || '')} | Ngày: ${window.escapeHtml(n.date || '')}</div>
+                <div class="text-[11px] text-[#C4C2B8] whitespace-pre-wrap max-h-20 overflow-y-auto">${window.escapeHtml(n.body || '')}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
       </div>
     `;
   }
