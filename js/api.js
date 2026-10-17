@@ -158,6 +158,7 @@ const API = (function() {
 
     getCurrentUser:        ()       => call('get_current_user'),
     loginUser:             (u,p)    => call('login_user', u, p),
+    quickLogin:            (name)   => call('quick_login', name),
     googleLogin:           (credential) => call('google_login', credential),
     logoutUser:            ()       => call('logout_user'),
     getUsersList:          ()       => call('get_users_list'),

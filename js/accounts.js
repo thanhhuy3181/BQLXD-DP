@@ -558,6 +558,28 @@ const AccountsModule = (function() {
     }
   }
 
+  async function submitQuickLogin(customName) {
+    const name = customName || 'Khách xem dự án';
+    const res = await API.quickLogin(name);
+    if (res.ok) {
+      if (res.data?.session_token) {
+        sessionStorage.setItem('awm_session', res.data.session_token);
+        localStorage.setItem('awm_session', res.data.session_token);
+        localStorage.setItem('bqlda_web_session', res.data.session_token);
+      }
+      _currentUser = res.data;
+      await loadAccessControl();
+      updateHeaderUser();
+      toast(`Chào mừng ${_currentUser.fullname}! Đang mở dữ liệu dự án.`, 'success');
+      document.getElementById('modal-auth-login')?.close();
+      document.getElementById('modal-auth-register')?.close();
+      document.body.classList.remove('auth-gate');
+      loadUsers();
+    } else {
+      toast('Không thể đăng nhập nhanh: ' + res.error, 'error');
+    }
+  }
+
   function escapeHtml(s) {
     if (!s) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -581,6 +603,7 @@ const AccountsModule = (function() {
     checkCurrentUser,
     showAuthModal,
     submitLogin,
+    submitQuickLogin,
     submitLogout,
     showRegisterModal,
     submitRegister,

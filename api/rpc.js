@@ -309,6 +309,31 @@ async function rpc(req) {
     const row = { username, password_hash: '', status: 'Active', data };
     return {...result(publicUser(row)), session_token:token, message:'Đăng ký thành công!'};
   }
+  if (method === 'quick_login') {
+    const rawName = String(args[0] || '').trim().slice(0, 50);
+    const fullname = rawName || 'Khách xem dự án';
+    const username = `quick_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const defaultProjects = state.projects?.all_projects?.length ? state.projects.all_projects : ['*'];
+    const data = {
+      id: crypto.randomUUID(),
+      username,
+      fullname,
+      email: '',
+      phone: '',
+      role: 'CBGS',
+      status: 'Active',
+      allowed_projects: defaultProjects,
+      current_project: state.projects?.current_project || (defaultProjects[0] || ''),
+      created_at: new Date().toISOString(),
+      auth_provider: 'quick'
+    };
+    await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(crypto.randomUUID())},'Active',${JSON.stringify(data)}::jsonb)`;
+    const token = crypto.randomBytes(32).toString('hex');
+    await sql`DELETE FROM bqlda_sessions WHERE expires_at<=now()`;
+    await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${username},now()+interval '30 days')`;
+    const row = { username, password_hash: '', status: 'Active', data };
+    return { ...result(publicUser(row)), session_token: token, message: 'Đăng nhập thành công!' };
+  }
   if (method === 'logout_user') {
     const token=(req.headers.authorization||'').replace(/^Bearer /,''); if(token)await sql`DELETE FROM bqlda_sessions WHERE token=${token}`;
     return result({logged_out:true});
