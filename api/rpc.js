@@ -228,6 +228,16 @@ async function rpc(req) {
     if (row.status === 'Pending') return failure('Tài khoản đang chờ Quản trị viên phê duyệt.');
     if (row.status === 'Locked') return failure('Tài khoản này đã bị khóa bởi Quản trị viên!');
     if (row.password_hash !== passwordHash) return failure('Sai mật khẩu đăng nhập!');
+    if (row.status === 'Pending') {
+      const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+      data.status = 'Active';
+      if (!data.allowed_projects || !data.allowed_projects.length) {
+        data.allowed_projects = state.projects?.all_projects?.length ? state.projects.all_projects : ['*'];
+      }
+      await sql`UPDATE bqlda_users SET status='Active', data=${JSON.stringify(data)}::jsonb, updated_at=now() WHERE username=${row.username}`;
+      row.status = 'Active';
+      row.data = data;
+    }
     const token = crypto.randomBytes(32).toString('hex');
     await sql`DELETE FROM bqlda_sessions WHERE expires_at<=now()`;
     await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},now()+interval '30 days')`;
@@ -256,8 +266,9 @@ async function rpc(req) {
       const base = `gmail_${email.split('@')[0].replace(/[^a-z0-9_.-]/g,'').slice(0,20) || 'user'}`;
       let username = base, suffix = 1;
       while ((await sql`SELECT 1 FROM bqlda_users WHERE username=${username}`).length) username = `${base}_${suffix++}`;
-      const data={id:crypto.randomUUID(),username,fullname:String(profile.name||email),email,phone:'',avatar:String(profile.picture||''),role:'CBGS',status:'Pending',allowed_projects:[],current_project:'',created_at:new Date().toISOString(),auth_provider:'google',google_sub:String(profile.sub)};
-      await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(crypto.randomUUID())},'Pending',${JSON.stringify(data)}::jsonb)`;
+      const defaultProjects = state.projects?.all_projects?.length ? state.projects.all_projects : ['*'];
+      const data={id:crypto.randomUUID(),username,fullname:String(profile.name||email),email,phone:'',avatar:String(profile.picture||''),role:'CBGS',status:'Active',allowed_projects:defaultProjects,current_project:state.projects?.current_project||'',created_at:new Date().toISOString(),auth_provider:'google',google_sub:String(profile.sub)};
+      await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(crypto.randomUUID())},'Active',${JSON.stringify(data)}::jsonb)`;
       rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE username=${username}`;
       row = rows[0];
     }
@@ -267,8 +278,17 @@ async function rpc(req) {
       await sql`UPDATE bqlda_users SET data=${JSON.stringify(linked)}::jsonb,updated_at=now() WHERE username=${row.username}`;
       row.data=linked;
     }
-    if (row.status === 'Pending') return failure('Tài khoản đã đăng ký và đang chờ Quản trị viên phê duyệt.');
     if (row.status === 'Locked') return failure('Tài khoản này đã bị khóa bởi Quản trị viên!');
+    if (row.status === 'Pending') {
+      const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+      data.status = 'Active';
+      if (!data.allowed_projects || !data.allowed_projects.length) {
+        data.allowed_projects = state.projects?.all_projects?.length ? state.projects.all_projects : ['*'];
+      }
+      await sql`UPDATE bqlda_users SET status='Active', data=${JSON.stringify(data)}::jsonb, updated_at=now() WHERE username=${row.username}`;
+      row.status = 'Active';
+      row.data = data;
+    }
     const token = crypto.randomBytes(32).toString('hex');
     await sql`DELETE FROM bqlda_sessions WHERE expires_at<=now()`;
     await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},now()+interval '30 days')`;
@@ -280,9 +300,14 @@ async function rpc(req) {
     if (String(d.password||'').length<4) return failure('Mật khẩu phải từ 4 ký tự trở lên!');
     const exists=await sql`SELECT 1 FROM bqlda_users WHERE username=${username}`; if(exists.length)return failure('Tài khoản này đã tồn tại!');
     const project=state.projects?.current_project||'';
-    const data={id:crypto.randomUUID(),username,fullname:String(d.fullname||username),email:String(d.email||''),phone:String(d.phone||''),role:'CBGS',status:'Pending',allowed_projects:[],current_project:'',created_at:new Date().toISOString()};
-    await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(String(d.password))},'Pending',${JSON.stringify(data)}::jsonb)`;
-    return result({message:'Đăng ký thành công. Tài khoản sẽ dùng được sau khi Quản trị viên phê duyệt.'});
+    const defaultProjects = state.projects?.all_projects?.length ? state.projects.all_projects : ['*'];
+    const data={id:crypto.randomUUID(),username,fullname:String(d.fullname||username),email:String(d.email||''),phone:String(d.phone||''),role:'CBGS',status:'Active',allowed_projects:defaultProjects,current_project:project,created_at:new Date().toISOString()};
+    await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(String(d.password))},'Active',${JSON.stringify(data)}::jsonb)`;
+    const token = crypto.randomBytes(32).toString('hex');
+    await sql`DELETE FROM bqlda_sessions WHERE expires_at<=now()`;
+    await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${username},now()+interval '30 days')`;
+    const row = { username, password_hash: '', status: 'Active', data };
+    return {...result(publicUser(row)), session_token:token, message:'Đăng ký thành công!'};
   }
   if (method === 'logout_user') {
     const token=(req.headers.authorization||'').replace(/^Bearer /,''); if(token)await sql`DELETE FROM bqlda_sessions WHERE token=${token}`;

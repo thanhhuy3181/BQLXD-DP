@@ -14,8 +14,20 @@
  function selectProject(newProject){if(!newProject){closeProjectModal();return}const changed=(newProject!==project);project=newProject;updateProjectDisplay();closeProjectModal();if(changed){records=[];trail=[];folders={};query='';driveSearch='';driveSort='za';AwmViewer.close();closeSheet();notice('Đã chuyển sang dự án: '+newProject);render()}}
  function reset(){epoch++;clearTimeout(timer);bootstrap=null;records=[];folders={};driveFiles=[];trail=[];driveSearch='';driveSort='za';linkItems=[];linkSearch='';driveSyncing=false;AwmDrive.clear();AwmViewer.close();$('sheet').close();$('project-modal')?.close();$('project').replaceChildren();updateProjectDisplay();$('nav').replaceChildren();document.querySelector('.projectbar').hidden=true}
  function auth(message=''){
-  reset();$('settings').hidden=true;$('main').innerHTML=`<section class="auth"><span class="logo">B</span><div class="eyebrow">BQLDA / AwM</div><h1>Dự án của bạn.<br>Trong tầm tay.</h1><p class="muted">Đăng nhập Google để xem hồ sơ, Drive và dữ liệu dự án được cấp quyền.</p><div id="google-button"></div><div class="auth-divider"><span>hoặc đăng nhập tài khoản hệ thống</span></div><form id="system-login-form" class="form auth-system"><label>Tên đăng nhập hoặc email<input id="auth-username" autocomplete="username" required maxlength="120" placeholder="admin hoặc email"></label><label>Mật khẩu<input id="auth-password" type="password" autocomplete="current-password" required maxlength="200" placeholder="Nhập mật khẩu"></label><button class="primary" id="auth-system-submit">Đăng nhập tài khoản hệ thống</button></form><div id="auth-message" role="status">${message?error({message}):''}</div><button id="retry-google" class="text-button">Tải lại đăng nhập Google</button><p class="muted">Tài khoản mới cần được quản trị viên phê duyệt. Kết nối Drive được cấp riêng sau đăng nhập.</p></section>`;
-  $('retry-google').onclick=()=>location.reload();$('system-login-form').onsubmit=async e=>{e.preventDefault();const target=$('auth-message');target.textContent='Đang đăng nhập…';$('auth-system-submit').disabled=true;try{await rpc('login_user',[$('auth-username').value.trim(),$('auth-password').value]);await boot()}catch(err){target.innerHTML=error(err);$('auth-system-submit').disabled=false}};setupGoogle();
+  reset();$('settings').hidden=true;
+  let mode = 'login';
+  function renderAuthBox(){
+    $('main').innerHTML=`<section class="auth"><span class="logo">B</span><div class="eyebrow">BQLDA / AwM</div><h1>Dự án của bạn.<br>Trong tầm tay.</h1><p class="muted">Đăng nhập nhanh để xem hồ sơ, bản vẽ CAD và dữ liệu dự án.</p><div id="google-button"></div><div class="auth-divider"><span>hoặc tài khoản hệ thống</span></div><div style="display:flex;gap:6px;margin-bottom:12px;background:rgba(255,255,255,0.06);padding:3px;border-radius:8px;"><button type="button" id="tab-auth-login" class="button" style="flex:1;padding:7px;font-size:12px;font-weight:700;border-radius:6px;border:none;cursor:pointer;background:${mode==='login'?'#244438':'transparent'};color:${mode==='login'?'#fff':'#94a3b8'};">Đăng nhập</button><button type="button" id="tab-auth-register" class="button" style="flex:1;padding:7px;font-size:12px;font-weight:700;border-radius:6px;border:none;cursor:pointer;background:${mode==='register'?'#244438':'transparent'};color:${mode==='register'?'#fff':'#94a3b8'};">Đăng ký mới</button></div>${mode==='login'?`<form id="system-login-form" class="form auth-system"><label>Tên đăng nhập hoặc email<input id="auth-username" autocomplete="username" required maxlength="120" placeholder="admin hoặc email"></label><label>Mật khẩu<input id="auth-password" type="password" autocomplete="current-password" required maxlength="200" placeholder="Nhập mật khẩu"></label><button class="primary" id="auth-system-submit">Đăng nhập tài khoản</button></form>`:`<form id="system-register-form" class="form auth-system"><label>Họ và tên<input id="reg-fullname" required maxlength="100" placeholder="Nguyễn Văn A"></label><label>Tên đăng nhập (viết liền không dấu)<input id="reg-username" autocomplete="username" required maxlength="30" placeholder="Ví dụ: nguyenvana"></label><label>Mật khẩu (từ 4 ký tự)<input id="reg-password" type="password" autocomplete="new-password" required maxlength="200" placeholder="Đặt mật khẩu"></label><button class="primary" id="auth-register-submit">Tạo tài khoản và vào ngay</button></form>`}<div id="auth-message" role="status">${message?error({message}):''}</div><button id="retry-google" class="text-button">Tải lại nút đăng nhập Google</button><p class="muted">Tài khoản mới được kích hoạt ngay, truy cập dữ liệu dự án.</p></section>`;
+    $('tab-auth-login').onclick=()=>{mode='login';renderAuthBox();setupGoogle();};
+    $('tab-auth-register').onclick=()=>{mode='register';renderAuthBox();setupGoogle();};
+    $('retry-google').onclick=()=>location.reload();
+    const loginForm=$('system-login-form');
+    if(loginForm)loginForm.onsubmit=async e=>{e.preventDefault();const target=$('auth-message');target.textContent='Đang đăng nhập…';$('auth-system-submit').disabled=true;try{await rpc('login_user',[$('auth-username').value.trim(),$('auth-password').value]);await boot()}catch(err){target.innerHTML=error(err);$('auth-system-submit').disabled=false}};
+    const regForm=$('system-register-form');
+    if(regForm)regForm.onsubmit=async e=>{e.preventDefault();const target=$('auth-message');target.textContent='Đang tạo tài khoản…';$('auth-register-submit').disabled=true;try{await rpc('register_user',[{username:$('reg-username').value.trim(),fullname:$('reg-fullname').value.trim(),password:$('reg-password').value}]);await boot()}catch(err){target.innerHTML=error(err);$('auth-register-submit').disabled=false}};
+  }
+  renderAuthBox();
+  setupGoogle();
  }
  function setupGoogle(){if(!window.google?.accounts?.id){setTimeout(()=>{if(!bootstrap&&$('google-button'))setupGoogle()},500);return}google.accounts.id.initialize({client_id:window.BQLDA_WEB_CLIENT_ID,callback:async response=>{const target=$('auth-message');if(target)target.textContent='Đang xác thực…';try{await rpc('google_login',[response.credential]);await boot()}catch(e){if($('auth-message'))$('auth-message').innerHTML=error(e)}}});if($('google-button'))google.accounts.id.renderButton($('google-button'),{theme:'outline',size:'large',width:Math.min(320,innerWidth-60),text:'continue_with'});}
  async function boot(){const run=++epoch;try{const data=await rpc('awm_bootstrap');if(run!==epoch)return;bootstrap=data;const defaultProj=(bootstrap.user?.role!=='Admin'&&bootstrap.user?.current_project&&bootstrap.projects.includes(bootstrap.user.current_project))?bootstrap.user.current_project:(bootstrap.projects.includes('Vinhomes Đan Phượng')?'Vinhomes Đan Phượng':(bootstrap.projects[0]||''));if(!bootstrap.projects.length){project=''}else if(!project||!bootstrap.projects.includes(project))project=defaultProj;if(!bootstrap.groups.some(g=>g.id===tab))tab=bootstrap.groups[0]?.id||'';if(!bootstrap.menus.some(m=>m.id===menu))menu=bootstrap.menus[0]?.id||'';$('settings').hidden=false;document.querySelector('.projectbar').hidden=false;$('project').innerHTML=bootstrap.projects.length?bootstrap.projects.map(p=>`<option value="${esc(p)}" ${p===project?'selected':''}>${esc(p)}</option>`).join(''):'<option>Chưa được cấp dự án</option>';$('project').disabled=!bootstrap.projects.length;updateProjectDisplay();await render()}catch(e){if(run!==epoch)return;sessionStorage.removeItem(TOKEN);auth(e.message)}}
@@ -277,7 +289,56 @@
       else notice(e.message);
     }
   }
-  async function mail(run){$('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><button id="refresh-mail" class="primary">Làm mới ↻</button><div id="mail-list"></div>';$('refresh-mail').onclick=()=>render();try{const status=await rpc('awm_mail_status');if(run!==epoch)return;$('mail-state').className='message';$('mail-state').innerHTML=`<span class="badge ${status.online?'online':'warn'}">${status.online?'AD đang kết nối':'AD chưa kết nối'}</span><p>${status.online?esc(status.source):'Mở AD trên máy tính và bật đồng bộ Mail.'}</p><div class="muted">${status.last_sync?'Lần đồng bộ: '+esc(new Date(status.last_sync).toLocaleString('vi-VN')):'Chưa có dữ liệu đồng bộ.'}</div>`;if(status.online){const data=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;$('mail-list').innerHTML=data.items.length?data.items.map((r,i)=>`<button class="card" data-mail="${i}"><span class="code">${esc(r.sender)}</span><h3>${esc(r.subject)}</h3><div class="muted">${esc(r.date)}</div></button>`).join(''):'<div class="empty">Chưa có thư thuộc dự án này.</div>';document.querySelectorAll('[data-mail]').forEach(b=>b.onclick=async()=>{try{const latest=await rpc('awm_mail_list',[project,'']);if(run!==epoch)return;const original=data.items[Number(b.dataset.mail)],r=latest.items.find(x=>x.id===original.id);if(!r)throw Error('Thư không còn khả dụng.');sheet(`<div class="eyebrow">${esc(r.sender)}</div><h2>${esc(r.subject)}</h2><p class="muted">${esc(r.date)}</p><div class="detail-value">${esc(r.body)}</div>`)}catch(e){notice(e.message)}})}timer=setTimeout(()=>{if(page==='mail'&&run===epoch){$('sheet').close();render()}},30000);}catch(e){if(run===epoch)$('mail-state').innerHTML=error(e)}}
+  async function mail(run){
+    $('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><button id="refresh-mail" class="primary">Làm mới ↻</button><div id="mail-list"></div>';
+    $('refresh-mail').onclick=()=>render();
+    try{
+      let status={online:false,source:'',last_sync:null};
+      try{ status=await rpc('awm_mail_status'); }catch(_){}
+      if(run!==epoch)return;
+      $('mail-state').className='message';
+      $('mail-state').innerHTML=`<span class="badge ${status.online?'online':'warn'}">${status.online?'AD đang kết nối':'AD chưa kết nối'}</span><p>${status.online?esc(status.source):'Mở AD trên máy tính để tự động đồng bộ hòm thư Outlook.'}</p><div class="muted">${status.last_sync?'Lần đồng bộ: '+esc(new Date(status.last_sync).toLocaleString('vi-VN')):'Chưa có kết nối trực tiếp.'}</div>`;
+      
+      let items=[];
+      if(status.online){
+        try{
+          const data=await rpc('awm_mail_list',[project,'']);
+          if(data&&data.items) items=data.items;
+        }catch(_){}
+      }
+      
+      if(!items.length){
+        for(const p of ['../api/data/mail_snapshot.json','data/mail_snapshot.json','/api/data/mail_snapshot.json']){
+          try{
+            const resp=await fetch(p,{cache:'no-cache'});
+            if(resp.ok){
+              const snap=await resp.json();
+              if(snap&&snap.items&&snap.items.length){
+                items=snap.items.filter(r=>!project||!r.project||r.project===project);
+                if(!items.length) items=snap.items;
+                $('mail-state').innerHTML+=`<div style="margin-top:6px;font-size:12px;color:#182b29;font-weight:600;">📂 Hiển thị ${items.length} thư từ bản sao lưu Outlook (${snap.updated_at?new Date(snap.updated_at).toLocaleString('vi-VN'):'gần nhất'})</div>`;
+                break;
+              }
+            }
+          }catch(_){}
+        }
+      }
+      
+      if(run!==epoch)return;
+      $('mail-list').innerHTML=items.length?items.map((r,i)=>`<button class="card" data-mail="${i}"><span class="code">${esc(r.sender)}</span><h3>${esc(r.subject)}</h3><div class="muted">${esc(r.date)}${r.attachments&&r.attachments.length?' · 📎 '+r.attachments.length+' tệp':''}</div></button>`).join(''):'<div class="empty">Chưa có thư thuộc dự án này. Mở AD trên máy tính để đồng bộ hòm thư Outlook.</div>';
+      
+      document.querySelectorAll('[data-mail]').forEach(b=>b.onclick=()=>{
+        const r=items[Number(b.dataset.mail)];
+        if(!r)return;
+        const attHtml=(r.attachments&&r.attachments.length)?`<div style="margin:10px 0;padding:8px 12px;background:#f6f8f5;border-radius:8px;font-size:12px;color:#b45309;"><span style="font-weight:700;">📎 ${r.attachments.length} tệp đính kèm:</span><br>${esc(r.attachments.join(', '))}</div>`:'';
+        sheet(`<div class="eyebrow">${esc(r.sender)}</div><h2>${esc(r.subject)}</h2><p class="muted">${esc(r.date)}${r.project?' · 🏢 '+esc(r.project):''}</p>${attHtml}<div class="detail-value">${esc(r.body)}</div>`);
+      });
+      
+      timer=setTimeout(()=>{if(page==='mail'&&run===epoch){$('sheet').close();render()}},30000);
+    }catch(e){
+      if(run===epoch)$('mail-state').innerHTML=error(e);
+    }
+  }
  async function files(run){
   $('main').innerHTML='<div class="eyebrow">KHO HỒ SƠ DỰ ÁN</div><h1>Quản lý hồ sơ</h1><div class="chips">'+bootstrap.menus.map(m=>`<button data-menu="${m.id}" class="${menu===m.id?'active':''}">${esc(m.name)}</button>`).join('')+'</div>'+(bootstrap.files?.can_configure?'<div style="margin:4px 0 6px 0;"><button id="configure" class="text-button" style="font-size:12px;">⚙️ Đặt thư mục dự án</button></div>':'')+'<div id="crumb" class="breadcrumb"></div><div class="drive-toolbar"><label class="search" style="margin:0;flex:1;min-width:0;display:flex;align-items:center;background:#fff;border:1px solid #ced9c6;border-radius:8px;padding:0 10px;height:38px;"><span style="color:#718477;font-size:14px;margin-right:6px;">⌕</span><input id="drive-search" type="search" placeholder="Tìm kiếm tệp, thư mục…" value="'+esc(driveSearch)+'" style="border:none;outline:none;background:transparent;width:100%;font-size:13px;padding:6px 0;margin:0;"></label><div class="sort-grp"><button id="sort-za" class="sort-btn '+(driveSort==='za'?'active':'')+'">ZA</button><button id="sort-az" class="sort-btn '+(driveSort==='az'?'active':'')+'">AZ</button></div><button id="drive-refresh" class="icon-btn" title="Làm mới" style="border:1px solid #ced9c6;background:#fff;border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:#3c5b52;flex-shrink:0;">↻</button></div><div id="drive-list" aria-live="polite"></div><button id="drive-more" hidden class="primary">Tải thêm</button>';
   document.querySelectorAll('[data-menu]').forEach(b=>b.onclick=()=>{menu=b.dataset.menu;trail=[];driveSearch='';render()});

@@ -538,7 +538,18 @@ const AccountsModule = (function() {
 
     const res = await API.registerUser({ username: u, fullname: fn, email: em, phone: ph, password: pw });
     if (res.ok) {
-      toast('Đăng ký thành công. Tài khoản sẽ dùng được sau khi Quản trị viên phê duyệt.', 'success');
+      if (res.data?.session_token) {
+        sessionStorage.setItem('awm_session', res.data.session_token);
+        _currentUser = res.data;
+        await loadAccessControl();
+        updateHeaderUser();
+        document.getElementById('modal-auth-register')?.close();
+        document.body.classList.remove('auth-gate');
+        toast(`Đăng ký thành công! Chào mừng ${_currentUser.fullname}`, 'success');
+        loadUsers();
+        return;
+      }
+      toast('Đăng ký thành công!', 'success');
       document.getElementById('modal-auth-register')?.close();
       showAuthModal();
       loadUsers();
