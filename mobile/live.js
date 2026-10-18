@@ -6,7 +6,7 @@
  function addAdminAccountLink(){if(String(bootstrap?.user?.role||'').trim().toLowerCase()!=='admin')return;const panels=document.querySelectorAll('.admin-panel'),panel=panels[panels.length-1];if(!panel)return;const items=[['account-management','👥 Quản lý tài khoản →','../index.html?view=desktop&settings=accounts'],['appearance-management','🎨 Tùy biến Tab & Màu sắc →','../index.html?view=desktop&settings=appearance'],['project-management','🏢 QL HM/CT →','../index.html?view=desktop&settings=projects']];items.forEach(([id,text,href])=>{if($(id))return;const a=document.createElement('a');a.id=id;a.className='card';a.href=href;a.textContent=text;panel.append(a)})}
  const adminSettingsObserver=new MutationObserver(addAdminAccountLink);adminSettingsObserver.observe(document.body,{childList:true,subtree:true});
  function bindSettingsControls(){
-  const back=()=>{closeSheet();$('settings').click()};
+  const back=()=>{closeSheet();page='home';render().then(()=>setTimeout(()=>{if(bootstrap)$('settings').click()},0))};
   $('rbac-back')?.addEventListener('click',back);
   const open=(id,title,text)=>$(id)?.addEventListener('click',()=>{sheet(`<button class="back-button" id="settings-child-back">← Cài đặt</button><h2>${title}</h2><p class="message">${text}</p>`);$('settings-child-back').onclick=back});
   open('appearance-management','Tùy biến Tab & Màu sắc','Thiết lập giao diện AwM.');
@@ -658,6 +658,7 @@
  window.AwmLive = { openNamedFile, openFile, rpc, getProject: () => project, notice, selectProject, openProjectModal, closeProjectModal, renderProjectSuggestions, removeVietnameseTones, highlightMatch, updateProjectDisplay };
  if(sessionStorage.getItem(TOKEN))boot();else auth();
 })();
+
 
 
 
