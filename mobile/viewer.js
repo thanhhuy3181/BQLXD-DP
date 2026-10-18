@@ -166,12 +166,14 @@ window.AwmViewer=(()=>{
        </span>
      </div>
      <div style="display:flex;gap:6px;align-items:center;">
-       ${directUrl?`<a class="primary button" style="padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;display:inline-flex;align-items:center;gap:4px;" href="${esc(directUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a>`:''}
+       <button id="viewer-msg-share" class="button" style="padding:6px 10px;font-size:12px;font-weight:600;border-radius:6px;border:1px solid #b8cdb8;background:#fff;color:#28523f;cursor:pointer;">↗ Chia sẻ</button>${directUrl?`<a class="primary button" style="padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;display:inline-flex;align-items:center;gap:4px;" href="${esc(directUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a>`:''}
      </div>
    </div>
   `;
   const msgBackBtn = $('viewer-msg-back');
   if(msgBackBtn) msgBackBtn.onclick = goBack;
+  const msgShareBtn=$('viewer-msg-share');
+  if(msgShareBtn) msgShareBtn.onclick=async()=>{try{if(navigator.share&&directUrl)await navigator.share({title:subject||name,text:'Thư MSG từ BQLDA',url:directUrl});else if(directUrl){await navigator.clipboard?.writeText(directUrl);msgShareBtn.textContent='✓ Đã sao chép';setTimeout(()=>msgShareBtn.textContent='↗ Chia sẻ',1600)}}catch(e){if(e?.name!=='AbortError')window.AwmLive?.notice?.('Không thể chia sẻ thư MSG')}};
 
   $('viewer-body').innerHTML=`
    <div class="outlook-mail-card" style="padding:16px;background:#fff;border-radius:10px;margin:10px 4px;border:1px solid #d0d7de;box-shadow:0 2px 8px rgba(0,0,0,0.06);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
