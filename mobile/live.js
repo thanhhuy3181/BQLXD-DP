@@ -134,7 +134,7 @@
     if($('open-hsmt-folder-online'))$('open-hsmt-folder-online').onclick=()=>openHsmtFolderOnline(row);
     document.querySelectorAll('.open-contract-folder-online').forEach(b=>b.onclick=()=>openContractFolderOnline(row));
     document.querySelectorAll('[data-open-contract]').forEach(b=>{b.onclick=()=>{const contractCode=b.dataset.openContract;$('sheet').close();page='tracking';tab='contract';query=contractCode;trail=[];render();};});
-    document.querySelectorAll('.open-named-file-btn').forEach(b=>{b.onclick=()=>openNamedFile(b.dataset.namedFile,row);});document.querySelectorAll('.named-file-size').forEach(async el=>{try{const r=await rpc('awm_find_file',[project,el.dataset.fileName,'all']);const f=r?.files?.[0];el.textContent=f?.size?'· '+formatBytes(f.size):'· Chưa xác định';}catch{el.textContent='· Chưa xác định'}});
+    document.querySelectorAll('.open-named-file-btn').forEach(b=>{b.onclick=()=>openNamedFile(b.dataset.namedFile,row);});document.querySelectorAll('.named-file-size').forEach(async el=>{try{const r=await rpc('awm_find_file',[project,el.dataset.fileName,'all']);const f=r?.files?.[0];el.textContent=f?.size?'· '+(Number(f.size)>1048576?(Number(f.size)/1048576).toFixed(1)+' MB':(Number(f.size)/1024).toFixed(0)+' KB'):'· Chưa xác định';}catch{el.textContent='· Chưa xác định'}});
     document.querySelectorAll('.open-row-folder-btn').forEach(b=>{b.onclick=()=>openRecordFolder(b.dataset.folderPath,row);});
     $('related').onclick=()=>{$('sheet').close();menu=trackingMenu[tab]||bootstrap.menus.find(m=>m.id===tab)?.id||bootstrap.menus[0]?.id||'';page='files';trail=[];render()};
   }
@@ -658,6 +658,7 @@
  window.AwmLive = { openNamedFile, openFile, rpc, getProject: () => project, notice, selectProject, openProjectModal, closeProjectModal, renderProjectSuggestions, removeVietnameseTones, highlightMatch, updateProjectDisplay };
  if(sessionStorage.getItem(TOKEN))boot();else auth();
 })();
+
 
 
 
