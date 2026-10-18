@@ -11,6 +11,8 @@ const MailModule = (function() {
   let _activeMessageId = null;
   let _status = 'Sẵn sàng';
   let _currentScanFolder = '';
+  let _mailPollTimer = null;
+  let _mailSeenIds = new Set();
 
   const SAMPLE_MAILS = [
     {
@@ -124,7 +126,73 @@ Chủ tịch HĐQT đã ký ban hành Quyết định phê duyệt Chủ trươn
     }
   ];
 
-  function init() {
+  async function loadSyncedMail() {
+    try {
+      if (typeof API !== 'undefined' && API.call) {
+        const res = await API.call('get_synced_mail');
+        if (res && res.ok && res.data && res.data.items && res.data.items.length) {
+          const incoming = res.data.items;
+          notifyNewMail(incoming);
+          _messages = incoming;
+          _status = `Đã đồng bộ ${res.data.items.length} thư từ Outlook`;
+          renderCategoryCounters();
+          renderMailList();
+          if (!_activeMessageId && _messages.length > 0) selectMail(_messages[0].id);
+          return true;
+        }
+      }
+
+      const paths = ['data/mail_snapshot.json', '../data/mail_snapshot.json', '/api/data/mail_snapshot.json'];
+      for (const p of paths) {
+        try {
+          const resp = await fetch(p, { cache: 'no-cache' });
+          if (resp.ok) {
+            const snap = await resp.json();
+            if (snap && snap.items && snap.items.length) {
+              notifyNewMail(snap.items);
+              _messages = snap.items;
+              _status = `Đã đồng bộ ${snap.items.length} thư (${snap.updated_at ? new Date(snap.updated_at).toLocaleString('vi-VN') : 'gần nhất'})`;
+              renderCategoryCounters();
+              renderMailList();
+              if (!_activeMessageId && _messages.length > 0) selectMail(_messages[0].id);
+              return true;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (typeof API !== 'undefined' && API.call) {
+        const rpcRes = await API.call('awm_mail_list', '');
+        if (rpcRes && rpcRes.ok && rpcRes.data && rpcRes.data.items && rpcRes.data.items.length) {
+          notifyNewMail(rpcRes.data.items);
+          _messages = rpcRes.data.items;
+          renderCategoryCounters();
+          renderMailList();
+          if (!_activeMessageId && _messages.length > 0) selectMail(_messages[0].id);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('loadSyncedMail error:', e);
+    }
+    return false;
+  }
+
+  function notifyNewMail(items) {
+    const ids = new Set((items || []).map(x => String(x.id || x.message_id || x.subject || x.file_name || '')).filter(Boolean));
+    if (_mailSeenIds.size) {
+      const fresh = [...ids].filter(id => !_mailSeenIds.has(id));
+      if (fresh.length) {
+        _status = `Có ${fresh.length} mail mới từ AD`;
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          new Notification('BQLDA có mail mới', { body: `${fresh.length} thư mới đã đồng bộ từ AD` });
+        }
+      }
+    }
+    _mailSeenIds = ids;
+  }
+
+  async function init() {
     if (_messages.length === 0) {
       _messages = [...SAMPLE_MAILS];
     }
@@ -133,6 +201,8 @@ Chủ tịch HĐQT đã ký ban hành Quyết định phê duyệt Chủ trươn
     if (_messages.length > 0 && !_activeMessageId) {
       selectMail(_messages[0].id);
     }
+    await loadSyncedMail();
+    if (!_mailPollTimer) _mailPollTimer = setInterval(() => loadSyncedMail(), 30000);
   }
 
   function setCategory(cat) {
@@ -325,13 +395,26 @@ Chủ tịch HĐQT đã ký ban hành Quyết định phê duyệt Chủ trươn
   }
 
   async function connectOutlook() {
-    toast('Đang kết nối dịch vụ Outlook Classic...', 'info');
+    toast('Đang kết nối và đồng bộ hòm thư Outlook...', 'info');
     const res = await API.call('connect_outlook');
     if (res && res.ok) {
-      toast('Kết nối Outlook thành công!', 'success');
-      _status = 'Đã kết nối Outlook';
+      toast(`Đã đồng bộ thành công ${res.data?.count || 0} thư từ Outlook!`, 'success');
+      _status = 'Đã kết nối và đồng bộ Outlook';
+      if (res.data?.items && res.data.items.length) {
+        _messages = res.data.items;
+        renderCategoryCounters();
+        renderMailList();
+        if (_messages.length > 0) selectMail(_messages[0].id);
+      } else {
+        await loadSyncedMail();
+      }
     } else {
-      toast('Không tìm thấy tiến trình Outlook trên máy. Hiển thị kho thư lưu trữ sẵn có.', 'info');
+      const loaded = await loadSyncedMail();
+      if (loaded) {
+        toast('Đã nạp kho thư Outlook đã đồng bộ gần nhất.', 'info');
+      } else {
+        toast('Không tìm thấy tiến trình Outlook trên máy. Hiển thị kho thư lưu trữ sẵn có.', 'info');
+      }
     }
   }
 
