@@ -371,7 +371,7 @@
     return rawUrl;
   }
   async function linksPage(run){
-   $('main').innerHTML=`<div class="eyebrow">ÁNH XẠ TỪ DESKTOP & GOOGLE DRIVE</div><div class="page-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><div style="display:flex;align-items:center;gap:8px;"><button id="link-back" class="text-button" style="padding:4px 8px;font-size:14px;font-weight:600;">← Cài đặt</button><h1 style="margin:0;font-size:20px;">Quản lý Link</h1></div><button id="link-add" class="primary">+ Thêm link</button></div><div class="chips"><button data-scope="project" class="${linkScope==='project'?'active':''}">Dự án: ${esc(project)}</button><button data-scope="__common__" class="${linkScope==='__common__'?'active':''}">Dùng chung hệ thống</button></div><label class="search">⌕<input id="link-search" placeholder="Tìm tên liên kết, URL, phân loại…" value="${esc(linkSearch)}"></label><div class="sectionhead"><span id="link-count" class="muted">Đang tải liên kết…</span><button id="link-refresh">Làm mới ↻</button></div><div id="link-list" aria-live="polite"></div>`;
+   $('main').innerHTML=`<div class="eyebrow">ÁNH XẠ TỪ DESKTOP & GOOGLE DRIVE</div><div class="page-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><div style="display:flex;align-items:center;gap:8px;"><button id="link-back" class="text-button" style="padding:4px 8px;font-size:14px;font-weight:600;">← Cài đặt</button><h1 style="margin:0;font-size:20px;">Quản lý Link</h1></div><div style="display:flex;gap:6px;"><button id="link-drive" class="text-button">Nguồn Drive</button><button id="link-add" class="primary">+ Thêm link</button></div></div><div class="chips"><button data-scope="project" class="${linkScope==='project'?'active':''}">Dự án: ${esc(project)}</button><button data-scope="__common__" class="${linkScope==='__common__'?'active':''}">Dùng chung hệ thống</button></div><label class="search">⌕<input id="link-search" placeholder="Tìm tên liên kết, URL, phân loại…" value="${esc(linkSearch)}"></label><div class="sectionhead"><span id="link-count" class="muted">Đang tải liên kết…</span><button id="link-refresh">Làm mới ↻</button></div><div id="link-list" aria-live="polite"></div>`;
    $('link-back').onclick=()=>{page='home';render();$('settings').click();};
    document.querySelectorAll('[data-scope]').forEach(b=>b.onclick=()=>{linkScope=b.dataset.scope;linkSearch='';linksPage(run);});
    $('link-add').onclick=()=>linkModal();
@@ -444,7 +444,7 @@
         const rows=items.map(([key,label])=>`<label class="rbac-row"><span>${esc(label)}</span><select data-rbac-key="${esc(key)}">${rbacOptions(value(key))}</select></label>`).join('');
         return `<details class="rbac-group" ${index===0?'open':''}><summary><span>${esc(title)}</span><select data-rbac-group="${index}" aria-label="Quyền nhóm ${esc(title)}">${rbacOptions(value(groupKey))}</select></summary>${rows}</details>`;
       }).join('');
-      sheet(`<div class="eyebrow">QUẢN TRỊ HỆ THỐNG</div><h2>Phân quyền RBAC</h2><p class="muted">Quyền thay đổi tại đây được dùng ngay cho AwD và AwM.</p><label class="rbac-role">Vai trò<select id="rbac-role">${rbacRoles.map(name=>`<option ${name===role?'selected':''}>${esc(name)}</option>`).join('')}</select></label><div class="rbac-groups">${groupMarkup}</div><button id="rbac-save" class="primary">Lưu phân quyền</button>`);
+      sheet(`<div class="page-title"><button id="rbac-back" class="text-button">← Cài đặt</button><div class="eyebrow">QUẢN TRỊ HỆ THỐNG</div></div><h2>Phân quyền RBAC</h2><p class="muted">Quyền thay đổi tại đây được dùng ngay cho AwD và AwM.</p><label class="rbac-role">Vai trò<select id="rbac-role">${rbacRoles.map(name=>`<option ${name===role?'selected':''}>${esc(name)}</option>`).join('')}</select></label><div class="rbac-groups">${groupMarkup}</div><button id="rbac-save" class="primary">Lưu phân quyền</button>`);
       $('rbac-role').onchange=e=>{role=e.target.value;render()};
       document.querySelectorAll('[data-rbac-group]').forEach(el=>{
         el.onclick=e=>e.stopPropagation();
@@ -640,6 +640,8 @@
  window.AwmLive = { openNamedFile, openFile, rpc, getProject: () => project, notice, selectProject, openProjectModal, closeProjectModal, renderProjectSuggestions, removeVietnameseTones, highlightMatch, updateProjectDisplay };
  if(sessionStorage.getItem(TOKEN))boot();else auth();
 })();
+
+
 
 
 
