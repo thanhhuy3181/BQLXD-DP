@@ -121,7 +121,7 @@
           const isPdf=ext==='pdf',isMsg=ext==='msg',isSheet=['xlsx','xls','csv'].includes(ext),isCad=['dwg','dxf'].includes(ext),isDoc=['docx','doc'].includes(ext);
           const icon=isPdf?'📑':isMsg?'✉️':isSheet?'📊':isCad?'📐':isDoc?'📄':'📁';
           const tag=isPdf?'PDF':isMsg?'Email MSG':isSheet?'Excel':isCad?'CAD':isDoc?'Word':'Tài liệu';
-          return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;margin:6px 0;background:#f5f8f5;border:1px solid #dbe6d8;border-radius:8px;"><div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;"><span style="font-size:18px;">${icon}</span><div style="min-width:0;"><div style="font-size:13px;font-weight:600;color:#182b29;word-break:break-word;line-height:1.3;">${esc(fileLine)}</div><div style="font-size:11px;color:#5a6e5e;margin-top:2px;">${tag}</div></div></div><button type="button" class="primary text-button open-named-file-btn" data-named-file="${esc(fileLine)}" style="padding:6px 10px;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;border-radius:6px;background:#182b29;color:#fff;border:none;">Mở tệp ↗</button></div>`;
+          return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;margin:6px 0;background:#f5f8f5;border:1px solid #dbe6d8;border-radius:8px;"><div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;"><span style="font-size:18px;">${icon}</span><div style="min-width:0;"><div style="font-size:13px;font-weight:600;color:#182b29;word-break:break-word;line-height:1.3;">${esc(fileLine)}</div><div style="font-size:11px;color:#5a6e5e;margin-top:2px;">${tag} <span class="named-file-size" data-file-name="${esc(fileLine)}">· Đang tải dung lượng…</span></div></div></div><button type="button" class="primary text-button open-named-file-btn" data-named-file="${esc(fileLine)}" style="padding:6px 10px;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;border-radius:6px;background:#182b29;color:#fff;border:none;">Mở tệp ↗</button></div>`;
         }).join('');
         return `<dt>${esc(labels.get(k)||'Tên tài liệu')}</dt><dd style="margin:4px 0 10px 0;">${items}</dd>`;
       }
@@ -134,7 +134,7 @@
     if($('open-hsmt-folder-online'))$('open-hsmt-folder-online').onclick=()=>openHsmtFolderOnline(row);
     document.querySelectorAll('.open-contract-folder-online').forEach(b=>b.onclick=()=>openContractFolderOnline(row));
     document.querySelectorAll('[data-open-contract]').forEach(b=>{b.onclick=()=>{const contractCode=b.dataset.openContract;$('sheet').close();page='tracking';tab='contract';query=contractCode;trail=[];render();};});
-    document.querySelectorAll('.open-named-file-btn').forEach(b=>{b.onclick=()=>openNamedFile(b.dataset.namedFile,row);});
+    document.querySelectorAll('.open-named-file-btn').forEach(b=>{b.onclick=()=>openNamedFile(b.dataset.namedFile,row);});document.querySelectorAll('.named-file-size').forEach(async el=>{try{const r=await rpc('awm_find_file',[project,el.dataset.fileName,'all']);const f=r?.files?.[0];el.textContent=f?.size?'· '+formatBytes(f.size):'· Chưa xác định';}catch{el.textContent='· Chưa xác định'}});
     document.querySelectorAll('.open-row-folder-btn').forEach(b=>{b.onclick=()=>openRecordFolder(b.dataset.folderPath,row);});
     $('related').onclick=()=>{$('sheet').close();menu=trackingMenu[tab]||bootstrap.menus.find(m=>m.id===tab)?.id||bootstrap.menus[0]?.id||'';page='files';trail=[];render()};
   }
@@ -658,6 +658,7 @@
  window.AwmLive = { openNamedFile, openFile, rpc, getProject: () => project, notice, selectProject, openProjectModal, closeProjectModal, renderProjectSuggestions, removeVietnameseTones, highlightMatch, updateProjectDisplay };
  if(sessionStorage.getItem(TOKEN))boot();else auth();
 })();
+
 
 
 
