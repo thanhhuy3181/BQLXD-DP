@@ -258,9 +258,12 @@ window.AwmCad = {
           <a class="button" style="padding:4px 8px;font-size:11px;background:rgba(255,255,255,0.2);color:#fff;border-radius:4px;text-decoration:none;" href="${shareUrl}" target="_blank" rel="noopener">Mở toàn màn hình ↗</a>
           <a class="button" style="padding:4px 8px;font-size:11px;background:rgba(255,255,255,0.2);color:#d5e6b0;border-radius:4px;text-decoration:none;" href="${autodeskUrl}" target="_blank" rel="noopener">Autodesk Viewer ↗</a>
         </div>
-        <iframe src="${shareUrl}" style="width:100%;height:100%;border:none;background:#182b29;" allowfullscreen loading="lazy"></iframe>
+        <div id="cad-cloud-status" style="position:absolute;inset:45% 12px auto;text-align:center;color:#d5e6b0;font-size:13px;z-index:1;pointer-events:none;">Đang tải bản vẽ CAD…</div><iframe id="cad-cloud-frame" src="${shareUrl}" style="width:100%;height:100%;border:none;background:#182b29;position:relative;z-index:0;" allowfullscreen loading="eager"></iframe>
       </div>
     `;
+    const frame=containerEl.querySelector('#cad-cloud-frame'),status=containerEl.querySelector('#cad-cloud-status');
+    frame?.addEventListener('load',()=>{if(status)status.style.display='none'});
+    setTimeout(()=>{if(status&&status.style.display!=='none')status.innerHTML='ShareCAD chưa phản hồi. Hãy dùng “Mở toàn màn hình” hoặc tải tệp DWG để mở bằng ứng dụng CAD.'},9000);
   },
 
   renderCadWorkspace(opt, bodyEl, controlsEl) {
