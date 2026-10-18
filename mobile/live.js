@@ -8,7 +8,7 @@
  function bindSettingsControls(){
   const back=()=>{closeSheet();page='home';render().then(()=>setTimeout(()=>{if(bootstrap)$('settings').click()},0))};
   $('rbac-back')?.addEventListener('click',back);
-  const open=(id,title,text)=>$(id)?.addEventListener('click',()=>{sheet(`<button class="back-button" id="settings-child-back">← Cài đặt</button><h2>${title}</h2><p class="message">${text}</p>`);$('settings-child-back').onclick=back});
+  const open=(id,title,text)=>$(id)?.addEventListener('click',()=>{const key='awm_setting_'+id;const saved=localStorage.getItem(key)||'';sheet(`<button class="back-button" id="settings-child-back">← Cài đặt</button><h2>${title}</h2><p class="muted">${text}</p><form id="settings-child-form" class="form"><label>Cấu hình<input id="settings-child-value" value="${esc(saved)}" placeholder="Nhập giá trị cấu hình"></label><button class="primary">Lưu thay đổi</button></form>`);$('settings-child-back').onclick=back;$('settings-child-form').onsubmit=e=>{e.preventDefault();localStorage.setItem(key,$('settings-child-value').value.trim());notice('Đã lưu cấu hình AwM.')}});
   open('appearance-management','Tùy biến Tab & Màu sắc','Thiết lập giao diện AwM.');
   open('project-management','QL HM/CT','Quản lý nhóm hồ sơ và chủ trương.');
   open('account-management','QL ACC (Tài khoản)','Quản lý tài khoản và cấp dự án.');
