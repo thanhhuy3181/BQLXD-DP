@@ -13,6 +13,15 @@
   open('project-management','QL HM/CT','Quản lý nhóm hồ sơ và chủ trương.');
   open('account-management','QL ACC (Tài khoản)','Quản lý tài khoản và cấp dự án.');
  }
+ function bindLinkDriveControls(){
+  $('link-project')?.addEventListener('click',()=>openProjectModal());
+  $('link-drive')?.addEventListener('click',()=>{
+   if(linkScope==='__common__'){
+    sheet(`<button class="back-button" id="link-drive-back">← Quản lý Link</button><h2>Nguồn Drive dùng chung</h2><p class="message">Nguồn Drive dùng chung được quản lý theo hệ thống.</p>`);
+    $('link-drive-back').onclick=()=>closeSheet();
+   }else{page='files';render()}
+  });
+ }
  async function rpc(method,args=[]){const token=sessionStorage.getItem(TOKEN);const r=await fetch('/api/rpc',{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({method,args}),signal:AbortSignal.timeout(25000)});const data=await r.json();if(!r.ok||!data.ok)throw Error(data.error||'Không thể kết nối server.');if(data.session_token)sessionStorage.setItem(TOKEN,data.session_token);return data.data}
  const error=(e)=>'<div class="message error">'+esc(e.message)+'</div>';
  function removeVietnameseTones(str){return String(str||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().trim()}
@@ -379,8 +388,8 @@
     return rawUrl;
   }
   async function linksPage(run){
-   $('main').innerHTML=`<div class="eyebrow">ÁNH XẠ TỪ DESKTOP & GOOGLE DRIVE</div><div class="page-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><div style="display:flex;align-items:center;gap:8px;"><button id="link-back" class="text-button" style="padding:4px 8px;font-size:14px;font-weight:600;">← Cài đặt</button><h1 style="margin:0;font-size:20px;">Quản lý Link</h1></div><div style="display:flex;gap:6px;"><button id="link-drive" class="text-button">Nguồn Drive</button><button id="link-add" class="primary">+ Thêm link</button></div></div><div class="chips"><button data-scope="project" class="${linkScope==='project'?'active':''}">Dự án: ${esc(project)}</button><button data-scope="__common__" class="${linkScope==='__common__'?'active':''}">Dùng chung hệ thống</button></div><label class="search">⌕<input id="link-search" placeholder="Tìm tên liên kết, URL, phân loại…" value="${esc(linkSearch)}"></label><div class="sectionhead"><span id="link-count" class="muted">Đang tải liên kết…</span><button id="link-refresh">Làm mới ↻</button></div><div id="link-list" aria-live="polite"></div>`;
-   $('link-back').onclick=()=>{page='home';render();$('settings').click();};
+   $('main').innerHTML=`<div class="eyebrow">ÁNH XẠ TỪ DESKTOP & GOOGLE DRIVE</div><div class="page-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><div style="display:flex;align-items:center;gap:8px;"><button id="link-back" class="text-button" style="padding:4px 8px;font-size:14px;font-weight:600;">← Cài đặt</button><h1 style="margin:0;font-size:20px;">Quản lý Link</h1></div><div style="display:flex;gap:6px;"><button id="link-project" class="text-button">Đổi dự án</button><button id="link-drive" class="text-button">Nguồn Drive</button><button id="link-add" class="primary">+ Thêm link</button></div></div><div class="chips"><button data-scope="project" class="${linkScope==='project'?'active':''}">Dự án: ${esc(project)}</button><button data-scope="__common__" class="${linkScope==='__common__'?'active':''}">Dùng chung hệ thống</button></div><label class="search">⌕<input id="link-search" placeholder="Tìm tên liên kết, URL, phân loại…" value="${esc(linkSearch)}"></label><div class="sectionhead"><span id="link-count" class="muted">Đang tải liên kết…</span><button id="link-refresh">Làm mới ↻</button></div><div id="link-list" aria-live="polite"></div>`;
+   bindLinkDriveControls();$('link-back').onclick=()=>{closeSheet();$('settings').click();};
    document.querySelectorAll('[data-scope]').forEach(b=>b.onclick=()=>{linkScope=b.dataset.scope;linkSearch='';linksPage(run);});
    $('link-add').onclick=()=>linkModal();
    $('link-refresh').onclick=()=>loadLinksList(run);
@@ -648,6 +657,8 @@
  window.AwmLive = { openNamedFile, openFile, rpc, getProject: () => project, notice, selectProject, openProjectModal, closeProjectModal, renderProjectSuggestions, removeVietnameseTones, highlightMatch, updateProjectDisplay };
  if(sessionStorage.getItem(TOKEN))boot();else auth();
 })();
+
+
 
 
 
