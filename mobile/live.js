@@ -5,6 +5,14 @@
  function notice(s){$('toast').textContent=s;$('toast').style.display='block';clearTimeout(notice.timer);notice.timer=setTimeout(()=>$('toast').style.display='none',4000)}
  function addAdminAccountLink(){if(String(bootstrap?.user?.role||'').trim().toLowerCase()!=='admin')return;const panels=document.querySelectorAll('.admin-panel'),panel=panels[panels.length-1];if(!panel)return;const items=[['account-management','👥 Quản lý tài khoản →','../index.html?view=desktop&settings=accounts'],['appearance-management','🎨 Tùy biến Tab & Màu sắc →','../index.html?view=desktop&settings=appearance'],['project-management','🏢 QL HM/CT →','../index.html?view=desktop&settings=projects']];items.forEach(([id,text,href])=>{if($(id))return;const a=document.createElement('a');a.id=id;a.className='card';a.href=href;a.textContent=text;panel.append(a)})}
  const adminSettingsObserver=new MutationObserver(addAdminAccountLink);adminSettingsObserver.observe(document.body,{childList:true,subtree:true});
+ function bindSettingsControls(){
+  const back=()=>{closeSheet();$('settings').click()};
+  $('rbac-back')?.addEventListener('click',back);
+  const open=(id,title,text)=>$(id)?.addEventListener('click',()=>{sheet(`<button class="back-button" id="settings-child-back">← Cài đặt</button><h2>${title}</h2><p class="message">${text}</p>`);$('settings-child-back').onclick=back});
+  open('appearance-management','Tùy biến Tab & Màu sắc','Thiết lập giao diện AwM.');
+  open('project-management','QL HM/CT','Quản lý nhóm hồ sơ và chủ trương.');
+  open('account-management','QL ACC (Tài khoản)','Quản lý tài khoản và cấp dự án.');
+ }
  async function rpc(method,args=[]){const token=sessionStorage.getItem(TOKEN);const r=await fetch('/api/rpc',{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({method,args}),signal:AbortSignal.timeout(25000)});const data=await r.json();if(!r.ok||!data.ok)throw Error(data.error||'Không thể kết nối server.');if(data.session_token)sessionStorage.setItem(TOKEN,data.session_token);return data.data}
  const error=(e)=>'<div class="message error">'+esc(e.message)+'</div>';
  function removeVietnameseTones(str){return String(str||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().trim()}
@@ -444,7 +452,7 @@
         const rows=items.map(([key,label])=>`<label class="rbac-row"><span>${esc(label)}</span><select data-rbac-key="${esc(key)}">${rbacOptions(value(key))}</select></label>`).join('');
         return `<details class="rbac-group" ${index===0?'open':''}><summary><span>${esc(title)}</span><select data-rbac-group="${index}" aria-label="Quyền nhóm ${esc(title)}">${rbacOptions(value(groupKey))}</select></summary>${rows}</details>`;
       }).join('');
-      sheet(`<div class="page-title"><button id="rbac-back" class="text-button">← Cài đặt</button><div class="eyebrow">QUẢN TRỊ HỆ THỐNG</div></div><h2>Phân quyền RBAC</h2><p class="muted">Quyền thay đổi tại đây được dùng ngay cho AwD và AwM.</p><label class="rbac-role">Vai trò<select id="rbac-role">${rbacRoles.map(name=>`<option ${name===role?'selected':''}>${esc(name)}</option>`).join('')}</select></label><div class="rbac-groups">${groupMarkup}</div><button id="rbac-save" class="primary">Lưu phân quyền</button>`);
+      sheet(`<div class="page-title"><button id="rbac-back" class="back-button">← Cài đặt</button><div class="eyebrow">QUẢN TRỊ HỆ THỐNG</div></div><h2>Phân quyền RBAC</h2><p class="muted">Quyền thay đổi tại đây được dùng ngay cho AwD và AwM.</p><label class="rbac-role">Vai trò<select id="rbac-role">${rbacRoles.map(name=>`<option ${name===role?'selected':''}>${esc(name)}</option>`).join('')}</select></label><div class="rbac-groups">${groupMarkup}</div><button id="rbac-save" class="primary">Lưu phân quyền</button>`);
       $('rbac-role').onchange=e=>{role=e.target.value;render()};
       document.querySelectorAll('[data-rbac-group]').forEach(el=>{
         el.onclick=e=>e.stopPropagation();
@@ -640,6 +648,7 @@
  window.AwmLive = { openNamedFile, openFile, rpc, getProject: () => project, notice, selectProject, openProjectModal, closeProjectModal, renderProjectSuggestions, removeVietnameseTones, highlightMatch, updateProjectDisplay };
  if(sessionStorage.getItem(TOKEN))boot();else auth();
 })();
+
 
 
 
