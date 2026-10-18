@@ -20,7 +20,7 @@ window.AwmViewer=(()=>{
   }
  }
  async function open(blob,name,mime=''){
-  close();const run=++generation;$('viewer-title').textContent=name;
+  close();const run=++generation;$('viewer-title').textContent=`${name} · ${formatSize(blob.size)}`;
   if(history.state?.awm_modal!=='viewer'&&history.state?.awm_modal!=='viewer_att')history.pushState({awm_modal:'viewer'},'');
   $('viewer').showModal();$('viewer-body').innerHTML='<div class="loading">Đang đọc tài liệu…</div>';
   try{
@@ -290,7 +290,7 @@ window.AwmViewer=(()=>{
   if(clearHist)close(true);else{generation++;renderTask?.cancel();renderTask=null;$('viewer-body').replaceChildren();$('viewer-controls').replaceChildren();}
   const run=++generation;
   const name=opt?.name||'Thư điện tử';
-  $('viewer-title').textContent=name;
+  $('viewer-title').textContent=opt?.size?`${name} · ${formatSize(opt.size)}`:name;
   if(history.state?.awm_modal!=='viewer'&&history.state?.awm_modal!=='viewer_att')history.pushState({awm_modal:'viewer'},'');
   $('viewer').showModal();
   const msg={
