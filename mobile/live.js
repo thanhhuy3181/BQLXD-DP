@@ -15,31 +15,8 @@
  function reset(){epoch++;clearTimeout(timer);bootstrap=null;records=[];folders={};driveFiles=[];trail=[];driveSearch='';driveSort='za';linkItems=[];linkSearch='';driveSyncing=false;AwmDrive.clear();AwmViewer.close();$('sheet').close();$('project-modal')?.close();$('project').replaceChildren();updateProjectDisplay();$('nav').replaceChildren();document.querySelector('.projectbar').hidden=true}
  function auth(message=''){
   reset();$('settings').hidden=true;
-  let mode = 'login';
-  function renderAuthBox(){
-    $('main').innerHTML=`<section class="auth"><span class="logo">B</span><div class="eyebrow">BQLDA / AwM</div><h1>Dự án của bạn.<br>Trong tầm tay.</h1><p class="muted">Xem hồ sơ, tiến độ, hợp đồng và bản vẽ CAD trực tiếp.</p><button type="button" id="btn-quick-guest" class="button" style="width:100%;padding:13px 16px;font-size:14px;font-weight:700;background:#d5e6b0;color:#182b29;border:none;border-radius:10px;margin:8px 0 14px 0;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,0.25);">⚡ Vào xem dự án ngay (1 chạm)</button><div class="auth-divider"><span>hoặc tài khoản cá nhân</span></div><div id="google-button"></div><div class="auth-divider" style="margin:12px 0 8px 0;"><span>tài khoản hệ thống</span></div><div style="display:flex;gap:6px;margin-bottom:12px;background:rgba(255,255,255,0.06);padding:3px;border-radius:8px;"><button type="button" id="tab-auth-login" class="button" style="flex:1;padding:7px;font-size:12px;font-weight:700;border-radius:6px;border:none;cursor:pointer;background:${mode==='login'?'#244438':'transparent'};color:${mode==='login'?'#fff':'#94a3b8'};">Đăng nhập</button><button type="button" id="tab-auth-register" class="button" style="flex:1;padding:7px;font-size:12px;font-weight:700;border-radius:6px;border:none;cursor:pointer;background:${mode==='register'?'#244438':'transparent'};color:${mode==='register'?'#fff':'#94a3b8'};">Đăng ký mới</button></div>${mode==='login'?`<form id="system-login-form" class="form auth-system"><label>Tên đăng nhập hoặc email<input id="auth-username" autocomplete="username" required maxlength="120" placeholder="admin hoặc email"></label><label>Mật khẩu<input id="auth-password" type="password" autocomplete="current-password" required maxlength="200" placeholder="Nhập mật khẩu"></label><button class="primary" id="auth-system-submit">Đăng nhập tài khoản</button></form>`:`<form id="system-register-form" class="form auth-system"><label>Họ và tên<input id="reg-fullname" required maxlength="100" placeholder="Nguyễn Văn A"></label><label>Tên đăng nhập (viết liền không dấu)<input id="reg-username" autocomplete="username" required maxlength="30" placeholder="Ví dụ: nguyenvana"></label><label>Mật khẩu (từ 4 ký tự)<input id="reg-password" type="password" autocomplete="new-password" required maxlength="200" placeholder="Đặt mật khẩu"></label><button class="primary" id="auth-register-submit">Tạo tài khoản và vào ngay</button></form>`}<div id="auth-message" role="status">${message?error({message}):''}</div><button id="retry-google" class="text-button">Tải lại nút đăng nhập Google</button><p class="muted">Tài khoản mới được kích hoạt ngay, truy cập dữ liệu dự án.</p></section>`;
-    const qGuest = $('btn-quick-guest');
-    if(qGuest) qGuest.onclick = async () => {
-      const target=$('auth-message');
-      target.textContent='Đang mở dữ liệu dự án…';
-      qGuest.disabled=true;
-      try {
-        await rpc('quick_login', ['Khách xem dự án']);
-        await boot();
-      } catch(err) {
-        target.innerHTML=error(err);
-        qGuest.disabled=false;
-      }
-    };
-    $('tab-auth-login').onclick=()=>{mode='login';renderAuthBox();setupGoogle();};
-    $('tab-auth-register').onclick=()=>{mode='register';renderAuthBox();setupGoogle();};
-    $('retry-google').onclick=()=>location.reload();
-    const loginForm=$('system-login-form');
-    if(loginForm)loginForm.onsubmit=async e=>{e.preventDefault();const target=$('auth-message');target.textContent='Đang đăng nhập…';$('auth-system-submit').disabled=true;try{await rpc('login_user',[$('auth-username').value.trim(),$('auth-password').value]);await boot()}catch(err){target.innerHTML=error(err);$('auth-system-submit').disabled=false}};
-    const regForm=$('system-register-form');
-    if(regForm)regForm.onsubmit=async e=>{e.preventDefault();const target=$('auth-message');target.textContent='Đang tạo tài khoản…';$('auth-register-submit').disabled=true;try{await rpc('register_user',[{username:$('reg-username').value.trim(),fullname:$('reg-fullname').value.trim(),password:$('reg-password').value}]);await boot()}catch(err){target.innerHTML=error(err);$('auth-register-submit').disabled=false}};
-  }
-  renderAuthBox();
+  $('main').innerHTML=`<section class="auth"><span class="logo">B</span><div class="eyebrow">BQLDA / AwM</div><h1>Dự án của bạn.<br>Trong tầm tay.</h1><p class="muted">Đăng nhập bằng tài khoản Google đã được cấp quyền để xem hồ sơ, tiến độ, hợp đồng và bản vẽ CAD.</p><div id="google-button"></div><div id="auth-message" role="status">${message?error({message}):''}</div><button id="retry-google" class="text-button">Tải lại nút đăng nhập Google</button><p class="muted">Tài khoản Google mới cần được Admin phê duyệt và cấp dự án trước khi truy cập.</p></section>`;
+  $('retry-google').onclick=()=>location.reload();
   setupGoogle();
  }
  function setupGoogle(){if(!window.google?.accounts?.id){setTimeout(()=>{if(!bootstrap&&$('google-button'))setupGoogle()},500);return}google.accounts.id.initialize({client_id:window.BQLDA_WEB_CLIENT_ID,callback:async response=>{const target=$('auth-message');if(target)target.textContent='Đang xác thực…';try{await rpc('google_login',[response.credential]);await boot()}catch(e){if($('auth-message'))$('auth-message').innerHTML=error(e)}}});if($('google-button'))google.accounts.id.renderButton($('google-button'),{theme:'outline',size:'large',width:Math.min(320,innerWidth-60),text:'continue_with'});}
