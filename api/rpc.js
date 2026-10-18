@@ -72,20 +72,20 @@ async function getSessionUser(sql, req) {
 
 function allowedProject(user, project) {
   if (!user) return false;
-  if (user.role === 'Admin') return true;
+  if (String(user.role||'').trim().toLowerCase() === 'admin') return true;
   const allowed = Array.isArray(user.allowed_projects) ? user.allowed_projects : [];
   return allowed.includes('*') || allowed.includes(project);
 }
 
 function visibleProjects(user, projects) {
   let list;
-  if (user?.role === 'Admin' || user?.allowed_projects?.includes('*')) {
+  if (String(user?.role||'').trim().toLowerCase() === 'admin' || user?.allowed_projects?.includes('*')) {
     list = [...projects];
   } else {
     const allowed = new Set(user?.allowed_projects || []);
     list = projects.filter(project => allowed.has(project));
   }
-  const target = (user?.role !== 'Admin' && user?.current_project && list.includes(user.current_project))
+  const target = (String(user?.role||'').trim().toLowerCase() !== 'admin' && user?.current_project && list.includes(user.current_project))
     ? user.current_project
     : (list.includes('Vinhomes Đan Phượng') ? 'Vinhomes Đan Phượng' : list[0]);
   if (target && list.includes(target)) {
@@ -95,7 +95,7 @@ function visibleProjects(user, projects) {
 }
 
 function canEdit(user, state, permissionKey) {
-  if (user?.role === 'Admin') return true;
+  if (String(user?.role||'').trim().toLowerCase() === 'admin') return true;
   // Use the same old-role compatibility rule as AwD navigation and AwM.
   const level = require('./awm_rpc').permissionValue(user, state, permissionKey);
   return level === 'edit' || level === 'full' || level === true;
@@ -104,7 +104,7 @@ function canEdit(user, state, permissionKey) {
 function currentProject(user, state) {
   const all = state.projects?.all_projects || [];
   let preferred;
-  if (user?.role === 'Admin') {
+  if (String(user?.role||'').trim().toLowerCase() === 'admin') {
     preferred = all.includes('Vinhomes Đan Phượng') ? 'Vinhomes Đan Phượng' : (all[0] || '');
   } else if (user?.current_project && allowedProject(user, user.current_project)) {
     preferred = user.current_project;
