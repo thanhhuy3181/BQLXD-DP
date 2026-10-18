@@ -538,12 +538,14 @@ window.AwmViewer=(()=>{
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         ${isCad?`<label class="button" style="display:inline-flex;align-items:center;padding:6px 10px;font-size:12px;background:#244438;color:#fff;border-radius:6px;cursor:pointer;">+ Nạp file nền (Xref)<input id="cad-online-bg" type="file" accept=".dxf,.dwg,.txt" hidden></label>`:''}
-        <a class="primary button" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a>
+        <button id="viewer-share" class="button" style="display:inline-flex;align-items:center;padding:6px 10px;font-size:12px;font-weight:600;border-radius:6px;border:1px solid #b8cdb8;background:#fff;color:#28523f;cursor:pointer;">↗ Chia sẻ</button><a class="primary button" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a>
       </div>
     </div>
   `;
   const backBtn = $('viewer-online-back');
   if(backBtn) backBtn.onclick = goBack;
+  const shareBtn = $('viewer-share');
+  if(shareBtn) shareBtn.onclick = async()=>{try{if(navigator.share)await navigator.share({title:name,text:'Tài liệu từ BQLDA',url:directUrl});else{await navigator.clipboard.writeText(directUrl);shareBtn.textContent='✓ Đã sao chép link';setTimeout(()=>shareBtn.textContent='↗ Chia sẻ',1800)}}catch(e){if(e?.name!=='AbortError')window.AwmLive?.notice?.('Không thể chia sẻ tài liệu')}};
 
   if(isCad){
     if(window.AwmCad && typeof window.AwmCad.renderCadWorkspace === 'function'){
@@ -594,3 +596,4 @@ window.AwmViewer=(()=>{
  },{passive:true});
  return {open,openOnline,openMsg,openAttachment,goBack,close,hasHistory:()=>historyStack.length>0};
 })();
+
