@@ -634,7 +634,7 @@ const TrackingWorkspace = (() => {
 
   function renderValue(row, col, index) {
     const value = row[col.key] ?? '';
-    const linked = ['full_path', 'path', 'ma_hsmt', 'danh_sach_ma_hd'].includes(col.key) || (tab === 'contractor' && col.key === 'ma_nt');
+    const linked = ['full_path', 'path', 'ma_hsmt', 'tt_nha_thau', 'danh_sach_ma_hd'].includes(col.key) || (tab === 'contractor' && col.key === 'ma_nt');
     return linked && value ? `<button class="tw-link" data-key="${esc(col.key)}" onclick="TrackingWorkspace.linkCell(${index},this.dataset.key)">${esc(value)}</button>` : esc(value);
   }
 
@@ -661,7 +661,50 @@ const TrackingWorkspace = (() => {
       }
       return;
     }
-    const target = key === 'ma_nt' ? 'contractor-data' : 'hsmt', keyword = String(row[key]);
+    if (key === 'tt_nha_thau') {
+      const text = String(row[key] || '');
+      const codes = text.match(/\b([12]\d{9,15})\b/g) || [];
+      if (codes.length > 1) {
+        const el = dialog('<h3>Chọn mã Hợp đồng / Phụ lục (CCM/PLHĐ):</h3>');
+        for (const code of codes) {
+          const b = document.createElement('button');
+          b.className = 'btn btn-sm btn-primary m-1';
+          b.textContent = code;
+          b.onclick = async () => {
+            el.close();
+            await switchTheoDoiSubTab('contract');
+            search(code);
+          };
+          el.appendChild(b);
+        }
+        return;
+      } else if (codes.length === 1) {
+        await switchTheoDoiSubTab('contract');
+        search(codes[0]);
+        return;
+      }
+    }
+    if (key === 'ma_hsmt') {
+      const text = String(row[key] || '');
+      const codes = text.match(/\b(7\d{7,9}|\d{8,12})\b/g) || [];
+      if (codes.length > 1) {
+        const el = dialog('<h3>Chọn mã Hồ sơ mời thầu (HSMT):</h3>');
+        for (const code of codes) {
+          const b = document.createElement('button');
+          b.className = 'btn btn-sm btn-primary m-1';
+          b.textContent = code;
+          b.onclick = async () => {
+            el.close();
+            await switchTheoDoiSubTab('hsmt');
+            search(code);
+          };
+          el.appendChild(b);
+        }
+        return;
+      }
+    }
+    const target = key === 'ma_nt' ? 'contractor-data' : (key === 'tt_nha_thau' ? 'contract' : 'hsmt');
+    const keyword = String(row[key] || '');
     await switchTheoDoiSubTab(target);
     search(keyword);
   }

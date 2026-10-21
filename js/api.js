@@ -188,6 +188,8 @@ const API = (function() {
     extractBoqContractData:(paths)  => call('extract_boq_contract_data', paths),
     stopBoqContractExtraction: ()   => call('stop_boq_contract_extraction'),
     exportBoqExcelFile:    (r, p, o)=> call('export_boq_excel_file', r, p||'', o||false),
+    updateTrackingCell:    (tab, proj, key, field, val) => call('update_tracking_cell', tab, proj, key, field, val),
+    deleteTrackingRow:     (tab, proj, key) => call('delete_tracking_row', tab, proj, key),
   };
 })();
 

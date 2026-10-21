@@ -571,6 +571,34 @@ async function bootstrapApp() {
   // Hook project changes to dispose and remount To do workspace
   hookProjectSwitch();
 
+  // Parse deep-link URL params (from AD Desktop or AwM)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get('tab');
+    const urlSubtab = params.get('subtab');
+    const urlKey = params.get('key');
+    const urlProject = params.get('project');
+
+    if (urlProject) {
+      try { localStorage.setItem('bqlda_current_project', urlProject); } catch (_) {}
+    }
+
+    if (urlTab === 'theo_doi') {
+      _currentTopNav = 'theo_doi';
+      if (urlSubtab) _currentTdSubTab = urlSubtab;
+      switchTopNav('theo_doi');
+      if (urlSubtab) switchTheoDoiSubTab(urlSubtab);
+      if (urlKey && typeof TrackingWorkspace !== 'undefined') {
+        setTimeout(() => {
+          try {
+            TrackingWorkspace.search(urlKey);
+          } catch (_) {}
+        }, 300);
+      }
+      return;
+    }
+  } catch (_) {}
+
   // Boot active tab
   switchTopNav(_currentTopNav || 'home');
 }

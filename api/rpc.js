@@ -8,6 +8,7 @@ const progressData = require('./data/progress.json');
 const contractorData = require('./data/contractors.json');
 const homeData = require('./data/home.json');
 const boqData = require('./data/boq.json');
+const trackingService = require('./tracking_service');
 const sapData = require('./data/sap.json');
 
 let initPromise;
@@ -309,15 +310,66 @@ async function rpc(req) {
   const project=currentProject(user,state);
   const menuResult=await require('./menu_rpc')({method,args,sql,user,state,project,allowedProject,visibleProjects,canEdit});
   if(menuResult!==undefined)return menuResult;
-  if (method === 'get_hsmt_list') {let rows=searchRows(projectRows(hsmtData,project),args[2]);if(args[3])rows=rows.filter(r=>[r.cdt,r.chu_dau_tu].includes(args[3]));sortRows(rows,args[4],args[5]);return result(paged(rows,args[0],args[1]));}
+  if (method === 'update_tracking_cell') {
+    const [tab, proj, recordKey, field, val] = args;
+    const targetProj = String(proj || project).trim();
+    if (!allowedProject(user, targetProj)) return failure('Không có quyền trên dự án này.');
+    const permMap = {progress:'td_progress', hd:'td_contract', contract:'td_contract', hsmt:'td_hsmt', payment:'td_payment'};
+    const perm = permMap[tab] || 'tab_theo_doi';
+    if (!canEdit(perm)) return failure('Chỉ Quản lý hoặc người được cấp quyền sửa mới được cập nhật ô dữ liệu.');
+    if (!recordKey || !field) return failure('Mã bản ghi hoặc trường dữ liệu không hợp lệ.');
+    const updated = await trackingService.saveTrackingDelta(sql, targetProj, tab, recordKey, field, val, user.username);
+    return result({ success: true, updated });
+  }
+
+  if (method === 'delete_tracking_row') {
+    const [tab, proj, recordKey] = args;
+    const targetProj = String(proj || project).trim();
+    if (!allowedProject(user, targetProj)) return failure('Không có quyền trên dự án này.');
+    const permMap = {progress:'td_progress', hd:'td_contract', contract:'td_contract', hsmt:'td_hsmt', payment:'td_payment'};
+    const perm = permMap[tab] || 'tab_theo_doi';
+    if (!canEdit(perm)) return failure('Không có quyền xóa dòng theo dõi.');
+    if (!recordKey) return failure('Mã bản ghi không hợp lệ.');
+    await trackingService.removeTrackingRow(sql, targetProj, tab, recordKey, user.username);
+    return result({ success: true });
+  }
+
+  if (method === 'get_hsmt_list') {
+    const deltas = await trackingService.getTrackingDeltas(sql, project, 'hsmt');
+    let rows = trackingService.applyDeltasToRows('hsmt', projectRows(hsmtData, project), deltas);
+    rows = searchRows(rows, args[2]);
+    if (args[3]) rows = rows.filter(r => [r.cdt, r.chu_dau_tu].includes(args[3]));
+    sortRows(rows, args[4], args[5]);
+    return result(paged(rows, args[0], args[1]));
+  }
   if (method === 'get_hsmt_summary') return result(project===seed.projects.current_project?seed.summaries.hsmt:{count:0,has_file:0,cdts:[]});
-  if (method === 'get_hd_list') {let rows=searchRows(projectRows(hdData,project),args[2]);if(args[3])rows=rows.filter(r=>[r.nha_thau,r.nt].includes(args[3]));sortRows(rows,args[4],args[5]);return result(paged(rows,args[0],args[1]));}
+  if (method === 'get_hd_list') {
+    const deltas = await trackingService.getTrackingDeltas(sql, project, 'hd');
+    let rows = trackingService.applyDeltasToRows('hd', projectRows(hdData, project), deltas);
+    rows = searchRows(rows, args[2]);
+    if (args[3]) rows = rows.filter(r => [r.nha_thau, r.nt].includes(args[3]));
+    sortRows(rows, args[4], args[5]);
+    return result(paged(rows, args[0], args[1]));
+  }
   if (method === 'get_hd_summary') return result(project===seed.projects.current_project?seed.summaries.hd:{count:0,total_gia_tri:0,total_gia_tri_fmt:'0',total_tt:0,total_tt_fmt:'0'});
-  if (method === 'get_payment_list') {let rows=searchRows(projectRows(paymentData,project),args[2]);if(args[3])rows=rows.filter(r=>[r.loai_tt,r.loai].includes(args[3]));sortRows(rows,args[4],args[5]);return result(paged(rows,args[0],args[1]));}
+  if (method === 'get_payment_list') {
+    const deltas = await trackingService.getTrackingDeltas(sql, project, 'payment');
+    let rows = trackingService.applyDeltasToRows('payment', projectRows(paymentData, project), deltas);
+    rows = searchRows(rows, args[2]);
+    if (args[3]) rows = rows.filter(r => [r.loai_tt, r.loai].includes(args[3]));
+    sortRows(rows, args[4], args[5]);
+    return result(paged(rows, args[0], args[1]));
+  }
   if (method === 'get_payment_summary') return result(project===seed.projects.current_project?seed.summaries.payment:{count:0,total_so_tien:0,total_so_tien_fmt:'0',total_gia_tri_hd:0,total_gia_tri_hd_fmt:'0',loai_counts:{}});
   if (method === 'get_payment_loai_tt_list') return result([...new Set(projectRows(paymentData,project).map(x=>x.loai_tt).filter(Boolean))].sort());
   if (method === 'get_payment_record') return result(projectRows(paymentData,project)[Number(args[0])]);
-  if (method === 'get_progress_list') {let rows=searchRows(projectRows(progressData,project),args[2]);sortRows(rows,args[3],args[4]);return result(paged(rows,args[0],args[1]));}
+  if (method === 'get_progress_list') {
+    const deltas = await trackingService.getTrackingDeltas(sql, project, 'progress');
+    let rows = trackingService.applyDeltasToRows('progress', projectRows(progressData, project), deltas);
+    rows = searchRows(rows, args[2]);
+    sortRows(rows, args[3], args[4]);
+    return result(paged(rows, args[0], args[1]));
+  }
   if (method === 'get_progress_summary') return result(project===seed.projects.current_project?seed.summaries.progress:{count:0});
   if (method === 'get_home_progress_alerts' || method === 'get_progress_alerts') return result(project===seed.projects.current_project?homeData:{eval_date:'',current_project:project,matrix:{},records:[],total_records:0});
   if (method === 'get_dashboard_stats') return result({projects:visibleProjects(user,state.projects?.tab_projects||[]).length,progress:project===seed.projects.current_project?homeData.total_records:0,hsmt:project===seed.projects.current_project?seed.summaries.hsmt.count:0,contracts:project===seed.projects.current_project?seed.summaries.hd.count:0});
