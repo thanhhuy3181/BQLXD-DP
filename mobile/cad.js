@@ -263,7 +263,17 @@ window.AwmCad = {
     `;
     const frame=containerEl.querySelector('#cad-cloud-frame'),status=containerEl.querySelector('#cad-cloud-status');
     frame?.addEventListener('load',()=>{if(status)status.style.display='none'});
-    setTimeout(()=>{if(status&&status.style.display!=='none')status.innerHTML='ShareCAD chưa phản hồi. Hãy dùng “Mở toàn màn hình” hoặc tải tệp DWG để mở bằng ứng dụng CAD.'},9000);
+    setTimeout(()=>{
+      if(status && status.style.display!=='none'){
+        status.innerHTML = `<div style="background:rgba(24,43,41,0.92);padding:14px;border-radius:8px;max-width:320px;margin:0 auto;pointer-events:auto;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+          <div style="font-size:13px;font-weight:600;color:#fcd34d;margin-bottom:8px;">⚠️ ShareCAD chưa phản hồi hoặc URL tệp cần quyền truy cập</div>
+          <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+            ${gdMatch ? `<a class="button" style="padding:6px 12px;font-size:12px;background:#244438;color:#fff;border-radius:6px;text-decoration:none;" href="https://drive.google.com/file/d/${gdMatch[1]}/preview" target="_blank" rel="noopener">Mở xem trước Drive ↗</a>` : ''}
+            <a class="button" style="padding:6px 12px;font-size:12px;background:#d5e6b0;color:#182b29;font-weight:700;border-radius:6px;text-decoration:none;" href="${cleanUrl}" target="_blank" download>⬇ Tải DWG</a>
+          </div>
+        </div>`;
+      }
+    }, 6000);
   },
 
   renderCadWorkspace(opt, bodyEl, controlsEl) {

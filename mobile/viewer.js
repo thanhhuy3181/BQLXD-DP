@@ -459,7 +459,19 @@ window.AwmViewer=(()=>{
   const name=opt?.name||'Xem tài liệu',id=opt?.id||'',mime=opt?.mime||'';
   if(id && (mime.includes('pdf') || /\.pdf$/i.test(name) || name==='Xem tài liệu')){
    if(!$('viewer').open)$('viewer').showModal();$('viewer-title').textContent=name;$('viewer-body').textContent='Đang tải PDF…';
-   try{const meta={id,name,mimeType:mime||'application/pdf'};const project=window.AwmLive?.getProject?.()||opt?.project||'';const blob=await AwmDrive.serverBlob(meta,project);if(run!==generation)return;await PdfEditor.mount(blob,name,$('viewer-body'),$('viewer-controls'));}catch(e){if(run===generation)$('viewer-body').textContent=e.message;}return;
+   try{
+     const meta={id,name,mimeType:mime||'application/pdf'};
+     const project=window.AwmLive?.getProject?.()||opt?.project||'';
+     const blob=await AwmDrive.serverBlob(meta,project);
+     if(run!==generation)return;
+     await PdfEditor.mount(blob,name,$('viewer-body'),$('viewer-controls'));
+   }catch(e){
+     if(run===generation){
+       const embedUrl = `https://drive.google.com/file/d/${id}/preview`;
+       $('viewer-body').innerHTML = `<div style="width:100%;height:75dvh;display:flex;flex-direction:column;position:relative;"><iframe src="${embedUrl}" style="width:100%;height:100%;border:none;border-radius:8px;" allow="autoplay" loading="eager"></iframe><div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;padding:0 4px;"><small class="muted">Xem qua Google Drive Preview</small><a class="button" style="padding:4px 10px;font-size:12px;text-decoration:none;background:#182b29;color:#fff;border-radius:6px;" href="${embedUrl}" target="_blank" rel="noopener">Mở toàn màn hình ↗</a></div></div>`;
+     }
+   }
+   return;
   }
   const ext=name.split('.').pop().toLowerCase();
   const isSheet=mime.includes('spreadsheet')||['xlsx','xls','csv'].includes(ext);
@@ -565,7 +577,16 @@ window.AwmViewer=(()=>{
       else if(mime.startsWith('image/')){const img=document.createElement('img');img.src=URL.createObjectURL(blob);$('viewer-body').replaceChildren(img);}
       else if(isPdf){ await PdfEditor.mount(blob,name,$('viewer-body'),$('viewer-controls')); }
       else { $('viewer-body').innerHTML='<div class="message">Đã lấy tài liệu từ nguồn Drive. Bộ đọc định dạng này đang được bổ sung.</div>'; }
-    } catch(e) { if(run===generation)$('viewer-body').innerHTML='<div class="message error">'+esc(e.message)+'</div>'; }
+    } catch(e) {
+      if(run===generation){
+        if(isPdf && id){
+          const embedUrl = `https://drive.google.com/file/d/${id}/preview`;
+          $('viewer-body').innerHTML = `<div style="width:100%;height:75dvh;display:flex;flex-direction:column;position:relative;"><iframe src="${embedUrl}" style="width:100%;height:100%;border:none;border-radius:8px;" allow="autoplay" loading="eager"></iframe><div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;padding:0 4px;"><small class="muted">Xem qua Google Drive Preview</small><a class="button" style="padding:4px 10px;font-size:12px;text-decoration:none;background:#182b29;color:#fff;border-radius:6px;" href="${embedUrl}" target="_blank" rel="noopener">Mở toàn màn hình ↗</a></div></div>`;
+        } else {
+          $('viewer-body').innerHTML='<div class="message error">'+esc(e.message)+'</div>';
+        }
+      }
+    }
   }else{
     $('viewer-body').innerHTML=`<div class="card" style="margin:24px 8px;padding:28px 16px;text-align:center;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border:1px solid #e2ebd8;"><div style="font-size:52px;margin-bottom:12px;">${isSheet?'📊':isPdf?'📑':isMsg?'✉️':'📄'}</div><h3 style="margin:0 0 10px 0;font-size:16px;color:#182b29;word-break:break-word;line-height:1.4;">${esc(name)}</h3><div class="badge ${badgeCls}" style="display:inline-block;margin-bottom:16px;font-size:12px;font-weight:600;">${badgeText}</div><p class="muted" style="font-size:13px;line-height:1.5;margin:0 0 20px 0;">${isSheet?'Tệp bảng tính Excel BOQ lưu trữ trên Google Drive dự án.':isPdf?'Tệp PDF hợp đồng lưu trữ trên Google Drive dự án.':isMsg?'Tệp thư điện tử MSG lưu trữ trên Google Drive dự án.':'Tài liệu lưu trữ trên Google Drive dự án.'}</p><a class="primary button" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;background:#182b29;color:#fff;width:100%;box-sizing:border-box;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div>`;
   }

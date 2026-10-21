@@ -24,7 +24,10 @@ const MailModule=(()=>{
    const projects=await rpc('get_projects_bar_data');if(run!==epoch)return;
    const next=projects.current_project||'';if(next!==project){project=next;clear('Đang đổi dự án…');force=true;}
    const state=await rpc('awm_mail_status',project);if(run!==epoch)return;
-   if(!state.online){clear('AD chưa kết nối hoặc nguồn Outlook đang lỗi. Mở AD để xem Mail.');return;}
+   if(!state.online){
+    clear('AD chưa kết nối hoặc nguồn Outlook đang lỗi. Mở AD để xem Mail.');
+    return;
+   }
    const info=state.scan_info;status(`AD đang kết nối · Mail cập nhật ${state.last_sync?new Date(state.last_sync).toLocaleString('vi-VN'):'chưa có'}${info?' · '+info.scan_limit+' thư gần nhất / '+info.total_inbox+' mục Inbox':''}`);
    if(force||state.last_sync!==lastSync){const data=await rpc('awm_mail_list',project,'');if(run!==epoch)return;messages=(data.items||[]).map(normalize);lastSync=data.last_sync||'';render();if(activeId){const current=messages.find(x=>x.id===activeId);if(current)renderDetail(current);else if($('mail-detail-container'))$('mail-detail-container').textContent='Thư không còn trong nguồn đồng bộ hiện tại.';}}
   }catch(error){if(run===epoch)clear(error.message);}

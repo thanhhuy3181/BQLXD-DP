@@ -325,20 +325,13 @@
       }
       
       if(!items.length){
-        for(const p of ['../api/data/mail_snapshot.json','data/mail_snapshot.json','/api/data/mail_snapshot.json']){
-          try{
-            const resp=await fetch(p,{cache:'no-cache'});
-            if(resp.ok){
-              const snap=await resp.json();
-              if(snap&&snap.items&&snap.items.length){
-                items=snap.items.filter(r=>!project||!r.project||r.project===project);
-                if(!items.length) items=snap.items;
-                $('mail-state').innerHTML+=`<div style="margin-top:6px;font-size:12px;color:#182b29;font-weight:600;">📂 Hiển thị ${items.length} thư từ bản sao lưu Outlook (${snap.updated_at?new Date(snap.updated_at).toLocaleString('vi-VN'):'gần nhất'})</div>`;
-                break;
-              }
-            }
-          }catch(_){}
-        }
+        try{
+          const shareData=await rpc('mailshare_list',[project]);
+          if(Array.isArray(shareData?.items)&&shareData.items.length){
+            items=shareData.items.map(m=>({id:m.id,sender:m.sender||'Cán bộ dự án',subject:m.subject||'Thư được chia sẻ',date:m.date||m.created_at||'',body:m.body||'',attachments:m.attachments||[],project:m.project||project}));
+            $('mail-state').innerHTML+=`<div style="margin-top:6px;font-size:12px;color:#182b29;font-weight:600;">📬 Hiển thị ${items.length} thư được chia sẻ trong dự án</div>`;
+          }
+        }catch(_){}
       }
       
       if(run!==epoch)return;
@@ -594,7 +587,7 @@
   }
  }
  function renderDriveFallback(curFolder,folderUrl){
-  const subs=curFolder?.subs||[];
+  const subs=(curFolder?.subs||[]).filter(s=>s.id!==curFolder.id);
   const headerCard=`<div class="card" style="margin-bottom:12px;background:#f6f8f5;border:1px solid #d4ded0;"><div class="top"><span class="code">Google Drive Online</span><span class="badge online">Ánh xạ từ AD</span></div><h3 style="margin:4px 0 6px 0;">${esc(curFolder.name)}</h3>${curFolder.path?`<div class="muted" style="font-size:12px;margin-bottom:8px;">📁 AD: ${esc(curFolder.path)}</div>`:''}<a class="primary button" style="display:inline-block;padding:10px 16px;text-align:center;text-decoration:none;color:#fff;background:#182b29;border-radius:8px;font-weight:600;font-size:14px;" href="${esc(folderUrl)}" target="_blank" rel="noopener">Mở thư mục trên Google Drive ↗</a></div>`;
   if(subs.length){
     let items=[...subs];
@@ -606,8 +599,18 @@
       const cmp=String(a.name||'').localeCompare(String(b.name||''),'vi',{numeric:true,sensitivity:'base'});
       return driveSort==='za'?-cmp:cmp;
     });
-    const subCards=items.map(sub=>`<div class="card file-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;"><b style="font-size:18px;">📁</b><div style="min-width:0;"><h3 style="margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(sub.name)}</h3><span class="muted" style="font-size:11px;">Thư mục con Google Drive</span></div></div><a class="primary text-button" style="padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap;text-decoration:none;" href="${esc(sub.url||`https://drive.google.com/drive/folders/${sub.id}`)}" target="_blank" rel="noopener">Mở ↗</a></div>`).join('');
+    const subCards=items.map((sub,idx)=>`<div class="card file-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><button class="text-button" data-drive-sub-idx="${idx}" style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;text-align:left;padding:0;background:none;border:none;cursor:pointer;"><b style="font-size:18px;">📁</b><div style="min-width:0;"><h3 style="margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(sub.name)}</h3><span class="muted" style="font-size:11px;">Thư mục con Google Drive</span></div></button><a class="primary text-button" style="padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap;text-decoration:none;" href="${esc(sub.url||`https://drive.google.com/drive/folders/${sub.id}`)}" target="_blank" rel="noopener">Mở ↗</a></div>`).join('');
     $('drive-list').innerHTML=headerCard+`<div class="sectionhead"><span class="muted">${items.length} thư mục nhánh</span></div>`+(items.length?subCards:'<div class="empty">Không có thư mục phù hợp.</div>');
+    $('drive-list').querySelectorAll('[data-drive-sub-idx]').forEach(btn=>{
+      btn.onclick=()=>{
+        const sub=items[Number(btn.dataset.driveSubIdx)];
+        if(!sub)return;
+        trail.push({id:sub.id,name:sub.name,url:sub.url||`https://drive.google.com/drive/folders/${sub.id}`,subs:sub.subs||[]});
+        driveSearch='';
+        if($('drive-search'))$('drive-search').value='';
+        loadDrive(false);
+      };
+    });
   }else{
     $('drive-list').innerHTML=headerCard+'<div class="message" style="margin-top:8px;">Nhấn nút “Mở thư mục trên Google Drive ↗” để xem và duyệt các tệp trực tiếp trong ứng dụng Google Drive hoặc trình duyệt di động.</div>';
   }

@@ -138,13 +138,20 @@ async function handle({method, args = [], sql, user, state, allowedProject}) {
       if (!['task','note','event','conversation','topic'].includes(kind) || !Number.isInteger(offset) || offset < 0 || offset > 100000) return fail('Bộ lọc không hợp lệ.');
       const username = user.username,taskType=model.text(args[3],30,'Loại công việc');
       if(taskType&&!['general','daily','thematic','incident'].includes(taskType))return fail('Loại công việc không hợp lệ.');
-      const list = await sql`SELECT data FROM bqlda_collaboration WHERE project=${project} AND kind=${kind}
-        AND (${taskType}='' OR data->>'task_type'=${taskType})
-        AND (owner=${username} OR data->>'assignee'=${username} OR data->>'reviewer'=${username}
-          OR data->'collaborators' ? ${username} OR data->'members' ? ${username})
-        ORDER BY CASE WHEN kind='task' AND data->>'status' IN ('done','cancelled') THEN 1 ELSE 0 END,
-          CASE WHEN kind='task' AND data->>'status' NOT IN ('done','cancelled') THEN NULLIF(data->>'due_date','') END ASC NULLS LAST,
-          created_at DESC,id DESC LIMIT 51 OFFSET ${offset}`;
+      const isManager = Boolean(canAssign || String(user.role || '').toLowerCase() === 'admin');
+      const list = isManager
+        ? await sql`SELECT data FROM bqlda_collaboration WHERE project=${project} AND kind=${kind}
+            AND (${taskType}='' OR data->>'task_type'=${taskType})
+            ORDER BY CASE WHEN kind='task' AND data->>'status' IN ('done','cancelled') THEN 1 ELSE 0 END,
+              CASE WHEN kind='task' AND data->>'status' NOT IN ('done','cancelled') THEN NULLIF(data->>'due_date','') END ASC NULLS LAST,
+              created_at DESC,id DESC LIMIT 51 OFFSET ${offset}`
+        : await sql`SELECT data FROM bqlda_collaboration WHERE project=${project} AND kind=${kind}
+            AND (${taskType}='' OR data->>'task_type'=${taskType})
+            AND (owner=${username} OR data->>'assignee'=${username} OR data->>'reviewer'=${username}
+              OR data->'collaborators' ? ${username} OR data->'members' ? ${username})
+            ORDER BY CASE WHEN kind='task' AND data->>'status' IN ('done','cancelled') THEN 1 ELSE 0 END,
+              CASE WHEN kind='task' AND data->>'status' NOT IN ('done','cancelled') THEN NULLIF(data->>'due_date','') END ASC NULLS LAST,
+              created_at DESC,id DESC LIMIT 51 OFFSET ${offset}`;
       return ok({items:list.slice(0,50).map(x => publicItem(x.data)),next_offset:list.length > 50 ? offset + 50 : null});
     }
     if (method === 'collab_get') {

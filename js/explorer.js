@@ -384,7 +384,12 @@ const ExplorerModule = (function() {
       if(request!==_folderRequest || requestedTab!==_activeTabId || requestedSource!==sourcePath() || requestedSubPath!==_selectedSubPath)return;
       if (!res || !res.ok) {
         if(loadLabel)loadLabel.textContent='Tải thất bại — '+(res?.error||'Không nhận được dữ liệu');
-        toast('Lỗi đọc thư mục: ' + (res?.error || 'Unknown error'), 'error');
+        const errText = String(res?.error || '');
+        if(errText.includes('hết hạn') || errText.includes('đăng nhập lại')){
+          renderExpiredSession(errText);
+          return;
+        }
+        toast('Lỗi đọc thư mục: ' + (errText || 'Unknown error'), 'error');
         return;
       }
 
@@ -411,9 +416,40 @@ const ExplorerModule = (function() {
       if(request!==_folderRequest)return;
       if(loadLabel)loadLabel.textContent='Tải thất bại — '+e.message;
       console.warn('refreshCurrentFolder error:', e);
-      toast('Lỗi quét thư mục: ' + e, 'error');
+      const msg = String(e.message || e);
+      if(msg.includes('hết hạn') || msg.includes('đăng nhập lại')){
+        renderExpiredSession(msg);
+      } else {
+        toast('Lỗi quét thư mục: ' + msg, 'error');
+      }
     } finally {
       clearInterval(loadingTimer);
+    }
+  }
+
+  function renderExpiredSession(msg) {
+    const tbody = document.getElementById('ql-file-tbody');
+    const container = document.getElementById('ql-folder-tree-container');
+    const alertBox = document.getElementById('ql-explorer-alert');
+    const alertMsgEl = document.getElementById('ql-explorer-alert-msg');
+    if (alertBox) {
+      alertBox.classList.remove('hidden');
+      if (alertMsgEl) alertMsgEl.innerHTML = '<strong>' + escapeHtml(msg) + '</strong><br><small>Nhấn vào nút bên dưới để xác thực lại tài khoản Google Drive cá nhân hoặc chuyển nguồn dự án.</small>';
+    }
+    if (container) {
+      container.innerHTML = '<div class="p-3 text-center"><button type="button" class="btn btn-sm btn-primary w-full" onclick="ExplorerModule.reauthDrive()">🔑 Đăng nhập lại Google Drive</button></div>';
+    }
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="3" class="text-center py-10"><div class="max-w-md mx-auto p-4 bg-base-200 rounded-lg text-center"><div class="text-3xl mb-2">🔒</div><h4 class="font-bold mb-1">Phiên Google Drive đã hết hạn</h4><p class="text-xs text-base-content/70 mb-4">Để tiếp tục duyệt file Drive cá nhân, hãy bấm xác thực lại tài khoản Google.</p><button type="button" class="btn btn-sm btn-primary" onclick="ExplorerModule.reauthDrive()">Đăng nhập lại Google Drive ↗</button></div></td></tr>';
+    }
+    updateStatusBar();
+  }
+
+  function reauthDrive() {
+    if (window.DrivePicker && typeof DrivePicker.open === 'function') {
+      DrivePicker.open({ ..._activeTab, project: _currentProject });
+    } else {
+      API.call('login_drive_account').then(() => refreshCurrentFolder()).catch(err => toast(err.message, 'error'));
     }
   }
 
@@ -974,6 +1010,7 @@ const ExplorerModule = (function() {
     onItemDoubleClick,
     onItemRightClick,
     selectSubFolder,
+    reauthDrive,
     moveActiveTab,
     openAddTabModal,
     onCategorySelectChanged,
