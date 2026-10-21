@@ -2,14 +2,17 @@
   "functions": {
     "api/rpc.js": { "maxDuration": 30 }
   },
-  "headers": [
+  "routes": [
+    {"src": "/(?:data|api/data)/mail_snapshot\\.json", "dest": "/api/private_mail"},
     {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
-      ]
-    }
+      "src": "/(.*)",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+      },
+      "continue": true
+    },
+    {"handle": "filesystem"}
   ]
 }

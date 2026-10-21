@@ -212,6 +212,8 @@ async function rpc(req) {
   let state = await getState(sql);
   let user = await getSessionUser(sql, req);
 
+  if (method.startsWith('collab_')) return require('./collaboration_rpc')({method,args,sql,user,state,allowedProject});
+  if (method.startsWith('mailshare_')) return require('./mail_shares')({method,args,sql,user,state,allowedProject});
   if (method.startsWith('awm_')) return require('./awm_rpc')({method,args,sql,user,state,allowedProject,visibleProjects});
 
   if (method === 'get_bootstrap') return result({version:seed.version,theme:state.theme||seed.theme,catalog:seed.catalog});

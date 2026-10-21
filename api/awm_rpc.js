@@ -37,7 +37,7 @@ const menus = [
 // different permission result from the desktop for the same account.
 const legacyRole = {CBGS:'Thành viên','Nội nghiệp':'Phó nhóm'};
 const levelRank={none:0,view:1,edit:2,full:3};
-const mainTabs=new Set(['tab_home','tab_mail','tab_quan_ly','tab_theo_doi','tab_bao_cao','tab_so_sanh','tab_thanh_toan','tab_chuc_nang','tab_cai_dat']);
+const mainTabs=new Set(['tab_home','tab_mail','tab_todo','tab_quan_ly','tab_theo_doi','tab_bao_cao','tab_so_sanh','tab_thanh_toan','tab_chuc_nang','tab_cai_dat']);
 const detailParents={
  ql_tab_phe_duyet:['grp_ql_file','tab_quan_ly'],ql_tab_tien_do:['grp_ql_file','tab_quan_ly'],ql_tab_yc_kt:['grp_ql_file','tab_quan_ly'],ql_tab_bvtk:['grp_ql_file','tab_quan_ly'],ql_tab_phap_ly:['grp_ql_file','tab_quan_ly'],ql_tab_cam_nang:['grp_ql_file','tab_quan_ly'],ql_tab_chuan_hoa:['grp_ql_file','tab_quan_ly'],ql_tab_hsmt:['grp_ql_file','tab_quan_ly'],ql_tab_hop_dong:['grp_ql_file','tab_quan_ly'],ql_tab_tu_tt:['grp_ql_file','tab_quan_ly'],ql_tab_tqt:['grp_ql_file','tab_quan_ly'],ql_project_mgmt:['grp_ql_file','tab_quan_ly'],
  td_progress:['grp_theo_doi','tab_theo_doi'],td_hsmt:['grp_theo_doi','tab_theo_doi'],td_contract:['grp_theo_doi','tab_theo_doi'],td_boq:['grp_theo_doi','tab_theo_doi'],td_payment:['grp_theo_doi','tab_theo_doi'],td_contractor:['grp_theo_doi','tab_theo_doi'],td_sap:['grp_theo_doi','tab_theo_doi'],td_contractor_data:['grp_theo_doi','tab_theo_doi'],
@@ -112,11 +112,12 @@ function recordDate(row){
 }
 async function read(sql,key,fallback){const rows=await sql`SELECT value FROM bqlda_state WHERE key=${key}`;return rows[0]?.value??fallback;}
 async function write(sql,key,value){await sql`INSERT INTO bqlda_state(key,value) VALUES(${key},${JSON.stringify(value)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;}
+function mailOnline(bridge){const age=Date.now()-Date.parse(bridge?.updated_at);return Number.isFinite(age)&&age>=0&&age<90000&&(!bridge.connector_state||bridge.connector_state==='ready');}
 module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects})=>{
  if(!method.startsWith('awm_'))return undefined;
  if(!active(user))return fail('Phiên đăng nhập không hợp lệ hoặc tài khoản chưa được kích hoạt.');
  const permission=key=>can(user,state,key);
- if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role,current_project:user.current_project||''},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),links:permission('cd_links')||permission('tab_cai_dat')||String(user?.role||'').trim().toLowerCase()==='admin',tracking:permission('tab_theo_doi'),todo:permission('tab_home')},files:{can_configure:canEdit(user,state,'ql_project_mgmt')},links_can_manage:canEdit(user,state,'cd_links')||canEdit(user,state,'tab_cai_dat')||String(user?.role||'').trim().toLowerCase()==='admin',groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&(permission(g[1])||(g[2]&&permission(g[2])))).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
+ if(method==='awm_bootstrap')return ok({user:{username:user.username,fullname:user.fullname,email:user.email,role:user.role,current_project:user.current_project||''},projects:visibleProjects(user,state.projects?.all_projects||[]),nav:{home:permission('tab_home'),mail:permission('tab_mail'),files:permission('tab_quan_ly'),links:permission('cd_links')||permission('tab_cai_dat')||String(user?.role||'').trim().toLowerCase()==='admin',tracking:permission('tab_theo_doi'),todo:permission('tab_todo'),settings:permission('tab_cai_dat')},files:{can_configure:canEdit(user,state,'ql_project_mgmt')},links_can_manage:canEdit(user,state,'cd_links')||canEdit(user,state,'tab_cai_dat')||String(user?.role||'').trim().toLowerCase()==='admin',groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&(permission(g[1])||(g[2]&&permission(g[2])))).map(([id,g])=>({id,name:g[0]})),menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).map(([id,name])=>({id,name}))});
  const project=String(args[0]||'');
  const todoKey=`awm:todo:${user.username}:${project}`;
  const todoAllowed=()=>allowedProject(user,project)&&permission('tab_home');
@@ -155,7 +156,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  }
  if(method==='awm_dashboard'){
   if(!todoAllowed())return fail('Không có quyền xem tổng quan dự án này.');
-  const todos=await read(sql,todoKey,[]),mail=await read(sql,`awm:mail:${user.username}`,null),online=!!mail&&Date.now()-Date.parse(mail.updated_at)<90000;
+  const todos=await read(sql,todoKey,[]),mail=await read(sql,`awm:mail:${user.username}`,null),online=mailOnline(mail);
   return ok({todos:{open:todos.filter(x=>x.status!=='done').length,overdue:todos.filter(x=>x.status!=='done'&&x.due_date&&x.due_date<new Date().toISOString().slice(0,10)).length},mail:{online,last_sync:mail?.updated_at||null},groups:Object.entries(groups).filter(([,g])=>permission('tab_theo_doi')&&permission(g[1])).length,drive_menus:menus.filter(m=>permission('tab_quan_ly')&&permission(m[2])).length});
  }
  if(method==='awm_tracking'){
@@ -201,11 +202,11 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  if(method==='awm_mail_status'||method==='awm_mail_list'){
   if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
   const bridge=await read(sql,`awm:mail:${user.username}`,null);
-  const online=!!bridge&&Date.now()-Date.parse(bridge.updated_at)<90000;
-  if(method==='awm_mail_status')return ok({online,last_sync:bridge?.updated_at||null,source:bridge?.device_name||'',configured:!!bridge});
+  const online=mailOnline(bridge);
+  if(method==='awm_mail_status')return ok({online,last_sync:bridge?.last_sync_at||bridge?.updated_at||null,last_heartbeat:bridge?.updated_at||null,connector_state:bridge?.connector_state||'unknown',scan_info:bridge?.scan_info||null,source:bridge?.device_name||'',configured:!!bridge});
   if(!online)return fail('AD chưa kết nối. Mở AD trên máy tính để xem Mail.');
   const query=norm(args[1]);const items=(bridge.items||[]).filter(r=>(!r.project||allowedProject(user,r.project))&&(!project||!r.project||r.project===project)&&norm([r.subject,r.sender,r.body].join(' ')).includes(query));
-  return ok({items:items.slice(0,100),last_sync:bridge.updated_at});
+  return ok({items:items.slice(0,100),last_sync:bridge.last_sync_at||bridge.updated_at,scan_info:bridge.scan_info||null});
  }
  if(method==='awm_pair_device'){
   if(!permission('tab_mail'))return fail('Không có quyền kết nối Mail.');
@@ -240,6 +241,13 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
    } catch(e) {
      return fail(e.message);
    }
+  }
+  if(method==='awm_drive_content'){
+   if(!allowedProject(user,project)||!permission('tab_quan_ly'))return fail('Không có quyền đọc tài liệu Drive.');
+   const fileId=String(args[1]||'').trim(); const mime=String(args[2]||'').trim();
+   if(!fileId)return fail('Tài liệu không hợp lệ.');
+   try { const gdrive=require('./gdrive_service'); return ok(await gdrive.downloadFile(fileId,mime)); }
+   catch(e){ return fail(e.message); }
   }
   if(method==='awm_get_msg'){
     const fileName = String(args[1] || '').trim();
@@ -351,3 +359,4 @@ module.exports.permissionValue=permissionValue;
 module.exports.recordDate=recordDate;
 module.exports.active=active;
 module.exports.groups=groups;
+module.exports.mailOnline=mailOnline;

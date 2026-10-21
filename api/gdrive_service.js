@@ -127,8 +127,26 @@ async function findFile(query, kind = 'all') {
   return [];
 }
 
+// Download/export through the server-side source connection. The browser never
+// receives the Drive token and therefore never needs to sign in to the source.
+async function downloadFile(fileId, mimeType = '') {
+  const token = await getAccessToken();
+  let url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media';
+  if (mimeType === 'application/vnd.google-apps.spreadsheet') {
+    url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '/export?mimeType=' + encodeURIComponent('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  } else if (String(mimeType).startsWith('application/vnd.google-apps.')) {
+    url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '/export?mimeType=' + encodeURIComponent('application/pdf');
+  }
+  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(30000) });
+  if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error?.message || 'Không thể tải tài liệu từ Google Drive.'); }
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > 25 * 1024 * 1024) throw new Error('Tài liệu lớn hơn giới hạn xem trực tiếp 25 MB.');
+  return { base64: buf.toString('base64'), size: buf.length, mimeType: res.headers.get('content-type') || mimeType || 'application/octet-stream' };
+}
+
 module.exports = {
   getAccessToken,
   listFiles,
-  findFile
+  findFile,
+  downloadFile
 };

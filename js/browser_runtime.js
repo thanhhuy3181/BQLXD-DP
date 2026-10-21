@@ -63,6 +63,10 @@ window.BrowserRuntime = (() => {
     if (!payload) throw new Error(`API web không phản hồi (${response.status})`);
     if (payload.session_token) localStorage.setItem(TOKEN_KEY, payload.session_token);
     if (method === 'logout_user') localStorage.removeItem(TOKEN_KEY);
+    if ((method === 'switch_project' || method === 'add_project_to_bar') && payload?.ok === true && payload?.data?.current_project) {
+      currentProject = payload.data.current_project;
+      try { localStorage.setItem('bqlda_current_project', currentProject); } catch (_) {}
+    }
     return payload;
   }
 
@@ -237,12 +241,15 @@ window.BrowserRuntime = (() => {
   }
 
   async function mutableCall(method,args) {
-    try { return await serverCall(method,args); }
-    catch (_) { return localServerFallback(method,args); }
+    // A local fallback cannot acknowledge a shared setting or account write.
+    return await serverCall(method,args);
   }
 
   async function call(method,...args) {
     try {
+      if (method.startsWith('collab_') || method.startsWith('awm_') || method.startsWith('mailshare_')) {
+        return await serverCall(method, args);
+      }
       const c=await getCore();
       if(serverMethods.has(method)) return await mutableCall(method,args);
       if(method==='get_app_info') return ok({version:c.version,runtime:'vercel-web',base_dir:'Google Drive / Cloud'});
@@ -299,6 +306,7 @@ window.BrowserRuntime = (() => {
         if(!raw) return err('Đường dẫn trống');
         const targetUrl = coverOnlineDriveUrl(raw) || (/^https?:/.test(raw) ? raw : '');
         if(targetUrl){
+          if(/\.pdf(?:[?#]|$)/i.test(raw)&&window.openDesktopPdf){window.openDesktopPdf(raw.split('/').pop().split('?')[0],raw,targetUrl);return ok({url:targetUrl});}
           window.open(targetUrl,'_blank','noopener');
           return ok({url:targetUrl});
         }

@@ -8,8 +8,9 @@ const AccountsModule = (function() {
   let _users = [];
   let _permData = null;
   let _permissionSaveChain = Promise.resolve();
+  let _announcedIdentity = '';
 
-  const NAV_PERMISSIONS = {home:'tab_home',mail:'tab_mail','ql-file':'tab_quan_ly',theo_doi:'tab_theo_doi',bao_cao:'tab_bao_cao',so_sanh:'tab_so_sanh',thanh_toan:'tab_thanh_toan',chuc_nang:'tab_chuc_nang',cai_dat:'tab_cai_dat'};
+  const NAV_PERMISSIONS = {home:'tab_home',mail:'tab_mail',todo:'tab_todo','ql-file':'tab_quan_ly',theo_doi:'tab_theo_doi',bao_cao:'tab_bao_cao',so_sanh:'tab_so_sanh',thanh_toan:'tab_thanh_toan',chuc_nang:'tab_chuc_nang',cai_dat:'tab_cai_dat'};
   // Keep AwD's display rule aligned with the API/AwM rule while older saved
   // matrices still use the former role names.
   const LEGACY_ROLE = {CBGS:'Thành viên','Nội nghiệp':'Phó nhóm'};
@@ -114,6 +115,11 @@ const AccountsModule = (function() {
   }
 
   function updateHeaderUser() {
+    const identity = _currentUser?.username || '';
+    if (identity !== _announcedIdentity) {
+      _announcedIdentity = identity;
+      window.dispatchEvent(new CustomEvent('bqlda_identity_changed', {detail: {username: identity}}));
+    }
     const nameEl = document.getElementById('header-user-name');
     const badgeEl = document.getElementById('header-user-role');
     if (nameEl) nameEl.textContent = _currentUser?.fullname || _currentUser?.username || 'Chưa đăng nhập';
@@ -510,6 +516,10 @@ const AccountsModule = (function() {
   }
 
   async function submitLogout() {
+    if (window.CollaborationWorkspace?.unmount) {
+      window.CollaborationWorkspace.unmount();
+    }
+    window.dispatchEvent(new CustomEvent('bqlda_logout'));
     await API.logoutUser();
     _currentUser = { username: 'guest', fullname: 'Khách', role: 'Thành viên' };
     updateHeaderUser();

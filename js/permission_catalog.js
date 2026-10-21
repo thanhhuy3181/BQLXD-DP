@@ -14,7 +14,7 @@ window.PermissionCatalog = {
   ],
   groups: [
     ['🧭 TAB CHÍNH', [
-      ['tab_home','Trang chủ'], ['tab_mail','Email'], ['tab_quan_ly','QL File'], ['tab_theo_doi','Theo dõi'],
+      ['tab_home','Trang chủ'], ['tab_mail','Email'], ['tab_todo','To do / Làm việc nhóm'], ['tab_quan_ly','QL File'], ['tab_theo_doi','Theo dõi'],
       ['tab_bao_cao','Báo cáo'], ['tab_so_sanh','So sánh'], ['tab_thanh_toan','Đề nghị thanh toán'],
       ['tab_chuc_nang','Chức năng'], ['tab_cai_dat','Cài đặt']
     ]],

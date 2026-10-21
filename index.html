@@ -8,6 +8,7 @@
 
   <!-- DaisyUI & Tailwind Offline Bundles -->
   <link rel="stylesheet" href="assets/daisyui.min.css" />
+  <link rel="stylesheet" href="css/collaboration.css" />
   <script src="assets/tailwind-cdn.js"></script>
 
   <style>
@@ -439,23 +440,14 @@
       <button class="main-tab-btn px-3 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="mail" onclick="switchTopNav('mail')">
         <span>✉</span><span> Mail </span>
       </button>
+      <button class="main-tab-btn px-3 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="todo" onclick="switchTopNav('todo')">
+        <span>📋</span><span> To do </span>
+      </button>
       <button class="main-tab-btn px-3 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="ql-file" onclick="switchTopNav('ql-file')">
         <span>📁</span><span> QL File </span>
       </button>
       <button class="main-tab-btn px-3 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="theo_doi" onclick="switchTopNav('theo_doi')">
         <span>📊</span><span> Theo dõi </span>
-      </button>
-      <button class="main-tab-btn px-3 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="bao_cao" onclick="switchTopNav('bao_cao')">
-        <span>📈</span><span> Báo cáo </span>
-      </button>
-      <button class="main-tab-btn px-3 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="so_sanh" onclick="switchTopNav('so_sanh')">
-        <span>⚖️</span><span> So sánh </span>
-      </button>
-      <button class="main-tab-btn px-3 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="thanh_toan" onclick="switchTopNav('thanh_toan')">
-        <span>💳</span><span> Đề nghị TT </span>
-      </button>
-      <button class="main-tab-btn px-3 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="chuc_nang" onclick="switchTopNav('chuc_nang')">
-        <span>🛠️</span><span> Chức năng </span>
       </button>
       <button class="main-tab-btn px-3 py-1.5 rounded-md text-xs font-bold transition-all" data-tab="cai_dat" onclick="switchTopNav('cai_dat')">
         <span>⚙️</span><span> Cài đặt </span>
@@ -475,6 +467,8 @@
          TAB 1: HOME (Trang chủ — Full Width Dashboard)
     ────────────────────────────────────────────────────────────────── -->
     <section id="page-home" class="page-section active p-3 overflow-y-auto space-y-3">
+      <!-- 0. Shared Collaboration Home Panel -->
+      <div id="awd-collaboration-home-panel" class="w-full"></div>
       <!-- 1. Header Banner -->
       <div class="bg-[#1E1E1C] border border-[#2E2E2A] rounded-xl px-4 py-3 shadow-sm flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -659,15 +653,15 @@
           </div>
         </div>
 
-        <!-- Card 2: Xử lý Tự động -->
+        <!-- Card 2: To do · Làm việc nhóm -->
         <div class="bg-[#1E1E1C] border border-[#2E2E2A] hover:border-[#EBBCBA]/50 transition-all rounded-xl p-3.5 cursor-pointer shadow-sm flex items-start gap-3"
-             onclick="switchTopNav('chuc_nang')">
-          <span class="text-2xl p-2 rounded-lg bg-[#242421]">⚡</span>
+             onclick="switchTopNav('todo')">
+          <span class="text-2xl p-2 rounded-lg bg-[#242421]">📋</span>
           <div>
             <h4 class="text-xs font-bold text-[#EDEDEA] flex items-center gap-1">
-              <span>Xử lý Tự động</span><span>↗</span>
+              <span>To do · Làm việc nhóm</span><span>↗</span>
             </h4>
-            <p class="text-[11px] text-[#908CAA] mt-0.5">Đồng bộ tự động Word, cập nhật HSMT, hợp đồng và trích xuất dữ liệu AI.</p>
+            <p class="text-[11px] text-[#908CAA] mt-0.5">Quản lý công việc, phối hợp nhiệm vụ và theo dõi tiến độ dùng chung.</p>
           </div>
         </div>
 
@@ -767,7 +761,12 @@
     </section>
 
     <!-- ──────────────────────────────────────────────────────────────────
-         TAB 3: QUẢN LÝ (QL File — Explorer with Project Bar + Left Sidebar)
+         TAB 3: TO DO (Làm việc nhóm & Quản lý nhiệm vụ dùng chung)
+    ────────────────────────────────────────────────────────────────── -->
+    <section id="page-todo" class="page-section h-full overflow-y-auto p-2 flex flex-col"></section>
+
+    <!-- ──────────────────────────────────────────────────────────────────
+         TAB 4: QUẢN LÝ (QL File — Explorer with Project Bar + Left Sidebar)
     ────────────────────────────────────────────────────────────────── -->
     <section id="page-ql-file" class="page-section h-full overflow-hidden p-2 gap-2">
         <!-- 1. THANH PROJECT TAB BAR TRÊN CÙNG -->
@@ -3294,7 +3293,11 @@
   <script src="js/reports.js"></script>
   <script src="js/compare.js"></script>
   <script src="js/boq_extract.js"></script>
+  <script src="js/collaboration.js"></script>
+  <script src="js/collaboration_home.js"></script>
+  <script src="js/collaboration_notifications.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/collaboration_entrypoints.js"></script>
 
   <!-- MODAL: Rename Tab -->
   <dialog id="modal-app-rename-tab" class="modal">
@@ -3430,6 +3433,7 @@
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
   </dialog>
 
+<link rel="stylesheet" href="pdf/editor.css"><script src="pdf/editor.js"></script><script src="pdf/desktop.js"></script>
 </body>
 </html>
 

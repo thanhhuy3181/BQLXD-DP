@@ -70,5 +70,12 @@ window.AwmDrive=(()=>{
   else if(file.mimeType.startsWith('application/vnd.google-apps.'))path='files/'+encodeURIComponent(file.id)+'/export?mimeType=application/pdf';
   const r=await request(path),size=Number(r.headers.get('content-length'));if(size>30*1024*1024)throw Error('Tệp quá lớn để đọc trên điện thoại.');const b=await r.blob();if(b.size>30*1024*1024)throw Error('Tệp quá lớn để đọc trên điện thoại.');return b;
  }
- return {connect,clear,list,metadata,findByName,blob,connected:()=>!!token&&Date.now()<expires,identity:()=>identity,user:()=>currentUser,syncLinks};
+ async function serverBlob(file, project){
+  if(!window.AwmLive?.rpc)throw Error('Kênh xem tài liệu chưa sẵn sàng.');
+  const data=await window.AwmLive.rpc('awm_drive_content',[project,file.id,file.mimeType||'']);
+  const bin=atob(data.base64||''); const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  return new Blob([bytes],{type:data.mimeType||file.mimeType||'application/octet-stream'});
+ }
+ return {connect,clear,list,metadata,findByName,blob,serverBlob,connected:()=>!!token&&Date.now()<expires,identity:()=>identity,user:()=>currentUser,syncLinks};
 })();

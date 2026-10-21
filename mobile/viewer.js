@@ -4,6 +4,7 @@ window.AwmViewer=(()=>{
  let generation=0,pdf=null,loadingTask=null,worker=null,renderTask=null,historyStack=[],currentMsg=null;
  function addFileShare(blob,name){const host=$('viewer-controls');if(!host||host.querySelector('[data-file-share]'))return;const b=document.createElement('button');b.dataset.fileShare='1';b.textContent='↗ Chia sẻ';b.title='Mở bằng ứng dụng khác hoặc gửi đi';b.onclick=async()=>{try{const file=new File([blob],name,{type:blob.type||'application/octet-stream'});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]})))await navigator.share({files:[file],title:name});else{const u=URL.createObjectURL(blob);await navigator.clipboard?.writeText(u);b.textContent='✓ Đã sao chép';setTimeout(()=>b.textContent='↗ Chia sẻ',1600)}}catch(e){if(e?.name!=='AbortError')window.AwmLive?.notice?.('Không thể chia sẻ tệp')}};host.appendChild(b)}
  function close(clearHist=true,fromPopstate=false){
+  window.PdfEditor?.close();
   generation++;if(clearHist)historyStack=[];currentMsg=null;renderTask?.cancel();renderTask=null;loadingTask?.destroy().catch(()=>{});loadingTask=null;pdf=null;worker?.terminate();worker=null;
   $('viewer-body').replaceChildren();$('viewer-controls').replaceChildren();$('viewer').style.transform='';
   if($('viewer').open)$('viewer').close();
@@ -28,12 +29,7 @@ window.AwmViewer=(()=>{
    const ext=name.split('.').pop().toLowerCase();
    const signature=new Uint8Array(await blob.slice(0,8).arrayBuffer());if(run!==generation)return;
    if(String.fromCharCode(...signature.slice(0,4))==='%PDF'||mime==='application/pdf'){
-    const lib=await import('./vendor/pdf.mjs');lib.GlobalWorkerOptions.workerSrc=new URL('./vendor/pdf.worker.mjs',location.href).href;
-    const data=await blob.arrayBuffer();if(run!==generation)return;
-    const task=lib.getDocument({data,isEvalSupported:false});loadingTask=task;const doc=await task.promise;if(run!==generation){task.destroy().catch(()=>{});return}pdf=doc;let page=1,zoom=1;
-    $('viewer-controls').innerHTML='<button id="prev">‹</button><span id="page-num"></span><button id="next-page">›</button><button id="zoom-out">−</button><button id="zoom-in">+</button>';
-    async function draw(){renderTask?.cancel();const current=page;const p=await doc.getPage(current);if(run!==generation)return;const base=p.getViewport({scale:1});const viewport=p.getViewport({scale:Math.min((innerWidth-24)/base.width,1.5)*zoom});const canvas=document.createElement('canvas');canvas.width=viewport.width*devicePixelRatio;canvas.height=viewport.height*devicePixelRatio;canvas.style.width=viewport.width+'px';canvas.style.height=viewport.height+'px';$('viewer-body').replaceChildren(canvas);$('page-num').textContent=current+' / '+doc.numPages;$('prev').disabled=current===1;$('next-page').disabled=current===doc.numPages;renderTask=p.render({canvasContext:canvas.getContext('2d'),viewport,transform:[devicePixelRatio,0,0,devicePixelRatio,0,0]});try{await renderTask.promise}catch(e){if(e.name!=='RenderingCancelledException')throw e}}
-    const redraw=()=>draw().catch(e=>{if(run===generation)$('viewer-body').textContent=e.message});$('prev').onclick=()=>{page=Math.max(1,page-1);redraw()};$('next-page').onclick=()=>{page=Math.min(doc.numPages,page+1);redraw()};$('zoom-in').onclick=()=>{zoom=Math.min(3,zoom+.25);redraw()};$('zoom-out').onclick=()=>{zoom=Math.max(.5,zoom-.25);redraw()};await draw();addFileShare(blob,name);
+    await PdfEditor.mount(blob,name,$('viewer-body'),$('viewer-controls'));
    }else if(['xlsx','xls','csv'].includes(ext)||mime.includes('spreadsheet')){
     worker=new Worker('excel-worker.js');const data=await blob.arrayBuffer();if(run!==generation)return;worker.postMessage(data,[data]);
     worker.onmessage=e=>{if(run!==generation)return;if(e.data.error){$('viewer-body').textContent=e.data.error;return}const sheets=e.data.sheets;let selected=0,start=0;
@@ -461,6 +457,10 @@ window.AwmViewer=(()=>{
   if(clearHist)close(true);else{generation++;renderTask?.cancel();renderTask=null;$('viewer-body').replaceChildren();$('viewer-controls').replaceChildren();}
   const run=++generation;
   const name=opt?.name||'Xem tài liệu',id=opt?.id||'',mime=opt?.mime||'';
+  if(id && (mime.includes('pdf') || /\.pdf$/i.test(name) || name==='Xem tài liệu')){
+   if(!$('viewer').open)$('viewer').showModal();$('viewer-title').textContent=name;$('viewer-body').textContent='Đang tải PDF…';
+   try{const meta={id,name,mimeType:mime||'application/pdf'};const project=window.AwmLive?.getProject?.()||opt?.project||'';const blob=await AwmDrive.serverBlob(meta,project);if(run!==generation)return;await PdfEditor.mount(blob,name,$('viewer-body'),$('viewer-controls'));}catch(e){if(run===generation)$('viewer-body').textContent=e.message;}return;
+  }
   const ext=name.split('.').pop().toLowerCase();
   const isSheet=mime.includes('spreadsheet')||['xlsx','xls','csv'].includes(ext);
   const isPdf=mime.includes('pdf')||ext==='pdf';
@@ -531,7 +531,7 @@ window.AwmViewer=(()=>{
   }
   const badgeText=isSheet?'📊 Bảng tính Excel':isPdf?'📑 PDF Hợp đồng':isCad?'📐 Bản vẽ CAD':'📄 Tài liệu';
   const badgeCls=isSheet?'online':isCad?'badge-primary':'priority-low';
-  const openLabel=isSheet?'Mở bằng Google Sheets ↗':isPdf?'Mở file PDF ↗':isCad?'Mở bản vẽ CAD ↗':'Mở tài liệu ↗';
+  const openLabel=isSheet?'Đọc bảng tính trong app':isPdf?'Đọc PDF trong app':isCad?'Đọc bản vẽ CAD':'Đọc tài liệu trong app';
 
   $('viewer-controls').innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px;padding:4px 0;flex-wrap:wrap;">
@@ -541,7 +541,7 @@ window.AwmViewer=(()=>{
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         ${isCad?`<label class="button" style="display:inline-flex;align-items:center;padding:6px 10px;font-size:12px;background:#244438;color:#fff;border-radius:6px;cursor:pointer;">+ Nạp file nền (Xref)<input id="cad-online-bg" type="file" accept=".dxf,.dwg,.txt" hidden></label>`:''}
-        <button id="viewer-share" class="button" style="display:inline-flex;align-items:center;padding:6px 10px;font-size:12px;font-weight:600;border-radius:6px;border:1px solid #b8cdb8;background:#fff;color:#28523f;cursor:pointer;">↗ Chia sẻ</button><a class="primary button" style="display:inline-flex;align-items:center;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;background:#182b29;color:#fff;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a>
+        <button id="viewer-share" class="button" style="display:inline-flex;align-items:center;padding:6px 10px;font-size:12px;font-weight:600;border-radius:6px;border:1px solid #b8cdb8;background:#fff;color:#28523f;cursor:pointer;">↗ Chia sẻ</button><span class="badge" style="font-size:11px;">Nguồn nội bộ</span>
       </div>
     </div>
   `;
@@ -556,27 +556,28 @@ window.AwmViewer=(()=>{
       return;
     }
   }else if(id){
-    $('viewer-body').innerHTML=`
-      <div style="width:100%;height:calc(85vh - 55px);background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.1);display:flex;flex-direction:column;">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;flex-shrink:0;">
-          <span>Nếu Google Drive chặn cookie xem trước:</span>
-          <a href="${esc(directUrl)}" target="_blank" rel="noopener" style="color:#0078d4;font-weight:700;text-decoration:underline;white-space:nowrap;margin-left:8px;">Mở trực tiếp trên Drive ↗</a>
-        </div>
-        <iframe src="https://drive.google.com/file/d/${id}/preview" style="width:100%;height:100%;border:none;flex:1;" allow="autoplay" loading="lazy"></iframe>
-      </div>
-    `;
+    $('viewer-body').innerHTML='<div class="loading">Đang tải bản xem nội bộ…</div>';
+    try {
+      const project=window.AwmLive?.getProject?.()||opt?.project||'';
+      const blob=await AwmDrive.serverBlob({id,name,mimeType:mime},project);
+      if(run!==generation)return;
+      if(isSheet || /\.xlsx?$/i.test(name)){ await open(blob,name,mime); }
+      else if(mime.startsWith('image/')){const img=document.createElement('img');img.src=URL.createObjectURL(blob);$('viewer-body').replaceChildren(img);}
+      else if(isPdf){ await PdfEditor.mount(blob,name,$('viewer-body'),$('viewer-controls')); }
+      else { $('viewer-body').innerHTML='<div class="message">Đã lấy tài liệu từ nguồn Drive. Bộ đọc định dạng này đang được bổ sung.</div>'; }
+    } catch(e) { if(run===generation)$('viewer-body').innerHTML='<div class="message error">'+esc(e.message)+'</div>'; }
   }else{
     $('viewer-body').innerHTML=`<div class="card" style="margin:24px 8px;padding:28px 16px;text-align:center;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border:1px solid #e2ebd8;"><div style="font-size:52px;margin-bottom:12px;">${isSheet?'📊':isPdf?'📑':isMsg?'✉️':'📄'}</div><h3 style="margin:0 0 10px 0;font-size:16px;color:#182b29;word-break:break-word;line-height:1.4;">${esc(name)}</h3><div class="badge ${badgeCls}" style="display:inline-block;margin-bottom:16px;font-size:12px;font-weight:600;">${badgeText}</div><p class="muted" style="font-size:13px;line-height:1.5;margin:0 0 20px 0;">${isSheet?'Tệp bảng tính Excel BOQ lưu trữ trên Google Drive dự án.':isPdf?'Tệp PDF hợp đồng lưu trữ trên Google Drive dự án.':isMsg?'Tệp thư điện tử MSG lưu trữ trên Google Drive dự án.':'Tài liệu lưu trữ trên Google Drive dự án.'}</p><a class="primary button" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;background:#182b29;color:#fff;width:100%;box-sizing:border-box;" href="${esc(directUrl)}" target="_blank" rel="noopener">${openLabel}</a></div>`;
   }
  }
  let vTouchX=0,vTouchY=0,vTouchT=0,vSwiping=false;
  $('viewer').addEventListener('touchstart',e=>{
-  if(e.touches.length!==1)return;
+  if(e.touches.length!==1||e.target.closest('.pdf-page'))return;
   vTouchX=e.touches[0].clientX;vTouchY=e.touches[0].clientY;vTouchT=Date.now();vSwiping=false;
   $('viewer').style.transition='none';
  },{passive:true});
  $('viewer').addEventListener('touchmove',e=>{
-  if(e.touches.length!==1)return;
+  if(e.touches.length!==1||e.target.closest('.pdf-page'))return;
   const cx=e.touches[0].clientX,cy=e.touches[0].clientY,dx=cx-vTouchX,dy=cy-vTouchY;
   if(dx>15&&dx>Math.abs(dy)*1.2&&vTouchX<120){
    vSwiping=true;$('viewer').style.transform=`translateX(${Math.max(0,dx)}px)`;

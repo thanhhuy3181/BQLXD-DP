@@ -18,14 +18,120 @@ let _currentTdSubTab = 'progress';
 let _currentCnSubTab = 'word';
 let _currentCdSubTab = 'cd-theme';
 let _currentZoom = 90;
+let _todoMountTicket = 0;
+let _isProjectSwitching = false;
 
-// ── 1. Top Navigation Routing (6 Level-1 Tabs) ───────────────────────────────
+function invalidateTodoMount() {
+  _todoMountTicket++;
+  if (window.CollaborationWorkspace?.unmount) {
+    try { window.CollaborationWorkspace.unmount(); } catch (_) {}
+  }
+}
+
+// ── 1. Top Navigation Routing (Canonical Tabs) ───────────────────────────────
+function getAwdCurrentProject() {
+  let p = '';
+  if (typeof ExplorerModule !== 'undefined' && typeof ExplorerModule.getCurrentProject === 'function') {
+    p = ExplorerModule.getCurrentProject();
+  }
+  if (!p) {
+    p = localStorage.getItem('bqlda_current_project') || '';
+  }
+  if (!p && typeof AccountsModule !== 'undefined' && typeof AccountsModule.getCurrentUser === 'function') {
+    const user = AccountsModule.getCurrentUser();
+    p = user?.current_project || (user?.allowed_projects && user.allowed_projects[0] !== '*' ? user.allowed_projects[0] : '');
+  }
+  return p || '';
+}
+
+async function mountCollaborationWorkspace(container) {
+  if (!container || !window.CollaborationWorkspace?.mount) return;
+  if (_isProjectSwitching) return;
+
+  const ticket = ++_todoMountTicket;
+  if (window.CollaborationWorkspace?.unmount) {
+    try { window.CollaborationWorkspace.unmount(); } catch (_) {}
+  }
+
+  container.innerHTML = '<div class="p-4 text-xs text-[#908CAA]">Đang tải không gian cộng tác To do…</div>';
+
+  try {
+    const res = typeof window.API?.call === 'function'
+      ? await window.API.call('get_projects_bar_data')
+      : (typeof window.callBackend === 'function'
+          ? await window.callBackend('get_projects_bar_data')
+          : (window.BrowserRuntime
+              ? await window.BrowserRuntime.call('get_projects_bar_data')
+              : null));
+
+    // Reject late response if ticket invalidated, no longer on todo route, or switching projects
+    if (ticket !== _todoMountTicket || _currentTopNav !== 'todo' || _isProjectSwitching) {
+      return;
+    }
+
+    if (!res || res.ok !== true) {
+      throw new Error(res?.error || 'Không thể lấy dữ liệu dự án từ máy chủ.');
+    }
+
+    const project = res.data?.current_project || '';
+    if (!project) {
+      container.innerHTML = '<div class="p-4 text-xs text-[#908CAA]">Chưa chọn dự án nào để làm việc To do.</div>';
+      return;
+    }
+
+    try {
+      localStorage.setItem('bqlda_current_project', project);
+    } catch (_) {}
+
+    const rpc = async (method, args) => {
+      const callArgs = Array.isArray(args) ? args : (args !== undefined ? [args] : []);
+      const r = typeof window.API?.call === 'function'
+        ? await window.API.call(method, ...callArgs)
+        : (typeof window.callBackend === 'function'
+            ? await window.callBackend(method, ...callArgs)
+            : (window.BrowserRuntime
+                ? await window.BrowserRuntime.call(method, ...callArgs)
+                : null));
+      if (!r || r.ok !== true) {
+        throw new Error(r?.error || 'Không thể kết nối máy chủ.');
+      }
+      return r.data;
+    };
+
+    if (ticket !== _todoMountTicket || _currentTopNav !== 'todo' || _isProjectSwitching) {
+      return;
+    }
+
+    window.CollaborationWorkspace.mount(container, { rpc, project });
+  } catch (err) {
+    if (ticket === _todoMountTicket && _currentTopNav === 'todo' && !_isProjectSwitching) {
+      container.textContent = 'Lỗi kết nối To do: ' + String(err?.message || err);
+    }
+  }
+}
+window.mountCollaborationWorkspace = mountCollaborationWorkspace;
+window.invalidateTodoMount = invalidateTodoMount;
+
 window.switchTopNav = function(navId) {
+  if (navId === 'chuc_nang') {
+    if (typeof AccountsModule !== 'undefined' && AccountsModule.denyAccess) {
+      AccountsModule.denyAccess();
+    }
+    App.setStatus('Chức năng không hỗ trợ trên nền tảng Web.');
+    return;
+  }
+
   const requiredPermission = typeof AccountsModule !== 'undefined' ? AccountsModule.navPermission(navId) : null;
   if (requiredPermission && !AccountsModule.navAllowed(navId)) {
     AccountsModule.denyAccess();
     return;
   }
+
+  // Dispose previous collaboration workspace immediately when navigating away from todo
+  if (_currentTopNav === 'todo' && navId !== 'todo') {
+    invalidateTodoMount();
+  }
+
   _currentTopNav = navId;
 
   // Highlight active main tab
@@ -47,6 +153,11 @@ window.switchTopNav = function(navId) {
     if (el) el.classList.add('active');
     if (typeof MailModule !== 'undefined') MailModule.init();
     App.setStatus('Hộp thư điện tử — Quản lý và phân loại Email Outlook sẵn sàng.');
+  } else if (navId === 'todo') {
+    const el = document.getElementById('page-todo');
+    if (el) el.classList.add('active');
+    App.setStatus('To do — Không gian làm việc & cộng tác nhóm.');
+    mountCollaborationWorkspace(el);
   } else if (navId === 'ql-file') {
     const el = document.getElementById('page-ql-file');
     if (el) el.classList.add('active');
@@ -72,10 +183,6 @@ window.switchTopNav = function(navId) {
     if (el) el.classList.add('active');
     if (typeof PaymentFullModule !== 'undefined') PaymentFullModule.init();
     App.setStatus('Quản lý Đề nghị Thanh toán — Tạm ứng, Thanh toán đợt & Lũy kế.');
-  } else if (navId === 'chuc_nang') {
-    const el = document.getElementById('page-chuc-nang');
-    if (el) el.classList.add('active');
-    switchChucNangSubTab(_currentCnSubTab);
   } else if (navId === 'cai_dat') {
     const el = document.getElementById('page-cai-dat-full');
     if (el) el.classList.add('active');
@@ -85,14 +192,17 @@ window.switchTopNav = function(navId) {
 
 // Backward-compatible alias for existing code
 window.showPage = function(pageId) {
-  if (pageId === 'home' || pageId === 'mail' || pageId === 'ql-file' || pageId === 'bao_cao' || pageId === 'so_sanh' || pageId === 'thanh_toan') {
+  if (pageId === 'home' || pageId === 'mail' || pageId === 'todo' || pageId === 'ql-file' || pageId === 'bao_cao' || pageId === 'so_sanh' || pageId === 'thanh_toan') {
     switchTopNav(pageId);
   } else if (['payment', 'hsmt', 'contract', 'progress', 'chu-truong', 'bvtk', 'boq', 'contractor', 'sap', 'contractor-data'].includes(pageId)) {
     switchTopNav('theo_doi');
     switchTheoDoiSubTab(pageId);
   } else if (pageId === 'word' || pageId.startsWith('cn-')) {
-    switchTopNav('chuc_nang');
-    switchChucNangSubTab(pageId);
+    if (typeof AccountsModule !== 'undefined' && AccountsModule.denyAccess) {
+      AccountsModule.denyAccess();
+    }
+    App.setStatus('Chức năng không hỗ trợ trên nền tảng Web.');
+    return;
   } else if (pageId === 'links' || pageId === 'cai-dat' || pageId.startsWith('cd-')) {
     switchTopNav('cai_dat');
     switchCaiDatSubTab(pageId === 'links' ? 'cd-links' : pageId);
@@ -458,19 +568,113 @@ async function bootstrapApp() {
   // Restore the persisted appearance rather than resetting it on every launch.
   if (typeof initTheme === 'function') initTheme();
 
+  // Hook project changes to dispose and remount To do workspace
+  hookProjectSwitch();
+
   // Boot active tab
   switchTopNav(_currentTopNav || 'home');
 }
 
+function hookProjectSwitch() {
+  if (typeof ExplorerModule !== 'undefined' && ExplorerModule.switchProject && !ExplorerModule._switchProjectHooked) {
+    const origSwitch = ExplorerModule.switchProject;
+    ExplorerModule._switchProjectHooked = true;
+    ExplorerModule.switchProject = async function(projectName) {
+      if (_isProjectSwitching) return;
+      _isProjectSwitching = true;
+      invalidateTodoMount();
+
+      // Dispatch bqlda_project_changed immediately before switching to clear all private views (Mail, Home, etc.)
+      try {
+        window.dispatchEvent(new CustomEvent('bqlda_project_changed', {
+          detail: { project: projectName, state: 'switching', pending: true }
+        }));
+      } catch (_) {}
+
+      let res = null;
+      let switchError = null;
+      try {
+        res = await origSwitch.apply(this, arguments);
+        const confirmed = typeof window.API?.call === 'function'
+          ? await window.API.call('get_projects_bar_data')
+          : await window.BrowserRuntime.call('get_projects_bar_data');
+        if (!confirmed || confirmed.ok !== true || confirmed.data?.current_project !== projectName) {
+          throw new Error('Máy chủ chưa xác nhận chuyển sang dự án đã chọn.');
+        }
+        res = {ok:true,data:confirmed.data};
+        try { localStorage.setItem('bqlda_current_project', projectName); } catch (_) {}
+      } catch (err) {
+        switchError = err;
+      } finally {
+        _isProjectSwitching = false;
+      }
+
+      const isSuccess = !switchError && res?.ok === true;
+      // Dispatch after completion with appropriate state
+      try {
+        window.dispatchEvent(new CustomEvent('bqlda_project_changed', {
+          detail: {
+            project: isSuccess ? projectName : '',
+            state: isSuccess ? 'completed' : 'failed',
+            pending: false,
+            result: res,
+            error: switchError
+          }
+        }));
+      } catch (_) {}
+
+      // Re-mount To do workspace only if still on active todo tab and succeeded
+      if (_currentTopNav === 'todo' && isSuccess) {
+        const el = document.getElementById('page-todo');
+        if (el) mountCollaborationWorkspace(el);
+      }
+
+      if (switchError) throw switchError;
+      return res;
+    };
+  }
+}
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'bqlda_current_project') {
+    invalidateTodoMount();
+    if (_currentTopNav === 'todo' && !_isProjectSwitching) {
+      const el = document.getElementById('page-todo');
+      if (el) mountCollaborationWorkspace(el);
+    }
+  }
+});
+
+window.addEventListener('bqlda_logout', () => {
+  invalidateTodoMount();
+});
+
+window.addEventListener('bqlda_project_changed', (e) => {
+  if (e?.detail?.pending || e?.detail?.state === 'switching' || _isProjectSwitching) {
+    invalidateTodoMount();
+    return;
+  }
+  // If hookProjectSwitch completed, it handles remounting To do itself to avoid duplicate mounts.
+  if (e?.detail?.state === 'completed') {
+    return;
+  }
+  invalidateTodoMount();
+  if (_currentTopNav === 'todo' && !_isProjectSwitching) {
+    const el = document.getElementById('page-todo');
+    if (el) mountCollaborationWorkspace(el);
+  }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Global hotkeys for tabs: Alt+1..5
+  // Global hotkeys for canonical tabs: Alt+1..6
   document.addEventListener('keydown', (e) => {
     if (e.altKey) {
       if (e.key === '1') { e.preventDefault(); switchTopNav('home'); }
-      else if (e.key === '2') { e.preventDefault(); switchTopNav('ql-file'); }
-      else if (e.key === '3') { e.preventDefault(); switchTopNav('theo_doi'); }
-      else if (e.key === '4') { e.preventDefault(); switchTopNav('chuc_nang'); }
-      else if (e.key === '5') { e.preventDefault(); switchTopNav('cai_dat'); }
+      else if (e.key === '2') { e.preventDefault(); switchTopNav('mail'); }
+      else if (e.key === '3') { e.preventDefault(); switchTopNav('todo'); }
+      else if (e.key === '4') { e.preventDefault(); switchTopNav('ql-file'); }
+      else if (e.key === '5') { e.preventDefault(); switchTopNav('theo_doi'); }
+      else if (e.key === '6') { e.preventDefault(); switchTopNav('cai_dat'); }
     }
   });
 

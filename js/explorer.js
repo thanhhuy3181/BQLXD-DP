@@ -708,6 +708,10 @@ const ExplorerModule = (function() {
       selectSubFolder(path);
     } else {
       const fileName = String(path || '').split('/').pop().split('\\').pop();
+      if (/\.pdf$/i.test(fileName) && window.openDesktopPdf) {
+        const file=_filesData.find(f=>f.path===path);
+        window.openDesktopPdf(fileName,path,file?.url);return;
+      }
       if (fileName.toLowerCase().endsWith('.msg') && typeof window.openDesktopOutlookMsg === 'function') {
         window.openDesktopOutlookMsg(fileName, path);
         return;
