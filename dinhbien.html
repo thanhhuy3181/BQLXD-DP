@@ -1002,10 +1002,11 @@ footer.app-footer {
     <div class="card-box">
       <div class="card-header">
         <h2><span id="lblChartHeaderTitle">📊 Biểu đồ phân bổ nhân lực</span></h2>
-        <div style="display:flex; gap:10px; font-size:11px; color:var(--text-muted);">
-          <span>■ <b style="color:#2563eb;">BQLXD</b></span>
-          <span>■ <b style="color:#d97706;">KHO</b></span>
-          <span>■ <b style="color:#059669;">BPTC</b></span>
+        <div class="dept-sync-tabs" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
+          <button class="heso-tab-btn active" data-depttab="ALL" style="padding:1px 8px; font-size:11px;">Tổng</button>
+          <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button>
+          <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button>
+          <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button>
         </div>
       </div>
       <div class="chart-box-top" id="chartScrollSync">
@@ -1153,6 +1154,12 @@ footer.app-footer {
           <span id="lblMatrixHeaderTitle">👥 Nhân sự (BQLXD, KHO, BPTC)</span>
         </h2>
         <div style="display:flex; align-items:center; gap:8px;">
+          <div class="dept-sync-tabs" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
+            <button class="heso-tab-btn active" data-depttab="ALL" style="padding:1px 8px; font-size:11px;">Tổng</button>
+            <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button>
+            <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button>
+            <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button>
+          </div>
           <label style="font-size:11px; color:var(--text-muted);">Làm tròn:</label>
           <select id="selRoundMode" style="padding:2px 6px; font-size:11px;">
             <option value="normal">Chuẩn (0.5 lên)</option>
@@ -1189,12 +1196,12 @@ footer.app-footer {
         <h2>
           <span>⚙️ Hệ số nhân sự (Vi chỉnh hệ số điều chỉnh theo chức danh)</span>
         </h2>
-      </div>
-      <!-- Thanh 3 Tab Bộ phận -->
-      <div class="heso-tabs-bar" id="hesoNhansuTabsBar">
-        <button class="heso-tab-btn active" data-nstab="BQLXD">BQLXD</button>
-        <button class="heso-tab-btn" data-nstab="KHO">KHO</button>
-        <button class="heso-tab-btn" data-nstab="BPTC">BPTC</button>
+        <div class="dept-sync-tabs" id="hesoNhansuTabsBar" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
+          <button class="heso-tab-btn active" data-depttab="ALL" style="padding:1px 8px; font-size:11px;">Tổng</button>
+          <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button>
+          <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button>
+          <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button>
+        </div>
       </div>
       <div class="heso-nhansu-table-wrap" id="hesoNhansuWrap">
         <table class="nhansu-matrix-table" id="tableHesoNhansu">
@@ -2434,37 +2441,55 @@ hsScroll.addEventListener('scroll', () => {
    ========================================================================== */
 let calcResultCache = null;
 let resourceChartInstance = null;
+let currentDeptSyncTab = 'ALL'; // 'ALL' | 'BQLXD' | 'KHO' | 'BPTC' — Đồng bộ cả 3 bảng: Biểu đồ, Nhân sự, Hệ số nhân sự
+
+function syncDeptTabsUI() {
+  document.querySelectorAll('.dept-sync-tabs [data-depttab]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.depttab === currentDeptSyncTab);
+  });
+}
 
 function renderChart(res) {
   const tbody = document.getElementById('chartSyncBody');
   if(!tbody) return;
+  syncDeptTabsUI();
   const months = res.months;
-  const maxVal = Math.max(10, ...res.grandTotals);
-  const maxBarPx = 58; // Chiều cao tối đa cột biểu đồ (px) gọn gàng khi ghim trên cùng
+  const tab = currentDeptSyncTab;
   const isAgg = !!res.isAggregate;
+
+  const activeTotals = tab === 'BQLXD' ? res.bqlTotals
+                     : tab === 'KHO'   ? res.khoTotals
+                     : tab === 'BPTC'  ? res.bptcTotals
+                     : res.grandTotals;
+  const maxVal = Math.max(10, ...activeTotals);
+  const maxBarPx = 58; // Chiều cao tối đa cột biểu đồ (px) gọn gàng khi ghim trên cùng
+  const peakVal = Math.max(0, ...activeTotals);
+  const tabSuffix = tab === 'ALL' ? '' : ` [${tab}]`;
 
   const lblChartTitle = document.getElementById('lblChartHeaderTitle');
   if(lblChartTitle) {
     const vungName = document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng';
     lblChartTitle.textContent = isAgg
-      ? `📊 Biểu đồ phân bổ nhân lực Tổng — ${vungName} (Gộp ${res.projectCount} dự án)`
-      : `📊 Biểu đồ phân bổ nhân lực — ${currentProjectData?.ten || ''}`;
+      ? `📊 Biểu đồ phân bổ nhân lực Tổng${tabSuffix} — ${vungName} (Gộp ${res.projectCount} dự án)`
+      : `📊 Biểu đồ phân bổ nhân lực${tabSuffix} — ${currentProjectData?.ten || ''}`;
   }
 
   const barsCells = months.map((m, i) => {
-    const bql = res.bqlTotals[i] || 0;
-    const kho = res.khoTotals[i] || 0;
-    const bptc = res.bptcTotals[i] || 0;
+    const bql = (tab === 'ALL' || tab === 'BQLXD') ? (res.bqlTotals[i] || 0) : 0;
+    const kho = (tab === 'ALL' || tab === 'KHO')   ? (res.khoTotals[i] || 0) : 0;
+    const bptc = (tab === 'ALL' || tab === 'BPTC') ? (res.bptcTotals[i] || 0) : 0;
     const tot = bql + kho + bptc;
 
     const hBql = tot > 0 ? Math.max(bql > 0 ? 4 : 0, Math.round((bql / maxVal) * maxBarPx)) : 0;
     const hKho = tot > 0 ? Math.max(kho > 0 ? 4 : 0, Math.round((kho / maxVal) * maxBarPx)) : 0;
     const hBptc = tot > 0 ? Math.max(bptc > 0 ? 4 : 0, Math.round((bptc / maxVal) * maxBarPx)) : 0;
 
+    const topColor = tab === 'BQLXD' ? '#1d4ed8' : (tab === 'KHO' ? '#b45309' : (tab === 'BPTC' ? '#047857' : '#581c87'));
+
     return `
-      <td class="chart-bar-col" title="${monthLabel(m)} — Tổng: ${tot} nhân sự (BQLXD: ${bql} | Kho: ${kho} | BPTC: ${bptc})">
+      <td class="chart-bar-col" title="${monthLabel(m)} — Tổng: ${tot} nhân sự (BQLXD: ${res.bqlTotals[i] || 0} | Kho: ${res.khoTotals[i] || 0} | BPTC: ${res.bptcTotals[i] || 0})">
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;">
-          ${tot > 0 ? `<div style="font-size:10.5px; font-weight:800; color:#581c87; margin-bottom:2px; font-family:var(--font-mono);">${tot}</div>` : ''}
+          ${tot > 0 ? `<div style="font-size:10.5px; font-weight:800; color:${topColor}; margin-bottom:2px; font-family:var(--font-mono);">${tot}</div>` : ''}
           <div style="width:32px; display:flex; flex-direction:column-reverse; border-radius:3px 3px 0 0; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.08);">
             ${bql > 0 ? `<div style="height:${hBql}px; background:#2563eb;" title="BQLXD: ${bql}"></div>` : ''}
             ${kho > 0 ? `<div style="height:${hKho}px; background:#d97706;" title="Kho: ${kho}"></div>` : ''}
@@ -2498,12 +2523,12 @@ function renderChart(res) {
       <td class="chart-freeze-axis">
         <div style="display:flex; flex-direction:column; justify-content:center; height:76px;">
           <div style="font-weight:700; color:#0f172a; font-size:11.5px; margin-bottom:6px;">
-            ${isAgg ? `Phân bổ nhân lực Tổng (${res.projectCount} dự án)` : `Phân bổ nhân lực dự án`} — Đỉnh: <span style="color:#7e22ce;">${maxVal} người</span>
+            ${isAgg ? `Phân bổ nhân lực Tổng${tabSuffix} (${res.projectCount} dự án)` : `Phân bổ nhân lực dự án${tabSuffix}`} — Đỉnh: <span style="color:#7e22ce;">${peakVal} người</span>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:11px; color:#334155;">
-            <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#2563eb; display:inline-block; border-radius:2px;"></i><b style="color:#1d4ed8;">BQLXD</b></span>
-            <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#d97706; display:inline-block; border-radius:2px;"></i><b style="color:#b45309;">Kho</b></span>
-            <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#059669; display:inline-block; border-radius:2px;"></i><b style="color:#047857;">BPTC</b></span>
+            <span style="display:inline-flex; align-items:center; gap:5px; opacity:${tab === 'ALL' || tab === 'BQLXD' ? 1 : 0.35};"><i style="width:11px; height:11px; background:#2563eb; display:inline-block; border-radius:2px;"></i><b style="color:#1d4ed8;">BQLXD</b></span>
+            <span style="display:inline-flex; align-items:center; gap:5px; opacity:${tab === 'ALL' || tab === 'KHO' ? 1 : 0.35};"><i style="width:11px; height:11px; background:#d97706; display:inline-block; border-radius:2px;"></i><b style="color:#b45309;">Kho</b></span>
+            <span style="display:inline-flex; align-items:center; gap:5px; opacity:${tab === 'ALL' || tab === 'BPTC' ? 1 : 0.35};"><i style="width:11px; height:11px; background:#059669; display:inline-block; border-radius:2px;"></i><b style="color:#047857;">BPTC</b></span>
           </div>
         </div>
       </td>
@@ -2513,37 +2538,48 @@ function renderChart(res) {
       <td class="chart-freeze-axis" style="font-weight:700;">THÁNG</td>
       ${monthCells}
     </tr>
+    ${tab === 'ALL' ? `
     <tr class="chart-stat-row">
       <td class="chart-freeze-axis" style="background:#f3e8ff; color:#581c87; font-weight:800;">★ TỔNG NHÂN SỰ</td>
       ${grandRowCells}
     </tr>
+    ` : ''}
+    ${(tab === 'ALL' || tab === 'BQLXD') ? `
     <tr class="chart-stat-row">
       <td class="chart-freeze-axis" style="background:#eff6ff; color:#1d4ed8; font-weight:700;">■ I. Khối BQLXD</td>
       ${bqlRowCells}
     </tr>
+    ` : ''}
+    ${(tab === 'ALL' || tab === 'KHO') ? `
     <tr class="chart-stat-row">
       <td class="chart-freeze-axis" style="background:#fef3c7; color:#b45309; font-weight:700;">■ II. Khối Kho</td>
       ${khoRowCells}
     </tr>
+    ` : ''}
+    ${(tab === 'ALL' || tab === 'BPTC') ? `
     <tr class="chart-stat-row">
       <td class="chart-freeze-axis" style="background:#ecfdf5; color:#047857; font-weight:700;">■ III. Bộ phận Thi công (BPTC)</td>
       ${bptcRowCells}
     </tr>
+    ` : ''}
   `;
 }
 
 function renderMatrix(res) {
   const thead = document.getElementById('matrixHead');
   const tbody = document.getElementById('matrixBody');
+  syncDeptTabsUI();
   const months = res.months;
+  const tab = currentDeptSyncTab;
   const isAgg = !!res.isAggregate;
   const vungName = document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng';
 
   const lblMatrixTitle = document.getElementById('lblMatrixHeaderTitle');
   if(lblMatrixTitle) {
+    const tabTxt = tab === 'ALL' ? 'BQLXD, KHO, BPTC' : tab;
     lblMatrixTitle.textContent = isAgg
-      ? `👥 Nhân sự Tổng — ${vungName} (Tổng gộp ${res.projectCount} dự án theo thời gian)`
-      : `👥 Nhân sự (BQLXD, KHO, BPTC) — ${currentProjectData?.ten || ''}`;
+      ? `👥 Nhân sự Tổng (${tabTxt}) — ${vungName} (Tổng gộp ${res.projectCount} dự án)`
+      : `👥 Nhân sự (${tabTxt}) — ${currentProjectData?.ten || ''}`;
   }
 
   thead.innerHTML = `
@@ -2556,75 +2592,85 @@ function renderMatrix(res) {
     </tr>
   `;
 
-  let html = `
-    <tr class="row-grand-total">
-      <td class="col-freeze-1">★</td>
-      <td class="col-freeze-2">${isAgg ? 'TỔNG VÙNG' : 'DỰ ÁN'}</td>
-      <td class="col-freeze-3">${isAgg ? `TỔNG NHÂN SỰ (${res.projectCount} DỰ ÁN)` : 'TỔNG CỘNG NHÂN SỰ BQLXD'}</td>
-      <td class="col-freeze-4"></td>
-      ${res.grandTotals.map(v => `<td class="num-cell col-month-fixed" style="font-weight:700;">${v > 0 ? v : ''}</td>`).join('')}
-    </tr>
-  `;
+  let html = '';
 
-  // Nếu đang ở chế độ Tổng Vùng (ví dụ ấn vào BQL DAMB), hiển thị thêm dòng Tổng từng dự án bên dưới trước khi đi vào 3 bộ phận
-  if(isAgg && res.projectBreakdown && res.projectBreakdown.length > 0) {
-    res.projectBreakdown.forEach((p, idx) => {
-      html += `
-        <tr style="background:#faf5ff; font-weight:600; color:#4c1d95;">
-          <td class="col-freeze-1">DA${idx + 1}</td>
-          <td class="col-freeze-2">Dự án thành phần</td>
-          <td class="col-freeze-3" title="${escHtml(p.ten)}">↳ ${escHtml(p.ten)} (Tổng)</td>
-          <td class="col-freeze-4"></td>
-          ${p.grandTotals.map(v => `<td class="num-cell col-month-fixed" style="font-weight:600; color:#6b21a8;">${v > 0 ? v : ''}</td>`).join('')}
-        </tr>
-      `;
-    });
+  if(tab === 'ALL') {
+    html += `
+      <tr class="row-grand-total">
+        <td class="col-freeze-1">★</td>
+        <td class="col-freeze-2">${isAgg ? 'TỔNG VÙNG' : 'DỰ ÁN'}</td>
+        <td class="col-freeze-3">${isAgg ? `TỔNG NHÂN SỰ (${res.projectCount} DỰ ÁN)` : 'TỔNG CỘNG NHÂN SỰ BQLXD'}</td>
+        <td class="col-freeze-4"></td>
+        ${res.grandTotals.map(v => `<td class="num-cell col-month-fixed" style="font-weight:700;">${v > 0 ? v : ''}</td>`).join('')}
+      </tr>
+    `;
+
+    // Nếu đang ở chế độ Tổng Vùng (ví dụ ấn vào BQL DAMB), hiển thị thêm dòng Tổng từng dự án bên dưới trước khi đi vào 3 bộ phận
+    if(isAgg && res.projectBreakdown && res.projectBreakdown.length > 0) {
+      res.projectBreakdown.forEach((p, idx) => {
+        html += `
+          <tr style="background:#faf5ff; font-weight:600; color:#4c1d95;">
+            <td class="col-freeze-1">DA${idx + 1}</td>
+            <td class="col-freeze-2">Dự án thành phần</td>
+            <td class="col-freeze-3" title="${escHtml(p.ten)}">↳ ${escHtml(p.ten)} (Tổng)</td>
+            <td class="col-freeze-4"></td>
+            ${p.grandTotals.map(v => `<td class="num-cell col-month-fixed" style="font-weight:600; color:#6b21a8;">${v > 0 ? v : ''}</td>`).join('')}
+          </tr>
+        `;
+      });
+    }
   }
 
   // BQLXD
-  html += `
-    <tr class="row-bqlxd-header">
-      <td class="col-freeze-1">I</td>
-      <td class="col-freeze-2">BQLXD</td>
-      <td class="col-freeze-3">TỔNG - KHỐI BQLXD</td>
-      <td class="col-freeze-4"></td>
-      ${res.bqlTotals.map(v => `<td class="num-cell col-month-fixed">${v > 0 ? v : ''}</td>`).join('')}
-    </tr>
-  `;
-  MATRIX_ROWS_META.forEach((meta, rIdx) => {
-    if(meta.pb !== 'BQLXD') return;
-    html += renderRow(meta, rIdx, res);
-  });
+  if(tab === 'ALL' || tab === 'BQLXD') {
+    html += `
+      <tr class="row-bqlxd-header">
+        <td class="col-freeze-1">I</td>
+        <td class="col-freeze-2">BQLXD</td>
+        <td class="col-freeze-3">TỔNG - KHỐI BQLXD</td>
+        <td class="col-freeze-4"></td>
+        ${res.bqlTotals.map(v => `<td class="num-cell col-month-fixed">${v > 0 ? v : ''}</td>`).join('')}
+      </tr>
+    `;
+    MATRIX_ROWS_META.forEach((meta, rIdx) => {
+      if(meta.pb !== 'BQLXD') return;
+      html += renderRow(meta, rIdx, res);
+    });
+  }
 
   // KHO
-  html += `
-    <tr class="row-kho-header">
-      <td class="col-freeze-1">II</td>
-      <td class="col-freeze-2">KHO</td>
-      <td class="col-freeze-3">TỔNG - KHỐI KHO DỰ ÁN</td>
-      <td class="col-freeze-4"></td>
-      ${res.khoTotals.map(v => `<td class="num-cell col-month-fixed">${v > 0 ? v : ''}</td>`).join('')}
-    </tr>
-  `;
-  MATRIX_ROWS_META.forEach((meta, rIdx) => {
-    if(meta.pb !== 'KHO') return;
-    html += renderRow(meta, rIdx, res);
-  });
+  if(tab === 'ALL' || tab === 'KHO') {
+    html += `
+      <tr class="row-kho-header">
+        <td class="col-freeze-1">II</td>
+        <td class="col-freeze-2">KHO</td>
+        <td class="col-freeze-3">TỔNG - KHỐI KHO DỰ ÁN</td>
+        <td class="col-freeze-4"></td>
+        ${res.khoTotals.map(v => `<td class="num-cell col-month-fixed">${v > 0 ? v : ''}</td>`).join('')}
+      </tr>
+    `;
+    MATRIX_ROWS_META.forEach((meta, rIdx) => {
+      if(meta.pb !== 'KHO') return;
+      html += renderRow(meta, rIdx, res);
+    });
+  }
 
   // THI CÔNG
-  html += `
-    <tr class="row-bptc-header">
-      <td class="col-freeze-1">III</td>
-      <td class="col-freeze-2">THI CÔNG</td>
-      <td class="col-freeze-3">TỔNG - BỘ PHẬN THI CÔNG</td>
-      <td class="col-freeze-4"></td>
-      ${res.bptcTotals.map(v => `<td class="num-cell col-month-fixed">${v > 0 ? v : ''}</td>`).join('')}
-    </tr>
-  `;
-  MATRIX_ROWS_META.forEach((meta, rIdx) => {
-    if(meta.pb !== 'BPTC') return;
-    html += renderRow(meta, rIdx, res);
-  });
+  if(tab === 'ALL' || tab === 'BPTC') {
+    html += `
+      <tr class="row-bptc-header">
+        <td class="col-freeze-1">III</td>
+        <td class="col-freeze-2">THI CÔNG</td>
+        <td class="col-freeze-3">TỔNG - BỘ PHẬN THI CÔNG</td>
+        <td class="col-freeze-4"></td>
+        ${res.bptcTotals.map(v => `<td class="num-cell col-month-fixed">${v > 0 ? v : ''}</td>`).join('')}
+      </tr>
+    `;
+    MATRIX_ROWS_META.forEach((meta, rIdx) => {
+      if(meta.pb !== 'BPTC') return;
+      html += renderRow(meta, rIdx, res);
+    });
+  }
 
   tbody.innerHTML = html;
 }
@@ -2950,14 +2996,18 @@ function renderDinhMucTable() {
     </tr>
   `;
 
-  let html = `
-    <tr class="row-grand-total">
-      <td class="dm-freeze-1">★</td>
-      <td class="dm-freeze-2">TỔNG HỢP ĐỊNH MỨC DỰ ÁN</td>
-      <td class="dm-freeze-3"></td>
-      <td colspan="11">ĐỊNH MỨC LAO ĐỘNG CHUẨN 3 BỘ PHẬN (ĐỒNG BỘ DÒNG VỚI BẢNG NHÂN SỰ)</td>
-    </tr>
-  `;
+  let html = '';
+  const syncTab = currentDeptSyncTab;
+  if(syncTab === 'ALL') {
+    html += `
+      <tr class="row-grand-total">
+        <td class="dm-freeze-1">★</td>
+        <td class="dm-freeze-2">TỔNG HỢP ĐỊNH MỨC DỰ ÁN</td>
+        <td class="dm-freeze-3"></td>
+        <td colspan="11">ĐỊNH MỨC LAO ĐỘNG CHUẨN 3 BỘ PHẬN (ĐỒNG BỘ DÒNG VỚI BẢNG NHÂN SỰ)</td>
+      </tr>
+    `;
+  }
 
   function renderDmRow(meta) {
     // 1. Nếu là dòng Cấp Quản lý (có qlKey): Trải dài (colspan="9") qua tất cả các cột loại hình công trình
@@ -3032,37 +3082,43 @@ function renderDinhMucTable() {
   }
 
   // I. BQLXD
-  html += `
-    <tr class="row-bqlxd-header">
-      <td class="dm-freeze-1">I</td>
-      <td class="dm-freeze-2">ĐỊNH MỨC - KHỐI BQLXD</td>
-      <td class="dm-freeze-3"></td>
-      <td colspan="11">Sheet ĐM BQL: Biệt thự = Liền kề × 0,8 | NVGS (T7) = 10% CBGS (T6) × 1,5 | Tầm QL dùng chung</td>
-    </tr>
-  `;
-  MATRIX_ROWS_META.filter(m => m.pb === 'BQLXD').forEach(meta => { html += renderDmRow(meta); });
+  if(syncTab === 'ALL' || syncTab === 'BQLXD') {
+    html += `
+      <tr class="row-bqlxd-header">
+        <td class="dm-freeze-1">I</td>
+        <td class="dm-freeze-2">ĐỊNH MỨC - KHỐI BQLXD</td>
+        <td class="dm-freeze-3"></td>
+        <td colspan="11">Sheet ĐM BQL: Biệt thự = Liền kề × 0,8 | NVGS (T7) = 10% CBGS (T6) × 1,5 | Tầm QL dùng chung</td>
+      </tr>
+    `;
+    MATRIX_ROWS_META.filter(m => m.pb === 'BQLXD').forEach(meta => { html += renderDmRow(meta); });
+  }
 
   // II. KHO
-  html += `
-    <tr class="row-kho-header">
-      <td class="dm-freeze-1">II</td>
-      <td class="dm-freeze-2">ĐỊNH MỨC - KHỐI KHO DỰ ÁN</td>
-      <td class="dm-freeze-3"></td>
-      <td colspan="11">Sheet ĐM KHO: Biệt thự = Liền kề × 0,8 | Thủ kho NL XD (470/360), NL ME (930/472), HT XD (180/100), HT ME (250/163)</td>
-    </tr>
-  `;
-  MATRIX_ROWS_META.filter(m => m.pb === 'KHO').forEach(meta => { html += renderDmRow(meta); });
+  if(syncTab === 'ALL' || syncTab === 'KHO') {
+    html += `
+      <tr class="row-kho-header">
+        <td class="dm-freeze-1">II</td>
+        <td class="dm-freeze-2">ĐỊNH MỨC - KHỐI KHO DỰ ÁN</td>
+        <td class="dm-freeze-3"></td>
+        <td colspan="11">Sheet ĐM KHO: Biệt thự = Liền kề × 0,8 | Thủ kho NL XD (470/360), NL ME (930/472), HT XD (180/100), HT ME (250/163)</td>
+      </tr>
+    `;
+    MATRIX_ROWS_META.filter(m => m.pb === 'KHO').forEach(meta => { html += renderDmRow(meta); });
+  }
 
   // III. BPTC
-  html += `
-    <tr class="row-bptc-header">
-      <td class="dm-freeze-1">III</td>
-      <td class="dm-freeze-2">ĐỊNH MỨC - BỘ PHẬN THI CÔNG</td>
-      <td class="dm-freeze-3"></td>
-      <td colspan="11">Sheet ĐM BPTC: Biệt thự ĐL × 0,65 | Song lập × 0,75 | Tứ lập × 0,85 | Cải tạo mặt ngoài × 2,0</td>
-    </tr>
-  `;
-  MATRIX_ROWS_META.filter(m => m.pb === 'BPTC').forEach(meta => { html += renderDmRow(meta); });
+  if(syncTab === 'ALL' || syncTab === 'BPTC') {
+    html += `
+      <tr class="row-bptc-header">
+        <td class="dm-freeze-1">III</td>
+        <td class="dm-freeze-2">ĐỊNH MỨC - BỘ PHẬN THI CÔNG</td>
+        <td class="dm-freeze-3"></td>
+        <td colspan="11">Sheet ĐM BPTC: Biệt thự ĐL × 0,65 | Song lập × 0,75 | Tứ lập × 0,85 | Cải tạo mặt ngoài × 2,0</td>
+      </tr>
+    `;
+    MATRIX_ROWS_META.filter(m => m.pb === 'BPTC').forEach(meta => { html += renderDmRow(meta); });
+  }
 
   tbody.innerHTML = html;
   bindDmInputs(tbody);
@@ -3088,23 +3144,17 @@ if(btnResetDinhMuc) {
   });
 }
 
-let currentHesoNhansuTab = 'BQLXD'; // 'BQLXD' | 'KHO' | 'BPTC'
-
 /* ==========================================================================
    6. RENDER HỆ SỐ NHÂN SỰ (VI CHỈNH THEO CHỨC DANH)
    Cùng cấu trúc 4 cột freeze + cột tháng giống bảng Nhân sự phía trên
-   3 Tab: BQLXD, KHO, BPTC
+   4 Tab đồng bộ: Tổng (ALL), BQLXD, KHO, BPTC
    ========================================================================== */
 function renderHesoNhansuTable(res) {
   const thead = document.getElementById('headHesoNhansu');
   const tbody = document.getElementById('bodyHesoNhansu');
+  syncDeptTabsUI();
   const months = res.months;
-  const tab = currentHesoNhansuTab;
-
-  // Cập nhật tab active
-  document.querySelectorAll('#hesoNhansuTabsBar .heso-tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.nstab === tab);
-  });
+  const tab = currentDeptSyncTab;
 
   thead.innerHTML = `
     <tr>
@@ -3117,67 +3167,69 @@ function renderHesoNhansuTable(res) {
   `;
 
   let html = '';
+  const deptsToShow = tab === 'ALL' ? ['BQLXD', 'KHO', 'BPTC'] : [tab];
 
-  // Lọc theo tab
-  const tabTotals = tab === 'BQLXD' ? res.bqlTotals : (tab === 'KHO' ? res.khoTotals : res.bptcTotals);
-  const tabHeaderClass = tab === 'BQLXD' ? 'row-bqlxd-header' : (tab === 'KHO' ? 'row-kho-header' : 'row-bptc-header');
-  const tabLabel = tab === 'BQLXD' ? 'TỔNG HỆ SỐ - BQLXD' : (tab === 'KHO' ? 'TỔNG HỆ SỐ - KHO' : 'TỔNG HỆ SỐ - BPTC');
+  deptsToShow.forEach(dept => {
+    const tabHeaderClass = dept === 'BQLXD' ? 'row-bqlxd-header' : (dept === 'KHO' ? 'row-kho-header' : 'row-bptc-header');
+    const roman = dept === 'BQLXD' ? 'I' : (dept === 'KHO' ? 'II' : 'III');
+    const tabLabel = dept === 'BQLXD' ? 'TỔNG HỆ SỐ - KHỐI BQLXD' : (dept === 'KHO' ? 'TỔNG HỆ SỐ - KHỐI KHO' : 'TỔNG HỆ SỐ - BỘ PHẬN THI CÔNG');
 
-  // Dòng tổng hợp trung bình hệ số (luôn hiển thị)
-  html += `
-    <tr class="${tabHeaderClass}">
-      <td class="col-freeze-1">★</td>
-      <td class="col-freeze-2">${tab}</td>
-      <td class="col-freeze-3" style="font-weight:700;">${tabLabel}</td>
-      <td class="col-freeze-4"></td>
-      ${months.map((m, mIdx) => {
-        const mk = monthKey(m);
-        const filteredMeta = MATRIX_ROWS_META.filter(me => me.pb === tab);
-        let count = 0, sum = 0;
-        filteredMeta.forEach(me => {
-          const rIdx = MATRIX_ROWS_META.indexOf(me);
-          const adjKey = `${rIdx}_${mk}`;
-          if(currentProjectData.adj && currentProjectData.adj[adjKey] != null) {
-            sum += currentProjectData.adj[adjKey];
-            count++;
-          }
-        });
-      const avg = count > 0 ? Math.round((sum / count) * 100) + '%' : '100%';
-        return `<td class="num-cell col-month-fixed" style="font-weight:700;">${avg}</td>`;
-      }).join('')}
-    </tr>
-  `;
-
-  // Nếu mở rộng hiển thị các chức danh của bộ phận đang chọn
-  if(isHesoNhansuExpanded) {
-    MATRIX_ROWS_META.forEach((meta, rIdx) => {
-      if(meta.pb !== tab) return;
-      html += `
-        <tr>
-          <td class="col-freeze-1">${meta.stt}</td>
-          <td class="col-freeze-2">${meta.bp}</td>
-          <td class="col-freeze-3">${meta.cd}</td>
-          <td class="col-freeze-4">${meta.cap || ''}</td>
-          ${months.map((m, mIdx) => {
-            const mk = monthKey(m);
+    // Dòng tổng hợp trung bình hệ số của bộ phận
+    html += `
+      <tr class="${tabHeaderClass}">
+        <td class="col-freeze-1">${roman}</td>
+        <td class="col-freeze-2">${dept}</td>
+        <td class="col-freeze-3" style="font-weight:700;">${tabLabel}</td>
+        <td class="col-freeze-4"></td>
+        ${months.map((m) => {
+          const mk = monthKey(m);
+          const filteredMeta = MATRIX_ROWS_META.filter(me => me.pb === dept);
+          let count = 0, sum = 0;
+          filteredMeta.forEach(me => {
+            const rIdx = MATRIX_ROWS_META.indexOf(me);
             const adjKey = `${rIdx}_${mk}`;
-            const isAdj = currentProjectData.adj && currentProjectData.adj[adjKey] != null;
-            const ratio = isAdj ? currentProjectData.adj[adjKey] : 1.0;
-            const displayPct = Math.round(ratio * 100) + '%';
-            return `
-              <td class="editable-cell col-month-fixed ${isAdj ? 'adjusted' : ''}">
-                <input type="text" class="cell-adj-input" 
-                       value="${displayPct}" 
-                       data-ridx="${rIdx}" 
-                       data-mk="${mk}"
-                       title="Gõ 50 rồi Enter để đặt 50%, gõ 100 để đặt lại 100%">
-              </td>
-            `;
-          }).join('')}
-        </tr>
-      `;
-    });
-  }
+            if(currentProjectData.adj && currentProjectData.adj[adjKey] != null) {
+              sum += currentProjectData.adj[adjKey];
+              count++;
+            }
+          });
+          const avg = count > 0 ? Math.round((sum / count) * 100) + '%' : '100%';
+          return `<td class="num-cell col-month-fixed" style="font-weight:700;">${avg}</td>`;
+        }).join('')}
+      </tr>
+    `;
+
+    // Hiển thị các chức danh của bộ phận
+    if(isHesoNhansuExpanded) {
+      MATRIX_ROWS_META.forEach((meta, rIdx) => {
+        if(meta.pb !== dept) return;
+        html += `
+          <tr>
+            <td class="col-freeze-1">${meta.stt}</td>
+            <td class="col-freeze-2">${meta.bp}</td>
+            <td class="col-freeze-3">${meta.cd}</td>
+            <td class="col-freeze-4">${meta.cap || ''}</td>
+            ${months.map((m) => {
+              const mk = monthKey(m);
+              const adjKey = `${rIdx}_${mk}`;
+              const isAdj = currentProjectData.adj && currentProjectData.adj[adjKey] != null;
+              const ratio = isAdj ? currentProjectData.adj[adjKey] : 1.0;
+              const displayPct = Math.round(ratio * 100) + '%';
+              return `
+                <td class="editable-cell col-month-fixed ${isAdj ? 'adjusted' : ''}">
+                  <input type="text" class="cell-adj-input" 
+                         value="${displayPct}" 
+                         data-ridx="${rIdx}" 
+                         data-mk="${mk}"
+                         title="Gõ 50 rồi Enter để đặt 50%, gõ 100 để đặt lại 100%">
+                </td>
+              `;
+            }).join('')}
+          </tr>
+        `;
+      });
+    }
+  });
 
   tbody.innerHTML = html;
 
@@ -3213,15 +3265,25 @@ function renderHesoNhansuTable(res) {
   });
 }
 
-// Bắt sự kiện chuyển 3 Tab Hệ số nhân sự
-document.getElementById('hesoNhansuTabsBar').addEventListener('click', (e) => {
-  const btn = e.target.closest('.heso-tab-btn');
-  if(!btn) return;
-  const tab = btn.dataset.nstab;
-  if(tab && tab !== currentHesoNhansuTab) {
-    currentHesoNhansuTab = tab;
-    renderHesoNhansuTable(calcResultCache);
-  }
+// Bắt sự kiện chuyển 4 Tab đồng bộ (Tổng, BQLXD, KHO, BPTC) ở cả 3 bảng: Biểu đồ, Nhân sự, Hệ số nhân sự
+document.querySelectorAll('.dept-sync-tabs').forEach(bar => {
+  bar.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-depttab]');
+    if(!btn) return;
+    const tab = btn.dataset.depttab;
+    if(tab && tab !== currentDeptSyncTab) {
+      currentDeptSyncTab = tab;
+      syncDeptTabsUI();
+      if(calcResultCache) {
+        renderChart(calcResultCache);
+        renderMatrix(calcResultCache);
+        renderHesoNhansuTable(calcResultCache);
+      }
+      if(currentDinhMucView === 'sync') {
+        renderDinhMucTable();
+      }
+    }
+  });
 });
 
 /* ==========================================================================
