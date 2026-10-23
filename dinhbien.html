@@ -469,7 +469,8 @@ table.tree-table input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 /* 2. CỘT PHẢI TRÊN: BIỂU ĐỒ (THẲNG HÀNG CỘT THÁNG 370PX + 68PX × THÁNG) */
 .chart-box-top {
-  height: 155px;
+  height: auto;
+  min-height: 220px;
   padding: 0;
   background: #ffffff;
   overflow-x: auto;
@@ -499,7 +500,7 @@ table.chart-sync-table td.chart-bar-col {
   width: 68px;
   min-width: 68px;
   max-width: 68px;
-  height: 122px;
+  height: 112px;
   vertical-align: bottom;
   padding: 6px 8px 0 8px;
   border-right: 1px dashed #e2e8f0;
@@ -507,22 +508,29 @@ table.chart-sync-table td.chart-bar-col {
   box-sizing: border-box;
   position: relative;
 }
-table.chart-sync-table tr.chart-month-row td {
-  height: 26px;
-  line-height: 25px;
+table.chart-sync-table tr.chart-month-row td,
+table.chart-sync-table tr.chart-stat-row td {
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  line-height: 21px;
   text-align: center;
   font-size: 10.5px;
   font-weight: 600;
   color: #475569;
   background: #f8fafc;
   border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   box-sizing: border-box;
+  font-family: var(--font-mono);
 }
-table.chart-sync-table tr.chart-month-row td.chart-freeze-axis {
+table.chart-sync-table tr.chart-month-row td.chart-freeze-axis,
+table.chart-sync-table tr.chart-stat-row td.chart-freeze-axis {
   text-align: right;
   padding: 0 10px;
   background: #f1f5f9;
   color: #334155;
+  font-family: var(--font-sans);
 }
 
 /* 3. CỘT PHẢI DƯỚI: HỆ SỐ XD, ME, HT, KHO, BPTC (ĐỒNG BỘ DÒNG VỚI HẠNG MỤC & ĐỒNG BỘ CỘT THÁNG 370PX + 68PX) */
@@ -866,7 +874,7 @@ footer.app-footer {
     <!-- CỘT PHẢI HÀNG 1: BIỂU ĐỒ -->
     <div class="card-box">
       <div class="card-header">
-        <h2><span>📊 Biểu đồ phân bổ nhân lực</span></h2>
+        <h2><span id="lblChartHeaderTitle">📊 Biểu đồ phân bổ nhân lực</span></h2>
         <div style="display:flex; gap:10px; font-size:11px; color:var(--text-muted);">
           <span>■ <b style="color:#2563eb;">BQLXD</b></span>
           <span>■ <b style="color:#d97706;">KHO</b></span>
@@ -964,10 +972,10 @@ footer.app-footer {
   <!-- =========================================================================
        HÀNG 3: TRÁI (ĐỊNH MỨC: BQLXD, KHO, BPTC) | PHẢI (NHÂN SỰ: BQLXD, KHO, BPTC)
        ========================================================================= -->
-  <div class="dashboard-row-grid">
+  <div class="dashboard-row-grid" id="row3Grid">
 
     <!-- CỘT TRÁI HÀNG 3: ĐỊNH MỨC (BQLXD, KHO, BPTC) -->
-    <div class="card-box dinhmuc-section">
+    <div class="card-box dinhmuc-section" id="dinhmucCard">
       <div class="card-header">
         <h2>
           <span>📐 Định mức (BQLXD, KHO, BPTC)</span>
@@ -1013,7 +1021,7 @@ footer.app-footer {
     <div class="card-box nhansu-section">
       <div class="card-header">
         <h2>
-          <span>👥 Nhân sự (BQLXD, KHO, BPTC)</span>
+          <span id="lblMatrixHeaderTitle">👥 Nhân sự (BQLXD, KHO, BPTC)</span>
         </h2>
         <div style="display:flex; align-items:center; gap:8px;">
           <label style="font-size:11px; color:var(--text-muted);">Làm tròn:</label>
@@ -1038,7 +1046,7 @@ footer.app-footer {
   <!-- =========================================================================
        HÀNG 4: TRÁI (TRỐNG) | PHẢI (HỆ SỐ NHÂN SỰ - THẲNG CỘT VỚI NHÂN SỰ)
        ========================================================================= -->
-  <div class="dashboard-row-grid">
+  <div class="dashboard-row-grid" id="row4Grid">
     <!-- CỘT TRÁI HÀNG 4: ĐỂ TRỐNG ĐÚNG BẢN VẼ -->
     <div></div>
 
@@ -1217,8 +1225,8 @@ function parseDateAny(str) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function getActiveMonths() {
-  const rows = (currentProjectData.treeRows || []).filter(r => r.level === 3);
+function getActiveMonths(projData = currentProjectData) {
+  const rows = ((projData && projData.treeRows) || []).filter(r => r.level === 3);
   let min = null, max = null;
   rows.forEach(it => {
     const s = parseDateAny(it.batDau);
@@ -1237,6 +1245,29 @@ function getActiveMonths() {
   }
   if(months.length > 36) months.length = 36;
   return months;
+}
+
+function getProjectDataSnapshot(vungId, bqlId, bqlTen) {
+  const key = makeStorageKey(vungId, bqlId);
+  try {
+    const raw = localStorage.getItem(key);
+    if(raw) {
+      const parsed = JSON.parse(raw);
+      if(!parsed.treeRows || parsed.treeRows.length === 0) {
+        parsed.treeRows = JSON.parse(JSON.stringify(SEED_TREE_ITEMS));
+      }
+      return parsed;
+    }
+  } catch(e){}
+  return {
+    id: bqlId,
+    vungId: vungId,
+    ten: bqlTen || (bqlId === 'dan_phuong' ? 'BQLXD Đan Phượng' : 'BQLXD Mới'),
+    treeRows: JSON.parse(JSON.stringify(SEED_TREE_ITEMS)),
+    adj: {},
+    hesoCustom: {},
+    roundMode: 'normal'
+  };
 }
 
 function calcRatio(sDate, eDate, mDate) {
@@ -1315,12 +1346,13 @@ const MATRIX_ROWS_META = [
   {stt:25, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên Kế hoạch thi công', cap:'T7', type:'cv_kehoach_tc', dmKey:'cv_kh', dmThap:2000, dmKhac:400000, rule:'KL ÷ Định mức', tt_tho:2000, tt_full:1400, tt_ht2:1500, tt_ht1:1600, ct_tho:400000, ct_ht:400000, khac:300000, nx:600000, dgt:600000, hsNote:'Mục 10 ĐM BPTC: 2000 căn / 400.000m²'}
 ];
 
-function calculateAll() {
-  const rows = (currentProjectData.treeRows || []).filter(r => r.level === 3);
-  const months = getActiveMonths();
-  const roundMode = currentProjectData.roundMode || 'normal';
-  const adj = currentProjectData.adj || {};
-  const hesoCustom = currentProjectData.hesoCustom || {};
+function calculateSingleProject(projData) {
+  const rows = (projData.treeRows || []).filter(r => r.level === 3);
+  const months = getActiveMonths(projData);
+  const roundMode = projData.roundMode || 'normal';
+  const adj = projData.adj || {};
+  const hesoCustom = projData.hesoCustom || {};
+  const dmC = projData.dinhMucCustom || {};
 
   const numM = months.length;
   const rowsRaw = MATRIX_ROWS_META.map(() => Array(numM).fill(0));
@@ -1390,7 +1422,6 @@ function calculateAll() {
       const prBptc = getCustomHeso('bptc', it.id, mk, basePrXd);
       bptcRatio.push(prBptc);
 
-      const dmC = currentProjectData.dinhMucCustom || {};
       function getDmVal(dmKey, field, defaultVal) {
         const k = `${dmKey}_${field}`;
         return (dmC[k] != null && dmC[k] > 0) ? dmC[k] : defaultVal;
@@ -1466,7 +1497,6 @@ function calculateAll() {
     };
   });
 
-  const dmC = currentProjectData.dinhMucCustom || {};
   function getQlCalc(qlKey, defaultCalc) {
     const k = `ql_${qlKey}_calc`;
     return (dmC[k] != null && dmC[k] > 0) ? dmC[k] : defaultCalc;
@@ -1644,6 +1674,120 @@ function calculateAll() {
     grandTotals,
     itemProgressDetail
   };
+}
+
+function calculateVungAggregate(vungId) {
+  const bqlList = getBqlRegistry(vungId);
+  if(!bqlList || bqlList.length === 0) {
+    const fallbackMonths = [new Date(2025, 6, 1)];
+    return {
+      isAggregate: true,
+      projectCount: 0,
+      projectBreakdown: [],
+      months: fallbackMonths,
+      rowsRaw: MATRIX_ROWS_META.map(() => [0]),
+      rowsFinal: MATRIX_ROWS_META.map(() => [0]),
+      bqlTotals: [0],
+      khoTotals: [0],
+      bptcTotals: [0],
+      grandTotals: [0],
+      itemProgressDetail: []
+    };
+  }
+
+  const projResults = bqlList.map(b => {
+    const pData = getProjectDataSnapshot(vungId, b.id, b.ten);
+    return { bql: b, res: calculateSingleProject(pData) };
+  });
+
+  // Tìm khoảng tháng bao phủ tất cả các dự án trong vùng
+  let minD = null, maxD = null;
+  projResults.forEach(({ res }) => {
+    if(res.months && res.months.length > 0) {
+      const s = res.months[0];
+      const e = res.months[res.months.length - 1];
+      if(!minD || s < minD) minD = new Date(s);
+      if(!maxD || e > maxD) maxD = new Date(e);
+    }
+  });
+  if(!minD) { minD = new Date(2025, 6, 1); maxD = addMonths(minD, 12); }
+
+  const months = [];
+  let cur = new Date(minD.getFullYear(), minD.getMonth(), 1);
+  const end = new Date(maxD.getFullYear(), maxD.getMonth(), 1);
+  while(cur <= end) {
+    months.push(new Date(cur));
+    cur = addMonths(cur, 1);
+  }
+  if(months.length > 48) months.length = 48;
+
+  const numM = months.length;
+  const rowsRaw = MATRIX_ROWS_META.map(() => Array(numM).fill(0));
+  const rowsFinal = MATRIX_ROWS_META.map(() => Array(numM).fill(0));
+  const bqlTotals = Array(numM).fill(0);
+  const khoTotals = Array(numM).fill(0);
+  const bptcTotals = Array(numM).fill(0);
+  const grandTotals = Array(numM).fill(0);
+
+  const projectBreakdown = projResults.map(({ bql, res }) => {
+    const mkMap = {};
+    res.months.forEach((m, idx) => { mkMap[monthKey(m)] = idx; });
+
+    const pGrand = Array(numM).fill(0);
+    const pBql = Array(numM).fill(0);
+    const pKho = Array(numM).fill(0);
+    const pBptc = Array(numM).fill(0);
+
+    months.forEach((m, uIdx) => {
+      const pIdx = mkMap[monthKey(m)];
+      if(pIdx !== undefined) {
+        pGrand[uIdx] = res.grandTotals[pIdx] || 0;
+        pBql[uIdx] = res.bqlTotals[pIdx] || 0;
+        pKho[uIdx] = res.khoTotals[pIdx] || 0;
+        pBptc[uIdx] = res.bptcTotals[pIdx] || 0;
+
+        bqlTotals[uIdx] += pBql[uIdx];
+        khoTotals[uIdx] += pKho[uIdx];
+        bptcTotals[uIdx] += pBptc[uIdx];
+        grandTotals[uIdx] += pGrand[uIdx];
+
+        MATRIX_ROWS_META.forEach((_, rIdx) => {
+          rowsRaw[rIdx][uIdx] += (res.rowsRaw[rIdx][pIdx] || 0);
+          rowsFinal[rIdx][uIdx] += (res.rowsFinal[rIdx][pIdx] || 0);
+        });
+      }
+    });
+
+    return {
+      id: bql.id,
+      ten: bql.ten,
+      grandTotals: pGrand,
+      bqlTotals: pBql,
+      khoTotals: pKho,
+      bptcTotals: pBptc
+    };
+  });
+
+  return {
+    isAggregate: true,
+    projectCount: bqlList.length,
+    projectBreakdown,
+    months,
+    rowsRaw,
+    rowsFinal,
+    bqlTotals,
+    khoTotals,
+    bptcTotals,
+    grandTotals,
+    itemProgressDetail: []
+  };
+}
+
+function calculateAll() {
+  if(!currentBqlId) {
+    return calculateVungAggregate(currentVungId);
+  }
+  return calculateSingleProject(currentProjectData);
 }
 
 /* ==========================================================================
@@ -2080,7 +2224,16 @@ function renderChart(res) {
   if(!tbody) return;
   const months = res.months;
   const maxVal = Math.max(10, ...res.grandTotals);
-  const maxBarPx = 92; // Chiều cao tối đa cột biểu đồ (px)
+  const maxBarPx = 82; // Chiều cao tối đa cột biểu đồ (px)
+  const isAgg = !!res.isAggregate;
+
+  const lblChartTitle = document.getElementById('lblChartHeaderTitle');
+  if(lblChartTitle) {
+    const vungName = document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng';
+    lblChartTitle.textContent = isAgg
+      ? `📊 Biểu đồ phân bổ nhân lực Tổng — ${vungName} (Gộp ${res.projectCount} dự án)`
+      : `📊 Biểu đồ phân bổ nhân lực — ${currentProjectData?.ten || ''}`;
+  }
 
   const barsCells = months.map((m, i) => {
     const bql = res.bqlTotals[i] || 0;
@@ -2088,18 +2241,18 @@ function renderChart(res) {
     const bptc = res.bptcTotals[i] || 0;
     const tot = bql + kho + bptc;
 
-    const hBql = tot > 0 ? Math.max(bql > 0 ? 3 : 0, Math.round((bql / maxVal) * maxBarPx)) : 0;
-    const hKho = tot > 0 ? Math.max(kho > 0 ? 3 : 0, Math.round((kho / maxVal) * maxBarPx)) : 0;
-    const hBptc = tot > 0 ? Math.max(bptc > 0 ? 3 : 0, Math.round((bptc / maxVal) * maxBarPx)) : 0;
+    const hBql = tot > 0 ? Math.max(bql > 0 ? 4 : 0, Math.round((bql / maxVal) * maxBarPx)) : 0;
+    const hKho = tot > 0 ? Math.max(kho > 0 ? 4 : 0, Math.round((kho / maxVal) * maxBarPx)) : 0;
+    const hBptc = tot > 0 ? Math.max(bptc > 0 ? 4 : 0, Math.round((bptc / maxVal) * maxBarPx)) : 0;
 
     return `
-      <td class="chart-bar-col" title="${monthLabel(m)} — Tổng: ${tot} nhân sự (BQLXD: ${bql} | Kho: ${kho} | Thi công: ${bptc})">
+      <td class="chart-bar-col" title="${monthLabel(m)} — Tổng: ${tot} nhân sự (BQLXD: ${bql} | Kho: ${kho} | BPTC: ${bptc})">
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;">
-          ${tot > 0 ? `<div style="font-size:9.5px; font-weight:700; color:#1e293b; margin-bottom:2px; font-family:var(--font-mono);">${tot}</div>` : ''}
+          ${tot > 0 ? `<div style="font-size:10.5px; font-weight:800; color:#581c87; margin-bottom:2px; font-family:var(--font-mono);">${tot}</div>` : ''}
           <div style="width:32px; display:flex; flex-direction:column-reverse; border-radius:3px 3px 0 0; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.08);">
             ${bql > 0 ? `<div style="height:${hBql}px; background:#2563eb;" title="BQLXD: ${bql}"></div>` : ''}
             ${kho > 0 ? `<div style="height:${hKho}px; background:#d97706;" title="Kho: ${kho}"></div>` : ''}
-            ${bptc > 0 ? `<div style="height:${hBptc}px; background:#059669;" title="Thi công: ${bptc}"></div>` : ''}
+            ${bptc > 0 ? `<div style="height:${hBptc}px; background:#059669;" title="BPTC: ${bptc}"></div>` : ''}
           </div>
         </div>
       </td>
@@ -2107,30 +2260,64 @@ function renderChart(res) {
   }).join('');
 
   const monthCells = months.map(m => `<td class="col-month-fixed">${monthLabel(m)}</td>`).join('');
+  const grandRowCells = months.map((_, i) => {
+    const v = res.grandTotals[i] || 0;
+    return `<td class="col-month-fixed" style="background:#f3e8ff; color:#581c87; font-weight:800;">${v > 0 ? v : '–'}</td>`;
+  }).join('');
+  const bqlRowCells = months.map((_, i) => {
+    const v = res.bqlTotals[i] || 0;
+    return `<td class="col-month-fixed" style="background:#eff6ff; color:#1d4ed8; font-weight:700;">${v > 0 ? v : '–'}</td>`;
+  }).join('');
+  const khoRowCells = months.map((_, i) => {
+    const v = res.khoTotals[i] || 0;
+    return `<td class="col-month-fixed" style="background:#fef3c7; color:#b45309; font-weight:700;">${v > 0 ? v : '–'}</td>`;
+  }).join('');
+  const bptcRowCells = months.map((_, i) => {
+    const v = res.bptcTotals[i] || 0;
+    return `<td class="col-month-fixed" style="background:#ecfdf5; color:#047857; font-weight:700;">${v > 0 ? v : '–'}</td>`;
+  }).join('');
 
   tbody.innerHTML = `
     <tr>
       <td class="chart-freeze-axis">
-        <div style="display:flex; flex-direction:column; justify-content:space-between; height:110px;">
+        <div style="display:flex; flex-direction:column; justify-content:space-between; height:102px;">
           <div>
-            <div style="font-weight:700; color:#0f172a; font-size:11.5px; margin-bottom:6px;">Chú giải phân bổ nhân sự (Đỉnh: ${maxVal} người)</div>
+            <div style="font-weight:700; color:#0f172a; font-size:11.5px; margin-bottom:5px;">
+              ${isAgg ? `Phân bổ nhân lực Tổng (${res.projectCount} dự án)` : `Phân bổ nhân lực dự án`} — Đỉnh: <span style="color:#7e22ce;">${maxVal} người</span>
+            </div>
             <div style="display:flex; flex-wrap:wrap; gap:10px; font-size:11px; color:#334155;">
-              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#2563eb; display:inline-block; border-radius:2px;"></i><b>BQLXD</b></span>
-              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#d97706; display:inline-block; border-radius:2px;"></i><b>Kho dự án</b></span>
-              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#059669; display:inline-block; border-radius:2px;"></i><b>Thi công (BPTC)</b></span>
+              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#2563eb; display:inline-block; border-radius:2px;"></i><b style="color:#1d4ed8;">BQLXD</b></span>
+              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#d97706; display:inline-block; border-radius:2px;"></i><b style="color:#b45309;">Kho</b></span>
+              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#059669; display:inline-block; border-radius:2px;"></i><b style="color:#047857;">BPTC</b></span>
             </div>
           </div>
           <div style="font-size:10px; color:#64748b; display:flex; justify-content:space-between; border-top:1px dashed #e2e8f0; padding-top:4px;">
-            <span>← Cột cố định: 370px (Khớp 4 bảng)</span>
-            <span>Mỗi tháng: 68px →</span>
+            <span>Số đỉnh trên cột = Tổng nhân sự</span>
+            <span>Dưới cột: Tổng + 3 bộ phận ↓</span>
           </div>
         </div>
       </td>
       ${barsCells}
     </tr>
     <tr class="chart-month-row">
-      <td class="chart-freeze-axis">THÁNG THI CÔNG →</td>
+      <td class="chart-freeze-axis" style="font-weight:700;">THÁNG THI CÔNG →</td>
       ${monthCells}
+    </tr>
+    <tr class="chart-stat-row">
+      <td class="chart-freeze-axis" style="background:#f3e8ff; color:#581c87; font-weight:800;">★ TỔNG NHÂN SỰ</td>
+      ${grandRowCells}
+    </tr>
+    <tr class="chart-stat-row">
+      <td class="chart-freeze-axis" style="background:#eff6ff; color:#1d4ed8; font-weight:700;">■ I. Khối BQLXD</td>
+      ${bqlRowCells}
+    </tr>
+    <tr class="chart-stat-row">
+      <td class="chart-freeze-axis" style="background:#fef3c7; color:#b45309; font-weight:700;">■ II. Khối Kho</td>
+      ${khoRowCells}
+    </tr>
+    <tr class="chart-stat-row">
+      <td class="chart-freeze-axis" style="background:#ecfdf5; color:#047857; font-weight:700;">■ III. Bộ phận Thi công (BPTC)</td>
+      ${bptcRowCells}
     </tr>
   `;
 }
@@ -2139,12 +2326,21 @@ function renderMatrix(res) {
   const thead = document.getElementById('matrixHead');
   const tbody = document.getElementById('matrixBody');
   const months = res.months;
+  const isAgg = !!res.isAggregate;
+  const vungName = document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng';
+
+  const lblMatrixTitle = document.getElementById('lblMatrixHeaderTitle');
+  if(lblMatrixTitle) {
+    lblMatrixTitle.textContent = isAgg
+      ? `👥 Nhân sự Tổng — ${vungName} (Tổng gộp ${res.projectCount} dự án theo thời gian)`
+      : `👥 Nhân sự (BQLXD, KHO, BPTC) — ${currentProjectData?.ten || ''}`;
+  }
 
   thead.innerHTML = `
     <tr>
       <th class="col-freeze-1">STT</th>
       <th class="col-freeze-2">Bộ phận</th>
-      <th class="col-freeze-3">Chức danh</th>
+      <th class="col-freeze-3">Chức danh / Dự án</th>
       <th class="col-freeze-4">Cấp</th>
       ${months.map(m => `<th class="col-month-fixed">${monthLabel(m)}</th>`).join('')}
     </tr>
@@ -2153,12 +2349,27 @@ function renderMatrix(res) {
   let html = `
     <tr class="row-grand-total">
       <td class="col-freeze-1">★</td>
-      <td class="col-freeze-2">DỰ ÁN</td>
-      <td class="col-freeze-3">TỔNG CỘNG NHÂN SỰ BQLXD</td>
+      <td class="col-freeze-2">${isAgg ? 'TỔNG VÙNG' : 'DỰ ÁN'}</td>
+      <td class="col-freeze-3">${isAgg ? `TỔNG NHÂN SỰ (${res.projectCount} DỰ ÁN)` : 'TỔNG CỘNG NHÂN SỰ BQLXD'}</td>
       <td class="col-freeze-4"></td>
       ${res.grandTotals.map(v => `<td class="num-cell col-month-fixed" style="font-weight:700;">${v > 0 ? v : ''}</td>`).join('')}
     </tr>
   `;
+
+  // Nếu đang ở chế độ Tổng Vùng (ví dụ ấn vào BQL DAMB), hiển thị thêm dòng Tổng từng dự án bên dưới trước khi đi vào 3 bộ phận
+  if(isAgg && res.projectBreakdown && res.projectBreakdown.length > 0) {
+    res.projectBreakdown.forEach((p, idx) => {
+      html += `
+        <tr style="background:#faf5ff; font-weight:600; color:#4c1d95;">
+          <td class="col-freeze-1">DA${idx + 1}</td>
+          <td class="col-freeze-2">Dự án thành phần</td>
+          <td class="col-freeze-3" title="${escHtml(p.ten)}">↳ ${escHtml(p.ten)} (Tổng)</td>
+          <td class="col-freeze-4"></td>
+          ${p.grandTotals.map(v => `<td class="num-cell col-month-fixed" style="font-weight:600; color:#6b21a8;">${v > 0 ? v : ''}</td>`).join('')}
+        </tr>
+      `;
+    });
+  }
 
   // BQLXD
   html += `
@@ -2833,17 +3044,45 @@ function updateStats(res) {
   const elDeptPeaks = document.getElementById('statDeptPeaks');
   if(elDeptPeaks) elDeptPeaks.textContent = `${bqlPeak} / ${khoPeak} / ${bptcPeak}`;
   const elBqlName = document.getElementById('lblCurrentBqlName');
-  if(elBqlName && currentProjectData) elBqlName.textContent = currentProjectData.ten;
+  if(elBqlName) {
+    if(res.isAggregate) {
+      const vungName = document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng';
+      elBqlName.textContent = `TỔNG HỢP: ${vungName} (${res.projectCount} dự án)`;
+    } else if(currentProjectData) {
+      elBqlName.textContent = currentProjectData.ten;
+    }
+  }
 }
 
 function refreshDashboard() {
   calcResultCache = calculateAll();
-  renderTreeTable();
-  renderSyncHesoTable(calcResultCache);
+  const isAgg = !!calcResultCache.isAggregate;
+
+  const row2Grid = document.getElementById('row2Grid');
+  const row3Grid = document.getElementById('row3Grid');
+  const row4Grid = document.getElementById('row4Grid');
+  const dinhmucCard = document.getElementById('dinhmucCard');
+
+  if(isAgg) {
+    // Chế độ Tổng Vùng (ví dụ khi ấn vào BQL DAMB): Chỉ hiển thị Biểu đồ phân bổ nhân lực Tổng & Nhân sự Tổng (gộp các dự án)
+    if(row2Grid) row2Grid.style.display = 'none';
+    if(row4Grid) row4Grid.style.display = 'none';
+    if(dinhmucCard) dinhmucCard.style.display = 'none';
+    if(row3Grid) row3Grid.style.gridTemplateColumns = '1fr';
+  } else {
+    // Chế độ Chi tiết từng BQLXD
+    if(row2Grid) row2Grid.style.display = '';
+    if(row4Grid) row4Grid.style.display = '';
+    if(dinhmucCard) dinhmucCard.style.display = '';
+    if(row3Grid) row3Grid.style.gridTemplateColumns = '';
+    renderTreeTable();
+    renderSyncHesoTable(calcResultCache);
+    renderDinhMucTable();
+    renderHesoNhansuTable(calcResultCache);
+  }
+
   renderChart(calcResultCache);
-  renderDinhMucTable();
   renderMatrix(calcResultCache);
-  renderHesoNhansuTable(calcResultCache);
   updateStats(calcResultCache);
 }
 
@@ -3114,15 +3353,13 @@ function renderOrgHierarchyButtons() {
   rowBql.appendChild(btnPlus);
 }
 
-// Lắng nghe chọn Vùng
+// Lắng nghe chọn Vùng: Khi ấn vào BQL Vùng (VD: BQL DAMB) -> Hiển thị chế độ GỘP CÁC DỰ ÁN BÊN DƯỚI (currentBqlId = '')
 document.querySelectorAll('#rowVung [data-vung]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#rowVung [data-vung]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentVungId = btn.dataset.vung;
-    const list = getBqlRegistry(currentVungId);
-    currentBqlId = list.length > 0 ? list[0].id : '';
-    loadProject(currentVungId, currentBqlId);
+    currentBqlId = ''; // Chế độ Tổng hợp Vùng (gộp tất cả dự án con)
     renderOrgHierarchyButtons();
     refreshDashboard();
   });
