@@ -205,8 +205,50 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   const online=mailOnline(bridge);
   if(method==='awm_mail_status')return ok({online,last_sync:bridge?.last_sync_at||bridge?.updated_at||null,last_heartbeat:bridge?.updated_at||null,connector_state:bridge?.connector_state||'unknown',scan_info:bridge?.scan_info||null,source:bridge?.device_name||'',configured:!!bridge});
   if(!online)return fail('AD chưa kết nối. Mở AD trên máy tính để xem Mail.');
-  const query=norm(args[1]);const items=(bridge.items||[]).filter(r=>(!r.project||allowedProject(user,r.project))&&(!project||!r.project||r.project===project)&&norm([r.subject,r.sender,r.body].join(' ')).includes(query));
-  return ok({items:items.slice(0,100),last_sync:bridge.last_sync_at||bridge.updated_at,scan_info:bridge.scan_info||null});
+  const query=norm(args[1]);const account=String(args[2]||''),folder=String(args[3]||'');
+  const scoped=(bridge.items||[]).filter(r=>(!r.project||allowedProject(user,r.project))&&(!project||!r.project||r.project===project));
+  // Cây Tài khoản → Thư mục giống AD (tính trên toàn bộ thư của dự án, trước khi lọc)
+  const tree=new Map();for(const r of scoped){const a=r.account||'Outlook',f=r.folder||'Inbox';if(!tree.has(a))tree.set(a,new Map());const m=tree.get(a);const c=m.get(f)||{name:f,count:0,unread:0};c.count++;if(r.unread)c.unread++;m.set(f,c);}
+  const order=f=>({'Inbox':0,'Sent Items':1}[f]??2);
+  const accounts=[...tree.entries()].map(([name,m])=>({account:name,folders:[...m.values()].sort((x,y)=>order(x.name)-order(y.name)||x.name.localeCompare(y.name))}));
+  const items=scoped.filter(r=>(!account||(r.account||'Outlook')===account)&&(!folder||(r.folder||'Inbox')===folder)&&norm([r.subject,r.sender,r.body].join(' ')).includes(query));
+  return ok({items:items.slice(0,300),total:items.length,accounts,last_sync:bridge.last_sync_at||bridge.updated_at,scan_info:bridge.scan_info||null});
+ }
+ // ---- Soạn / trả lời thư từ AwD & AwM (AD gửi qua Outlook) ----
+ if(method==='awm_mail_contacts'){
+  if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
+  const q=norm(args[0]);const list=await read(sql,`awm:contacts:${user.username}`,[]);
+  return ok({items:(q?list.filter(c=>norm(c.name+' '+c.email).includes(q)):list).slice(0,20)});
+ }
+ if(method==='awm_mail_attach'){
+  if(!permission('tab_mail'))return fail('Không có quyền gửi Mail.');
+  const name=String(args[0]||'').replace(/[\\/:*?"<>|]/g,'_').slice(0,150),type=String(args[1]||'application/octet-stream').slice(0,100),data=String(args[2]||'');
+  if(!name||!/^[A-Za-z0-9+/]*={0,2}$/.test(data))return fail('Tệp đính kèm không hợp lệ.');
+  const size=Math.floor(data.length*3/4);if(size>3*1024*1024)return fail('Mỗi tệp tối đa 3 MB khi gửi từ web.');
+  const id=crypto.randomBytes(16).toString('hex');
+  await write(sql,`awm:att:${user.username}:${id}`,{name,type,size,data,created_at:new Date().toISOString()});
+  return ok({id,name,size});
+ }
+ if(method==='awm_mail_send'){
+  if(!permission('tab_mail'))return fail('Không có quyền gửi Mail.');
+  const bridge=await read(sql,`awm:mail:${user.username}`,null);
+  if(!mailOnline(bridge))return fail('AD đang tắt. Mở AD trên máy tính để gửi thư.');
+  const m=args[0]||{};const kind=['reply','reply_all','forward','new'].includes(m.kind)?m.kind:'new';
+  const emails=v=>(Array.isArray(v)?v:String(v||'').split(/[;,]/)).map(x=>String(x).trim()).filter(Boolean).slice(0,100);
+  const to=emails(m.to),cc=emails(m.cc),bcc=emails(m.bcc);const bad=[...to,...cc,...bcc].find(x=>!/^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/.test(x));
+  if(bad)return fail(`Địa chỉ email không hợp lệ: ${bad}`);if(!to.length)return fail('Cần ít nhất một người nhận (To).');
+  const source=kind==='new'?null:(bridge.items||[]).find(r=>r.id===String(m.source_id||''));if(kind!=='new'&&!source)return fail('Không tìm thấy thư gốc trong dữ liệu AD.');
+  const atts=[];for(const id of (Array.isArray(m.attachments)?m.attachments:[]).slice(0,10)){if(!/^[0-9a-f]{32}$/.test(String(id)))continue;const a=await read(sql,`awm:att:${user.username}:${id}`,null);if(a)atts.push({id,name:a.name,size:a.size});}
+  if(atts.reduce((t,a)=>t+(a.size||0),0)>15*1024*1024)return fail('Tổng tệp đính kèm tối đa 15 MB.');
+  const key=`awm:outbox:${user.username}`;const box=await read(sql,key,[]);const now=new Date().toISOString();
+  const job={id:crypto.randomBytes(12).toString('hex'),kind,source_id:source?.id||'',account:String(m.account||source?.account||'').slice(0,200),to,cc,bcc,subject:String(m.subject||'').slice(0,500),body:String(m.body||'').slice(0,20000),attachments:atts,status:'queued',error:'',created_at:now,updated_at:now,project:String(m.project||'').slice(0,200)};
+  await write(sql,key,[...(Array.isArray(box)?box:[]).slice(-49),job]);
+  return ok({id:job.id,status:'queued'});
+ }
+ if(method==='awm_mail_outbox'){
+  if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
+  const box=await read(sql,`awm:outbox:${user.username}`,[]);
+  return ok({items:(Array.isArray(box)?box:[]).slice(-20).reverse().map(j=>({id:j.id,kind:j.kind,to:j.to,subject:j.subject,status:j.status,error:j.error,created_at:j.created_at,updated_at:j.updated_at}))});
  }
  if(method==='awm_pair_device'){
   if(!permission('tab_mail'))return fail('Không có quyền kết nối Mail.');
