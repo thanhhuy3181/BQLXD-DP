@@ -319,6 +319,7 @@ body.is-resizing-row * {
 .dinhmuc-table-wrap {
   flex: 1;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 table.dinhmuc-table {
   width: 100%;
@@ -485,6 +486,7 @@ table.dinhmuc-table td input:focus {
 .hangmuc-table-wrap {
   flex: 1;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 table.tree-table {
   width: 100%;
@@ -598,6 +600,7 @@ table.tree-table input[type="date"]::-webkit-calendar-picker-indicator:hover {
   background: #ffffff;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-gutter: stable;
 }
 table.chart-sync-table {
   width: max-content;
@@ -694,6 +697,7 @@ table.chart-sync-table tr.chart-stat-row td.chart-freeze-axis {
 .heso-table-wrap {
   flex: 1;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 table.sync-matrix-table {
   width: max-content;
@@ -827,6 +831,7 @@ table.sync-matrix-table tr.header-summary-row td {
 .nhansu-table-wrap {
   flex: 1;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 table.nhansu-matrix-table,
 table.heso-sync-columns-table {
@@ -932,6 +937,7 @@ td.editable-cell.adjusted { background: #fef9c3 !important; font-weight: 600; co
   overflow-x: auto;
   overflow-y: visible;
   max-height: none;
+  scrollbar-gutter: stable;
 }
 
 /* Footer */
@@ -1109,24 +1115,26 @@ footer.app-footer {
       </div>
     </div>
 
-    <!-- CỘT PHẢI HÀNG 2: HỆ SỐ XD, ME, HT, KHO, BPTC (LUÔN MỞ RỘNG CHI TIẾT) -->
+    <!-- CỘT PHẢI HÀNG 2: HỆ SỐ XD, ME, HT, KHO, BPTC (LUÔN MỞ RỘNG CHI TIẾT - CÁC DÒNG THẲNG HÀNG 1-1 VỚI BẢNG HẠNG MỤC TRÁI) -->
     <div class="card-box heso-section">
       <div class="card-header">
-        <h2>
-          <span>⚡ Hệ số XD, ME, HT, Kho, BPTC</span>
-        </h2>
-        <div style="display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-muted);">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <h2>
+            <span>⚡ Hệ số XD, ME, HT, Kho, BPTC</span>
+          </h2>
+          <!-- Thanh 5 Tab Hệ số đặt ngay trên thanh tiêu đề để 2 bảng Trái-Phải thẳng hàng từng dòng từ trên xuống -->
+          <div id="hesoTabsBar" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
+            <button class="heso-tab-btn active" data-tab="xd" style="padding:1px 7px; font-size:10.5px;">Hệ số XD</button>
+            <button class="heso-tab-btn" data-tab="me" style="padding:1px 7px; font-size:10.5px;">Hệ số ME</button>
+            <button class="heso-tab-btn" data-tab="ht" style="padding:1px 7px; font-size:10.5px;">Hệ số HT</button>
+            <button class="heso-tab-btn" data-tab="kho" style="padding:1px 7px; font-size:10.5px;">Hệ số Kho</button>
+            <button class="heso-tab-btn" data-tab="bptc" style="padding:1px 7px; font-size:10.5px;">Hệ số BPTC</button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-muted); white-space:nowrap;">
           <span style="display:inline-flex; align-items:center; gap:4px;" title="Thời gian thi công: hiển thị nền màu vàng tương ứng với từ ngày bắt đầu đến ngày kết thúc thi công trong tháng"><i style="width:12px; height:12px; background:#fde047; border:1px solid #eab308; display:inline-block; border-radius:2px;"></i>Thi công</span>
           <span style="display:inline-flex; align-items:center; gap:4px;" title="Thời gian bàn giao (sau thời gian thi công): hiển thị nền màu xanh da trời tương ứng với số ngày bàn giao trong tháng"><i style="width:12px; height:12px; background:#7dd3fc; border:1px solid #0284c7; display:inline-block; border-radius:2px;"></i>Bàn giao</span>
         </div>
-      </div>
-      <!-- Thanh 5 Tab Hệ số -->
-      <div class="heso-tabs-bar" id="hesoTabsBar">
-        <button class="heso-tab-btn active" data-tab="xd">Hệ số XD</button>
-        <button class="heso-tab-btn" data-tab="me">Hệ số ME</button>
-        <button class="heso-tab-btn" data-tab="ht">Hệ số HT</button>
-        <button class="heso-tab-btn" data-tab="kho">Hệ số Kho</button>
-        <button class="heso-tab-btn" data-tab="bptc">Hệ số BPTC</button>
       </div>
       <div class="heso-table-wrap" id="hesoScrollSync">
         <table class="sync-matrix-table" id="syncHesoTable">
