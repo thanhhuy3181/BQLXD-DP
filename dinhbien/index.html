@@ -179,6 +179,111 @@ header.app-header {
   min-width: 0;
 }
 
+/* =========================================================================
+   CHẾ ĐỘ XEM TOÀN TRÁI / TOÀN PHẢI (ẨN TRÁI / ẨN PHẢI) & MOBILE / WEB VIEW
+   ========================================================================= */
+/* Khi Ẩn Cột Trái (Xem toàn màn hình Cột Phải: Biểu đồ, Hệ số tiến độ, Ma trận Nhân sự, Hệ số nhân sự) */
+body.hide-left-mode .dashboard-row-grid {
+  grid-template-columns: 1fr !important;
+}
+body.hide-left-mode .dashboard-row-grid > *:first-child,
+body.hide-left-mode .col-resizer-handle {
+  display: none !important;
+}
+
+/* Khi Ẩn Cột Phải (Xem toàn màn hình Cột Trái: Tổng hợp & Bảng Hạng mục công trình, Định mức) */
+body.hide-right-mode .dashboard-row-grid {
+  grid-template-columns: 1fr !important;
+}
+body.hide-right-mode .dashboard-row-grid > *:nth-child(2),
+body.hide-right-mode .col-resizer-handle {
+  display: none !important;
+}
+
+/* Chế độ View Mobile: Thu gọn bảng, xếp chồng 1 cột trên điện thoại / màn hình nhỏ */
+body.mobile-view-mode {
+  font-size: 11px;
+}
+body.mobile-view-mode .dashboard-row-grid {
+  grid-template-columns: 1fr !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px;
+}
+body.mobile-view-mode .col-resizer-handle {
+  display: none !important;
+}
+body.mobile-view-mode .app-header {
+  padding: 6px 8px;
+}
+body.mobile-view-mode .header-top-row {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+body.mobile-view-mode .header-right-tools {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+body.mobile-view-mode .tonghop-stats-grid {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+
+/* =========================================================================
+   RESPONSIVE DESIGN TỰ ĐỘNG CHO MÀN HÌNH 19" (1366x768 - 1440x900) & 23" (1920x1080)
+   ========================================================================= */
+@media screen and (max-width: 1440px) {
+  :root {
+    --left-col-pct: 50%;
+  }
+  .app-header {
+    padding: 6px 10px;
+  }
+  .app-header h1 {
+    font-size: 14px;
+  }
+  .btn, .btn-org, .heso-tab-btn {
+    padding: 2px 6px !important;
+    font-size: 10.5px !important;
+  }
+  .card-box .card-header {
+    padding: 4px 8px;
+  }
+  .card-box .card-header h2 {
+    font-size: 11px;
+  }
+  .stat-mini-box {
+    padding: 4px 6px;
+  }
+  .stat-mini-box .lbl {
+    font-size: 10px;
+  }
+  .stat-mini-box .val {
+    font-size: 14px;
+  }
+  .timeline-bar-wrap {
+    padding: 3px 6px !important;
+    gap: 4px !important;
+  }
+  .timeline-bar-wrap input[type="month"] {
+    width: 105px !important;
+    font-size: 10px !important;
+  }
+}
+
+@media screen and (max-width: 1200px) {
+  .dashboard-row-grid {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .col-resizer-handle {
+    display: none !important;
+  }
+  .tonghop-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
 /* Thanh kéo dọc phân chia 2 nửa màn hình Trái / Phải */
 .col-resizer-handle {
   position: absolute;
@@ -1165,6 +1270,18 @@ footer.app-footer {
     <div style="font-weight:700; font-size:13px; color:#334155;">HỆ THỐNG ĐỊNH BIÊN</div>
     <h1>QUẢN LÝ ĐỊNH BIÊN</h1>
     <div class="header-right-tools">
+      <!-- Bộ công cụ Chế độ xem: Ẩn Trái, Ẩn Phải, và Mobile/Web cho màn hình 19"/23" -->
+      <div style="display:inline-flex; gap:2px; align-items:center; background:#f1f5f9; padding:2px 4px; border:1px solid #cbd5e1; border-radius:5px;" title="Điều khiển cột hiển thị: Rất tiện lợi cho màn hình 19 inch hoặc 23 inch">
+        <button class="btn active" id="btnViewBothCols" style="padding:2px 6px; font-size:10.5px; font-weight:700;" title="Hiển thị song song cả 2 cột Trái và Phải">⬍ 2 Cột</button>
+        <button class="btn" id="btnHideRightCol" style="padding:2px 6px; font-size:10.5px;" title="Ẩn cột Phải: Phóng to toàn màn hình bảng Hạng mục & Định mức (Cột Trái)">⬅ Ẩn phải</button>
+        <button class="btn" id="btnHideLeftCol" style="padding:2px 6px; font-size:10.5px;" title="Ẩn cột Trái: Phóng to toàn màn hình Biểu đồ, Hệ số tiến độ & Ma trận Nhân sự (Cột Phải)">Ẩn trái ➡</button>
+      </div>
+
+      <div style="display:inline-flex; gap:2px; align-items:center; background:#f1f5f9; padding:2px 4px; border:1px solid #cbd5e1; border-radius:5px;" title="Chuyển đổi chế độ Web / Mobile">
+        <button class="btn active" id="btnViewModeWeb" style="padding:2px 6px; font-size:10.5px; font-weight:700;" title="Chế độ máy tính (Web chuẩn)">💻 Web</button>
+        <button class="btn" id="btnViewModeMobile" style="padding:2px 6px; font-size:10.5px;" title="Chế độ thu gọn Mobile (xếp dọc 1 cột)">📱 Mobile</button>
+      </div>
+
       <div style="display:inline-flex; gap:3px; align-items:center; background:#f8fafc; padding:2px 4px; border:1px solid var(--border); border-radius:5px;">
         <button class="btn" id="btnUndo" disabled style="padding:2px 8px; font-size:11px; font-weight:700; color:#1e40af; border-color:#bfdbfe; background:#eff6ff;" title="Hoàn tác thao tác nhập liệu trước đó (Phím tắt: Ctrl + Z — Tối đa 100 bước)">
           ↶ Hoàn tác (Ctrl+Z) <span id="lblUndoCount" style="font-family:var(--font-mono); font-size:10px; background:#dbeafe; color:#1d4ed8; padding:0 4px; border-radius:3px;">0/100</span>
@@ -1217,29 +1334,67 @@ footer.app-footer {
        HÀNG 1: TRÁI (TỔNG HỢP) | PHẢI (BIỂU ĐỒ) - GHIM CỐ ĐỊNH TRÊN CÙNG KHI CUỘN
        ========================================================================= -->
   <div class="dashboard-row-grid" id="row1StickyGrid">
-    <!-- CỘT TRÁI HÀNG 1: TỔNG HỢP -->
-    <div class="card-box">
-      <div class="card-header">
+    <!-- CỘT TRÁI HÀNG 1: TỔNG HỢP & THANH ĐIỀU KHIỂN THỜI GIAN -->
+    <div class="card-box" style="display:flex; flex-direction:column; justify-content:space-between;">
+      <div class="card-header" style="flex-wrap:wrap; gap:6px;">
         <h2><span>📋 TỔNG HỢP</span></h2>
         <span style="font-size:11px; font-weight:600; color:var(--primary);" id="lblCurrentBqlName">BQLXD Đan Phượng</span>
       </div>
-      <div class="tonghop-stats-grid">
-        <div class="stat-mini-box">
-          <div class="lbl">Tổng nhân sự đỉnh</div>
-          <div class="val" id="statPeak" style="color:var(--total-color);">0</div>
+      
+      <!-- 4 THÔNG SỐ ĐỈNH CHUẨN: TỔNG, BQLXD, KHO, BPTC KÈM CÁC THÁNG ĐẠT ĐỈNH (BỎ TỔNG NGƯỜI-THÁNG) -->
+      <div class="tonghop-stats-grid" style="grid-template-columns: repeat(4, 1fr); padding:6px 8px; gap:6px;">
+        <!-- 1. Tổng nhân sự đỉnh -->
+        <div class="stat-mini-box" style="background:#faf5ff; border-color:#e9d5ff;">
+          <div class="lbl" style="color:#6b21a8; font-weight:700;">★ Tổng nhân sự đỉnh</div>
+          <div style="display:flex; align-items:baseline; gap:6px; margin-top:2px;">
+            <div class="val" id="statPeak" style="color:#7e22ce; font-size:16px;">0</div>
+            <div style="font-size:10px; color:#6b21a8; white-space:nowrap;" id="statPeakMonth">–</div>
+          </div>
         </div>
-        <div class="stat-mini-box">
-          <div class="lbl">Tháng đạt đỉnh</div>
-          <div class="val" id="statPeakMonth" style="color:var(--primary);">–</div>
+
+        <!-- 2. BQLXD đỉnh -->
+        <div class="stat-mini-box" style="background:#eff6ff; border-color:#bfdbfe;">
+          <div class="lbl" style="color:#1d4ed8; font-weight:700;">■ BQLXD đỉnh</div>
+          <div style="display:flex; align-items:baseline; gap:6px; margin-top:2px;">
+            <div class="val" id="statBqlPeak" style="color:#1d4ed8; font-size:16px;">0</div>
+            <div style="font-size:10px; color:#2563eb; white-space:nowrap;" id="statBqlPeakMonth">–</div>
+          </div>
         </div>
-        <div class="stat-mini-box">
-          <div class="lbl">Tổng người-tháng (Man-months)</div>
-          <div class="val" id="statTotalManMonths" style="color:#0f172a;">0</div>
+
+        <!-- 3. KHO đỉnh -->
+        <div class="stat-mini-box" style="background:#fefce8; border-color:#fef08a;">
+          <div class="lbl" style="color:#b45309; font-weight:700;">■ KHO đỉnh</div>
+          <div style="display:flex; align-items:baseline; gap:6px; margin-top:2px;">
+            <div class="val" id="statKhoPeak" style="color:#b45309; font-size:16px;">0</div>
+            <div style="font-size:10px; color:#d97706; white-space:nowrap;" id="statKhoPeakMonth">–</div>
+          </div>
         </div>
-        <div class="stat-mini-box">
-          <div class="lbl">Đỉnh theo bộ phận (BQL / Kho / TC)</div>
-          <div class="val" id="statDeptPeaks" style="font-size:13px; color:#334155;">0 / 0 / 0</div>
+
+        <!-- 4. BPTC đỉnh -->
+        <div class="stat-mini-box" style="background:#ecfdf5; border-color:#a7f3d0;">
+          <div class="lbl" style="color:#047857; font-weight:700;">■ BPTC đỉnh</div>
+          <div style="display:flex; align-items:baseline; gap:6px; margin-top:2px;">
+            <div class="val" id="statBptcPeak" style="color:#047857; font-size:16px;">0</div>
+            <div style="font-size:10px; color:#059669; white-space:nowrap;" id="statBptcPeakMonth">–</div>
+          </div>
         </div>
+      </div>
+
+      <!-- THANH ĐIỀU KHIỂN THỜI GIAN ĐẶT GỌN GÀNG TRỰC TIẾP TRONG PHẦN TỔNG HỢP -->
+      <div class="timeline-bar-wrap" style="display:flex; align-items:center; justify-content:space-between; gap:6px; background:#f8fafc; border-top:1px solid #e2e8f0; padding:4px 8px; font-size:10.5px; border-radius:0 0 6px 6px; flex-wrap:wrap;">
+        <div style="display:inline-flex; align-items:center; gap:4px;">
+          <span style="font-weight:700; color:#334155;">Tháng hiển thị:</span>
+          <input type="month" id="filterMonthStart" style="padding:1px 3px; font-size:10.5px; border:1px solid #cbd5e1; border-radius:4px; font-family:var(--font-mono); background:#fff; width:112px;">
+          <span>–</span>
+          <input type="month" id="filterMonthEnd" style="padding:1px 3px; font-size:10.5px; border:1px solid #cbd5e1; border-radius:4px; font-family:var(--font-mono); background:#fff; width:112px;">
+        </div>
+        <div style="display:inline-flex; align-items:center; gap:4px;">
+          <span style="font-weight:700; color:#1e40af;">Tháng diễn giải:</span>
+          <input type="month" id="filterMonthDienGiai" style="padding:1px 3px; font-size:10.5px; border:1px solid #93c5fd; border-radius:4px; font-family:var(--font-mono); background:#eff6ff; color:#1e40af; font-weight:600; width:112px;">
+        </div>
+        <button class="btn" id="btnFilterFullProject" style="background:#fef3c7; border-color:#f59e0b; color:#92400e; font-weight:700; padding:1px 8px; font-size:10.5px;" title="Xem toàn bộ thời gian của dự án">
+          Toàn dự án
+        </button>
       </div>
     </div>
 
@@ -1256,31 +1411,7 @@ footer.app-footer {
           </div>
         </div>
 
-        <!-- 3 Ô ĐIỀU KHIỂN THỜI GIAN THEO YÊU CẦU: THÁNG HIỂN THỊ, THÁNG DIỄN GIẢI, NÚT TOÀN DỰ ÁN -->
-        <div id="chartTimelineControls" style="display:inline-flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; padding:2px 8px; border-radius:6px; font-size:11px; margin-left:auto;">
-          <!-- 1. Tháng hiển thị: Bắt đầu & Kết thúc -->
-          <div style="display:inline-flex; align-items:center; gap:3px;">
-            <span style="font-weight:700; color:#334155;" title="Hiển thị thời gian của biểu đồ và các bảng bên dưới theo thời gian mong muốn">Tháng hiển thị:</span>
-            <input type="month" id="filterMonthStart" style="padding:1px 4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px; font-family:var(--font-mono); background:#ffffff;" title="Tháng bắt đầu hiển thị">
-            <span style="color:#64748b;">–</span>
-            <input type="month" id="filterMonthEnd" style="padding:1px 4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px; font-family:var(--font-mono); background:#ffffff;" title="Tháng kết thúc hiển thị">
-          </div>
-
-          <div style="width:1px; height:18px; background:#cbd5e1; margin:0 2px;"></div>
-
-          <!-- 2. Tháng diễn giải (thường = tháng hiển thị, dùng khi diễn giải cách tính trong bảng excel xuất ra) -->
-          <div style="display:inline-flex; align-items:center; gap:3px;">
-            <span style="font-weight:700; color:#1e40af;" title="Thường = Tháng hiển thị, dùng để diễn giải cách tính trong bảng excel xuất ra">Tháng diễn giải:</span>
-            <input type="month" id="filterMonthDienGiai" style="padding:1px 4px; font-size:11px; border:1px solid #93c5fd; border-radius:4px; font-family:var(--font-mono); background:#eff6ff; color:#1e40af; font-weight:600;" title="Tháng diễn giải (sử dụng khi xuất Excel diễn giải)">
-          </div>
-
-          <div style="width:1px; height:18px; background:#cbd5e1; margin:0 2px;"></div>
-
-          <!-- 3. Nút Toàn dự án: reset về toàn bộ khoảng thời gian dự án -->
-          <button class="btn" id="btnFilterFullProject" style="background:#fef3c7; border-color:#f59e0b; color:#92400e; font-weight:700; padding:1px 8px; font-size:11px;" title="Hiển thị thời gian của biểu đồ và các bảng bên dưới của toàn dự án">
-            Toàn dự án
-          </button>
-        </div>
+        <span style="font-size:11px; color:var(--text-muted); margin-left:auto;">Cuộn ngang đồng bộ với các bảng bên dưới</span>
       </div>
       <div class="chart-box-top" id="chartScrollSync">
         <table class="chart-sync-table" id="chartSyncTable">
@@ -4403,24 +4534,65 @@ document.querySelectorAll('.dept-sync-tabs').forEach(bar => {
    7. REFRESH & UPDATE STATS
    ========================================================================== */
 function updateStats(res) {
-  let peakVal = 0, peakMonth = '–', totalMM = 0;
-  let bqlPeak = 0, khoPeak = 0, bptcPeak = 0;
+  let peakVal = 0, bqlPeak = 0, khoPeak = 0, bptcPeak = 0;
+
+  // 1. Tìm giá trị đỉnh cao nhất của từng khối
   res.grandTotals.forEach((v, idx) => {
-    totalMM += v;
-    if(v > peakVal) {
-      peakVal = v;
-      peakMonth = monthLabel(res.months[idx]);
-    }
+    if(v > peakVal) peakVal = v;
     if(res.bqlTotals[idx] > bqlPeak) bqlPeak = res.bqlTotals[idx];
     if(res.khoTotals[idx] > khoPeak) khoPeak = res.khoTotals[idx];
     if(res.bptcTotals[idx] > bptcPeak) bptcPeak = res.bptcTotals[idx];
   });
-  document.getElementById('statPeak').textContent = peakVal;
-  document.getElementById('statPeakMonth').textContent = peakMonth;
-  const elTotalMM = document.getElementById('statTotalManMonths');
-  if(elTotalMM) elTotalMM.textContent = totalMM;
-  const elDeptPeaks = document.getElementById('statDeptPeaks');
-  if(elDeptPeaks) elDeptPeaks.textContent = `${bqlPeak} / ${khoPeak} / ${bptcPeak}`;
+
+  // 2. Tìm danh sách tất cả các tháng đạt giá trị đỉnh đó (hỗ trợ nhiều tháng đỉnh)
+  const peakMonths = [];
+  const bqlPeakMonths = [];
+  const khoPeakMonths = [];
+  const bptcPeakMonths = [];
+
+  res.months.forEach((mDate, idx) => {
+    const lbl = monthLabel(mDate);
+    if(peakVal > 0 && res.grandTotals[idx] === peakVal) peakMonths.push(lbl);
+    if(bqlPeak > 0 && res.bqlTotals[idx] === bqlPeak) bqlPeakMonths.push(lbl);
+    if(khoPeak > 0 && res.khoTotals[idx] === khoPeak) khoPeakMonths.push(lbl);
+    if(bptcPeak > 0 && res.bptcTotals[idx] === bptcPeak) bptcPeakMonths.push(lbl);
+  });
+
+  // 3. Hiển thị thông số 4 khối lên giao diện
+  const fmtMonths = (arr) => arr.length > 0 ? arr.join(', ') : '–';
+
+  const elStatPeak = document.getElementById('statPeak');
+  const elStatPeakMonth = document.getElementById('statPeakMonth');
+  if(elStatPeak) elStatPeak.textContent = peakVal;
+  if(elStatPeakMonth) {
+    elStatPeakMonth.textContent = fmtMonths(peakMonths);
+    elStatPeakMonth.title = `Các tháng đạt đỉnh: ${fmtMonths(peakMonths)}`;
+  }
+
+  const elBqlPeak = document.getElementById('statBqlPeak');
+  const elBqlPeakMonth = document.getElementById('statBqlPeakMonth');
+  if(elBqlPeak) elBqlPeak.textContent = bqlPeak;
+  if(elBqlPeakMonth) {
+    elBqlPeakMonth.textContent = fmtMonths(bqlPeakMonths);
+    elBqlPeakMonth.title = `Các tháng BQLXD đạt đỉnh: ${fmtMonths(bqlPeakMonths)}`;
+  }
+
+  const elKhoPeak = document.getElementById('statKhoPeak');
+  const elKhoPeakMonth = document.getElementById('statKhoPeakMonth');
+  if(elKhoPeak) elKhoPeak.textContent = khoPeak;
+  if(elKhoPeakMonth) {
+    elKhoPeakMonth.textContent = fmtMonths(khoPeakMonths);
+    elKhoPeakMonth.title = `Các tháng KHO đạt đỉnh: ${fmtMonths(khoPeakMonths)}`;
+  }
+
+  const elBptcPeak = document.getElementById('statBptcPeak');
+  const elBptcPeakMonth = document.getElementById('statBptcPeakMonth');
+  if(elBptcPeak) elBptcPeak.textContent = bptcPeak;
+  if(elBptcPeakMonth) {
+    elBptcPeakMonth.textContent = fmtMonths(bptcPeakMonths);
+    elBptcPeakMonth.title = `Các tháng BPTC đạt đỉnh: ${fmtMonths(bptcPeakMonths)}`;
+  }
+
   const elBqlName = document.getElementById('lblCurrentBqlName');
   if(elBqlName) {
     if(res.isAggregate) {
@@ -6739,6 +6911,66 @@ function initTimelineControls() {
   }
 }
 initTimelineControls();
+
+// Khởi tạo các nút Chế độ xem: Ẩn Trái / Ẩn Phải / 2 Cột và Web / Mobile View
+function initViewModeControls() {
+  const btnBoth = document.getElementById('btnViewBothCols');
+  const btnHideRight = document.getElementById('btnHideRightCol');
+  const btnHideLeft = document.getElementById('btnHideLeftCol');
+  const btnWeb = document.getElementById('btnViewModeWeb');
+  const btnMobile = document.getElementById('btnViewModeMobile');
+
+  function updateColumnViewButtons(mode) {
+    if(btnBoth) btnBoth.classList.toggle('active', mode === 'both');
+    if(btnHideRight) btnHideRight.classList.toggle('active', mode === 'hideright');
+    if(btnHideLeft) btnHideLeft.classList.toggle('active', mode === 'hideleft');
+  }
+
+  if(btnBoth) {
+    btnBoth.addEventListener('click', () => {
+      document.body.classList.remove('hide-left-mode', 'hide-right-mode');
+      updateColumnViewButtons('both');
+      showUndoToast('⬍ Đang xem chế độ 2 Cột song song');
+    });
+  }
+
+  if(btnHideRight) {
+    btnHideRight.addEventListener('click', () => {
+      document.body.classList.remove('hide-left-mode');
+      document.body.classList.toggle('hide-right-mode');
+      const isHidden = document.body.classList.contains('hide-right-mode');
+      updateColumnViewButtons(isHidden ? 'hideright' : 'both');
+      showUndoToast(isHidden ? '⬅ Đã ẩn cột Phải — Toàn màn hình Hạng mục & Định mức' : '⬍ Đã hiện lại 2 Cột');
+    });
+  }
+
+  if(btnHideLeft) {
+    btnHideLeft.addEventListener('click', () => {
+      document.body.classList.remove('hide-right-mode');
+      document.body.classList.toggle('hide-left-mode');
+      const isHidden = document.body.classList.contains('hide-left-mode');
+      updateColumnViewButtons(isHidden ? 'hideleft' : 'both');
+      showUndoToast(isHidden ? '➡ Đã ẩn cột Trái — Toàn màn hình Biểu đồ & Nhân sự' : '⬍ Đã hiện lại 2 Cột');
+    });
+  }
+
+  if(btnWeb && btnMobile) {
+    btnWeb.addEventListener('click', () => {
+      document.body.classList.remove('mobile-view-mode');
+      btnWeb.classList.add('active');
+      btnMobile.classList.remove('active');
+      showUndoToast('💻 Đã chuyển sang chế độ xem Web');
+    });
+
+    btnMobile.addEventListener('click', () => {
+      document.body.classList.add('mobile-view-mode');
+      btnMobile.classList.add('active');
+      btnWeb.classList.remove('active');
+      showUndoToast('📱 Đã chuyển sang chế độ xem Mobile');
+    });
+  }
+}
+initViewModeControls();
 
   const savedColPct = localStorage.getItem('db_v2_left_col_pct');
   const savedRow2H = localStorage.getItem('db_v2_row2_h');
