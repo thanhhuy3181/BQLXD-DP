@@ -297,10 +297,10 @@ body.mobile-view-mode .tonghop-stats-grid {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: calc(var(--left-col-pct) - 2px);
-  width: 16px;
+  left: calc(var(--left-col-pct) - 5px);
+  width: 22px;
   cursor: col-resize;
-  z-index: 50;
+  z-index: 70;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,54 +313,59 @@ body.mobile-view-mode .tonghop-stats-grid {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 7px;
-  width: 2px;
-  background: #cbd5e1;
-  transition: background 0.15s ease, width 0.15s ease;
-  box-shadow: 0 0 3px rgba(0,0,0,0.08);
+  left: 10px;
+  width: 3px;
+  background: #3b82f6;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, width 0.15s ease;
+  box-shadow: 0 0 4px rgba(37,99,235,0.25);
 }
 .global-col-resizer-line::after {
   content: '⋮';
   position: sticky;
-  top: 50vh;
-  z-index: 2;
+  top: 48vh;
+  z-index: 3;
   font-size: 14px;
   font-weight: 900;
-  color: #475569;
-  background: #ffffff;
-  border: 1px solid #94a3b8;
+  color: #ffffff;
+  background: #2563eb;
+  border: 1.5px solid #1d4ed8;
   border-radius: 4px;
-  padding: 12px 1px;
+  padding: 10px 3px;
   line-height: 1;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
   transition: all 0.15s ease;
+  pointer-events: auto;
+  cursor: col-resize;
 }
 .global-col-resizer-line:hover::before,
+.global-col-resizer-line.active::before,
 body.is-resizing-col .global-col-resizer-line::before {
-  background: #2563eb;
-  width: 4px;
-  left: 6px;
+  background: #1d4ed8;
+  width: 5px;
+  left: 9px;
+  opacity: 1;
 }
 .global-col-resizer-line:hover::after,
+.global-col-resizer-line.active::after,
 body.is-resizing-col .global-col-resizer-line::after {
-  background: #2563eb;
-  border-color: #1d4ed8;
-  color: #ffffff;
-  transform: scale(1.12);
+  background: #1d4ed8;
+  transform: scale(1.15);
 }
 
 /* Thanh kéo ngang phân chia giữa các tầng bảng - HITBOX RỘNG DỄ KÉO */
 .row-resizer-bar {
-  height: 14px;
-  margin: -3px 0;
+  height: 18px;
+  margin: -5px 0;
   cursor: row-resize;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  z-index: 55;
+  z-index: 65;
   user-select: none;
   touch-action: none;
+  pointer-events: auto;
 }
 .row-resizer-bar::before {
   content: '';
@@ -369,36 +374,39 @@ body.is-resizing-col .global-col-resizer-line::after {
   right: 0;
   top: 50%;
   height: 2px;
-  background: #cbd5e1;
-  transition: background 0.15s ease;
+  background: #3b82f6;
+  opacity: 0.75;
+  transition: all 0.15s ease;
 }
 .row-resizer-bar::after {
   content: '⋯';
   position: relative;
   z-index: 2;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  color: #64748b;
-  font-size: 12px;
+  background: #2563eb;
+  border: 1px solid #1d4ed8;
+  color: #ffffff;
+  font-size: 13px;
   font-weight: 900;
-  padding: 0 14px;
-  height: 14px;
-  line-height: 10px;
-  border-radius: 7px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  padding: 1px 18px;
+  border-radius: 999px;
+  line-height: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   transition: all 0.15s ease;
+  pointer-events: auto;
+  cursor: row-resize;
 }
 .row-resizer-bar:hover::before,
-.row-resizer-bar.active::before {
-  background: #2563eb;
-  height: 3px;
+.row-resizer-bar.active::before,
+body.is-resizing-row .row-resizer-bar::before {
+  background: #1d4ed8;
+  height: 4px;
+  opacity: 1;
 }
 .row-resizer-bar:hover::after,
-.row-resizer-bar.active::after {
-  background: #2563eb;
-  border-color: #1d4ed8;
-  color: #ffffff;
-  transform: scale(1.1);
+.row-resizer-bar.active::after,
+body.is-resizing-row .row-resizer-bar::after {
+  background: #1d4ed8;
+  transform: scale(1.15);
 }
 body.is-resizing-col,
 body.is-resizing-col * {
@@ -7248,127 +7256,154 @@ initViewModeControls();
   if(savedRow2H) document.documentElement.style.setProperty('--row2-height', savedRow2H + 'px');
   if(savedRow3H) document.documentElement.style.setProperty('--row3-height', savedRow3H + 'px');
 
-  // 1. Kéo thanh dọc phân chia 2 nửa màn hình Trái / Phải - MẠCH LIỀN TOÀN CỤC (Pointer Events)
+  // 1. Kéo thanh dọc phân chia 2 nửa màn hình Trái / Phải - Bắt sự kiện Window chống trượt 100%
   const globalColResizer = document.getElementById('globalColResizer');
   if (globalColResizer) {
-    globalColResizer.addEventListener('pointerdown', (e) => {
+    let isDraggingCol = false;
+    let wrapperRect = null;
+
+    const startColDrag = (e) => {
       e.preventDefault();
-      globalColResizer.setPointerCapture(e.pointerId);
       const wrapper = document.querySelector('.main-wrapper');
       if (!wrapper) return;
-      const rect = wrapper.getBoundingClientRect();
+      isDraggingCol = true;
+      wrapperRect = wrapper.getBoundingClientRect();
       document.body.classList.add('is-resizing-col');
+      globalColResizer.classList.add('active');
+    };
 
-      const onPointerMove = (ev) => {
-        const relX = ev.clientX - rect.left;
-        let pct = (relX / rect.width) * 100;
-        pct = Math.max(20, Math.min(80, Math.round(pct * 10) / 10));
-        document.documentElement.style.setProperty('--left-col-pct', pct + '%');
-        localStorage.setItem('db_v2_left_col_pct', String(pct));
-      };
+    const doColDrag = (e) => {
+      if (!isDraggingCol || !wrapperRect) return;
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : null);
+      if (clientX == null) return;
+      const relX = clientX - wrapperRect.left;
+      let pct = (relX / wrapperRect.width) * 100;
+      pct = Math.max(20, Math.min(80, Math.round(pct * 10) / 10));
+      document.documentElement.style.setProperty('--left-col-pct', pct + '%');
+      localStorage.setItem('db_v2_left_col_pct', String(pct));
+    };
 
-      const onPointerUp = (ev) => {
+    const stopColDrag = () => {
+      if (isDraggingCol) {
+        isDraggingCol = false;
         document.body.classList.remove('is-resizing-col');
-        try { globalColResizer.releasePointerCapture(ev.pointerId); } catch(err) {}
-        globalColResizer.removeEventListener('pointermove', onPointerMove);
-        globalColResizer.removeEventListener('pointerup', onPointerUp);
-        globalColResizer.removeEventListener('pointercancel', onPointerUp);
-      };
+        globalColResizer.classList.remove('active');
+      }
+    };
 
-      globalColResizer.addEventListener('pointermove', onPointerMove);
-      globalColResizer.addEventListener('pointerup', onPointerUp);
-      globalColResizer.addEventListener('pointercancel', onPointerUp);
-    });
+    globalColResizer.addEventListener('mousedown', startColDrag);
+    globalColResizer.addEventListener('touchstart', startColDrag, { passive: false });
+    window.addEventListener('mousemove', doColDrag);
+    window.addEventListener('touchmove', doColDrag, { passive: false });
+    window.addEventListener('mouseup', stopColDrag);
+    window.addEventListener('touchend', stopColDrag);
 
     globalColResizer.addEventListener('dblclick', () => {
       document.documentElement.style.setProperty('--left-col-pct', '54%');
       localStorage.removeItem('db_v2_left_col_pct');
-      showUndoToast('⬍ Đã đặt lại tỷ lệ 2 cột mặc định (54%)');
+      showUndoToast('↔ Đã đặt lại tỷ lệ 2 cột mặc định (54%)');
     });
   }
 
-  // 2. Kéo thanh ngang phân chia giữa (Hạng mục + Hệ số) và (Định mức + Nhân sự)
+  // 2. Kéo thanh ngang giữa (Hạng mục + Hệ số) và (Định mức + Nhân sự)
   const rowResizer23 = document.getElementById('rowResizer23');
-  if(rowResizer23) {
-    rowResizer23.addEventListener('pointerdown', (e) => {
+  if (rowResizer23) {
+    let isDraggingRow2 = false;
+    let startY2 = 0;
+    let startH2 = 0;
+
+    const startRow2Drag = (e) => {
       e.preventDefault();
-      rowResizer23.setPointerCapture(e.pointerId);
       const hangmucCard = document.getElementById('hangmucCard');
-      if(!hangmucCard) return;
-      const startY = e.clientY;
-      const startH2 = hangmucCard.getBoundingClientRect().height;
+      if (!hangmucCard) return;
+      isDraggingRow2 = true;
+      startY2 = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+      startH2 = hangmucCard.getBoundingClientRect().height;
       document.body.classList.add('is-resizing-row');
       rowResizer23.classList.add('active');
+    };
 
-      const onPointerMove = (ev) => {
-        const deltaY = ev.clientY - startY;
-        const newH2 = Math.max(160, Math.min(850, Math.round(startH2 + deltaY)));
-        document.documentElement.style.setProperty('--row2-height', newH2 + 'px');
-        localStorage.setItem('db_v2_row2_h', String(newH2));
-      };
+    const doRow2Drag = (e) => {
+      if (!isDraggingRow2) return;
+      const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+      if (clientY == null) return;
+      const deltaY = clientY - startY2;
+      const newH2 = Math.max(160, Math.min(850, Math.round(startH2 + deltaY)));
+      document.documentElement.style.setProperty('--row2-height', newH2 + 'px');
+      localStorage.setItem('db_v2_row2_h', String(newH2));
+    };
 
-      const onPointerUp = (ev) => {
+    const stopRow2Drag = () => {
+      if (isDraggingRow2) {
+        isDraggingRow2 = false;
         document.body.classList.remove('is-resizing-row');
         rowResizer23.classList.remove('active');
-        try { rowResizer23.releasePointerCapture(ev.pointerId); } catch(err) {}
-        rowResizer23.removeEventListener('pointermove', onPointerMove);
-        rowResizer23.removeEventListener('pointerup', onPointerUp);
-        rowResizer23.removeEventListener('pointercancel', onPointerUp);
-      };
+      }
+    };
 
-      rowResizer23.addEventListener('pointermove', onPointerMove);
-      rowResizer23.addEventListener('pointerup', onPointerUp);
-      rowResizer23.addEventListener('pointercancel', onPointerUp);
-    });
+    rowResizer23.addEventListener('mousedown', startRow2Drag);
+    rowResizer23.addEventListener('touchstart', startRow2Drag, { passive: false });
+    window.addEventListener('mousemove', doRow2Drag);
+    window.addEventListener('touchmove', doRow2Drag, { passive: false });
+    window.addEventListener('mouseup', stopRow2Drag);
+    window.addEventListener('touchend', stopRow2Drag);
 
     rowResizer23.addEventListener('dblclick', () => {
       document.documentElement.style.setProperty('--row2-height', '360px');
       localStorage.removeItem('db_v2_row2_h');
-      showUndoToast('↕ Đã đặt lại chiều cao tầng 2 mặc định');
+      showUndoToast('↕ Đã đặt lại chiều cao tầng 2 mặc định (360px)');
     });
   }
 
   // 3. Kéo thanh ngang dưới điều chỉnh chiều cao (Định mức + Nhân sự)
   const rowResizer34 = document.getElementById('rowResizer34');
-  if(rowResizer34) {
-    rowResizer34.addEventListener('pointerdown', (e) => {
+  if (rowResizer34) {
+    let isDraggingRow3 = false;
+    let startY3 = 0;
+    let startH3 = 0;
+
+    const startRow3Drag = (e) => {
       e.preventDefault();
-      rowResizer34.setPointerCapture(e.pointerId);
       const nhansuCard = document.querySelector('.nhansu-section');
-      if(!nhansuCard) return;
-      const startY = e.clientY;
-      const startH3 = nhansuCard.getBoundingClientRect().height;
+      if (!nhansuCard) return;
+      isDraggingRow3 = true;
+      startY3 = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+      startH3 = nhansuCard.getBoundingClientRect().height;
       document.body.classList.add('is-resizing-row');
       rowResizer34.classList.add('active');
+    };
 
-      const onPointerMove = (ev) => {
-        const deltaY = ev.clientY - startY;
-        const newH3 = Math.max(200, Math.min(950, Math.round(startH3 + deltaY)));
-        document.documentElement.style.setProperty('--row3-height', newH3 + 'px');
-        localStorage.setItem('db_v2_row3_h', String(newH3));
-      };
+    const doRow3Drag = (e) => {
+      if (!isDraggingRow3) return;
+      const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+      if (clientY == null) return;
+      const deltaY = clientY - startY3;
+      const newH3 = Math.max(200, Math.min(950, Math.round(startH3 + deltaY)));
+      document.documentElement.style.setProperty('--row3-height', newH3 + 'px');
+      localStorage.setItem('db_v2_row3_h', String(newH3));
+    };
 
-      const onPointerUp = (ev) => {
+    const stopRow3Drag = () => {
+      if (isDraggingRow3) {
+        isDraggingRow3 = false;
         document.body.classList.remove('is-resizing-row');
         rowResizer34.classList.remove('active');
-        try { rowResizer34.releasePointerCapture(ev.pointerId); } catch(err) {}
-        rowResizer34.removeEventListener('pointermove', onPointerMove);
-        rowResizer34.removeEventListener('pointerup', onPointerUp);
-        rowResizer34.removeEventListener('pointercancel', onPointerUp);
-      };
+      }
+    };
 
-      rowResizer34.addEventListener('pointermove', onPointerMove);
-      rowResizer34.addEventListener('pointerup', onPointerUp);
-      rowResizer34.addEventListener('pointercancel', onPointerUp);
-    });
+    rowResizer34.addEventListener('mousedown', startRow3Drag);
+    rowResizer34.addEventListener('touchstart', startRow3Drag, { passive: false });
+    window.addEventListener('mousemove', doRow3Drag);
+    window.addEventListener('touchmove', doRow3Drag, { passive: false });
+    window.addEventListener('mouseup', stopRow3Drag);
+    window.addEventListener('touchend', stopRow3Drag);
 
     rowResizer34.addEventListener('dblclick', () => {
       document.documentElement.style.setProperty('--row3-height', '480px');
       localStorage.removeItem('db_v2_row3_h');
-      showUndoToast('↕ Đã đặt lại chiều cao tầng 3 mặc định');
+      showUndoToast('↕ Đã đặt lại chiều cao tầng 3 mặc định (480px)');
     });
-  }
-});
+  }});
 </script>
 </body>
 </html>
