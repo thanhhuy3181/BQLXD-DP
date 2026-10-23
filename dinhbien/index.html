@@ -550,7 +550,19 @@ table.tree-table td {
   text-overflow: ellipsis;
 }
 table.tree-table tr.row-selected td {
-  background-color: #eff6ff !important;
+  background-color: #dbeafe !important;
+}
+table.tree-table tr.tr-level-1.row-selected td {
+  background-color: #d97706 !important;
+  color: #fff !important;
+}
+table.tree-table tr.tr-level-2.row-selected td {
+  background-color: #bfdbfe !important;
+  color: #1e3a8a !important;
+}
+table.tree-table tr.row-selected {
+  outline: 1.5px solid var(--primary) !important;
+  outline-offset: -1px;
 }
 tr.tr-level-1 { background-color: #e67e22 !important; color: #ffffff; font-weight: 700; }
 tr.tr-level-1 td { border-color: #d35400; color: #ffffff; background-color: #e67e22 !important; }
@@ -1640,6 +1652,32 @@ let currentVungId = 'vung_bac';
 let currentBqlId = 'dan_phuong';
 let currentProjectData = null;
 let selectedRowId = null;
+let selectedRowIds = new Set(); // Hỗ trợ chọn nhiều dòng (Click, Ctrl+Click, Shift+Click, hoặc bôi vùng nhiều dòng)
+
+// Hàm lấy tất cả ID các dòng đang được chọn trong bảng Hạng mục (kết hợp cả selectedRowIds, selectedRowId và các ô đang bôi chọn)
+function getSelectedTreeRowIds() {
+  const ids = new Set();
+  if(selectedRowIds && selectedRowIds.size > 0) {
+    selectedRowIds.forEach(id => ids.add(id));
+  }
+  if(selectedRowId) {
+    ids.add(selectedRowId);
+  }
+
+  // Nếu người dùng đang dùng chuột bôi chọn vùng nhiều ô / nhiều dòng trên bảng Hạng mục (#treeTable)
+  if(excelRangeSelection.tableEl && excelRangeSelection.tableEl.id === 'treeTable') {
+    if(excelRangeSelection.selectedCells && excelRangeSelection.selectedCells.length > 0) {
+      excelRangeSelection.selectedCells.forEach(({ cell }) => {
+        const tr = cell.closest('tr');
+        if(tr && tr.dataset.id) {
+          ids.add(tr.dataset.id);
+        }
+      });
+    }
+  }
+
+  return Array.from(ids);
+}
 
 // Hệ số tiến độ và Hệ số nhân sự luôn mở rộng đầy đủ các dòng
 let isHesoExpanded = true;
@@ -2810,9 +2848,9 @@ function renderTreeTable() {
     const tr = document.createElement('tr');
     tr.dataset.id = r.id;
     tr.dataset.idx = idx;
-    if(r.id === selectedRowId) {
+    const isRowSelected = (r.id === selectedRowId) || (selectedRowIds && selectedRowIds.has(r.id));
+    if(isRowSelected) {
       tr.classList.add('row-selected');
-      tr.style.outline = '1.5px solid var(--primary)';
     }
 
     // Drag & Drop: chỉ cho phép kéo di chuyển dòng khi nhấn giữ chuột vào cột đầu tiên (td.col-drag-handle)
@@ -2851,7 +2889,7 @@ function renderTreeTable() {
 
     if(r.level === 1) {
       sttCounter = 0;
-      tr.className = 'tr-level-1' + (r.id === selectedRowId ? ' row-selected' : '');
+      tr.className = 'tr-level-1' + (isRowSelected ? ' row-selected' : '');
       tr.innerHTML = `
         <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng (Mục lục cấp 1)"><span class="drag-icon">≡</span></td>
         <td style="text-align:center;">1</td>
@@ -2863,7 +2901,7 @@ function renderTreeTable() {
       tbody.appendChild(tr);
     } else if(r.level === 2) {
       sttCounter = 0;
-      tr.className = 'tr-level-2' + (r.id === selectedRowId ? ' row-selected' : '');
+      tr.className = 'tr-level-2' + (isRowSelected ? ' row-selected' : '');
       tr.innerHTML = `
         <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng (Mục lục cấp 2)"><span class="drag-icon">≡</span></td>
         <td style="text-align:center;">2</td>
@@ -2997,15 +3035,50 @@ function renderTreeTable() {
       });
     }
 
-    tr.addEventListener('click', () => {
-      if(selectedRowId !== r.id) {
+    tr.addEventListener('click', (e) => {
+      // Bỏ qua nếu click trực tiếp vào nút input/select đang sửa dở
+      const allRows = currentProjectData.treeRows || [];
+      const curIdx = allRows.findIndex(x => x.id === r.id);
+
+      if(e.ctrlKey || e.metaKey) {
+        // Ctrl + Click: Bật / Tắt chọn thêm dòng này
+        if(selectedRowIds.has(r.id)) {
+          selectedRowIds.delete(r.id);
+          if(selectedRowId === r.id) {
+            selectedRowId = Array.from(selectedRowIds)[0] || null;
+          }
+        } else {
+          selectedRowIds.add(r.id);
+          selectedRowId = r.id;
+        }
+      } else if(e.shiftKey && selectedRowId) {
+        // Shift + Click: Chọn một dải liên tục từ selectedRowId đến dòng này
+        const anchorIdx = allRows.findIndex(x => x.id === selectedRowId);
+        if(anchorIdx >= 0 && curIdx >= 0) {
+          const minI = Math.min(anchorIdx, curIdx);
+          const maxI = Math.max(anchorIdx, curIdx);
+          selectedRowIds.clear();
+          for(let i = minI; i <= maxI; i++) {
+            selectedRowIds.add(allRows[i].id);
+          }
+        } else {
+          selectedRowIds.clear();
+          selectedRowIds.add(r.id);
+          selectedRowId = r.id;
+        }
+      } else {
+        // Click thông thường: Chọn 1 dòng duy nhất
+        selectedRowIds.clear();
+        selectedRowIds.add(r.id);
         selectedRowId = r.id;
-        tbody.querySelectorAll('tr').forEach(rowEl => {
-          const isSel = rowEl.dataset.id === selectedRowId;
-          rowEl.classList.toggle('row-selected', isSel);
-          rowEl.style.outline = isSel ? '1.5px solid var(--primary)' : '';
-        });
       }
+
+      // Cập nhật class row-selected trên DOM bảng
+      tbody.querySelectorAll('tr[data-id]').forEach(rowEl => {
+        const rowId = rowEl.dataset.id;
+        const isSel = selectedRowIds.has(rowId);
+        rowEl.classList.toggle('row-selected', isSel);
+      });
     });
   });
 
@@ -4472,40 +4545,74 @@ function insertRowAtSelection(newRow) {
 }
 
 document.getElementById('btnLenCap').addEventListener('click', () => {
-  if(!selectedRowId) return;
-  const r = currentProjectData.treeRows.find(x => x.id === selectedRowId);
-  if(r && r.level > 1) {
-    r.level--;
+  const ids = getSelectedTreeRowIds();
+  if(!ids || ids.length === 0) return;
+  let changed = false;
+  const idSet = new Set(ids);
+  currentProjectData.treeRows.forEach(r => {
+    if(idSet.has(r.id) && r.level > 1) {
+      r.level--;
+      changed = true;
+    }
+  });
+  if(changed) {
     saveCurrentProject();
     refreshDashboard();
   }
 });
 
 document.getElementById('btnXuongCap').addEventListener('click', () => {
-  if(!selectedRowId) return;
-  const r = currentProjectData.treeRows.find(x => x.id === selectedRowId);
-  if(r && r.level < 3) {
-    r.level++;
+  const ids = getSelectedTreeRowIds();
+  if(!ids || ids.length === 0) return;
+  let changed = false;
+  const idSet = new Set(ids);
+  currentProjectData.treeRows.forEach(r => {
+    if(idSet.has(r.id) && r.level < 3) {
+      r.level++;
+      changed = true;
+    }
+  });
+  if(changed) {
     saveCurrentProject();
     refreshDashboard();
   }
 });
 
-// Xóa dòng đang chọn
+// Xóa tất cả các dòng đang được chọn (hỗ trợ xóa hàng loạt nhiều dòng)
 const btnXoaDongHm = document.getElementById('btnXoaDongHm');
 if(btnXoaDongHm) {
   btnXoaDongHm.addEventListener('click', () => {
-    if(!selectedRowId) {
-      alert('Hãy click chọn một dòng trong bảng Hạng mục trước khi xóa!');
+    const idsToDelete = getSelectedTreeRowIds();
+    if(!idsToDelete || idsToDelete.length === 0) {
+      alert('Hãy chọn ít nhất một dòng trong bảng Hạng mục trước khi xóa!');
       return;
     }
-    const idx = currentProjectData.treeRows.findIndex(x => x.id === selectedRowId);
-    if(idx >= 0) {
-      currentProjectData.treeRows.splice(idx, 1);
-      selectedRowId = currentProjectData.treeRows[idx]?.id || currentProjectData.treeRows[idx - 1]?.id || null;
-      saveCurrentProject();
-      refreshDashboard();
+
+    const deleteSet = new Set(idsToDelete);
+    const count = deleteSet.size;
+
+    // Tìm vị trí dòng trước khi xóa để chọn dòng kế tiếp sau khi xóa
+    const firstIdx = currentProjectData.treeRows.findIndex(x => deleteSet.has(x.id));
+
+    // Lọc bỏ tất cả các dòng nằm trong danh sách cần xóa
+    currentProjectData.treeRows = currentProjectData.treeRows.filter(x => !deleteSet.has(x.id));
+
+    // Xóa sạch trạng thái chọn nhiều dòng
+    selectedRowIds.clear();
+    clearExcelRangeSelection();
+
+    // Đặt lại dòng đang chọn là dòng tại vị trí firstIdx (hoặc dòng liền kề trước đó)
+    if(currentProjectData.treeRows.length > 0) {
+      const nextIdx = Math.min(Math.max(0, firstIdx), currentProjectData.treeRows.length - 1);
+      selectedRowId = currentProjectData.treeRows[nextIdx].id;
+      selectedRowIds.add(selectedRowId);
+    } else {
+      selectedRowId = null;
     }
+
+    saveCurrentProject();
+    refreshDashboard();
+    showUndoToast(`🗑️ Đã xóa ${count} dòng trong bảng Hạng mục (Nhấn Ctrl+Z để hoàn tác)`);
   });
 }
 
