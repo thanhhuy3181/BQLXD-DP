@@ -872,14 +872,15 @@ td.editable-cell input {
 }
 td.editable-cell.adjusted { background: #fef9c3 !important; font-weight: 600; color: #854d0e; }
 
-/* 5. KHỐI CUỐI: HỆ SỐ NHÂN SỰ (VI CHỈNH / ĐIỀU CHỈNH) */
+/* 5. KHỐI CUỐI: HỆ SỐ NHÂN SỰ (MỞ RỘNG HẾT CỠ TOÀN BỘ DÒNG, KHÔNG CUỘN DỌC) */
 .heso-nhansu-section {
   display: flex;
   flex-direction: column;
 }
 .heso-nhansu-table-wrap {
-  overflow: auto;
-  max-height: 240px;
+  overflow-x: auto;
+  overflow-y: visible;
+  max-height: none;
 }
 
 /* Footer */
@@ -1170,16 +1171,12 @@ footer.app-footer {
     <!-- CỘT TRÁI HÀNG 4: ĐỂ TRỐNG ĐÚNG BẢN VẼ -->
     <div></div>
 
-    <!-- CỘT PHẢI HÀNG 4: HỆ SỐ NHÂN SỰ -->
+    <!-- CỘT PHẢI HÀNG 4: HỆ SỐ NHÂN SỰ (LUÔN MỞ RỘNG TOÀN BỘ) -->
     <div class="card-box heso-nhansu-section">
       <div class="card-header">
         <h2>
           <span>⚙️ Hệ số nhân sự (Vi chỉnh hệ số điều chỉnh theo chức danh)</span>
         </h2>
-        <button class="toggle-btn" id="toggleHesoNhansuBtn" title="Bấm để mở rộng / thu gọn">
-          <span id="toggleHesoNhansuIcon">▼</span>
-          <span id="toggleHesoNhansuText">Mở rộng vi chỉnh</span>
-        </button>
       </div>
       <!-- Thanh 3 Tab Bộ phận -->
       <div class="heso-tabs-bar" id="hesoNhansuTabsBar">
@@ -1348,9 +1345,9 @@ let currentBqlId = 'dan_phuong';
 let currentProjectData = null;
 let selectedRowId = null;
 
-// Hệ số tiến độ (XD, ME, HT, Kho, BPTC) luôn mở rộng đầy đủ các dòng
+// Hệ số tiến độ và Hệ số nhân sự luôn mở rộng đầy đủ các dòng
 let isHesoExpanded = true;
-let isHesoNhansuExpanded = false;
+let isHesoNhansuExpanded = true;
 
 function makeStorageKey(vungId, bqlId) {
   return `db_v2_${vungId}_${bqlId}`;
@@ -3213,13 +3210,6 @@ document.getElementById('hesoNhansuTabsBar').addEventListener('click', (e) => {
     currentHesoNhansuTab = tab;
     renderHesoNhansuTable(calcResultCache);
   }
-});
-
-document.getElementById('toggleHesoNhansuBtn').addEventListener('click', () => {
-  isHesoNhansuExpanded = !isHesoNhansuExpanded;
-  document.getElementById('toggleHesoNhansuIcon').textContent = isHesoNhansuExpanded ? '▲' : '▼';
-  document.getElementById('toggleHesoNhansuText').textContent = isHesoNhansuExpanded ? 'Thu gọn' : 'Mở rộng vi chỉnh';
-  renderHesoNhansuTable(calcResultCache);
 });
 
 /* ==========================================================================
