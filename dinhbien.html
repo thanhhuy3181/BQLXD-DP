@@ -408,22 +408,65 @@ table.tree-table input, table.tree-table select {
   box-sizing: border-box;
 }
 
-/* 2. CỘT PHẢI TRÊN: BIỂU ĐỒ */
+/* 2. CỘT PHẢI TRÊN: BIỂU ĐỒ (THẲNG HÀNG CỘT THÁNG 370PX + 68PX × THÁNG) */
 .chart-box-top {
-  height: 140px;
-  padding: 6px 10px;
+  height: 155px;
+  padding: 0;
   background: #ffffff;
-  display: flex;
-  flex-direction: column;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
-.chart-canvas-wrap {
-  flex: 1;
+table.chart-sync-table {
+  width: max-content;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: 11px;
+}
+table.chart-sync-table td.chart-freeze-axis {
+  position: sticky;
+  left: 0;
+  z-index: 15;
+  width: 370px;
+  min-width: 370px;
+  max-width: 370px;
+  background: #ffffff;
+  border-right: 1px solid var(--border);
+  padding: 6px 10px;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+table.chart-sync-table td.chart-bar-col {
+  width: 68px;
+  min-width: 68px;
+  max-width: 68px;
+  height: 122px;
+  vertical-align: bottom;
+  padding: 6px 8px 0 8px;
+  border-right: 1px dashed #e2e8f0;
+  border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
   position: relative;
-  width: 100%;
-  height: 100%;
+}
+table.chart-sync-table tr.chart-month-row td {
+  height: 26px;
+  line-height: 25px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #475569;
+  background: #f8fafc;
+  border-right: 1px solid var(--border);
+  box-sizing: border-box;
+}
+table.chart-sync-table tr.chart-month-row td.chart-freeze-axis {
+  text-align: right;
+  padding: 0 10px;
+  background: #f1f5f9;
+  color: #334155;
 }
 
-/* 3. CỘT PHẢI DƯỚI: HỆ SỐ XD, ME, HT, KHO, BPTC (ĐỒNG BỘ DÒNG VỚI HẠNG MỤC) */
+/* 3. CỘT PHẢI DƯỚI: HỆ SỐ XD, ME, HT, KHO, BPTC (ĐỒNG BỘ DÒNG VỚI HẠNG MỤC & ĐỒNG BỘ CỘT THÁNG 370PX + 68PX) */
 .heso-section {
   display: flex;
   flex-direction: column;
@@ -463,11 +506,33 @@ table.tree-table input, table.tree-table select {
   max-height: 380px;
 }
 table.sync-matrix-table {
-  width: 100%;
+  width: max-content;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 11px;
   white-space: nowrap;
+  table-layout: fixed;
+}
+table.sync-matrix-table th.col-heso-freeze,
+table.sync-matrix-table td.col-heso-freeze {
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  width: 370px;
+  min-width: 370px;
+  max-width: 370px;
+  text-align: left;
+  background: inherit;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+table.sync-matrix-table thead th.col-heso-freeze {
+  background: #f1f5f9;
+  z-index: 20;
+}
+table.sync-matrix-table tbody tr {
+  background: #ffffff;
 }
 table.sync-matrix-table th {
   background: #f1f5f9;
@@ -536,12 +601,22 @@ table.sync-matrix-table tr.header-summary-row td {
 }
 table.nhansu-matrix-table,
 table.heso-sync-columns-table {
-  width: 100%;
+  width: max-content;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 11px;
   white-space: nowrap;
   table-layout: fixed; /* Cố định độ rộng cột để khớp chuẩn từng pixel */
+}
+table.nhansu-matrix-table tbody tr,
+table.heso-sync-columns-table tbody tr {
+  background: #ffffff;
+}
+table.nhansu-matrix-table thead th.col-freeze-1,
+table.nhansu-matrix-table thead th.col-freeze-2,
+table.nhansu-matrix-table thead th.col-freeze-3,
+table.nhansu-matrix-table thead th.col-freeze-4 {
+  background: #f1f5f9;
 }
 table.nhansu-matrix-table th,
 table.heso-sync-columns-table th {
@@ -739,10 +814,10 @@ footer.app-footer {
           <span>■ <b style="color:#059669;">BPTC</b></span>
         </div>
       </div>
-      <div class="chart-box-top">
-        <div class="chart-canvas-wrap">
-          <canvas id="resourceChart"></canvas>
-        </div>
+      <div class="chart-box-top" id="chartScrollSync">
+        <table class="chart-sync-table" id="chartSyncTable">
+          <tbody id="chartSyncBody"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -1703,11 +1778,11 @@ function renderSyncHesoTable(res) {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
 
-  // Header tháng
+  // Header tháng (Cột đầu cố định 370px, các cột tháng cố định 68px thẳng hàng tuyệt đối)
   thead.innerHTML = `
     <tr>
-      <th style="min-width:140px; text-align:left;">Hạng mục / Hệ số (${tab.toUpperCase()})</th>
-      ${months.map(m => `<th>${monthLabel(m)}</th>`).join('')}
+      <th class="col-heso-freeze">Hạng mục / Hệ số (${tab.toUpperCase()})</th>
+      ${months.map(m => `<th class="col-month-fixed">${monthLabel(m)}</th>`).join('')}
     </tr>
   `;
 
@@ -1735,14 +1810,14 @@ function renderSyncHesoTable(res) {
 
   html += `
     <tr class="header-summary-row">
-      <td style="text-align:left; font-weight:700;">${tabTitleMap[tab] || '★ TỔNG HỆ SỐ ĐIỀU ĐỘ'}</td>
+      <td class="col-heso-freeze" style="text-align:left; font-weight:700;">${tabTitleMap[tab] || '★ TỔNG HỆ SỐ ĐIỀU ĐỘ'}</td>
       ${months.map((m, mIdx) => {
         let sum = 0;
         res.itemProgressDetail.forEach(it => {
           const arr = getTabRatioArr(it);
           sum += (arr[mIdx] || 0);
         });
-        return `<td>${sum > 0 ? (Math.round(sum * 10) / 10).toFixed(1) : '–'}</td>`;
+        return `<td class="col-month-fixed">${sum > 0 ? (Math.round(sum * 10) / 10).toFixed(1) : '–'}</td>`;
       }).join('')}
     </tr>
   `;
@@ -1754,17 +1829,19 @@ function renderSyncHesoTable(res) {
       if(r.level === 1) {
         html += `
           <tr class="tr-level-1" style="height:28px;">
-            <td style="text-align:left; font-weight:700; color:#fff;" colspan="${months.length + 1}">
+            <td class="col-heso-freeze" style="text-align:left; font-weight:700; color:#fff; background:#1b4f72;">
               ${escHtml(r.ten)}
             </td>
+            ${months.map(() => `<td class="col-month-fixed" style="background:#1b4f72;"></td>`).join('')}
           </tr>
         `;
       } else if(r.level === 2) {
         html += `
           <tr class="tr-level-2" style="height:28px;">
-            <td style="text-align:left; font-weight:700; color:#1b4f72;" colspan="${months.length + 1}">
+            <td class="col-heso-freeze" style="text-align:left; font-weight:700; color:#1b4f72; background:#d6eaf8;">
               ${escHtml(r.ten)}
             </td>
+            ${months.map(() => `<td class="col-month-fixed" style="background:#d6eaf8;"></td>`).join('')}
           </tr>
         `;
       } else {
@@ -1781,7 +1858,7 @@ function renderSyncHesoTable(res) {
           if(pr > 0 || isCustom) {
             const displayPct = Math.round(pr * 100) + '%';
             cellsHtml += `
-              <td class="heso-input-cell ${isCustom ? 'customized' : ''}" style="height:28px;">
+              <td class="col-month-fixed heso-input-cell ${isCustom ? 'customized' : ''}" style="height:28px;">
                 <input type="text" 
                        value="${displayPct}" 
                        data-tab="${tab}" 
@@ -1791,13 +1868,13 @@ function renderSyncHesoTable(res) {
               </td>
             `;
           } else {
-            cellsHtml += `<td style="color:#cbd5e1; text-align:center; height:28px;">–</td>`;
+            cellsHtml += `<td class="col-month-fixed" style="color:#cbd5e1; text-align:center; height:28px;">–</td>`;
           }
         });
 
         html += `
           <tr style="height:28px;">
-            <td style="text-align:left; font-weight:500;" title="${escHtml(r.ten)}">
+            <td class="col-heso-freeze" style="text-align:left; font-weight:500;" title="${escHtml(r.ten)}">
               ${escHtml(r.ten)}
             </td>
             ${cellsHtml}
@@ -1809,12 +1886,12 @@ function renderSyncHesoTable(res) {
         if(hasMeSub) {
           html += `
             <tr class="tr-level-4-me" style="height:28px;">
-              <td style="text-align:left; padding-left:16px; color:#64748b; font-size:10.5px;">↳ M&amp;E — GĐ bê tông, cốt thép</td>
-              ${months.map(() => `<td style="color:#e2e8f0; text-align:center; height:28px;">·</td>`).join('')}
+              <td class="col-heso-freeze" style="text-align:left; padding-left:16px; color:#64748b; font-size:10.5px;">↳ M&amp;E — GĐ bê tông, cốt thép</td>
+              ${months.map(() => `<td class="col-month-fixed" style="color:#e2e8f0; text-align:center; height:28px;">·</td>`).join('')}
             </tr>
             <tr class="tr-level-4-me" style="height:28px;">
-              <td style="text-align:left; padding-left:16px; color:#64748b; font-size:10.5px;">↳ M&amp;E — GĐ hoàn thiện</td>
-              ${months.map(() => `<td style="color:#e2e8f0; text-align:center; height:28px;">·</td>`).join('')}
+              <td class="col-heso-freeze" style="text-align:left; padding-left:16px; color:#64748b; font-size:10.5px;">↳ M&amp;E — GĐ hoàn thiện</td>
+              ${months.map(() => `<td class="col-month-fixed" style="color:#e2e8f0; text-align:center; height:28px;">·</td>`).join('')}
             </tr>
           `;
         }
@@ -1917,56 +1994,63 @@ let calcResultCache = null;
 let resourceChartInstance = null;
 
 function renderChart(res) {
-  const ctx = document.getElementById('resourceChart').getContext('2d');
-  const labels = res.months.map(m => monthLabel(m));
+  const tbody = document.getElementById('chartSyncBody');
+  if(!tbody) return;
+  const months = res.months;
+  const maxVal = Math.max(10, ...res.grandTotals);
+  const maxBarPx = 92; // Chiều cao tối đa cột biểu đồ (px)
 
-  if(resourceChartInstance) {
-    resourceChartInstance.destroy();
-  }
+  const barsCells = months.map((m, i) => {
+    const bql = res.bqlTotals[i] || 0;
+    const kho = res.khoTotals[i] || 0;
+    const bptc = res.bptcTotals[i] || 0;
+    const tot = bql + kho + bptc;
 
-  resourceChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'BQLXD',
-          data: res.bqlTotals,
-          backgroundColor: 'rgba(37, 99, 235, 0.8)',
-          borderColor: '#2563eb',
-          borderWidth: 1,
-          stack: 'combined'
-        },
-        {
-          label: 'Kho',
-          data: res.khoTotals,
-          backgroundColor: 'rgba(217, 119, 6, 0.8)',
-          borderColor: '#d97706',
-          borderWidth: 1,
-          stack: 'combined'
-        },
-        {
-          label: 'Thi Công',
-          data: res.bptcTotals,
-          backgroundColor: 'rgba(5, 150, 105, 0.8)',
-          borderColor: '#059669',
-          borderWidth: 1,
-          stack: 'combined'
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', labels: { boxWidth: 10, font: { size: 9.5 } } }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
-        y: { stacked: true, beginAtZero: true, ticks: { font: { size: 9 } } }
-      }
-    }
-  });
+    const hBql = tot > 0 ? Math.max(bql > 0 ? 3 : 0, Math.round((bql / maxVal) * maxBarPx)) : 0;
+    const hKho = tot > 0 ? Math.max(kho > 0 ? 3 : 0, Math.round((kho / maxVal) * maxBarPx)) : 0;
+    const hBptc = tot > 0 ? Math.max(bptc > 0 ? 3 : 0, Math.round((bptc / maxVal) * maxBarPx)) : 0;
+
+    return `
+      <td class="chart-bar-col" title="${monthLabel(m)} — Tổng: ${tot} nhân sự (BQLXD: ${bql} | Kho: ${kho} | Thi công: ${bptc})">
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;">
+          ${tot > 0 ? `<div style="font-size:9.5px; font-weight:700; color:#1e293b; margin-bottom:2px; font-family:var(--font-mono);">${tot}</div>` : ''}
+          <div style="width:32px; display:flex; flex-direction:column-reverse; border-radius:3px 3px 0 0; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.08);">
+            ${bql > 0 ? `<div style="height:${hBql}px; background:#2563eb;" title="BQLXD: ${bql}"></div>` : ''}
+            ${kho > 0 ? `<div style="height:${hKho}px; background:#d97706;" title="Kho: ${kho}"></div>` : ''}
+            ${bptc > 0 ? `<div style="height:${hBptc}px; background:#059669;" title="Thi công: ${bptc}"></div>` : ''}
+          </div>
+        </div>
+      </td>
+    `;
+  }).join('');
+
+  const monthCells = months.map(m => `<td class="col-month-fixed">${monthLabel(m)}</td>`).join('');
+
+  tbody.innerHTML = `
+    <tr>
+      <td class="chart-freeze-axis">
+        <div style="display:flex; flex-direction:column; justify-content:space-between; height:110px;">
+          <div>
+            <div style="font-weight:700; color:#0f172a; font-size:11.5px; margin-bottom:6px;">Chú giải phân bổ nhân sự (Đỉnh: ${maxVal} người)</div>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; font-size:11px; color:#334155;">
+              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#2563eb; display:inline-block; border-radius:2px;"></i><b>BQLXD</b></span>
+              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#d97706; display:inline-block; border-radius:2px;"></i><b>Kho dự án</b></span>
+              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#059669; display:inline-block; border-radius:2px;"></i><b>Thi công (BPTC)</b></span>
+            </div>
+          </div>
+          <div style="font-size:10px; color:#64748b; display:flex; justify-content:space-between; border-top:1px dashed #e2e8f0; padding-top:4px;">
+            <span>← Cột cố định: 370px (Khớp 4 bảng)</span>
+            <span>Mỗi tháng: 68px →</span>
+          </div>
+        </div>
+      </td>
+      ${barsCells}
+    </tr>
+    <tr class="chart-month-row">
+      <td class="chart-freeze-axis">THÁNG THI CÔNG →</td>
+      ${monthCells}
+    </tr>
+  `;
 }
 
 function renderMatrix(res) {
@@ -3509,51 +3593,50 @@ document.addEventListener('DOMContentLoaded', () => {
   renderOrgHierarchyButtons();
   refreshDashboard();
 
-  // Đồng bộ cuộn ngang giữa Bảng Nhân Sự và Bảng Hệ Số Nhân Sự
+  // Đồng bộ cuộn ngang giữa cả 4 khối bên phải: Biểu đồ, Hệ số Tiến độ, Bảng Nhân Sự, và Hệ số Nhân sự
   // Đồng bộ cuộn dọc giữa Bảng Định Mức (trái) và Bảng Nhân Sự (phải)
+  const chartWrap = document.getElementById('chartScrollSync');
+  const hesoScrollSync = document.getElementById('hesoScrollSync');
   const nhansuWrap = document.getElementById('nhansuScrollSync') || document.querySelector('.nhansu-table-wrap');
   const hesoNhansuWrap = document.getElementById('hesoNhansuWrap');
   const dinhmucWrap = document.getElementById('dinhmucScrollSync');
-  const hesoScrollSync = document.getElementById('hesoScrollSync');
 
-  if(nhansuWrap) {
-    let syncSourceX = null;
-    let syncSourceY = null;
+  const rightScrollPanels = [chartWrap, hesoScrollSync, nhansuWrap, hesoNhansuWrap].filter(Boolean);
+  let activeXPanel = null;
+  let syncSourceY = null;
 
+  rightScrollPanels.forEach(panel => {
+    panel.addEventListener('scroll', () => {
+      if(activeXPanel && activeXPanel !== panel) return;
+      activeXPanel = panel;
+      const sl = panel.scrollLeft;
+      rightScrollPanels.forEach(other => {
+        if(other !== panel && other.scrollLeft !== sl) {
+          other.scrollLeft = sl;
+        }
+      });
+      requestAnimationFrame(() => {
+        if(activeXPanel === panel) activeXPanel = null;
+      });
+    });
+  });
+
+  if(nhansuWrap && dinhmucWrap) {
     nhansuWrap.addEventListener('scroll', () => {
-      if(syncSourceX !== 'heso') {
-        syncSourceX = 'nhansu';
-        if(hesoNhansuWrap) hesoNhansuWrap.scrollLeft = nhansuWrap.scrollLeft;
-        if(hesoScrollSync) hesoScrollSync.scrollLeft = nhansuWrap.scrollLeft;
-        requestAnimationFrame(() => { if(syncSourceX === 'nhansu') syncSourceX = null; });
-      }
       if(syncSourceY !== 'dinhmuc' && currentDinhMucView === 'sync') {
         syncSourceY = 'nhansu';
-        if(dinhmucWrap) dinhmucWrap.scrollTop = nhansuWrap.scrollTop;
+        dinhmucWrap.scrollTop = nhansuWrap.scrollTop;
         requestAnimationFrame(() => { if(syncSourceY === 'nhansu') syncSourceY = null; });
       }
     });
 
-    if(hesoNhansuWrap) {
-      hesoNhansuWrap.addEventListener('scroll', () => {
-        if(syncSourceX !== 'nhansu') {
-          syncSourceX = 'heso';
-          nhansuWrap.scrollLeft = hesoNhansuWrap.scrollLeft;
-          if(hesoScrollSync) hesoScrollSync.scrollLeft = hesoNhansuWrap.scrollLeft;
-          requestAnimationFrame(() => { if(syncSourceX === 'heso') syncSourceX = null; });
-        }
-      });
-    }
-
-    if(dinhmucWrap) {
-      dinhmucWrap.addEventListener('scroll', () => {
-        if(syncSourceY !== 'nhansu' && currentDinhMucView === 'sync') {
-          syncSourceY = 'dinhmuc';
-          nhansuWrap.scrollTop = dinhmucWrap.scrollTop;
-          requestAnimationFrame(() => { if(syncSourceY === 'dinhmuc') syncSourceY = null; });
-        }
-      });
-    }
+    dinhmucWrap.addEventListener('scroll', () => {
+      if(syncSourceY !== 'nhansu' && currentDinhMucView === 'sync') {
+        syncSourceY = 'dinhmuc';
+        nhansuWrap.scrollTop = dinhmucWrap.scrollTop;
+        requestAnimationFrame(() => { if(syncSourceY === 'dinhmuc') syncSourceY = null; });
+      }
+    });
   }
 });
 </script>
