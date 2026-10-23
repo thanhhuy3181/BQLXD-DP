@@ -1143,6 +1143,8 @@ footer.app-footer {
           <button class="btn" id="btnLenCap" title="Tăng cấp mục lục">‹ Lên cấp</button>
           <button class="btn" id="btnXuongCap" title="Hạ cấp mục lục">› Xuống cấp</button>
           <button class="btn" id="btnXoaDongHm" title="Xóa dòng đang chọn (Delete)" style="color:#dc2626;">✕ Xóa dòng</button>
+          <button class="btn" id="btnTogglePhanLoaiCols" style="background:#f0fdf4; border-color:#86efac; color:#166534; font-weight:600;" title="Tắt / Mở 3 cột Phân loại công trình (Cấp 1, Cấp 2, TC bàn giao) để dễ copy-paste trực tiếp Tên + Tiến độ + Khối lượng từ Excel">👁 Phân loại: Bật</button>
+          <button class="btn" id="btnToggleMeSubRows" style="background:#faf5ff; border-color:#d8b4fe; color:#6b21a8; font-weight:600;" title="Tắt / Mở các dòng con M&amp;E (GĐ bê tông cốt thép &amp; GĐ hoàn thiện) để dễ paste danh sách hạng mục liền mạch từ Excel">⚡ Dòng M&amp;E: Bật</button>
           <button class="btn" id="btnPasteExcel" title="Dán vùng bảng copy từ Excel (hoặc nhấn Ctrl+V trực tiếp trên bảng)">📋 Dán Excel</button>
           <button class="btn btn-primary" id="btnThemHangMuc" title="Chèn thêm hạng mục mới ngay dưới dòng đang chọn">+ Thêm HM</button>
           <button class="btn" id="btnExpandHangMuc" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;" title="Mở rộng toàn màn hình để nhập/copy/paste/chèn như bảng Excel">⤢ Mở rộng bảng</button>
@@ -1156,9 +1158,9 @@ footer.app-footer {
               <th style="width:24px;" title="Cấp mục lục (1, 2, 3, 4)">Cấp</th>
               <th style="width:24px;">TT</th>
               <th style="width:155px; text-align:left; padding-left:6px;">Tên công trình /<br>Hạng mục</th>
-              <th style="width:68px;" title="Loại Công trình / Hạng mục (cấp 1)">Loại CT<br>(cấp 1)</th>
-              <th style="width:74px;" title="Loại Công trình / Hạng mục (cấp 2)">Loại CT<br>(cấp 2)</th>
-              <th style="width:66px;" title="Tiêu chuẩn bàn giao">TC<br>bàn giao</th>
+              <th class="col-phanloai- toggle-col" style="width:68px;" title="Loại Công trình / Hạng mục (cấp 1)">Loại CT<br>(cấp 1)</th>
+              <th class="col-phanloai- toggle-col" style="width:74px;" title="Loại Công trình / Hạng mục (cấp 2)">Loại CT<br>(cấp 2)</th>
+              <th class="col-phanloai- toggle-col" style="width:66px;" title="Tiêu chuẩn bàn giao">TC<br>bàn giao</th>
               <th style="width:78px;">Bắt đầu<br>thi công</th>
               <th style="width:78px;">Kết thúc<br>thi công</th>
               <th style="width:78px;">Kết thúc<br>bàn giao</th>
@@ -1476,6 +1478,10 @@ let selectedRowId = null;
 // Hệ số tiến độ và Hệ số nhân sự luôn mở rộng đầy đủ các dòng
 let isHesoExpanded = true;
 let isHesoNhansuExpanded = true;
+
+// Tắt / Mở hiển thị 3 cột Phân loại công trình và 2 dòng con M&E để dễ Paste dữ liệu từ Excel
+let showPhanLoaiCols = true;
+let showMeSubRows = true;
 
 function makeStorageKey(vungId, bqlId) {
   return `db_v2_${vungId}_${bqlId}`;
@@ -2546,6 +2552,13 @@ function renderTreeTable() {
   tbody.innerHTML = '';
   const rows = currentProjectData.treeRows || [];
 
+  // Ẩn / Hiện 3 cột tiêu đề Phân loại công trình (cấp 1, cấp 2, TC bàn giao)
+  document.querySelectorAll('#treeTable thead th.toggle-col').forEach(th => {
+    th.style.display = showPhanLoaiCols ? '' : 'none';
+  });
+  const spanSummaryAndHeader = showPhanLoaiCols ? 9 : 6;
+  const spanMeSubName = showPhanLoaiCols ? 4 : 1;
+
   // Tính STT tự động cho level 3
   let sttCounter = 0;
 
@@ -2559,7 +2572,7 @@ function renderTreeTable() {
     <td style="text-align:center;">★</td>
     <td style="text-align:center;">0</td>
     <td></td>
-    <td colspan="9" style="font-weight:700; color:#92400e; padding-left:6px;">
+    <td colspan="${spanSummaryAndHeader}" style="font-weight:700; color:#92400e; padding-left:6px;">
       TỔNG HỢP TIẾN ĐỘ DỰ ÁN (${totalItemsCount} hạng mục thi công)
     </td>
   `;
@@ -2615,7 +2628,7 @@ function renderTreeTable() {
         <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon">⠿</span></td>
         <td style="text-align:center;">1</td>
         <td></td>
-        <td colspan="9">
+        <td colspan="${spanSummaryAndHeader}">
           <input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten" placeholder="Nhập tên khu vực...">
         </td>
       `;
@@ -2627,7 +2640,7 @@ function renderTreeTable() {
         <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon">⠿</span></td>
         <td style="text-align:center;">2</td>
         <td></td>
-        <td colspan="9" style="padding-left:14px;">
+        <td colspan="${spanSummaryAndHeader}" style="padding-left:14px;">
           <input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten" placeholder="Nhập tên phân khu / đợt...">
         </td>
       `;
@@ -2651,26 +2664,30 @@ function renderTreeTable() {
         tcOpts.push({ v: r.tc, l: r.tc });
       }
 
+      const phanLoaiCellsHtml = showPhanLoaiCols ? `
+        <td class="toggle-col">
+          <select data-id="${r.id}" data-f="loai" title="${escHtml(loaiVal)}">
+            ${loaiOpts.map(o => `<option value="${o.v}" ${loaiVal===o.v?'selected':''}>${o.l}</option>`).join('')}
+          </select>
+        </td>
+        <td class="toggle-col">
+          <select data-id="${r.id}" data-f="kieu" title="${escHtml(r.kieu || '')}">
+            ${kieuOpts.map(o => `<option value="${o.v}" ${(r.kieu || '')===o.v?'selected':''}>${o.l}</option>`).join('')}
+          </select>
+        </td>
+        <td class="toggle-col">
+          <select data-id="${r.id}" data-f="tc" title="${escHtml(r.tc || '')}">
+            ${tcOpts.map(o => `<option value="${o.v}" ${(r.tc || '')===o.v?'selected':''}>${o.l}</option>`).join('')}
+          </select>
+        </td>
+      ` : '';
+
       tr.innerHTML = `
         <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon" style="color:#64748b;">⠿</span></td>
         <td style="text-align:center;">3</td>
         <td style="text-align:center; font-weight:600; color:#334155;">${sttCounter}</td>
         <td><input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten" title="${escHtml(r.ten)}"></td>
-        <td>
-          <select data-id="${r.id}" data-f="loai" title="${escHtml(loaiVal)}">
-            ${loaiOpts.map(o => `<option value="${o.v}" ${loaiVal===o.v?'selected':''}>${o.l}</option>`).join('')}
-          </select>
-        </td>
-        <td>
-          <select data-id="${r.id}" data-f="kieu" title="${escHtml(r.kieu || '')}">
-            ${kieuOpts.map(o => `<option value="${o.v}" ${(r.kieu || '')===o.v?'selected':''}>${o.l}</option>`).join('')}
-          </select>
-        </td>
-        <td>
-          <select data-id="${r.id}" data-f="tc" title="${escHtml(r.tc || '')}">
-            ${tcOpts.map(o => `<option value="${o.v}" ${(r.tc || '')===o.v?'selected':''}>${o.l}</option>`).join('')}
-          </select>
-        </td>
+        ${phanLoaiCellsHtml}
         <td><input type="date" value="${r.batDau || ''}" data-id="${r.id}" data-f="batDau"></td>
         <td><input type="date" value="${r.ketThuc || ''}" data-id="${r.id}" data-f="ketThuc"></td>
         <td><input type="date" value="${r.banGiao || ''}" data-id="${r.id}" data-f="banGiao"></td>
@@ -2679,16 +2696,18 @@ function renderTreeTable() {
       `;
       tbody.appendChild(tr);
 
-      // Tự sinh thêm 2 dòng in nghiêng Level 4 cho M&E (Thấp tầng / Cao tầng / Công trình khác / Công trình nhà xưởng)
-      const hasMeSub = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(r.loai);
+      // Tự sinh thêm 2 dòng in nghiêng Level 4 cho M&E (Thấp tầng / Cao tầng / Công trình khác / Công trình nhà xưởng) khi showMeSubRows đang bật
+      const hasMeSub = showMeSubRows && ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(r.loai);
       if(hasMeSub) {
         const sub1 = document.createElement('tr');
         sub1.className = 'tr-level-4-me';
+        sub1.dataset.parentId = r.id;
+        sub1.dataset.meStage = '1';
         sub1.innerHTML = `
           <td></td>
           <td style="text-align:center; color:#64748b;">4</td>
           <td></td>
-          <td class="col-name" colspan="4" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ bê tông, cốt thép</td>
+          <td class="col-name" colspan="${spanMeSubName}" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ bê tông, cốt thép</td>
           <td><input type="date" value="${r.me1_bd || r.batDau || ''}" data-id="${r.id}" data-f="me1_bd"></td>
           <td><input type="date" value="${r.me1_kt || r.ketThuc || ''}" data-id="${r.id}" data-f="me1_kt"></td>
           <td></td>
@@ -2699,11 +2718,13 @@ function renderTreeTable() {
 
         const sub2 = document.createElement('tr');
         sub2.className = 'tr-level-4-me';
+        sub2.dataset.parentId = r.id;
+        sub2.dataset.meStage = '2';
         sub2.innerHTML = `
           <td></td>
           <td style="text-align:center; color:#64748b;">4</td>
           <td></td>
-          <td class="col-name" colspan="4" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ hoàn thiện</td>
+          <td class="col-name" colspan="${spanMeSubName}" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ hoàn thiện</td>
           <td><input type="date" value="${r.me2_bd || r.ketThuc || ''}" data-id="${r.id}" data-f="me2_bd"></td>
           <td><input type="date" value="${r.me2_kt || r.banGiao || ''}" data-id="${r.id}" data-f="me2_kt"></td>
           <td></td>
@@ -2751,6 +2772,9 @@ function renderTreeTable() {
         r[f] = val;
         if(f === 'loai') {
           syncSubClassificationWhenLoaiChanged(r);
+          ensureMeStagesForRow(r);
+        } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'kl') {
+          ensureMeStagesForRow(r);
         }
         saveCurrentProject();
         refreshDashboard();
@@ -2990,8 +3014,8 @@ function renderSyncHesoTable(res) {
           </tr>
         `;
 
-        // Đồng bộ 2 dòng in nghiêng M&E cấp 4 nếu hạng mục có M&E
-        const hasMeSub = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(r.loai);
+        // Đồng bộ 2 dòng in nghiêng M&E cấp 4 nếu hạng mục có M&E và đang bật hiển thị dòng M&E
+        const hasMeSub = showMeSubRows && ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(r.loai);
         if(hasMeSub) {
           const me1Kl = r.me1_kl != null ? r.me1_kl : r.kl;
           const me2Kl = r.me2_kl != null ? r.me2_kl : r.kl;
@@ -4150,6 +4174,41 @@ if(btnXoaDongHm) {
   });
 }
 
+// Nút Tắt / Mở 3 cột Phân loại công trình (Cấp 1, Cấp 2, TC bàn giao) để dễ Paste từ Excel
+const btnTogglePhanLoaiCols = document.getElementById('btnTogglePhanLoaiCols');
+if(btnTogglePhanLoaiCols) {
+  btnTogglePhanLoaiCols.addEventListener('click', () => {
+    showPhanLoaiCols = !showPhanLoaiCols;
+    btnTogglePhanLoaiCols.innerHTML = showPhanLoaiCols ? '👁 Phân loại: Bật' : '👁‍🗨 Phân loại: Tắt';
+    btnTogglePhanLoaiCols.style.background = showPhanLoaiCols ? '#f0fdf4' : '#f1f5f9';
+    btnTogglePhanLoaiCols.style.borderColor = showPhanLoaiCols ? '#86efac' : '#cbd5e1';
+    btnTogglePhanLoaiCols.style.color = showPhanLoaiCols ? '#166534' : '#64748b';
+    clearExcelRangeSelection();
+    renderTreeTable();
+    showUndoToast(showPhanLoaiCols
+      ? '👁 Đã hiện 3 cột Phân loại công trình'
+      : '👁‍🗨 Đã ẩn 3 cột Phân loại — có thể Paste thẳng Tên + Ngày + Khối lượng từ Excel');
+  });
+}
+
+// Nút Tắt / Mở các dòng con M&E (GĐ bê tông cốt thép & GĐ hoàn thiện) để dễ Paste từ Excel
+const btnToggleMeSubRows = document.getElementById('btnToggleMeSubRows');
+if(btnToggleMeSubRows) {
+  btnToggleMeSubRows.addEventListener('click', () => {
+    showMeSubRows = !showMeSubRows;
+    btnToggleMeSubRows.innerHTML = showMeSubRows ? '⚡ Dòng M&amp;E: Bật' : '⚡ Dòng M&amp;E: Tắt';
+    btnToggleMeSubRows.style.background = showMeSubRows ? '#faf5ff' : '#f1f5f9';
+    btnToggleMeSubRows.style.borderColor = showMeSubRows ? '#d8b4fe' : '#cbd5e1';
+    btnToggleMeSubRows.style.color = showMeSubRows ? '#6b21a8' : '#64748b';
+    clearExcelRangeSelection();
+    renderTreeTable();
+    renderSyncHesoTable();
+    showUndoToast(showMeSubRows
+      ? '⚡ Đã hiện các dòng con M&E theo giai đoạn thô & hoàn thiện'
+      : '⚡ Đã ẩn dòng con M&E — dễ dàng Paste danh sách hạng mục liền mạch từ Excel');
+  });
+}
+
 // Mở rộng / Thu nhỏ bảng Hạng mục công trình toàn chiều ngang để thao tác như bảng Excel
 const btnExpandHangMuc = document.getElementById('btnExpandHangMuc');
 if(btnExpandHangMuc) {
@@ -4175,17 +4234,103 @@ function normalizeExcelDate(raw) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// Hàm xử lý dán dữ liệu nhiều dòng từ Excel (Hỗ trợ cả thứ tự cột mới: Tên | Loại 1 | Loại 2 | TC | Bắt đầu | Kết thúc | Bàn giao | KL | Đv, và thứ tự cột cũ)
+// Kiểm tra xem một dòng chuỗi từ Excel có phải là dòng con M&E (GĐ bê tông cốt thép / GĐ hoàn thiện) hay không
+function detectExcelMeSubRowStage(tenStr) {
+  if(!tenStr) return 0;
+  const s = tenStr.toLowerCase();
+  if(s.includes('m&e') || s.includes('gđ bê tông') || s.includes('giai đoạn bê tông') || s.includes('gđ hoàn thiện') || s.includes('giai đoạn hoàn thiện') || s.startsWith('↳')) {
+    if(s.includes('hoàn thiện')) return 2;
+    return 1;
+  }
+  return 0;
+}
+
+// Tự động suy luận Phân loại công trình (cấp 1, cấp 2, TC bàn giao) từ Tên hạng mục khi người dùng ẩn cột Phân loại lúc Paste
+function inferClassificationFromName(tenStr) {
+  const s = (tenStr || '').toLowerCase();
+  let loai = 'Thấp tầng';
+  let kieu = 'Liền kề, Shophouse, TMDV';
+  let tc = 'Xây thô';
+
+  if(s.includes('công viên') || s.includes('cảnh quan') || s.includes('cây xanh')) {
+    loai = 'Đường giao thông, công viên';
+    kieu = 'Công viên';
+    tc = 'Hoàn thiện';
+  } else if(s.includes('đường') || s.includes('giao thông') || s.includes('hạ tầng')) {
+    loai = 'Đường giao thông, công viên';
+    kieu = 'Đường giao thông';
+    tc = 'Hoàn thiện';
+  } else if(s.includes('cao tầng') || s.includes('chung cư') || s.includes('tòa ') || s.includes('tháp ')) {
+    loai = 'Cao tầng';
+    kieu = '';
+    tc = s.includes('thô') ? 'Xây thô' : 'Hoàn thiện';
+  } else if(s.includes('nhà xưởng') || s.includes('xưởng')) {
+    loai = 'Công trình nhà xưởng';
+    kieu = '';
+    tc = s.includes('thô') ? 'Xây thô' : 'Hoàn thiện';
+  } else if(s.includes('tttm') || s.includes('vincom') || s.includes('trung tâm thương mại')) {
+    loai = 'Các công trình khác';
+    kieu = 'TTTM';
+    tc = s.includes('thô') ? 'Xây thô' : 'Hoàn thiện';
+  } else if(s.includes('khách sạn') || s.includes('hotel') || s.includes('resort')) {
+    loai = 'Các công trình khác';
+    kieu = 'Khách sạn';
+    tc = s.includes('thô') ? 'Xây thô' : 'Hoàn thiện';
+  } else if(s.includes('trường') || s.includes('vinschool') || s.includes('bệnh viện') || s.includes('vinmec') || s.includes('y tế')) {
+    loai = 'Các công trình khác';
+    kieu = 'Trường học, Bệnh viện';
+    tc = s.includes('thô') ? 'Xây thô' : 'Hoàn thiện';
+  } else if(s.includes('nhà để xe') || s.includes('nhà máy') || s.includes('parking')) {
+    loai = 'Các công trình khác';
+    kieu = 'Nhà máy, Nhà để xe nổi';
+    tc = s.includes('thô') ? 'Xây thô' : 'Hoàn thiện';
+  } else {
+    loai = 'Thấp tầng';
+    if(s.includes('đơn lập')) kieu = 'Biệt thự đơn lập';
+    else if(s.includes('song lập')) kieu = 'Biệt thự song lập';
+    else if(s.includes('tứ lập')) kieu = 'Biệt thự tứ lập';
+    else if(s.includes('cải tạo')) kieu = 'Biệt thự cải tạo mặt ngoài';
+    else kieu = 'Liền kề, Shophouse, TMDV';
+
+    if(s.includes('full') || s.includes('nội thất') || s.includes('hoàn thiện')) tc = 'Full Nội thất (3 tầng trở lên)';
+    else if(s.includes('2 tầng')) tc = 'HTNT (2 tầng)';
+    else if(s.includes('1 tầng')) tc = 'HTNT (1 tầng)';
+    else tc = 'Xây thô';
+  }
+  return { loai, kieu, tc };
+}
+
+// Khởi tạo tự động các trường M&E chia theo 2 giai đoạn (GĐ bê tông cốt thép & GĐ hoàn thiện) cho hạng mục có M&E
+function ensureMeStagesForRow(rObj) {
+  if(!rObj || rObj.level !== 3) return;
+  const hasMe = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(rObj.loai);
+  if(hasMe) {
+    if(!rObj.me1_bd && rObj.batDau) rObj.me1_bd = rObj.batDau;
+    if(!rObj.me1_kt && rObj.ketThuc) rObj.me1_kt = rObj.ketThuc;
+    if(rObj.me1_kl == null && rObj.kl != null) rObj.me1_kl = rObj.kl;
+    if(!rObj.me2_bd && rObj.ketThuc) rObj.me2_bd = rObj.ketThuc;
+    if(!rObj.me2_kt && (rObj.banGiao || rObj.ketThuc)) rObj.me2_kt = rObj.banGiao || rObj.ketThuc;
+    if(rObj.me2_kl == null && rObj.kl != null) rObj.me2_kl = rObj.kl;
+  }
+}
+
+// Hàm xử lý dán dữ liệu nhiều dòng từ Excel (Hỗ trợ cả khi bật/tắt cột Phân loại và tự động gắn/sinh dòng M&E bên dưới)
 function importRowsFromTsvText(text) {
   if(!text || !text.trim()) return 0;
   const lines = text.trim().split(/\r?\n/);
   const newRows = [];
+  let lastLevel3Row = null;
 
   lines.forEach(line => {
-    const cols = line.split('\t').map(c => c.trim());
+    let cols = line.split('\t').map(c => c.trim());
     if(!cols.length || !cols.some(Boolean)) return;
 
-    // Nếu chỉ có 1 cột chữ (Mục lục)
+    // Nếu người dùng copy cả cột STT ở đầu (ví dụ cột 0 là số 1, 2, 3... và cột 1 là tên hạng mục)
+    if(cols.length >= 5 && /^\d+(\.\d+)?$/.test(cols[0]) && cols[1] && isNaN(Number(cols[1]))) {
+      cols = cols.slice(1);
+    }
+
+    // Nếu chỉ có 1 cột chữ (Mục lục cấp 2)
     if(cols.filter(Boolean).length === 1) {
       newRows.push({
         id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
@@ -4193,41 +4338,105 @@ function importRowsFromTsvText(text) {
         stt: '',
         ten: cols[0]
       });
+      lastLevel3Row = null;
       return;
     }
 
     const ten = cols[0] || 'Hạng mục mới';
-    const loai = cols[1] || 'Thấp tầng';
-    const kieu = cols[2] || 'Liền kề, Shophouse, TMDV';
-    const tc = cols[3] || 'Xây thô';
 
-    // Tự động nhận diện thứ tự cột: Nếu cột 4 là ngày (có dấu / hoặc -) thì theo thứ tự mới: Bắt đầu(4), Kết thúc(5), Bàn giao(6), KL(7), Đv(8)
-    let batDau = '', ketThuc = '', banGiao = '', kl = 50, dv = 'căn';
-    const c4 = cols[4] || '';
-    if(c4.includes('/') || (c4.includes('-') && c4.length >= 8)) {
-      batDau = normalizeExcelDate(cols[4]) || '2025-07-01';
-      ketThuc = normalizeExcelDate(cols[5]) || '2026-03-01';
-      banGiao = normalizeExcelDate(cols[6]) || '2026-05-30';
-      kl = parseFloat((cols[7] || '50').replace(/,/g, '')) || 50;
-      dv = cols[8] || (loai === 'Thấp tầng' ? 'căn' : 'm²');
-    } else {
-      kl = parseFloat((cols[4] || '50').replace(/,/g, '')) || 50;
-      // Kiểm tra nếu cột 5 là đơn vị hay ngày
-      const c5 = cols[5] || '';
-      if(c5 && !c5.includes('/') && !c5.includes('-') && isNaN(Date.parse(c5))) {
-        dv = c5;
-        batDau = normalizeExcelDate(cols[6]) || '2025-07-01';
-        ketThuc = normalizeExcelDate(cols[7]) || '2026-03-01';
-        banGiao = normalizeExcelDate(cols[8]) || '2026-05-30';
+    // Kiểm tra nếu dòng trong Excel bản thân nó là dòng con M&E (↳ M&E — GĐ bê tông, cốt thép / hoàn thiện)
+    const meStage = detectExcelMeSubRowStage(ten);
+    if(meStage > 0 && lastLevel3Row) {
+      // Tìm các ngày và khối lượng trong dòng M&E này để gán vào hạng mục cha vừa tạo
+      const datesFound = [];
+      let numFound = null;
+      for(let i = 1; i < cols.length; i++) {
+        const cellVal = cols[i];
+        if(!cellVal) continue;
+        const normD = (cellVal.includes('/') || (cellVal.includes('-') && cellVal.length >= 8)) ? normalizeExcelDate(cellVal) : '';
+        if(normD) {
+          datesFound.push(normD);
+        } else {
+          const parsedNum = parseFloat(cellVal.replace(/,/g, ''));
+          if(!isNaN(parsedNum) && parsedNum > 0) numFound = parsedNum;
+        }
+      }
+      if(meStage === 1) {
+        if(datesFound[0]) lastLevel3Row.me1_bd = datesFound[0];
+        if(datesFound[1]) lastLevel3Row.me1_kt = datesFound[1];
+        if(numFound != null) lastLevel3Row.me1_kl = numFound;
       } else {
-        dv = loai === 'Thấp tầng' ? 'căn' : 'm²';
-        batDau = normalizeExcelDate(cols[5]) || '2025-07-01';
-        ketThuc = normalizeExcelDate(cols[6]) || '2026-03-01';
-        banGiao = normalizeExcelDate(cols[7]) || '2026-05-30';
+        if(datesFound[0]) lastLevel3Row.me2_bd = datesFound[0];
+        if(datesFound[1]) lastLevel3Row.me2_kt = datesFound[1];
+        if(numFound != null) lastLevel3Row.me2_kl = numFound;
+      }
+      return;
+    }
+
+    let loai = 'Thấp tầng', kieu = 'Liền kề, Shophouse, TMDV', tc = 'Xây thô';
+    let batDau = '', ketThuc = '', banGiao = '', kl = 50, dv = 'căn';
+
+    const c1 = cols[1] || '';
+    const isC1Date = c1.includes('/') || (c1.includes('-') && c1.length >= 8);
+
+    // Trường hợp A: Cột 1 là Ngày bắt đầu luôn (do người dùng tắt Phân loại công trình hoặc copy bảng chỉ có Tên | Bắt đầu | Kết thúc | Bàn giao | KL | Đv)
+    if(isC1Date || !showPhanLoaiCols) {
+      const inferred = inferClassificationFromName(ten);
+      loai = inferred.loai;
+      kieu = inferred.kieu;
+      tc   = inferred.tc;
+
+      if(isC1Date) {
+        batDau  = normalizeExcelDate(cols[1]) || '2025-07-01';
+        ketThuc = normalizeExcelDate(cols[2]) || '2026-03-01';
+        banGiao = normalizeExcelDate(cols[3]) || ketThuc;
+        kl = parseFloat((cols[4] || '50').replace(/,/g, '')) || 50;
+        dv = cols[5] || '';
+      } else {
+        // Trường hợp Tên | KL | Đv | Bắt đầu | Kết thúc | Bàn giao
+        kl = parseFloat((cols[1] || '50').replace(/,/g, '')) || 50;
+        const c2 = cols[2] || '';
+        if(c2 && !c2.includes('/') && !c2.includes('-')) {
+          dv = c2;
+          batDau  = normalizeExcelDate(cols[3]) || '2025-07-01';
+          ketThuc = normalizeExcelDate(cols[4]) || '2026-03-01';
+          banGiao = normalizeExcelDate(cols[5]) || ketThuc;
+        } else {
+          batDau  = normalizeExcelDate(cols[2]) || '2025-07-01';
+          ketThuc = normalizeExcelDate(cols[3]) || '2026-03-01';
+          banGiao = normalizeExcelDate(cols[4]) || ketThuc;
+        }
+      }
+    } else {
+      // Trường hợp B: Có đầy đủ cột Phân loại: Tên (0) | Loại 1 (1) | Loại 2 (2) | TC (3) | ...
+      loai = cols[1] || 'Thấp tầng';
+      kieu = cols[2] || '';
+      tc   = cols[3] || '';
+
+      const c4 = cols[4] || '';
+      if(c4.includes('/') || (c4.includes('-') && c4.length >= 8)) {
+        batDau  = normalizeExcelDate(cols[4]) || '2025-07-01';
+        ketThuc = normalizeExcelDate(cols[5]) || '2026-03-01';
+        banGiao = normalizeExcelDate(cols[6]) || ketThuc;
+        kl = parseFloat((cols[7] || '50').replace(/,/g, '')) || 50;
+        dv = cols[8] || '';
+      } else {
+        kl = parseFloat((cols[4] || '50').replace(/,/g, '')) || 50;
+        const c5 = cols[5] || '';
+        if(c5 && !c5.includes('/') && !c5.includes('-') && isNaN(Date.parse(c5))) {
+          dv = c5;
+          batDau  = normalizeExcelDate(cols[6]) || '2025-07-01';
+          ketThuc = normalizeExcelDate(cols[7]) || '2026-03-01';
+          banGiao = normalizeExcelDate(cols[8]) || ketThuc;
+        } else {
+          batDau  = normalizeExcelDate(cols[5]) || '2025-07-01';
+          ketThuc = normalizeExcelDate(cols[6]) || '2026-03-01';
+          banGiao = normalizeExcelDate(cols[7]) || ketThuc;
+        }
       }
     }
 
-    newRows.push({
+    const rowItem = {
       id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
       level: 3,
       stt: '',
@@ -4240,7 +4449,15 @@ function importRowsFromTsvText(text) {
       batDau,
       ketThuc,
       banGiao
-    });
+    };
+    // Chuẩn hóa phân loại cấp 1, cấp 2, TC bàn giao & đơn vị tính
+    syncSubClassificationWhenLoaiChanged(rowItem);
+    if(dv) rowItem.dv = dv;
+    // Tự động khởi tạo 2 giai đoạn M&E (bê tông cốt thép & hoàn thiện) cho hạng mục có M&E
+    ensureMeStagesForRow(rowItem);
+
+    newRows.push(rowItem);
+    lastLevel3Row = rowItem;
   });
 
   if(newRows.length > 0) {
@@ -4362,9 +4579,11 @@ function applyValueToCellDomAndModel(td, rawValStr) {
     if(f === 'kl' || f === 'me1_kl' || f === 'me2_kl') {
       const num = parseFloat(valStr.replace(/,/g, ''));
       rObj[f] = isNaN(num) ? 0 : num;
+      ensureMeStagesForRow(rObj);
     } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'me1_bd' || f === 'me1_kt' || f === 'me2_bd' || f === 'me2_kt') {
       const norm = normalizeExcelDate(valStr);
       if(norm || valStr === '') rObj[f] = norm;
+      ensureMeStagesForRow(rObj);
     } else if(ctrl.tagName === 'SELECT') {
       const opts = Array.from(ctrl.options);
       const lower = valStr.toLowerCase();
@@ -4374,10 +4593,20 @@ function applyValueToCellDomAndModel(td, rawValStr) {
         rObj[f] = matched.value;
         if(f === 'loai') {
           syncSubClassificationWhenLoaiChanged(rObj);
+          ensureMeStagesForRow(rObj);
         }
       }
     } else {
       rObj[f] = valStr;
+      // Nếu người dùng đang tắt cột Phân loại và paste Tên hạng mục, tự động suy luận Phân loại & sinh dòng M&E tương ứng
+      if(f === 'ten' && !showPhanLoaiCols && rObj.level === 3) {
+        const inferred = inferClassificationFromName(valStr);
+        rObj.loai = inferred.loai;
+        rObj.kieu = inferred.kieu;
+        rObj.tc   = inferred.tc;
+        syncSubClassificationWhenLoaiChanged(rObj);
+        ensureMeStagesForRow(rObj);
+      }
     }
     return true;
   }
@@ -4456,12 +4685,72 @@ function pasteClipboardIntoTableRange(clipText, targetTable, fallbackTd) {
 
   // Nếu trên bảng Hạng mục công trình mà người dùng dán nhiều dòng vượt quá số dòng hiện có, tự động chèn thêm dòng mới để nhận đủ dữ liệu Excel
   if(targetTable.id === 'treeTable' && matrix.length > 1) {
-    const tbody = targetTable.querySelector('tbody');
+    // Kiểm tra xem dữ liệu copy từ Excel có chứa sẵn các dòng con M&E (↳ M&E...) không
+    const clipHasExplicitMeRows = matrix.some(rowArr => detectExcelMeSubRowStage(rowArr[0] || '') > 0);
+    let tbody = targetTable.querySelector('tbody');
+
+    // Nếu bảng đang hiện dòng M&E nhưng dữ liệu Excel copy sang chỉ gồm các dòng hạng mục chính (không có dòng M&E),
+    // ta dán trực tiếp theo danh sách các dòng hạng mục chính (tr[data-id]) để mỗi hạng mục tự động sinh 2 dòng M&E bên dưới!
+    if(showMeSubRows && !clipHasExplicitMeRows) {
+      const startCell = getCellAtVisualCoords(targetTable, startR, startC);
+      const startTr = startCell ? startCell.closest('tr') : null;
+      // Chỉ áp dụng chế độ dán theo hạng mục cấp 3 khi ô bắt đầu nằm trên dòng hạng mục chính (không phải đang bôi riêng dòng M&E cấp 4)
+      if(!startTr || !startTr.classList.contains('tr-level-4-me')) {
+        let mainTrs = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        let startMainIdx = startTr ? mainTrs.indexOf(startTr) : 0;
+        if(startMainIdx < 0) startMainIdx = 0;
+
+        while(startMainIdx + matrix.length > mainTrs.length) {
+          const newItem = {
+            id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            level: 3,
+            stt: '',
+            ten: 'Hạng mục mới',
+            loai: 'Thấp tầng',
+            kieu: 'Liền kề, Shophouse, TMDV',
+            tc: 'Xây thô',
+            kl: 50,
+            dv: 'căn',
+            batDau: '2025-07-01',
+            ketThuc: '2026-03-01',
+            banGiao: '2026-05-30'
+          };
+          ensureMeStagesForRow(newItem);
+          currentProjectData.treeRows.push(newItem);
+          renderTreeTable();
+          tbody = targetTable.querySelector('tbody');
+          mainTrs = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        }
+
+        let changedMain = false;
+        for(let dr = 0; dr < matrix.length; dr++) {
+          const rowArr = matrix[dr];
+          const trEl = mainTrs[startMainIdx + dr];
+          if(!trEl) continue;
+          const domR = Array.from(tbody.children).indexOf(trEl);
+          for(let dc = 0; dc < rowArr.length; dc++) {
+            const val = rowArr[dc];
+            if(val === undefined) continue;
+            const cell = getCellAtVisualCoords(targetTable, domR, startC + dc);
+            if(cell && applyValueToCellDomAndModel(cell, val)) {
+              changedMain = true;
+            }
+          }
+        }
+        if(changedMain) {
+          saveCurrentProject();
+          refreshDashboard();
+          showUndoToast('📋 Đã dán dữ liệu & tự động tạo dòng M&E theo giai đoạn thô/hoàn thiện (Ctrl+Z để hoàn tác)');
+          return true;
+        }
+      }
+    }
+
     const totalDomRows = tbody ? tbody.children.length : 0;
     if(startR + matrix.length > totalDomRows) {
       const missingCount = (startR + matrix.length) - totalDomRows;
       for(let k = 0; k < missingCount; k++) {
-        currentProjectData.treeRows.push({
+        const newItem = {
           id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
           level: 3,
           stt: '',
@@ -4474,7 +4763,9 @@ function pasteClipboardIntoTableRange(clipText, targetTable, fallbackTd) {
           batDau: '2025-07-01',
           ketThuc: '2026-03-01',
           banGiao: '2026-05-30'
-        });
+        };
+        ensureMeStagesForRow(newItem);
+        currentProjectData.treeRows.push(newItem);
       }
       renderTreeTable();
     }
