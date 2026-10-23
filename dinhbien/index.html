@@ -184,20 +184,31 @@ header.app-header {
    ========================================================================= */
 /* Khi Ẩn Cột Trái (Xem toàn màn hình Cột Phải: Biểu đồ, Hệ số tiến độ, Ma trận Nhân sự, Hệ số nhân sự) */
 body.hide-left-mode .dashboard-row-grid {
-  grid-template-columns: 1fr !important;
+  grid-template-columns: 100% !important;
+  display: block !important;
 }
 body.hide-left-mode .dashboard-row-grid > *:first-child,
 body.hide-left-mode .global-col-resizer-line {
   display: none !important;
 }
+body.hide-left-mode .dashboard-row-grid > *:nth-child(2) {
+  display: block !important;
+  width: 100% !important;
+}
 
 /* Khi Ẩn Cột Phải (Xem toàn màn hình Cột Trái: Tổng hợp & Bảng Hạng mục công trình, Định mức) */
 body.hide-right-mode .dashboard-row-grid {
-  grid-template-columns: 1fr !important;
+  grid-template-columns: 100% !important;
+  display: block !important;
 }
 body.hide-right-mode .dashboard-row-grid > *:nth-child(2),
+body.hide-right-mode #row4Grid,
 body.hide-right-mode .global-col-resizer-line {
   display: none !important;
+}
+body.hide-right-mode .dashboard-row-grid > *:first-child {
+  display: block !important;
+  width: 100% !important;
 }
 
 /* Chế độ View Mobile: Thu gọn bảng, xếp chồng 1 cột trên điện thoại / màn hình nhỏ */
@@ -1295,10 +1306,10 @@ footer.app-footer {
     <h1>QUẢN LÝ ĐỊNH BIÊN</h1>
     <div class="header-right-tools">
       <!-- Bộ công cụ Chế độ xem: Ẩn Trái, Ẩn Phải, và Mobile/Web cho màn hình 19"/23" -->
-      <div style="display:inline-flex; gap:2px; align-items:center; background:#f1f5f9; padding:2px 4px; border:1px solid #cbd5e1; border-radius:5px;" title="Điều khiển cột hiển thị: Rất tiện lợi cho màn hình 19 inch hoặc 23 inch">
-        <button class="btn active" id="btnViewBothCols" style="padding:2px 6px; font-size:10.5px; font-weight:700;" title="Hiển thị song song cả 2 cột Trái và Phải">⬍ 2 Cột</button>
-        <button class="btn" id="btnHideRightCol" style="padding:2px 6px; font-size:10.5px;" title="Ẩn cột Phải: Phóng to toàn màn hình bảng Hạng mục & Định mức (Cột Trái)">⬅ Ẩn phải</button>
-        <button class="btn" id="btnHideLeftCol" style="padding:2px 6px; font-size:10.5px;" title="Ẩn cột Trái: Phóng to toàn màn hình Biểu đồ, Hệ số tiến độ & Ma trận Nhân sự (Cột Phải)">Ẩn trái ➡</button>
+      <div style="display:inline-flex; gap:2px; align-items:center; background:#f1f5f9; padding:2px 4px; border:1px solid #cbd5e1; border-radius:5px;" title="Điều khiển chế độ hiển thị màn hình (Rất tiện lợi cho màn hình 19 inch và 23 inch)">
+        <button class="btn" id="btnHideRightCol" style="padding:2px 6px; font-size:10.5px;" title="Ẩn nửa phải: Phóng to toàn màn hình Nửa Trái (Tổng hợp, Hạng mục, Định mức)">⬅ Ẩn phải</button>
+        <button class="btn active" id="btnViewBothCols" style="padding:2px 6px; font-size:10.5px; font-weight:700;" title="Hiển thị đầy đủ cả 2 nửa Trái và Phải">⬍ 2 Nửa</button>
+        <button class="btn" id="btnHideLeftCol" style="padding:2px 6px; font-size:10.5px;" title="Ẩn nửa trái: Phóng to toàn màn hình Nửa Phải (Biểu đồ, Hệ số, Nhân sự)">Ẩn trái ➡</button>
       </div>
 
       <div style="display:inline-flex; gap:2px; align-items:center; background:#f1f5f9; padding:2px 4px; border:1px solid #cbd5e1; border-radius:5px;" title="Chuyển đổi chế độ Web / Mobile">
@@ -7062,7 +7073,7 @@ function initViewModeControls() {
     btnBoth.addEventListener('click', () => {
       document.body.classList.remove('hide-left-mode', 'hide-right-mode');
       updateColumnViewButtons('both');
-      showUndoToast('⬍ Đang xem chế độ 2 Cột song song');
+      showUndoToast('⬍ Hiển thị đầy đủ cả 2 Nửa Trái & Phải');
     });
   }
 
@@ -7072,7 +7083,7 @@ function initViewModeControls() {
       document.body.classList.toggle('hide-right-mode');
       const isHidden = document.body.classList.contains('hide-right-mode');
       updateColumnViewButtons(isHidden ? 'hideright' : 'both');
-      showUndoToast(isHidden ? '⬅ Đã ẩn cột Phải — Toàn màn hình Hạng mục & Định mức' : '⬍ Đã hiện lại 2 Cột');
+      showUndoToast(isHidden ? '⬅ Đã ẩn Nửa Phải — Toàn màn hình Tổng hợp, Hạng mục & Định mức' : '⬍ Đã hiện lại 2 Nửa Trái & Phải');
     });
   }
 
@@ -7082,7 +7093,7 @@ function initViewModeControls() {
       document.body.classList.toggle('hide-left-mode');
       const isHidden = document.body.classList.contains('hide-left-mode');
       updateColumnViewButtons(isHidden ? 'hideleft' : 'both');
-      showUndoToast(isHidden ? '➡ Đã ẩn cột Trái — Toàn màn hình Biểu đồ & Nhân sự' : '⬍ Đã hiện lại 2 Cột');
+      showUndoToast(isHidden ? '➡ Đã ẩn Nửa Trái — Toàn màn hình Biểu đồ, Hệ số & Nhân sự' : '⬍ Đã hiện lại 2 Nửa Trái & Phải');
     });
   }
 
