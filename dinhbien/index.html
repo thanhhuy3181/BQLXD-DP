@@ -613,20 +613,40 @@ table.tree-table input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 .row-del-btn:hover { color: #ef4444; font-weight: 700; }
 
-/* Cột đầu tiên (Kéo thả di chuyển dòng): chỉ hiện icon ⠿ khi đưa chuột vào cột đầu tiên */
+/* Cột đầu tiên (Kéo thả di chuyển dòng): biểu tượng 3 gạch ngang (≡) hiển thị tinh tế */
 td.col-drag-handle {
   text-align: center;
   cursor: grab;
   user-select: none;
+  padding: 0 2px !important;
 }
 td.col-drag-handle .drag-icon {
-  opacity: 0;
-  transition: opacity 0.12s ease;
-  font-size: 12px;
+  opacity: 0.35;
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
+  font-size: 14px;
+  font-weight: 700;
   display: inline-block;
+  line-height: 1;
+  color: #64748b;
+}
+tr.tr-level-1 td.col-drag-handle .drag-icon {
+  color: #ffffff !important;
+  opacity: 0.5;
+}
+tr.tr-level-2 td.col-drag-handle .drag-icon {
+  color: #1b4f72 !important;
+  opacity: 0.5;
 }
 td.col-drag-handle:hover .drag-icon {
-  opacity: 1;
+  opacity: 1 !important;
+  transform: scale(1.15);
+  color: var(--primary, #2563eb) !important;
+}
+tr.tr-level-1 td.col-drag-handle:hover .drag-icon {
+  color: #fef08a !important;
+}
+tr.tr-level-2 td.col-drag-handle:hover .drag-icon {
+  color: #0284c7 !important;
 }
 td.col-drag-handle:active {
   cursor: grabbing;
@@ -1272,7 +1292,7 @@ footer.app-footer {
         <table class="tree-table" id="treeTable">
           <thead>
             <tr>
-              <th style="width:20px;" title="Kéo thả sắp xếp"></th>
+              <th style="width:20px; text-align:center;" title="Kéo thả sắp xếp dòng"><span style="color:#94a3b8; font-size:13px; font-weight:700;">≡</span></th>
               <th style="width:26px;" title="Cấp mục lục (1, 2, 3, 4)">Cấp</th>
               <th style="width:26px;">TT</th>
               <th id="thHmTen" style="width:180px; min-width:160px; text-align:left; padding-left:6px;">Tên công trình /<br>Hạng mục</th>
@@ -2769,7 +2789,7 @@ function renderTreeTable() {
       sttCounter = 0;
       tr.className = 'tr-level-1' + (r.id === selectedRowId ? ' row-selected' : '');
       tr.innerHTML = `
-        <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon">⠿</span></td>
+        <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng (Mục lục cấp 1)"><span class="drag-icon">≡</span></td>
         <td style="text-align:center;">1</td>
         <td></td>
         <td colspan="${spanSummaryAndHeader}">
@@ -2781,7 +2801,7 @@ function renderTreeTable() {
       sttCounter = 0;
       tr.className = 'tr-level-2' + (r.id === selectedRowId ? ' row-selected' : '');
       tr.innerHTML = `
-        <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon">⠿</span></td>
+        <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng (Mục lục cấp 2)"><span class="drag-icon">≡</span></td>
         <td style="text-align:center;">2</td>
         <td></td>
         <td colspan="${spanSummaryAndHeader}" style="padding-left:14px;">
@@ -2847,7 +2867,7 @@ function renderTreeTable() {
       const bptcInputStyle = isBptcTab ? 'background:#fff7ed; color:#9a3412; font-weight:600;' : '';
 
       tr.innerHTML = `
-        <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon" style="color:#64748b;">⠿</span></td>
+        <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng (Hạng mục)"><span class="drag-icon">≡</span></td>
         <td style="text-align:center;">3</td>
         <td style="text-align:center; font-weight:600; color:#334155;">${sttCounter}</td>
         <td><input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten" title="${escHtml(r.ten)}"></td>
