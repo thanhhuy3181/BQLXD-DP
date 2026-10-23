@@ -205,11 +205,12 @@ table.dinhmuc-table {
   border-spacing: 0;
   font-size: 11px;
   white-space: nowrap;
+  table-layout: fixed;
 }
 table.dinhmuc-table th {
   background: #f1f5f9;
   font-weight: 600;
-  padding: 0 6px;
+  padding: 0 5px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   position: sticky;
@@ -221,9 +222,11 @@ table.dinhmuc-table th {
   max-height: 28px;
   line-height: 27px;
   box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 table.dinhmuc-table td {
-  padding: 0 6px;
+  padding: 0 5px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   height: 28px;
@@ -232,13 +235,57 @@ table.dinhmuc-table td {
   line-height: 27px;
   vertical-align: middle;
   box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+table.dinhmuc-table th.dm-freeze-1,
+table.dinhmuc-table td.dm-freeze-1 {
+  position: sticky;
+  left: 0;
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  text-align: center;
+  background: inherit;
+  z-index: 5;
+}
+table.dinhmuc-table th.dm-freeze-2,
+table.dinhmuc-table td.dm-freeze-2 {
+  position: sticky;
+  left: 34px;
+  width: 195px;
+  min-width: 195px;
+  max-width: 195px;
+  text-align: left;
+  background: inherit;
+  z-index: 5;
+}
+table.dinhmuc-table th.dm-freeze-3,
+table.dinhmuc-table td.dm-freeze-3 {
+  position: sticky;
+  left: 229px;
+  width: 38px;
+  min-width: 38px;
+  max-width: 38px;
+  text-align: center;
+  background: inherit;
+  z-index: 5;
+}
+table.dinhmuc-table thead th.dm-freeze-1,
+table.dinhmuc-table thead th.dm-freeze-2,
+table.dinhmuc-table thead th.dm-freeze-3 {
+  background: #f1f5f9;
+  z-index: 20;
+}
+table.dinhmuc-table tbody tr {
+  background: #ffffff;
 }
 table.dinhmuc-table td input {
-  width: 68px;
+  width: 62px;
   height: 20px;
   line-height: 18px;
-  padding: 0 4px;
-  font-size: 11px;
+  padding: 0 3px;
+  font-size: 10.5px;
   font-family: var(--font-mono);
   text-align: right;
   border: 1px solid #cbd5e1;
@@ -792,19 +839,34 @@ footer.app-footer {
         <h2>
           <span>📐 Định mức (BQLXD, KHO, BPTC)</span>
         </h2>
-        <button class="btn" id="btnResetDinhMuc" style="font-size:10.5px; padding:2px 6px;" title="Khôi phục định mức chuẩn mặc định">↺ Mặc định</button>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <div id="dinhmucViewTabs" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
+            <button class="heso-tab-btn active" data-dmview="sync" style="padding:1px 6px; font-size:10.5px;" title="Hiển thị đầy đủ các cột định mức và đồng bộ từng dòng với bảng Nhân sự bên phải">Đồng bộ (Đủ 3 khối)</button>
+            <button class="heso-tab-btn" data-dmview="bql" style="padding:1px 6px; font-size:10.5px;" title="Xem đúng mẫu Sheet ĐM BQL trong Excel">Sheet ĐM BQL</button>
+            <button class="heso-tab-btn" data-dmview="kho" style="padding:1px 6px; font-size:10.5px;" title="Xem đúng mẫu Sheet ĐM KHO trong Excel">Sheet ĐM KHO</button>
+            <button class="heso-tab-btn" data-dmview="bptc" style="padding:1px 6px; font-size:10.5px;" title="Xem đúng mẫu Sheet ĐM BPTC trong Excel">Sheet ĐM BPTC</button>
+          </div>
+          <button class="btn" id="btnResetDinhMuc" style="font-size:10.5px; padding:2px 6px;" title="Khôi phục định mức chuẩn mặc định">↺ Mặc định</button>
+        </div>
       </div>
       <div class="dinhmuc-table-wrap" id="dinhmucScrollSync">
         <table class="dinhmuc-table" id="dinhmucTable">
-          <thead>
+          <thead id="dinhmucHead">
             <tr>
-              <th style="width:32px;">STT</th>
-              <th style="width:90px; text-align:left;">Bộ phận</th>
-              <th style="min-width:160px; text-align:left;">Chức danh</th>
-              <th style="width:40px;">Cấp</th>
-              <th style="width:85px;">ĐM Thấp tầng</th>
-              <th style="width:85px;">ĐM Cao/Khác</th>
-              <th style="min-width:95px; text-align:left;">Quy tắc / Tầm QL</th>
+              <th class="dm-freeze-1">STT</th>
+              <th class="dm-freeze-2">Chức danh</th>
+              <th class="dm-freeze-3">Cấp</th>
+              <th style="width:125px;">Tầm QL / Cố định</th>
+              <th style="width:72px;" title="Thấp tầng (LK, Shophouse, TMDV) - Xây thô (ĐVT: căn)">TT: Xây thô</th>
+              <th style="width:78px;" title="Thấp tầng - Full Nội thất (3 tầng trở lên) (ĐVT: căn)">TT: Full NT≥3T</th>
+              <th style="width:72px;" title="Thấp tầng - Hoàn thiện nội thất (2 tầng) (ĐVT: căn)">TT: HTNT 2T</th>
+              <th style="width:72px;" title="Thấp tầng - Hoàn thiện nội thất (1 tầng) (ĐVT: căn)">TT: HTNT 1T</th>
+              <th style="width:92px;" title="Cao tầng - GĐ Xây thô (ĐVT: m2 sàn)">Cao tầng (Thô)</th>
+              <th style="width:92px;" title="Cao tầng - GĐ Hoàn thiện (ĐVT: m2 sàn)">Cao tầng (HT)</th>
+              <th style="width:105px;" title="Các công trình khác: Bệnh viện, KS, Trường học, TTTM (ĐVT: m2)">CT Khác (BV,KS,Trường)</th>
+              <th style="width:95px;" title="Công trình nhà xưởng (ĐVT: m2)">Nhà xưởng (m2)</th>
+              <th style="width:115px;" title="Đường giao thông, công viên, cảnh quan (ĐVT: m2)">Đường GT / Công viên</th>
+              <th style="width:125px;" title="Hệ số điều chỉnh Biệt thự & Ghi chú">Hệ số Biệt thự / Ghi chú</th>
             </tr>
           </thead>
           <tbody id="dinhmucBody">
@@ -1065,53 +1127,56 @@ function roundVal(v, mode) {
 }
 
 const MATRIX_ROWS_META = [
-  {stt:1,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Giám đốc BQLXD Cấp 3', cap:'T3', type:'lead_bql', dmThap:'', dmKhac:'', rule:'1 người khi dự án chạy'},
-  {stt:2,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Trợ lý GĐ BQLXD', cap:'T5', type:'fixed', val:0, dmThap:'', dmKhac:'', rule:'Cố định: 0'},
-  {stt:3,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSXD', cap:'T5', type:'dt_xd', dmThap:'', dmKhac:'', rule:'Tầm QL: 10 CBGS XD'},
-  {stt:4,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Xây dựng)', cap:'T6', type:'cb_xd', dmKey:'cb_xd', dmThap:50, dmKhac:14000, rule:'KL ÷ Định mức'},
-  {stt:5,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSME', cap:'T5', type:'dt_me', dmThap:'', dmKhac:'', rule:'Tầm QL: 10 CBGS ME'},
-  {stt:6,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (M&E)', cap:'T6', type:'cb_me', dmKey:'cb_me', dmThap:500, dmKhac:22500, rule:'KL ÷ Định mức'},
-  {stt:7,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GS Hạ tầng', cap:'T5', type:'dt_ht', dmThap:'', dmKhac:'', rule:'Tầm QL: 10 CBGS HT'},
-  {stt:8,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Hạ tầng)', cap:'T6', type:'cb_ht', dmKey:'cb_ht', dmThap:'', dmKhac:15000, rule:'KL ÷ Định mức'},
-  {stt:9,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên QLTK tại BQLXD', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1'},
-  {stt:10, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Trắc đạc)', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1'},
-  {stt:11, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CBGS Cây xanh', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1'},
-  {stt:12, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Xây dựng', cap:'T7', type:'nv_xd', dmThap:'', dmKhac:'', rule:'15% × CBGS XD'},
-  {stt:13, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT M&E', cap:'T7', type:'nv_me', dmThap:'', dmKhac:'', rule:'15% × CBGS ME'},
-  {stt:14, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Hạ tầng', cap:'T7', type:'nv_ht', dmThap:'', dmKhac:'', rule:'15% × CBGS HT'},
-  {stt:15, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên Hành chính', cap:'T7', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1'},
-  {stt:16, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên ATLĐ và VSMT', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1'},
+  // I. KHỐI BAN QUẢN LÝ XÂY DỰNG (ĐM BQL)
+  {stt:1,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Giám đốc BQLXD Cấp 3', cap:'T4', type:'lead_bql', dmThap:'', dmKhac:'', rule:'QL 5–7 ĐTGS (T5)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'GĐ Cấp 1(T2): 4-5 T3; Cấp 2(T3): 5-7 T4'},
+  {stt:2,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Trợ lý GĐ BQLXD / CV Nội nghiệp', cap:'T6', type:'fixed', val:0, dmThap:'', dmKhac:'', rule:'1 người / Dự án', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Theo quy mô DA'},
+  {stt:3,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSXD', cap:'T5', type:'dt_xd', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS XD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 8–12 CBGS/NVGS'},
+  {stt:4,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Xây dựng)', cap:'T6', type:'cb_xd', dmKey:'cb_xd', dmThap:50, dmKhac:14000, rule:'KL ÷ Định mức', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:14000, ct_ht:10000, khac:'9.000 / 7.500', nx:'21.000 / 15.000', dgt:'', hsNote:'Biệt thự × 0,8'},
+  {stt:5,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSME', cap:'T5', type:'dt_me', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS ME', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 8–12 CBGS/NVGS'},
+  {stt:6,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (M&E)', cap:'T6', type:'cb_me', dmKey:'cb_me', dmThap:250, dmKhac:22500, rule:'KL ÷ ĐM (BTCT/HT)', tt_tho:250, tt_full:70, tt_ht2:80, tt_ht1:90, ct_tho:'4 tòa (BTCT)', ct_ht:22500, khac:'4 CT / 22.500', nx:'100.000 / 50.000', dgt:'120.000(CV)/200.000(ĐGT)', hsNote:'GĐ BTCT: 500 căn | Biệt thự × 0,8'},
+  {stt:7,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GS Hạ tầng', cap:'T5', type:'dt_ht', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS HT', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 8–12 CBGS/NVGS'},
+  {stt:8,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Hạ tầng)', cap:'T6', type:'cb_ht', dmKey:'cb_ht', dmThap:'', dmKhac:15000, rule:'1 CB / CT (~15.000m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:15000, ct_ht:15000, khac:15000, nx:15000, dgt:15000, hsNote:'1 CB/Công trình (~15.000 m²)'},
+  {stt:9,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên QLTK tại BQLXD', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:10, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Trắc đạc)', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:11, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CBGS Cây xanh', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:12, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Xây dựng', cap:'T7', type:'nv_xd', dmKey:'nv_xd', dmThap:35, dmKhac:9800, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:35, tt_full:25, tt_ht2:27, tt_ht1:28, ct_tho:9800, ct_ht:7000, khac:'6.300 / 5.250', nx:'14.700 / 10.500', dgt:'', hsNote:'90% CBGS T6 + 10%×1,5 NVGS T7'},
+  {stt:13, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT M&E', cap:'T7', type:'nv_me', dmKey:'nv_me', dmThap:175, dmKhac:15750, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:175, tt_full:49, tt_ht2:56, tt_ht1:63, ct_tho:'3 tòa (BTCT)', ct_ht:15750, khac:'3 CT / 15.750', nx:'70.000 / 35.000', dgt:'84.000(CV)/140.000(ĐGT)', hsNote:'GĐ BTCT: 350 căn | Biệt thự × 0,8'},
+  {stt:14, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Hạ tầng', cap:'T7', type:'nv_ht', dmKey:'nv_ht', dmThap:'', dmKhac:10500, rule:'1 NV / CT (~10.500m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:10500, ct_ht:10500, khac:10500, nx:10500, dgt:10500, hsNote:'1 CB/Công trình (~10.500 m²)'},
+  {stt:15, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên Hành chính', cap:'T7', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:16, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên ATLĐ và VSMT', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
 
-  {stt:1,  pb:'KHO', bp:'BP Kho', cd:'Tổng quản lý kho (theo vùng)', cap:'T4', type:'lead_kho_vung', dmThap:'', dmKhac:'', rule:'Theo vùng: 0'},
-  {stt:2,  pb:'KHO', bp:'BP Kho', cd:'Trưởng kho', cap:'T5', type:'lead_kho', dmThap:'', dmKhac:'', rule:'1 người / Dự án'},
-  {stt:3,  pb:'KHO', bp:'BP Kho', cd:'Trưởng nhóm kho', cap:'T6', type:'group_kho', dmThap:'', dmKhac:'', rule:'Tầm QL: 9 Thủ kho'},
-  {stt:4,  pb:'KHO', bp:'BP Kho', cd:'Thủ kho', cap:'T8', type:'thu_kho_sum', dmKey:'thu_kho', dmThap:180, dmKhac:36000, rule:'KL ÷ ĐM × 0.3'},
+  // II. KHỐI KHO DỰ ÁN (ĐM KHO)
+  {stt:1,  pb:'KHO', bp:'BP Kho', cd:'Tổng quản lý kho (theo vùng)', cap:'T4', type:'lead_kho_vung', dmThap:'', dmKhac:'', rule:'QL 4–6 Trưởng kho (T5)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Theo vùng (0 tại DA)'},
+  {stt:2,  pb:'KHO', bp:'BP Kho', cd:'Trưởng kho', cap:'T5', type:'lead_kho', dmThap:'', dmKhac:'', rule:'QL 5–7 TN Kho (>15 TK)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'1 Trưởng kho / BQLXD'},
+  {stt:3,  pb:'KHO', bp:'BP Kho', cd:'Trưởng nhóm kho', cap:'T6', type:'group_kho', dmThap:'', dmKhac:'', rule:'QL 7–11 Thủ kho (T7,T8)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Nhiều DA nhỏ tối đa 15 TK'},
+  {stt:4,  pb:'KHO', bp:'BP Kho', cd:'Thủ kho (Nhập liệu & Hiện trường)', cap:'T7/T8', type:'thu_kho_sum', dmKey:'thu_kho', dmThap:180, dmKhac:36000, rule:'ĐM Nhập liệu + Hiện trường', tt_tho:180, tt_full:100, tt_ht2:100, tt_ht1:100, ct_tho:36000, ct_ht:20000, khac:'25.000(TTTM)/15.000(KS)', nx:20000, dgt:'75.000(ĐGT)/50.000(CV)', hsNote:'NL XD:470/360; NL ME:930/472; HT ME:250/163'},
 
-  {stt:1,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Phó Giám đốc thi công', cap:'T4', type:'lead_bptc', dmThap:'', dmKhac:'', rule:'1 người khi dự án chạy'},
-  {stt:2,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng Bộ phận Hỗ trợ thi công', cap:'T5', type:'tbp_httc', dmThap:'', dmKhac:'', rule:'1 khi (QC+QS+Shop) > 6'},
-  {stt:3,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm QC', cap:'T6', type:'tn_qc', dmThap:'', dmKhac:'', rule:'Tầm QL: 7 CV QC'},
-  {stt:4,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên QC', cap:'T7', type:'cv_qc', dmKey:'cv_qc', dmThap:150, dmKhac:30000, rule:'KL ÷ Định mức'},
-  {stt:5,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm QS', cap:'T6', type:'tn_qs', dmThap:'', dmKhac:'', rule:'Tầm QL: 7 CV QS'},
-  {stt:6,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên QS', cap:'T7', type:'cv_qs', dmKey:'cv_qs', dmThap:120, dmKhac:24000, rule:'KL ÷ Định mức'},
-  {stt:7,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm BPTC- Shopdrawing', cap:'T6', type:'tn_shop', dmThap:'', dmKhac:'', rule:'Tầm QL: 7 CV Shop'},
-  {stt:8,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên BPTC- Shopdrawing', cap:'T7', type:'cv_shop', dmKey:'cv_shop', dmThap:150, dmKhac:30000, rule:'KL ÷ Định mức'},
-  {stt:9,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm An toàn lao động', cap:'T6', type:'tn_atld', dmThap:'', dmKhac:'', rule:'Tầm QL: 7 CV ATLĐ'},
-  {stt:10, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên An Toàn Lao động', cap:'T7', type:'cv_atld', dmKey:'cv_atld', dmThap:150, dmKhac:30000, rule:'KL ÷ Định mức'},
-  {stt:11, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm Trắc đạc', cap:'T6', type:'tn_tracdac', dmThap:'', dmKhac:'', rule:'1 khi tổng TĐ >= 7'},
-  {stt:12, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên trắc đạc', cap:'T8', type:'cv_tracdac', dmKey:'cv_td', dmThap:80, dmKhac:16000, rule:'KL ÷ Định mức'},
-  {stt:13, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Nhân viên trắc đạc', cap:'T7', type:'nv_tracdac', dmKey:'nv_td', dmThap:50, dmKhac:10000, rule:'KL ÷ Định mức'},
-  {stt:14, pb:'BPTC', bp:'Bộ phận thi công', cd:'Trưởng khối', cap:'T4', type:'lead_khoi_tc', dmThap:'', dmKhac:'', rule:'1 khi CV KTHT > 10'},
-  {stt:15, pb:'BPTC', bp:'Bộ phận thi công', cd:'Đội trưởng', cap:'T5', type:'dt_tc', dmThap:'', dmKhac:'', rule:'Tầm QL: 5 CV KTHT'},
-  {stt:16, pb:'BPTC', bp:'Bộ phận thi công', cd:'Chuyên viên Kỹ thuật hiện trường', cap:'T7', type:'cv_ktht', dmKey:'cv_ktht', dmThap:20, dmKhac:4000, rule:'KL ÷ Định mức'},
-  {stt:17, pb:'BPTC', bp:'Bộ phận thi công', cd:'Trưởng nhóm QL Máy móc thiết bị', cap:'T7', type:'tn_mmtb', dmThap:'', dmKhac:'', rule:'Cố định: 0'},
-  {stt:18, pb:'BPTC', bp:'Bộ phận thi công', cd:'Chuyên viên Quản lý vật tư Thiết bị', cap:'T7', type:'cv_vttb', dmThap:'', dmKhac:'', rule:'Cố định: 1'},
-  {stt:19, pb:'BPTC', bp:'Bộ phận thi công', cd:'Nhân viên cơ khí', cap:'T8', type:'nv_cokhi', dmThap:'', dmKhac:'', rule:'Cố định: 1'},
-  {stt:20, pb:'BPTC', bp:'Bộ phận thi công', cd:'Nhân viên điện nước tạm', cap:'T8', type:'nv_diennuoc', dmThap:'', dmKhac:'', rule:'Cố định: 1'},
-  {stt:21, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên hành chính', cap:'T7', type:'cv_hc_tc', dmThap:'', dmKhac:'', rule:'Cố định: 0'},
-  {stt:22, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Nhân viên hành chính', cap:'T8', type:'nv_hc_tc', dmThap:'', dmKhac:'', rule:'Cố định: 1'},
-  {stt:23, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Nhân viên lấy mẫu thí nghiệm', cap:'T8', type:'nv_thinghiem', dmThap:'', dmKhac:'', rule:'Cố định: 1'},
-  {stt:24, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên nội nghiệp', cap:'T6', type:'cv_noinghiep_tc', dmKey:'cv_nn', dmThap:500, dmKhac:500, rule:'KL ÷ Định mức'},
-  {stt:25, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên Kế hoạch thi công', cap:'T7', type:'cv_kehoach_tc', dmKey:'cv_kh', dmThap:2000, dmKhac:2000, rule:'KL ÷ Định mức'}
+  // III. BỘ PHẬN THI CÔNG (ĐM BPTC)
+  {stt:1,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Phó Giám đốc thi công', cap:'T3/T4', type:'lead_bptc', dmThap:'', dmKhac:'', rule:'1 người / Dự án', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Quản lý chung BPTC dự án'},
+  {stt:2,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng Bộ phận Hỗ trợ thi công', cap:'T5', type:'tbp_httc', dmThap:'', dmKhac:'', rule:'QL 9–10 Trưởng nhóm (T6)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'1 người khi (QC+QS+Shop) > 6'},
+  {stt:3,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm QC', cap:'T6', type:'tn_qc', dmThap:'', dmKhac:'', rule:'QL 7 Chuyên viên QC', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 7 CV QC (T7)'},
+  {stt:4,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên QC', cap:'T7', type:'cv_qc', dmKey:'cv_qc', dmThap:150, dmKhac:30000, rule:'KL ÷ Định mức', tt_tho:150, tt_full:105, tt_ht2:113, tt_ht1:120, ct_tho:30000, ct_ht:30000, khac:22500, nx:45000, dgt:45000, hsNote:'BT ĐL×0,65; SL×0,75; TL×0,85'},
+  {stt:5,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm QS', cap:'T6', type:'tn_qs', dmThap:'', dmKhac:'', rule:'QL 7 Chuyên viên QS', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 7 CV QS (T7)'},
+  {stt:6,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên QS', cap:'T7', type:'cv_qs', dmKey:'cv_qs', dmThap:120, dmKhac:24000, rule:'KL ÷ Định mức', tt_tho:120, tt_full:84, tt_ht2:90, tt_ht1:96, ct_tho:24000, ct_ht:24000, khac:18000, nx:36000, dgt:36000, hsNote:'BT ĐL×0,65; SL×0,75; TL×0,85'},
+  {stt:7,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm BPTC- Shopdrawing', cap:'T6', type:'tn_shop', dmThap:'', dmKhac:'', rule:'QL 7 CV BPTC-Shop', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 7 CV BPTC-Shop (T7)'},
+  {stt:8,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên BPTC- Shopdrawing', cap:'T7', type:'cv_shop', dmKey:'cv_shop', dmThap:150, dmKhac:30000, rule:'KL ÷ Định mức', tt_tho:150, tt_full:105, tt_ht2:113, tt_ht1:120, ct_tho:30000, ct_ht:30000, khac:22500, nx:45000, dgt:45000, hsNote:'BT ĐL×0,65; SL×0,75; TL×0,85'},
+  {stt:9,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm An toàn lao động', cap:'T6', type:'tn_atld', dmThap:'', dmKhac:'', rule:'QL 7 Chuyên viên ATLĐ', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 7 CV ATLĐ (T7)'},
+  {stt:10, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên An Toàn Lao động', cap:'T7', type:'cv_atld', dmKey:'cv_atld', dmThap:150, dmKhac:30000, rule:'KL ÷ Định mức', tt_tho:150, tt_full:105, tt_ht2:113, tt_ht1:120, ct_tho:30000, ct_ht:30000, khac:22500, nx:45000, dgt:45000, hsNote:'BT ĐL×0,65; SL×0,75; TL×0,85'},
+  {stt:11, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm Trắc đạc', cap:'T6', type:'tn_tracdac', dmKey:'tn_td', dmThap:500, dmKhac:100000, rule:'KL ÷ ĐM (hoặc ≥7 TĐ)', tt_tho:500, tt_full:350, tt_ht2:375, tt_ht1:400, ct_tho:100000, ct_ht:100000, khac:75000, nx:150000, dgt:150000, hsNote:'Mục 8 ĐM BPTC: 500 căn / 100.000m²'},
+  {stt:12, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên trắc đạc', cap:'T7', type:'cv_tracdac', dmKey:'cv_td', dmThap:80, dmKhac:16000, rule:'KL ÷ Định mức', tt_tho:80, tt_full:56, tt_ht2:60, tt_ht1:64, ct_tho:16000, ct_ht:16000, khac:12000, nx:24000, dgt:24000, hsNote:'Mục 6 ĐM BPTC: 80 căn / 16.000m²'},
+  {stt:13, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Nhân viên trắc đạc', cap:'T8', type:'nv_tracdac', dmKey:'nv_td', dmThap:50, dmKhac:10000, rule:'KL ÷ Định mức', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:10000, ct_ht:10000, khac:75000/10, nx:15000, dgt:15000, hsNote:'Mục 5 ĐM BPTC: 50 căn / 10.000m²'},
+  {stt:14, pb:'BPTC', bp:'Bộ phận thi công', cd:'Trưởng khối', cap:'T4', type:'lead_khoi_tc', dmThap:'', dmKhac:'', rule:'QL 5 Đội trưởng (T5)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'QL 5 cấp T5 + CV nội nghiệp'},
+  {stt:15, pb:'BPTC', bp:'Bộ phận thi công', cd:'Đội trưởng', cap:'T5', type:'dt_tc', dmThap:'', dmKhac:'', rule:'QL 5 CV KTHT (100 căn)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'QL 5 cấp T7 + NV cơ khí, điện nước'},
+  {stt:16, pb:'BPTC', bp:'Bộ phận thi công', cd:'Chuyên viên Kỹ thuật hiện trường', cap:'T7', type:'cv_ktht', dmKey:'cv_ktht', dmThap:20, dmKhac:4000, rule:'KL ÷ Định mức', tt_tho:20, tt_full:14, tt_ht2:15, tt_ht1:16, ct_tho:4000, ct_ht:4000, khac:3000, nx:6000, dgt:6000, hsNote:'Mục 1 ĐM BPTC: 20 căn / 4.000m²'},
+  {stt:17, pb:'BPTC', bp:'Bộ phận thi công', cd:'Trưởng nhóm QL Máy móc thiết bị', cap:'T6', type:'tn_mmtb', dmThap:'', dmKhac:'', rule:'QL 7 CV Quản lý VTTB', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 7 CV QL VTTB'},
+  {stt:18, pb:'BPTC', bp:'Bộ phận thi công', cd:'Chuyên viên Quản lý vật tư Thiết bị', cap:'T7', type:'cv_vttb', dmKey:'cv_vttb', dmThap:250, dmKhac:50000, rule:'KL ÷ ĐM (Tối thiểu 1)', tt_tho:250, tt_full:175, tt_ht2:188, tt_ht1:200, ct_tho:50000, ct_ht:50000, khac:37500, nx:75000, dgt:75000, hsNote:'Mục 7 ĐM BPTC: 250 căn / 50.000m²'},
+  {stt:19, pb:'BPTC', bp:'Bộ phận thi công', cd:'Nhân viên cơ khí', cap:'T8', type:'nv_cokhi', dmKey:'nv_ck', dmThap:50, dmKhac:10000, rule:'KL ÷ ĐM (Cố định 1)', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:10000, ct_ht:10000, khac:7500, nx:15000, dgt:15000, hsNote:'Mục 5 ĐM BPTC: 50 căn / 10.000m²'},
+  {stt:20, pb:'BPTC', bp:'Bộ phận thi công', cd:'Nhân viên điện nước tạm', cap:'T8', type:'nv_diennuoc', dmKey:'nv_dn', dmThap:50, dmKhac:10000, rule:'KL ÷ ĐM (Cố định 1)', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:10000, ct_ht:10000, khac:7500, nx:15000, dgt:15000, hsNote:'Mục 5 ĐM BPTC: 50 căn / 10.000m²'},
+  {stt:21, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên hành chính', cap:'T7', type:'cv_hc_tc', dmThap:'', dmKhac:'', rule:'QL 7 NV hành chính (T8)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 7 NV hành chính'},
+  {stt:22, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Nhân viên hành chính', cap:'T8', type:'nv_hc_tc', dmKey:'nv_hc', dmThap:250, dmKhac:50000, rule:'KL ÷ ĐM (Tối thiểu 1)', tt_tho:250, tt_full:175, tt_ht2:188, tt_ht1:200, ct_tho:50000, ct_ht:50000, khac:37500, nx:75000, dgt:75000, hsNote:'Mục 7 ĐM BPTC: 250 căn / 50.000m²'},
+  {stt:23, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Nhân viên lấy mẫu thí nghiệm', cap:'T8', type:'nv_thinghiem', dmKey:'nv_tn', dmThap:250, dmKhac:50000, rule:'KL ÷ ĐM (Tối thiểu 1)', tt_tho:250, tt_full:175, tt_ht2:188, tt_ht1:200, ct_tho:50000, ct_ht:50000, khac:37500, nx:75000, dgt:75000, hsNote:'Mục 7 ĐM BPTC: 250 căn / 50.000m²'},
+  {stt:24, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên nội nghiệp', cap:'T7', type:'cv_noinghiep_tc', dmKey:'cv_nn', dmThap:500, dmKhac:160000, rule:'KL ÷ Định mức', tt_tho:500, tt_full:350, tt_ht2:375, tt_ht1:400, ct_tho:160000, ct_ht:160000, khac:120000, nx:240000, dgt:240000, hsNote:'Mục 9 ĐM BPTC: 500 căn / 160.000m²'},
+  {stt:25, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên Kế hoạch thi công', cap:'T7', type:'cv_kehoach_tc', dmKey:'cv_kh', dmThap:2000, dmKhac:400000, rule:'KL ÷ Định mức', tt_tho:2000, tt_full:1400, tt_ht2:1500, tt_ht1:1600, ct_tho:400000, ct_ht:400000, khac:300000, nx:600000, dgt:600000, hsNote:'Mục 10 ĐM BPTC: 2000 căn / 400.000m²'}
 ];
 
 function calculateAll() {
@@ -1196,7 +1261,11 @@ function calculateAll() {
       }
 
       if(prXd > 0 && kl > 0) {
-        let dm_cb_xd = isThap ? (getDmVal('cb_xd','thap',50) * hsKieu) : getDmVal('cb_xd','khac',14000);
+        let baseThapXd = getDmVal('cb_xd','thap',50);
+        if(tcIdx === 1) baseThapXd = Math.round(baseThapXd * 0.7); // 35
+        else if(tcIdx === 2) baseThapXd = Math.round(baseThapXd * 0.76); // 38
+        else if(tcIdx === 3) baseThapXd = Math.round(baseThapXd * 0.8); // 40
+        let dm_cb_xd = isThap ? (baseThapXd * hsKieu) : getDmVal('cb_xd','khac',14000);
         if(dm_cb_xd > 0) cb_xd_arr[mIdx] += (kl / dm_cb_xd) * prXd;
       }
 
@@ -1213,33 +1282,38 @@ function calculateAll() {
       }
 
       if(prBptc > 0 && kl > 0) {
-        let dm_ktht = isThap ? (getDmVal('cv_ktht','thap',20) * hsTcKieu) : getDmVal('cv_ktht','khac',4000);
+        const hsTcStd = tcIdx === 1 ? 0.7 : (tcIdx === 2 ? 0.75 : (tcIdx === 3 ? 0.8 : 1.0));
+        let dm_ktht = isThap ? (getDmVal('cv_ktht','thap',20) * hsTcStd * hsTcKieu) : getDmVal('cv_ktht','khac',4000);
         cv_ktht_arr[mIdx] += (kl / dm_ktht) * prBptc;
 
-        let dm_qc = isThap ? (getDmVal('cv_qc','thap',150) * hsTcKieu) : getDmVal('cv_qc','khac',30000);
-        let dm_shop = isThap ? (getDmVal('cv_shop','thap',150) * hsTcKieu) : getDmVal('cv_shop','khac',30000);
-        let dm_atld = isThap ? (getDmVal('cv_atld','thap',150) * hsTcKieu) : getDmVal('cv_atld','khac',30000);
+        let dm_qc = isThap ? (getDmVal('cv_qc','thap',150) * hsTcStd * hsTcKieu) : getDmVal('cv_qc','khac',30000);
+        let dm_shop = isThap ? (getDmVal('cv_shop','thap',150) * hsTcStd * hsTcKieu) : getDmVal('cv_shop','khac',30000);
+        let dm_atld = isThap ? (getDmVal('cv_atld','thap',150) * hsTcStd * hsTcKieu) : getDmVal('cv_atld','khac',30000);
         cv_qc_arr[mIdx] += (kl / dm_qc) * prBptc;
         cv_atld_arr[mIdx] += (kl / dm_atld) * prBptc;
         cv_shop_arr[mIdx] += (kl / dm_shop) * prBptc;
 
-        let dm_qs = isThap ? (getDmVal('cv_qs','thap',120) * hsTcKieu) : getDmVal('cv_qs','khac',24000);
+        let dm_qs = isThap ? (getDmVal('cv_qs','thap',120) * hsTcStd * hsTcKieu) : getDmVal('cv_qs','khac',24000);
         cv_qs_arr[mIdx] += (kl / dm_qs) * prBptc;
 
-        let dm_nv_td = isThap ? (getDmVal('nv_td','thap',50) * hsTcKieu) : getDmVal('nv_td','khac',10000);
-        let dm_cv_td = isThap ? (getDmVal('cv_td','thap',80) * hsTcKieu) : getDmVal('cv_td','khac',16000);
+        let dm_nv_td = isThap ? (getDmVal('nv_td','thap',50) * hsTcStd * hsTcKieu) : getDmVal('nv_td','khac',10000);
+        let dm_cv_td = isThap ? (getDmVal('cv_td','thap',80) * hsTcStd * hsTcKieu) : getDmVal('cv_td','khac',16000);
         nv_tracdac_arr[mIdx] += (kl / dm_nv_td) * prBptc;
         cv_tracdac_arr[mIdx] += (kl / dm_cv_td) * prBptc;
 
-        let dm_nn = isThap ? getDmVal('cv_nn','thap',500) : getDmVal('cv_nn','khac',500);
-        let dm_kh = isThap ? getDmVal('cv_kh','thap',2000) : getDmVal('cv_kh','khac',2000);
+        let dm_nn = isThap ? (getDmVal('cv_nn','thap',500) * hsTcStd * hsTcKieu) : getDmVal('cv_nn','khac',160000);
+        let dm_kh = isThap ? (getDmVal('cv_kh','thap',2000) * hsTcStd * hsTcKieu) : getDmVal('cv_kh','khac',400000);
         cv_noinghiep_tc_arr[mIdx] += (kl / dm_nn) * prBptc;
         cv_kehoach_tc_arr[mIdx] += (kl / dm_kh) * prBptc;
       }
 
       // ME
       if(prMe > 0 && kl > 0) {
-        let dm_cb_me = isThap ? getDmVal('cb_me','thap',500) : getDmVal('cb_me','khac',22500);
+        let baseThapMe = getDmVal('cb_me','thap',250);
+        if(tcIdx === 1) baseThapMe = 70;
+        else if(tcIdx === 2) baseThapMe = 80;
+        else if(tcIdx === 3) baseThapMe = 90;
+        let dm_cb_me = isThap ? (baseThapMe * hsKieu) : getDmVal('cb_me','khac',22500);
         cb_me_arr[mIdx] += (kl / dm_cb_me) * prMe;
       }
     });
@@ -1899,19 +1973,215 @@ function renderRow(meta, rIdx, res) {
   `;
 }
 
+let currentDinhMucView = 'sync'; // 'sync' | 'bql' | 'kho' | 'bptc'
+
 /* ==========================================================================
-   5B. RENDER BẢNG ĐỊNH MỨC (HÀNG 3 TRÁI - ĐỒNG BỘ DÒNG VỚI BẢNG NHÂN SỰ)
+   5B. RENDER BẢNG ĐỊNH MỨC (HÀNG 3 TRÁI - ĐỒNG BỘ DÒNG HOẶC XEM ĐÚNG 3 SHEET ĐM)
    ========================================================================== */
+function fmtNumCell(v) {
+  if(v === '' || v == null) return '<span style="color:#cbd5e1;">–</span>';
+  if(typeof v === 'number') return v.toLocaleString('vi-VN');
+  return String(v);
+}
+
 function renderDinhMucTable() {
+  const thead = document.getElementById('dinhmucHead');
   const tbody = document.getElementById('dinhmucBody');
-  if(!tbody) return;
+  if(!tbody || !thead) return;
   const dmC = currentProjectData.dinhMucCustom || {};
+
+  // Cập nhật active tab
+  document.querySelectorAll('#dinhmucViewTabs .heso-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.dmview === currentDinhMucView);
+  });
+
+  // CHẾ ĐỘ 2: XEM NGUYÊN BẢN SHEET "ĐM BQL" TRONG FILE EXCEL
+  if(currentDinhMucView === 'bql') {
+    thead.innerHTML = `
+      <tr>
+        <th class="dm-freeze-1">TT</th>
+        <th class="dm-freeze-2" style="width:210px; min-width:210px; max-width:210px;">Chức danh (Sheet ĐM BQL)</th>
+        <th style="width:76px;">TT: Xây thô (căn)</th>
+        <th style="width:86px;">TT: Full NT≥3T</th>
+        <th style="width:76px;">TT: HTNT 2T</th>
+        <th style="width:76px;">TT: HTNT 1T</th>
+        <th style="width:130px;">Cao tầng (m²)</th>
+        <th style="width:135px;">CT khác: BV, KS, Trường (m²)</th>
+        <th style="width:130px;">Nhà xưởng (m²)</th>
+        <th style="width:155px;">Đường GT, Công viên (m²)</th>
+        <th style="width:180px;">Ghi chú / Hệ số (* Biệt thự × 0,8)</th>
+      </tr>
+    `;
+    const rowsBql = [
+      { header: true, cls: 'row-bqlxd-header', tt: 'I.', cd: 'Định mức CBGS Kỹ thuật (T6) & NVGS Kỹ thuật (T7) — (* Biệt thự = Liền kề × 0,8)' },
+      { tt: '1', cd: 'CBGS kỹ thuật XD (T6)', c1: 50, c2: 35, c3: 38, c4: 40, c5: '14.000 (Thô) / 10.000 (HT)', c6: '9.000 (Thô) / 7.500 (HT)', c7: '21.000 (Thô) / 15.000 (HT)', c8: '–', note: 'Biệt thự × 0,8 (40 / 28 / 30,4 / 32 căn)' },
+      { tt: '2a', cd: 'CBGS kỹ thuật M&E - GĐ thi công BTCT (T6)', c1: 500, c2: 500, c3: 500, c4: 500, c5: '4 (tòa)', c6: '4 (công trình)', c7: '100.000', c8: '–', note: 'Giai đoạn bê tông cốt thép' },
+      { tt: '2b', cd: 'CBGS kỹ thuật M&E - GĐ hoàn thiện (T6)', c1: 250, c2: 70, c3: 80, c4: 90, c5: '22.500', c6: '22.500', c7: '50.000', c8: '120.000 (CV) / 200.000 (ĐGT)', note: 'Giai đoạn hoàn thiện' },
+      { tt: '3', cd: 'CBGS kỹ thuật Hạ tầng (T6)', c1: '1 CB/CT (~15.000m²)', c2: '–', c3: '–', c4: '–', c5: '15.000', c6: '15.000', c7: '15.000', c8: '15.000', note: '1 CB/Công trình (quy mô ~15.000 m²)' },
+      { tt: '4', cd: 'Nhân viên Giám sát kỹ thuật XD (T7)', c1: 35, c2: 25, c3: 27, c4: 28, c5: '9.800 (Thô) / 7.000 (HT)', c6: '6.300 (Thô) / 5.250 (HT)', c7: '14.700 (Thô) / 10.500 (HT)', c8: '–', note: 'Tỷ lệ: 90% CBGS + 10%×1,5 NVGS' },
+      { tt: '5a', cd: 'Nhân viên GSKT M&E - GĐ BTCT (T7)', c1: 350, c2: 350, c3: 350, c4: 350, c5: '3 (tòa)', c6: '3 (công trình)', c7: '70.000', c8: '–', note: 'Giai đoạn bê tông cốt thép' },
+      { tt: '5b', cd: 'Nhân viên GSKT M&E - GĐ hoàn thiện (T7)', c1: 175, c2: 49, c3: 56, c4: 63, c5: '15.750', c6: '15.750', c7: '35.000', c8: '84.000 (CV) / 140.000 (ĐGT)', note: 'Giai đoạn hoàn thiện' },
+      { tt: '6', cd: 'Nhân viên Giám sát kỹ thuật Hạ tầng (T7)', c1: '1 NV/CT (~10.500m²)', c2: '–', c3: '–', c4: '–', c5: '10.500', c6: '10.500', c7: '10.500', c8: '10.500', note: '1 NV/Công trình (quy mô ~10.500 m²)' },
+      { header: true, cls: 'row-bqlxd-header', tt: 'II.', cd: 'Định mức cấp Quản lý & Chuyên viên cố định tại BQLXD' },
+      { tt: '7', cd: 'Giám đốc BQLXD Cấp 1 (T2)', c1: 'Quản lý 4–5 cấp T3', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', c8: '–', note: 'Theo quy mô đại dự án' },
+      { tt: '8', cd: 'Giám đốc BQLXD Cấp 2 (T3)', c1: 'Quản lý 5–7 cấp T4', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', c8: '–', note: 'Theo quy mô dự án' },
+      { tt: '9', cd: 'Giám đốc BQLXD Cấp 3 (T4)', c1: 'Quản lý 5–7 cấp T5', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', c8: '–', note: '1 người điều hành BQLXD' },
+      { tt: '10', cd: 'Đội trưởng GSKT (XD / M&E / Hạ tầng) (T5)', c1: 'Quản lý 8–12 cấp T6, T7', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', c8: '–', note: 'Tính theo số lượng CBGS từng bộ môn' },
+      { tt: '11', cd: 'CBGS Trắc đạc, Cây xanh, ATLĐ, QLTK, Nội nghiệp (T6)', c1: 'Cố định: 1 người/DA', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', c8: '–', note: 'Mỗi vị trí 1 người/BQLXD' },
+      { tt: '12', cd: 'Chuyên viên Hành chính Ban (T7)', c1: 'Cố định: 1 người/DA', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', c8: '–', note: '1 người/BQLXD' }
+    ];
+    tbody.innerHTML = rowsBql.map(r => r.header
+      ? `<tr class="${r.cls}"><td class="dm-freeze-1">${r.tt}</td><td colspan="10" style="font-weight:700;">${r.cd}</td></tr>`
+      : `<tr>
+          <td class="dm-freeze-1">${r.tt}</td>
+          <td class="dm-freeze-2" style="width:210px; min-width:210px; max-width:210px;" title="${r.cd}">${r.cd}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c1)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c2)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c3)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c4)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${r.c5}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${r.c6}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${r.c7}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${r.c8}</td>
+          <td style="color:#475569; font-size:10.5px;">${r.note}</td>
+        </tr>`
+    ).join('');
+    return;
+  }
+
+  // CHẾ ĐỘ 3: XEM NGUYÊN BẢN SHEET "ĐM KHO" TRONG FILE EXCEL
+  if(currentDinhMucView === 'kho') {
+    thead.innerHTML = `
+      <tr>
+        <th class="dm-freeze-1">TT</th>
+        <th class="dm-freeze-2" style="width:220px; min-width:220px; max-width:220px;">Định mức THỦ KHO (Sheet ĐM KHO)</th>
+        <th class="dm-freeze-3" style="left:254px;">Cấp</th>
+        <th style="width:95px;">Cao tầng: Thô (m²)</th>
+        <th style="width:95px;">Cao tầng: HT (m²)</th>
+        <th style="width:90px;">TT LK: Thô (căn)</th>
+        <th style="width:95px;">TT LK: HT 2T (căn)</th>
+        <th style="width:85px;">TTTM (m²)</th>
+        <th style="width:85px;">Khách sạn (m²)</th>
+        <th style="width:105px;">Trường, BV (m²)</th>
+        <th style="width:105px;">Nhà máy, Xe nổi</th>
+        <th style="width:95px;">Kho - Đường GT</th>
+        <th style="width:95px;">Kho - Công viên</th>
+      </tr>
+    `;
+    const rowsKho = [
+      { header: true, cls: 'row-kho-header', tt: 'I.', cd: 'Định mức Thủ kho theo khối lượng (* Biệt thự: Định mức = Liền kề × 0,8)' },
+      { tt: '1', cd: 'Thủ kho nhập liệu - Kho Xây dựng', cap: 'T7', c1: 95000, c2: 72500, c3: 470, c4: 360, c5: 100000, c6: 55000, c7: 50000, c8: 75000, c9: 300000, c10: 200000 },
+      { tt: '2', cd: 'Thủ kho nhập liệu - Kho ME', cap: 'T7', c1: 190000, c2: 95000, c3: 930, c4: 472, c5: 100000, c6: 75000, c7: 50000, c8: 75000, c9: 300000, c10: 200000 },
+      { tt: '3', cd: 'Thủ kho hiện trường - Xây dựng (vật lý)', cap: 'T8', c1: 36000, c2: 20000, c3: 180, c4: 100, c5: 25000, c6: 15000, c7: 12500, c8: 20000, c9: 75000, c10: 50000 },
+      { tt: '4', cd: 'Thủ kho hiện trường - ME (vật lý)', cap: 'T8', c1: 50000, c2: 32500, c3: 250, c4: 163, c5: 25000, c6: 25000, c7: 12500, c8: 20000, c9: 75000, c10: 50000 },
+      { tt: '5', cd: 'Thủ kho nhập liệu - Kho ép cọc', cap: 'T7', span: 'Theo định mức máy thi công: 1 Thủ kho nhập liệu / 30 robot ép cọc' },
+      { tt: '6', cd: 'Thủ kho hiện trường - Kho ép cọc', cap: 'T8', span: 'Theo định mức máy thi công: 1 Thủ kho hiện trường / 5 robot ép cọc' },
+      { header: true, cls: 'row-kho-header', tt: 'II.', cd: 'Định mức cấp Quản lý mảng Kho dự án' },
+      { tt: '7', cd: 'Trưởng nhóm kho', cap: 'T6', span: 'Quản lý từ 7 đến 11 Thủ kho (Trường hợp quản lý nhiều dự án nhỏ có thể lên tới 15 Thủ kho)' },
+      { tt: '8', cd: 'Trưởng Kho', cap: 'T5', span: 'Quản lý 5 đến 7 Trưởng nhóm kho (hoặc dự án có tổng số > 15 Thủ kho / 1 BQLXD)' },
+      { tt: '9', cd: 'Tổng quản lý kho (theo vùng)', cap: 'T4', span: 'Quản lý từ 4 đến 6 Trưởng Kho trong vùng' }
+    ];
+    tbody.innerHTML = rowsKho.map(r => {
+      if(r.header) return `<tr class="${r.cls}"><td class="dm-freeze-1">${r.tt}</td><td colspan="12" style="font-weight:700;">${r.cd}</td></tr>`;
+      if(r.span) return `<tr><td class="dm-freeze-1">${r.tt}</td><td class="dm-freeze-2" style="width:220px; min-width:220px; max-width:220px;">${r.cd}</td><td class="dm-freeze-3" style="left:254px;">${r.cap}</td><td colspan="10" style="color:#334155;">${r.span}</td></tr>`;
+      return `<tr>
+        <td class="dm-freeze-1">${r.tt}</td>
+        <td class="dm-freeze-2" style="width:220px; min-width:220px; max-width:220px;" title="${r.cd}">${r.cd}</td>
+        <td class="dm-freeze-3" style="left:254px;">${r.cap}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c1)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c2)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c3)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c4)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c5)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c6)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c7)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c8)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c9)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c10)}</td>
+      </tr>`;
+    }).join('');
+    return;
+  }
+
+  // CHẾ ĐỘ 4: XEM NGUYÊN BẢN SHEET "ĐM BPTC" TRONG FILE EXCEL
+  if(currentDinhMucView === 'bptc') {
+    thead.innerHTML = `
+      <tr>
+        <th class="dm-freeze-1">TT</th>
+        <th class="dm-freeze-2" style="width:240px; min-width:240px; max-width:240px;">Chức danh (Sheet ĐM BPTC)</th>
+        <th style="width:85px;">TT: Xây thô (HS 1)</th>
+        <th style="width:95px;">TT: Full NT≥3T (0,7)</th>
+        <th style="width:88px;">TT: HTNT 2T (0,75)</th>
+        <th style="width:88px;">TT: HTNT 1T (0,8)</th>
+        <th style="width:95px;">Cao tầng (m²-HS 1)</th>
+        <th style="width:115px;">CT Khác (m²-HS 0,75)</th>
+        <th style="width:130px;">Nhà xưởng, CV (m²-HS 1,5)</th>
+        <th style="width:185px;">Hệ số Biệt thự / Ghi chú</th>
+      </tr>
+    `;
+    const rowsBptc = [
+      { header: true, cls: 'row-bptc-header', tt: 'I.', cd: 'Định mức cấp Nhân viên/Chuyên viên (* Biệt thự ĐL×0,65; SL×0,75; TL×0,85; Cải tạo×2)' },
+      { tt: '1', cd: 'Chuyên viên kỹ thuật hiện trường (T7)', c1: 20, c2: 14, c3: 15, c4: 16, c5: 4000, c6: 3000, c7: 6000, note: 'ĐL: 13 căn | SL: 15 căn | TL: 17 căn' },
+      { tt: '2', cd: 'CV BPTC-Shop (T7) / CV QC (T7) / CV ATLĐ (T7)', c1: 150, c2: 105, c3: 113, c4: 120, c5: 30000, c6: 22500, c7: 45000, note: 'Áp dụng cho cả 3 chức danh Shop, QC, ATLĐ' },
+      { tt: '3', cd: 'Chuyên viên QS (T7)', c1: 120, c2: 84, c3: 90, c4: 96, c5: 24000, c6: 18000, c7: 36000, note: 'ĐL: 78 căn | SL: 90 căn | TL: 102 căn' },
+      { tt: '5', cd: 'NV Trắc đạc (T8) / NV Cơ khí (T8) / NV điện nước tạm (T8)', c1: 50, c2: 35, c3: 38, c4: 40, c5: 10000, c6: 7500, c7: 15000, note: 'Áp dụng cho cả 3 chức danh T8' },
+      { tt: '6', cd: 'Chuyên viên Trắc đạc (T7)', c1: 80, c2: 56, c3: 60, c4: 64, c5: 16000, c6: 12000, c7: 24000, note: 'ĐL: 52 căn | SL: 60 căn | TL: 68 căn' },
+      { tt: '7', cd: 'NV lấy mẫu TN (T8) / NV hành chính (T8) / CV QL VTTB (T7)', c1: 250, c2: 175, c3: 188, c4: 200, c5: 50000, c6: 37500, c7: 75000, note: 'Áp dụng cho cả 3 chức danh' },
+      { tt: '8', cd: 'Trưởng nhóm trắc đạc (T6)', c1: 500, c2: 350, c3: 375, c4: 400, c5: 100000, c6: 75000, c7: 150000, note: 'Hoặc khi tổng Trắc đạc ≥ 7 người' },
+      { tt: '9', cd: 'Chuyên viên nội nghiệp (T7)', c1: 500, c2: 350, c3: 375, c4: 400, c5: 160000, c6: 120000, c7: 240000, note: 'Trực thuộc Trưởng khối thi công' },
+      { tt: '10', cd: 'Chuyên viên Kế hoạch (T7)', c1: 2000, c2: 1400, c3: 1500, c4: 1600, c5: 400000, c6: 300000, c7: 600000, note: 'Kế hoạch tổng thể thi công' },
+      { header: true, cls: 'row-bptc-header', tt: 'II.', cd: 'Định mức cấp Quản lý Bộ phận Thi công (BPTC)' },
+      { tt: '11', cd: 'Phó GĐ BQLXD phụ trách thi công (T3/T4)', c1: '1 người / DA', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', note: 'Quản lý toàn bộ BPTC dự án' },
+      { tt: '12', cd: 'Trưởng khối thi công (T4)', c1: 'QL 5 cấp T5', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', note: 'QL 5 Đội trưởng T5 + CV nội nghiệp' },
+      { tt: '13', cd: 'Trưởng BP hỗ trợ thi công (T5)', c1: 'QL 9–10 cấp T6', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', note: 'Quản lý các Trưởng nhóm HTTC' },
+      { tt: '14', cd: 'Đội trưởng thi công (T5)', c1: 'QL 5 cấp T7 (100 căn)', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', note: 'QL 5 CV KTHT + NV cơ khí, điện nước' },
+      { tt: '15', cd: 'Trưởng nhóm (ATLĐ, MMTB, Shop, QC, QS) (T6)', c1: 'QL 7 cấp T7/T8', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', note: 'Mỗi nhóm đủ 7 chuyên viên có 1 TN' },
+      { tt: '16', cd: 'Chuyên viên hành chính (T7)', c1: 'QL 7 cấp T8', c2: '–', c3: '–', c4: '–', c5: '–', c6: '–', c7: '–', note: 'Quản lý 7 Nhân viên hành chính T8' }
+    ];
+    tbody.innerHTML = rowsBptc.map(r => r.header
+      ? `<tr class="${r.cls}"><td class="dm-freeze-1">${r.tt}</td><td colspan="9" style="font-weight:700;">${r.cd}</td></tr>`
+      : `<tr>
+          <td class="dm-freeze-1">${r.tt}</td>
+          <td class="dm-freeze-2" style="width:240px; min-width:240px; max-width:240px;" title="${r.cd}">${r.cd}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c1)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c2)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c3)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c4)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c5)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c6)}</td>
+          <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(r.c7)}</td>
+          <td style="color:#475569; font-size:10.5px;">${r.note}</td>
+        </tr>`
+    ).join('');
+    return;
+  }
+
+  // CHẾ ĐỘ 1 (MẶC ĐỊNH): ĐỒNG BỘ 1-1 TỪNG DÒNG VỚI BẢNG NHÂN SỰ BÊN PHẢI & HIỂN THỊ ĐỦ 14 CỘT ĐỊNH MỨC
+  thead.innerHTML = `
+    <tr>
+      <th class="dm-freeze-1">STT</th>
+      <th class="dm-freeze-2">Chức danh</th>
+      <th class="dm-freeze-3">Cấp</th>
+      <th style="width:130px;">Tầm QL / Cố định</th>
+      <th style="width:74px;" title="Thấp tầng (LK, Shophouse, TMDV) - Xây thô (ĐVT: căn)">TT: Xây thô</th>
+      <th style="width:78px;" title="Thấp tầng - Full Nội thất (3 tầng trở lên) (ĐVT: căn)">TT: Full NT≥3T</th>
+      <th style="width:72px;" title="Thấp tầng - Hoàn thiện nội thất (2 tầng) (ĐVT: căn)">TT: HTNT 2T</th>
+      <th style="width:72px;" title="Thấp tầng - Hoàn thiện nội thất (1 tầng) (ĐVT: căn)">TT: HTNT 1T</th>
+      <th style="width:92px;" title="Cao tầng - GĐ Xây thô (ĐVT: m2 sàn)">Cao tầng (Thô)</th>
+      <th style="width:92px;" title="Cao tầng - GĐ Hoàn thiện (ĐVT: m2 sàn)">Cao tầng (HT)</th>
+      <th style="width:110px;" title="Các công trình khác: Bệnh viện, KS, Trường học, TTTM (ĐVT: m2)">CT Khác (BV,KS,TTTM)</th>
+      <th style="width:98px;" title="Công trình nhà xưởng (ĐVT: m2)">Nhà xưởng (m²)</th>
+      <th style="width:125px;" title="Đường giao thông, công viên, cảnh quan (ĐVT: m2)">Đường GT / Công viên</th>
+      <th style="width:165px;" title="Hệ số điều chỉnh Biệt thự & Ghi chú">Hệ số Biệt thự / Ghi chú</th>
+    </tr>
+  `;
 
   let html = `
     <tr class="row-grand-total">
-      <td style="text-align:center;">★</td>
-      <td>DỰ ÁN</td>
-      <td colspan="5">THƯ VIỆN ĐỊNH MỨC CHUẨN 3 BỘ PHẬN</td>
+      <td class="dm-freeze-1">★</td>
+      <td class="dm-freeze-2">TỔNG HỢP ĐỊNH MỨC DỰ ÁN</td>
+      <td class="dm-freeze-3"></td>
+      <td colspan="11">ĐỊNH MỨC LAO ĐỘNG CHUẨN 3 BỘ PHẬN (ĐỒNG BỘ DÒNG VỚI BẢNG NHÂN SỰ)</td>
     </tr>
   `;
 
@@ -1920,22 +2190,33 @@ function renderDinhMucTable() {
     const hasKhac = meta.dmKhac !== '';
     const kThap = meta.dmKey ? `${meta.dmKey}_thap` : '';
     const kKhac = meta.dmKey ? `${meta.dmKey}_khac` : '';
-    const vThap = (kThap && dmC[kThap] != null) ? dmC[kThap] : meta.dmThap;
-    const vKhac = (kKhac && dmC[kKhac] != null) ? dmC[kKhac] : meta.dmKhac;
+    const vThap = (kThap && dmC[kThap] != null) ? dmC[kThap] : meta.tt_tho;
+    const vKhac = (kKhac && dmC[kKhac] != null) ? dmC[kKhac] : meta.ct_tho;
+
+    const cellTtTho = (hasThap && kThap)
+      ? `<input type="number" class="dm-input" data-dmk="${kThap}" value="${vThap}" title="Sửa ĐM Thấp tầng Xây thô">`
+      : fmtNumCell(meta.tt_tho);
+
+    const cellCtTho = (hasKhac && kKhac && typeof meta.ct_tho === 'number')
+      ? `<input type="number" class="dm-input" data-dmk="${kKhac}" value="${vKhac}" title="Sửa ĐM Cao tầng / Khác">`
+      : fmtNumCell(meta.ct_tho);
 
     return `
       <tr>
-        <td style="text-align:center;">${meta.stt}</td>
-        <td>${meta.bp}</td>
-        <td>${meta.cd}</td>
-        <td style="text-align:center;">${meta.cap || ''}</td>
-        <td style="text-align:right;">
-          ${hasThap ? `<input type="number" class="dm-input" data-dmk="${kThap}" value="${vThap}">` : '<span style="color:#cbd5e1;">–</span>'}
-        </td>
-        <td style="text-align:right;">
-          ${hasKhac ? `<input type="number" class="dm-input" data-dmk="${kKhac}" value="${vKhac}">` : '<span style="color:#cbd5e1;">–</span>'}
-        </td>
-        <td style="color:#475569; font-size:10.5px;">${meta.rule || ''}</td>
+        <td class="dm-freeze-1">${meta.stt}</td>
+        <td class="dm-freeze-2" title="${meta.cd}">${meta.cd}</td>
+        <td class="dm-freeze-3">${meta.cap || ''}</td>
+        <td style="color:#1e293b; font-size:10.5px;" title="${meta.rule || ''}">${meta.rule || ''}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${cellTtTho}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(meta.tt_full)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(meta.tt_ht2)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(meta.tt_ht1)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${cellCtTho}</td>
+        <td style="text-align:right; font-family:var(--font-mono);">${fmtNumCell(meta.ct_ht)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);" title="${meta.khac || ''}">${fmtNumCell(meta.khac)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);" title="${meta.nx || ''}">${fmtNumCell(meta.nx)}</td>
+        <td style="text-align:right; font-family:var(--font-mono);" title="${meta.dgt || ''}">${fmtNumCell(meta.dgt)}</td>
+        <td style="color:#475569; font-size:10.5px;" title="${meta.hsNote || ''}">${meta.hsNote || ''}</td>
       </tr>
     `;
   }
@@ -1943,9 +2224,10 @@ function renderDinhMucTable() {
   // I. BQLXD
   html += `
     <tr class="row-bqlxd-header">
-      <td style="text-align:center;">I</td>
-      <td>BQLXD</td>
-      <td colspan="5">ĐỊNH MỨC - KHỐI BQLXD</td>
+      <td class="dm-freeze-1">I</td>
+      <td class="dm-freeze-2">ĐỊNH MỨC - KHỐI BQLXD</td>
+      <td class="dm-freeze-3"></td>
+      <td colspan="11">Sheet ĐM BQL: Biệt thự = Liền kề × 0,8 | NVGS (T7) = 10% CBGS (T6) × 1,5</td>
     </tr>
   `;
   MATRIX_ROWS_META.filter(m => m.pb === 'BQLXD').forEach(meta => { html += renderDmRow(meta); });
@@ -1953,9 +2235,10 @@ function renderDinhMucTable() {
   // II. KHO
   html += `
     <tr class="row-kho-header">
-      <td style="text-align:center;">II</td>
-      <td>KHO</td>
-      <td colspan="5">ĐỊNH MỨC - KHỐI KHO DỰ ÁN</td>
+      <td class="dm-freeze-1">II</td>
+      <td class="dm-freeze-2">ĐỊNH MỨC - KHỐI KHO DỰ ÁN</td>
+      <td class="dm-freeze-3"></td>
+      <td colspan="11">Sheet ĐM KHO: Biệt thự = Liền kề × 0,8 | Thủ kho NL XD (470/360), NL ME (930/472), HT XD (180/100), HT ME (250/163)</td>
     </tr>
   `;
   MATRIX_ROWS_META.filter(m => m.pb === 'KHO').forEach(meta => { html += renderDmRow(meta); });
@@ -1963,9 +2246,10 @@ function renderDinhMucTable() {
   // III. BPTC
   html += `
     <tr class="row-bptc-header">
-      <td style="text-align:center;">III</td>
-      <td>THI CÔNG</td>
-      <td colspan="5">ĐỊNH MỨC - BỘ PHẬN THI CÔNG (BPTC)</td>
+      <td class="dm-freeze-1">III</td>
+      <td class="dm-freeze-2">ĐỊNH MỨC - BỘ PHẬN THI CÔNG</td>
+      <td class="dm-freeze-3"></td>
+      <td colspan="11">Sheet ĐM BPTC: Biệt thự ĐL × 0,65 | Song lập × 0,75 | Tứ lập × 0,85 | Cải tạo mặt ngoài × 2,0</td>
     </tr>
   `;
   MATRIX_ROWS_META.filter(m => m.pb === 'BPTC').forEach(meta => { html += renderDmRow(meta); });
@@ -1985,6 +2269,17 @@ function renderDinhMucTable() {
       saveCurrentProject();
       refreshDashboard();
     });
+  });
+}
+
+// Chuyển đổi giữa chế độ Đồng bộ và xem từng Sheet ĐM BQL, ĐM KHO, ĐM BPTC
+const dinhmucViewTabs = document.getElementById('dinhmucViewTabs');
+if(dinhmucViewTabs) {
+  dinhmucViewTabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-dmview]');
+    if(!btn) return;
+    currentDinhMucView = btn.dataset.dmview;
+    renderDinhMucTable();
   });
 }
 
@@ -3023,7 +3318,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(hesoScrollSync) hesoScrollSync.scrollLeft = nhansuWrap.scrollLeft;
         requestAnimationFrame(() => { if(syncSourceX === 'nhansu') syncSourceX = null; });
       }
-      if(syncSourceY !== 'dinhmuc') {
+      if(syncSourceY !== 'dinhmuc' && currentDinhMucView === 'sync') {
         syncSourceY = 'nhansu';
         if(dinhmucWrap) dinhmucWrap.scrollTop = nhansuWrap.scrollTop;
         requestAnimationFrame(() => { if(syncSourceY === 'nhansu') syncSourceY = null; });
@@ -3043,7 +3338,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(dinhmucWrap) {
       dinhmucWrap.addEventListener('scroll', () => {
-        if(syncSourceY !== 'nhansu') {
+        if(syncSourceY !== 'nhansu' && currentDinhMucView === 'sync') {
           syncSourceY = 'dinhmuc';
           nhansuWrap.scrollTop = dinhmucWrap.scrollTop;
           requestAnimationFrame(() => { if(syncSourceY === 'dinhmuc') syncSourceY = null; });
