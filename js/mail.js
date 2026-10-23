@@ -54,7 +54,7 @@ const MailModule=(()=>{
   ['reply','reply_all','forward'].forEach(kind=>container.querySelector(`[data-mail-action="${kind}"]`).onclick=()=>compose(kind,message));
   container.querySelector('[data-mail-action="share"]').onclick=()=>{if(window.MailShareUI)window.MailShareUI.open({mailId:message.id,project,rpc:(method,args)=>rpc(method,...args)});else notify('Màn hình chia sẻ Mail chưa được tải.','error');};
  }
- function loadCompose(){return window.MailCompose?Promise.resolve():new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='/js/mail_compose.js?v=1';sc.onload=ok;sc.onerror=()=>no(new Error('Không tải được màn hình soạn thư.'));document.head.appendChild(sc);});}
+ function loadCompose(){return window.MailCompose?Promise.resolve():new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='/js/mail_compose.js?v=2';sc.onload=ok;sc.onerror=()=>no(new Error('Không tải được màn hình soạn thư.'));document.head.appendChild(sc);});}
  async function compose(kind='new',message=null){try{await loadCompose();window.MailCompose.open({rpc:(m,a)=>rpc(m,...a),kind,message,project,me:message?.account||account});}catch(e){notify(e.message,'error');}}
  function ensureNewButton(){const host=treeHost();if(!host||$('mail-new-btn'))return;const b=document.createElement('button');b.id='mail-new-btn';b.type='button';b.className='w-full mb-2 py-2 rounded-lg bg-[#F2C0C8] text-[#1E1E1C] font-bold text-sm';b.textContent='✉️ Thư mới';b.onclick=()=>compose('new',accounts.length?{account,subject:'',body:'',id:''}:null);host.parentElement.insertBefore(b,host);}
  function setCategory(value){category=value;render();}

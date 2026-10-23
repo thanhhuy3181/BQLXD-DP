@@ -217,8 +217,14 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  // ---- Soạn / trả lời thư từ AwD & AwM (AD gửi qua Outlook) ----
  if(method==='awm_mail_contacts'){
   if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
-  const q=norm(args[0]);const list=await read(sql,`awm:contacts:${user.username}`,[]);
-  return ok({items:(q?list.filter(c=>norm(c.name+' '+c.email).includes(q)):list).slice(0,20)});
+  const q=norm(args[0]);const saved=await read(sql,`awm:contacts:${user.username}`,[]);
+  // Gộp danh bạ AD gửi lên + người gửi/nhận trong các thư đã đồng bộ (người liên lạc gần đây xếp trước)
+  const bridge=await read(sql,`awm:mail:${user.username}`,null);const seen=new Map();
+  const add=(name,email)=>{email=String(email||'').trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return;const k=email.toLowerCase();const c=seen.get(k)||{name:String(name||email),email,hits:0};c.hits++;if(!c.name||c.name===c.email)c.name=String(name||email);seen.set(k,c);};
+  for(const r of (bridge?.items||[])){add(r.sender,r.email);for(const p of [...(r.to||[]),...(r.cc||[])])add(p.name,p.email);}
+  for(const c of (Array.isArray(saved)?saved:[]))if(!seen.has(String(c.email).toLowerCase()))seen.set(String(c.email).toLowerCase(),{...c,hits:0});
+  const list=[...seen.values()].sort((a,b)=>b.hits-a.hits);
+  return ok({items:(q?list.filter(c=>norm(c.name+' '+c.email).includes(q)):list).slice(0,20).map(({name,email})=>({name,email}))});
  }
  if(method==='awm_mail_attach'){
   if(!permission('tab_mail'))return fail('Không có quyền gửi Mail.');

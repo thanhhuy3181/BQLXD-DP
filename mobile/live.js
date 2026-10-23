@@ -306,7 +306,7 @@
       else notice(e.message);
     }
   }
-  function openCompose(kind,message){const go=()=>{clearTimeout(timer);window.MailCompose.open({rpc,kind,message,project,me:message?.account||mailAccount})};if(window.MailCompose)return go();const sc=document.createElement('script');sc.src='/js/mail_compose.js?v=1';sc.onload=go;sc.onerror=()=>notice('Không tải được màn hình soạn thư.');document.head.appendChild(sc);}
+  function openCompose(kind,message){const go=()=>{clearTimeout(timer);window.MailCompose.open({rpc,kind,message,project,me:message?.account||mailAccount})};if(window.MailCompose)return go();const sc=document.createElement('script');sc.src='/js/mail_compose.js?v=2';sc.onload=go;sc.onerror=()=>notice('Không tải được màn hình soạn thư.');document.head.appendChild(sc);}
   async function mail(run){
     $('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><div style="display:flex;gap:8px"><button id="refresh-mail" class="primary">Làm mới ↻</button><button id="new-mail">✉️ Thư mới</button></div><div id="mail-list"></div>';
     $('refresh-mail').onclick=()=>render();

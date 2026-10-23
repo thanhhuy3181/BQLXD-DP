@@ -12,20 +12,22 @@ window.MailCompose = (() => {
     st.textContent = `
 .mc-back{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center}
 @media(min-width:760px){.mc-back{align-items:center}}
-.mc{background:#fff;color:#1d2f2c;width:100%;max-width:720px;max-height:96vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 16px 18px;font:14px/1.45 system-ui,Segoe UI,Arial;box-sizing:border-box}
+.mc{background:#fff;color:#111;color-scheme:light;width:100%;max-width:720px;max-height:96vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 16px 18px;font:14px/1.45 system-ui,Segoe UI,Arial;box-sizing:border-box}
 @media(min-width:760px){.mc{border-radius:14px}}
 .mc h3{margin:0 0 8px;font-size:16px;display:flex;justify-content:space-between;align-items:center}
 .mc .x{border:0;background:none;font-size:22px;cursor:pointer;color:#556}
-.mc .row{display:flex;align-items:flex-start;gap:8px;border-bottom:1px solid #e3e6e1;padding:6px 0;position:relative}
-.mc .row>label{width:52px;flex:none;padding-top:6px;font-weight:600;color:#556;font-size:13px}
+.mc .row{display:flex;align-items:flex-start;gap:8px;border:1.5px solid #b9c6bf;background:#f5f8f6;border-radius:12px;padding:6px 10px;margin:8px 0;position:relative}
+.mc .row:focus-within{border-color:#1d6b55;background:#fff;box-shadow:0 0 0 3px rgba(29,107,85,.15)}
+.mc .row>label{width:56px;flex:none;padding-top:8px;font-weight:700;color:#1d2f2c;font-size:14px}
 .mc .chips{flex:1;display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0}
 .mc .chip{background:#e7efe9;border-radius:12px;padding:2px 8px;font-size:12px;display:inline-flex;gap:4px;align-items:center;max-width:100%}
 .mc .chip b{cursor:pointer;color:#a33}
-.mc .chips input,.mc .subj{flex:1;min-width:120px;border:0;outline:0;padding:6px 2px;font-size:14px;background:transparent;color:inherit}
-.mc .sug{position:absolute;left:52px;right:0;top:100%;background:#fff;border:1px solid #cfd8d2;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.15);z-index:3;max-height:220px;overflow:auto}
-.mc .sug div{padding:7px 10px;cursor:pointer;font-size:13px}.mc .sug div:hover,.mc .sug .on{background:#eef4f0}
+.mc .chips input,.mc .subj{flex:1;min-width:120px;border:0;outline:0;padding:8px 2px;font-size:16px;background:transparent;color:#111}
+.mc .chips input::placeholder,.mc textarea::placeholder{color:#8a948f}
+.mc .sug{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #cfd8d2;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.15);z-index:3;max-height:220px;overflow:auto}
+.mc .sug div{padding:10px 12px;cursor:pointer;font-size:15px;color:#111;border-bottom:1px solid #eef1ef}.mc .sug div:hover,.mc .sug .on{background:#eef4f0}
 .mc .sug small{color:#778;display:block}
-.mc textarea{width:100%;min-height:170px;border:1px solid #d6dbd5;border-radius:10px;padding:10px;margin-top:10px;font:inherit;box-sizing:border-box;color:inherit;background:#fff}
+.mc textarea{width:100%;min-height:170px;font-size:16px!important;border:1.5px solid #b9c6bf;background:#f5f8f6;border-radius:10px;padding:10px;margin-top:10px;font:inherit;box-sizing:border-box;color:inherit;background:#fff}
 .mc .files{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
 .mc .bar{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
 .mc .send{background:#1d2f2c;color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer}
@@ -65,18 +67,23 @@ window.MailCompose = (() => {
     const showHits = () => {
       sug.innerHTML = hits.map((h, i) => `<div data-i="${i}" class="${i === pos ? 'on' : ''}">${esc(h.name || h.email)}<small>${esc(h.email)}</small></div>`).join('');
       sug.hidden = !hits.length;
-      sug.querySelectorAll('[data-i]').forEach(d => d.onmousedown = e => { e.preventDefault(); add(hits[Number(d.dataset.i)]); input.focus(); });
+      sug.querySelectorAll('[data-i]').forEach(d => { const pick = e => { e.preventDefault(); add(hits[Number(d.dataset.i)]); input.focus(); }; d.onmousedown = pick; d.ontouchstart = pick; });
     };
-    input.addEventListener('input', () => {
-      if (/[;,]$/.test(input.value)) { commitTyped(); return; }
+    const lookup = () => {
       clearTimeout(timer);
       const q = input.value.trim();
-      if (q.length < 1) { sug.hidden = true; return; }
       timer = setTimeout(async () => {
-        try { const r = await rpc('awm_mail_contacts', [q]); hits = (r && r.items) || []; pos = hits.length ? 0 : -1; showHits(); }
-        catch (_) { hits = []; sug.hidden = true; }
-      }, 180);
-    });
+        try {
+          const r = await rpc('awm_mail_contacts', [q]);
+          const taken = new Set(list.map(p => p.email.toLowerCase()));
+          hits = ((r && r.items) || []).filter(h => !taken.has(String(h.email).toLowerCase())).slice(0, 8);
+          pos = hits.length ? 0 : -1; showHits();
+        } catch (_) { hits = []; sug.hidden = true; }
+      }, 150);
+    };
+    input.addEventListener('input', () => { if (/[;,]$/.test(input.value)) { commitTyped(); return; } lookup(); });
+    input.addEventListener('compositionend', lookup);
+    input.addEventListener('focus', lookup);
     input.addEventListener('keydown', e => {
       if (!sug.hidden && hits.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); pos = (pos + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length; showHits(); return; }
       if (e.key === 'Enter' || e.key === 'Tab') {
@@ -125,7 +132,7 @@ window.MailCompose = (() => {
 <button class="ccbtn" type="button">+ CC / BCC</button>
 <div class="row" data-field="cc" hidden><label>CC</label><div class="chips"><input autocomplete="off"></div><div class="sug" hidden></div></div>
 <div class="row" data-field="bcc" hidden><label>BCC</label><div class="chips"><input autocomplete="off"></div><div class="sug" hidden></div></div>
-<div class="row"><label>Tiêu đề</label><input class="subj" value="${esc(subj)}"></div>
+<div class="row"><label>Tiêu đề</label><input class="subj" value="${esc(subj)}" placeholder="Tiêu đề thư"></div>
 <textarea placeholder="Nội dung thư…"></textarea>
 ${message && kind !== 'new' ? `<div class="quote">Thư gốc từ ${esc(message.sender)} (${esc(message.date)}) sẽ được trích dẫn bên dưới${kind === 'forward' && message.attachments?.length ? ', kèm ' + message.attachments.length + ' tệp gốc' : ''}.\n\n${esc(String(message.body || '').slice(0, 600))}</div>` : ''}
 <div class="files"></div>
