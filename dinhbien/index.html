@@ -6973,128 +6973,6 @@ document.getElementById('selRoundMode').addEventListener('change', (e) => {
   refreshDashboard();
 });
 
-// KHỞI ĐỘNG HỆ THỐNG
-function updateStickyHeaderOffset() {
-  const hdr = document.querySelector('header.app-header');
-  if(hdr) {
-    document.documentElement.style.setProperty('--sticky-header-h', hdr.offsetHeight + 'px');
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  loadProject(currentVungId, currentBqlId);
-  renderOrgHierarchyButtons();
-  refreshDashboard();
-  initExcelRangeSelectionOnTables();
-  updateStickyHeaderOffset();
-  window.addEventListener('resize', updateStickyHeaderOffset);
-
-  // Nút Hoàn tác (Ctrl+Z) & Làm lại (Ctrl+Y) trên thanh công cụ
-  const btnUndo = document.getElementById('btnUndo');
-  const btnRedo = document.getElementById('btnRedo');
-  if(btnUndo) btnUndo.addEventListener('click', performUndo);
-  if(btnRedo) btnRedo.addEventListener('click', performRedo);
-
-  // Phím tắt toàn trang: Ctrl + Z (Undo tối đa 100 bước) và Ctrl + Y / Ctrl + Shift + Z (Redo)
-  window.addEventListener('keydown', (e) => {
-    const isCtrlOrCmd = e.ctrlKey || e.metaKey;
-    if(!isCtrlOrCmd || e.altKey) return;
-    const key = (e.key || '').toLowerCase();
-
-    if(key === 'z' && !e.shiftKey) {
-      // Nếu đang gõ trong ô input/select, blur trước để lưu thay đổi (hoặc nếu chưa gõ xong thì hoàn tác bước trước đó)
-      const activeEl = document.activeElement;
-      if(activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
-        activeEl.blur();
-      }
-      e.preventDefault();
-      performUndo();
-    } else if(key === 'y' || (key === 'z' && e.shiftKey)) {
-      const activeEl = document.activeElement;
-      if(activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
-        activeEl.blur();
-      }
-      e.preventDefault();
-      performRedo();
-    }
-  });
-
-  // =========================================================================
-  // ĐỒNG BỘ CUỘN NGANG HOÀN HẢO GIỮA CẢ 4 KHỐI BÊN PHẢI:
-  // 1. Biểu đồ phân bổ nhân lực (#chartScrollSync)
-  // 2. Bảng Hệ số tiến độ (#hesoScrollSync)
-  // 3. Bảng Ma trận Nhân sự 53 chức danh (#nhansuScrollSync)
-  // 4. Bảng Hệ số nhân sự (#hesoNhansuWrap)
-  // =========================================================================
-  const chartWrap = document.getElementById('chartScrollSync');
-  const hesoScrollSync = document.getElementById('hesoScrollSync');
-  const nhansuWrap = document.getElementById('nhansuScrollSync') || document.querySelector('.nhansu-table-wrap');
-  const hesoNhansuWrap = document.getElementById('hesoNhansuWrap');
-  const dinhmucWrap = document.getElementById('dinhmucScrollSync');
-
-  const rightScrollPanels = [chartWrap, hesoScrollSync, nhansuWrap, hesoNhansuWrap].filter(Boolean);
-  let activeXPanel = null;
-  let syncSourceY = null;
-
-  // Hàm toàn cục đồng bộ vị trí cuộn ngang của cả 4 bảng khi render lại hoặc đổi tab
-  window.syncAllRightHorizontalPanels = function(preferredSource = null) {
-    const src = preferredSource || (activeXPanel && activeXPanel.isConnected ? activeXPanel : null)
-      || nhansuWrap || chartWrap || hesoScrollSync || hesoNhansuWrap;
-    if(!src) return;
-    const targetLeft = src.scrollLeft;
-    rightScrollPanels.forEach(p => {
-      if(p && p !== src && p.scrollLeft !== targetLeft) {
-        p.scrollLeft = targetLeft;
-      }
-    });
-  };
-
-  rightScrollPanels.forEach(panel => {
-    // 1. Lắng nghe sự kiện scroll thực tế (kéo thanh cuộn, touch, chuột giữa)
-    panel.addEventListener('scroll', () => {
-      if(activeXPanel && activeXPanel !== panel) return;
-      activeXPanel = panel;
-      const sl = panel.scrollLeft;
-      rightScrollPanels.forEach(other => {
-        if(other !== panel && other.scrollLeft !== sl) {
-          other.scrollLeft = sl;
-        }
-      });
-      requestAnimationFrame(() => {
-        if(activeXPanel === panel) activeXPanel = null;
-      });
-    }, { passive: true });
-
-    // 2. Hỗ trợ cuộn ngang mượt mà bằng con lăn chuột (Shift + Wheel hoặc chuột lăn ngang)
-    panel.addEventListener('wheel', (e) => {
-      if(e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-        activeXPanel = panel;
-      }
-    }, { passive: true });
-  });
-
-  // Đồng bộ cuộn dọc giữa Bảng Định Mức (trái) và Bảng Nhân Sự (phải)
-  if(nhansuWrap && dinhmucWrap) {
-    nhansuWrap.addEventListener('scroll', () => {
-      if(syncSourceY !== 'dinhmuc' && currentDinhMucView === 'sync') {
-        syncSourceY = 'nhansu';
-        dinhmucWrap.scrollTop = nhansuWrap.scrollTop;
-        requestAnimationFrame(() => { if(syncSourceY === 'nhansu') syncSourceY = null; });
-      }
-    }, { passive: true });
-
-    dinhmucWrap.addEventListener('scroll', () => {
-      if(syncSourceY !== 'nhansu' && currentDinhMucView === 'sync') {
-        syncSourceY = 'dinhmuc';
-        nhansuWrap.scrollTop = dinhmucWrap.scrollTop;
-        requestAnimationFrame(() => { if(syncSourceY === 'dinhmuc') syncSourceY = null; });
-      }
-    }, { passive: true });
-  }
-
-  // =========================================================================
-  // KHỞI TẠO CO KÉO ĐƯỜNG PHÂN CHIA DỌC (TRÁI - PHẢI) VÀ NGANG (TRÊN - DƯỚI)
-  // =========================================================================
 // Cập nhật giá trị hiển thị trên 3 ô input thời gian (Tháng hiển thị, Tháng diễn giải)
 function updateTimelineInputsUI() {
   const inpStart = document.getElementById('filterMonthStart');
@@ -7248,6 +7126,129 @@ function initViewModeControls() {
   }
 }
 initViewModeControls();
+
+// KHỞI ĐỘNG HỆ THỐNG
+function updateStickyHeaderOffset() {
+  const hdr = document.querySelector('header.app-header');
+  if(hdr) {
+    document.documentElement.style.setProperty('--sticky-header-h', hdr.offsetHeight + 'px');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadProject(currentVungId, currentBqlId);
+  renderOrgHierarchyButtons();
+  refreshDashboard();
+  initExcelRangeSelectionOnTables();
+  updateStickyHeaderOffset();
+  window.addEventListener('resize', updateStickyHeaderOffset);
+
+  // Nút Hoàn tác (Ctrl+Z) & Làm lại (Ctrl+Y) trên thanh công cụ
+  const btnUndo = document.getElementById('btnUndo');
+  const btnRedo = document.getElementById('btnRedo');
+  if(btnUndo) btnUndo.addEventListener('click', performUndo);
+  if(btnRedo) btnRedo.addEventListener('click', performRedo);
+
+  // Phím tắt toàn trang: Ctrl + Z (Undo tối đa 100 bước) và Ctrl + Y / Ctrl + Shift + Z (Redo)
+  window.addEventListener('keydown', (e) => {
+    const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+    if(!isCtrlOrCmd || e.altKey) return;
+    const key = (e.key || '').toLowerCase();
+
+    if(key === 'z' && !e.shiftKey) {
+      // Nếu đang gõ trong ô input/select, blur trước để lưu thay đổi (hoặc nếu chưa gõ xong thì hoàn tác bước trước đó)
+      const activeEl = document.activeElement;
+      if(activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
+        activeEl.blur();
+      }
+      e.preventDefault();
+      performUndo();
+    } else if(key === 'y' || (key === 'z' && e.shiftKey)) {
+      const activeEl = document.activeElement;
+      if(activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
+        activeEl.blur();
+      }
+      e.preventDefault();
+      performRedo();
+    }
+  });
+
+  // =========================================================================
+  // ĐỒNG BỘ CUỘN NGANG HOÀN HẢO GIỮA CẢ 4 KHỐI BÊN PHẢI:
+  // 1. Biểu đồ phân bổ nhân lực (#chartScrollSync)
+  // 2. Bảng Hệ số tiến độ (#hesoScrollSync)
+  // 3. Bảng Ma trận Nhân sự 53 chức danh (#nhansuScrollSync)
+  // 4. Bảng Hệ số nhân sự (#hesoNhansuWrap)
+  // =========================================================================
+  const chartWrap = document.getElementById('chartScrollSync');
+  const hesoScrollSync = document.getElementById('hesoScrollSync');
+  const nhansuWrap = document.getElementById('nhansuScrollSync') || document.querySelector('.nhansu-table-wrap');
+  const hesoNhansuWrap = document.getElementById('hesoNhansuWrap');
+  const dinhmucWrap = document.getElementById('dinhmucScrollSync');
+
+  const rightScrollPanels = [chartWrap, hesoScrollSync, nhansuWrap, hesoNhansuWrap].filter(Boolean);
+  let activeXPanel = null;
+  let syncSourceY = null;
+
+  // Hàm toàn cục đồng bộ vị trí cuộn ngang của cả 4 bảng khi render lại hoặc đổi tab
+  window.syncAllRightHorizontalPanels = function(preferredSource = null) {
+    const src = preferredSource || (activeXPanel && activeXPanel.isConnected ? activeXPanel : null)
+      || nhansuWrap || chartWrap || hesoScrollSync || hesoNhansuWrap;
+    if(!src) return;
+    const targetLeft = src.scrollLeft;
+    rightScrollPanels.forEach(p => {
+      if(p && p !== src && p.scrollLeft !== targetLeft) {
+        p.scrollLeft = targetLeft;
+      }
+    });
+  };
+
+  rightScrollPanels.forEach(panel => {
+    // 1. Lắng nghe sự kiện scroll thực tế (kéo thanh cuộn, touch, chuột giữa)
+    panel.addEventListener('scroll', () => {
+      if(activeXPanel && activeXPanel !== panel) return;
+      activeXPanel = panel;
+      const sl = panel.scrollLeft;
+      rightScrollPanels.forEach(other => {
+        if(other !== panel && other.scrollLeft !== sl) {
+          other.scrollLeft = sl;
+        }
+      });
+      requestAnimationFrame(() => {
+        if(activeXPanel === panel) activeXPanel = null;
+      });
+    }, { passive: true });
+
+    // 2. Hỗ trợ cuộn ngang mượt mà bằng con lăn chuột (Shift + Wheel hoặc chuột lăn ngang)
+    panel.addEventListener('wheel', (e) => {
+      if(e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        activeXPanel = panel;
+      }
+    }, { passive: true });
+  });
+
+  // Đồng bộ cuộn dọc giữa Bảng Định Mức (trái) và Bảng Nhân Sự (phải)
+  if(nhansuWrap && dinhmucWrap) {
+    nhansuWrap.addEventListener('scroll', () => {
+      if(syncSourceY !== 'dinhmuc' && currentDinhMucView === 'sync') {
+        syncSourceY = 'nhansu';
+        dinhmucWrap.scrollTop = nhansuWrap.scrollTop;
+        requestAnimationFrame(() => { if(syncSourceY === 'nhansu') syncSourceY = null; });
+      }
+    }, { passive: true });
+
+    dinhmucWrap.addEventListener('scroll', () => {
+      if(syncSourceY !== 'nhansu' && currentDinhMucView === 'sync') {
+        syncSourceY = 'dinhmuc';
+        nhansuWrap.scrollTop = dinhmucWrap.scrollTop;
+        requestAnimationFrame(() => { if(syncSourceY === 'dinhmuc') syncSourceY = null; });
+      }
+    }, { passive: true });
+  }
+
+  // =========================================================================
+  // KHỞI TẠO CO KÉO ĐƯỜNG PHÂN CHIA DỌC (TRÁI - PHẢI) VÀ NGANG (TRÊN - DƯỚI)
+  // =========================================================================
 
   const savedColPct = localStorage.getItem('db_v2_left_col_pct');
   const savedRow2H = localStorage.getItem('db_v2_row2_h');
