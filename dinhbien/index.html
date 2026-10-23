@@ -190,6 +190,7 @@ header.app-header {
 
 /* BẢNG ĐỊNH MỨC (HÀNG 3 TRÁI - ĐỒNG BỘ DÒNG VỚI BẢNG NHÂN SỰ PHẢI) */
 .dinhmuc-section {
+  height: 480px;
   max-height: 480px;
   display: flex;
   flex-direction: column;
@@ -208,7 +209,7 @@ table.dinhmuc-table {
 table.dinhmuc-table th {
   background: #f1f5f9;
   font-weight: 600;
-  padding: 5px 6px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   position: sticky;
@@ -216,22 +217,35 @@ table.dinhmuc-table th {
   z-index: 10;
   text-align: center;
   height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 27px;
+  box-sizing: border-box;
 }
 table.dinhmuc-table td {
-  padding: 3px 6px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
-  height: 26px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 27px;
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 table.dinhmuc-table td input {
-  width: 70px;
-  padding: 1px 4px;
+  width: 68px;
+  height: 20px;
+  line-height: 18px;
+  padding: 0 4px;
   font-size: 11px;
   font-family: var(--font-mono);
   text-align: right;
   border: 1px solid #cbd5e1;
   border-radius: 3px;
   background: #fff;
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 table.dinhmuc-table td input:focus {
   border-color: var(--primary);
@@ -249,12 +263,16 @@ table.dinhmuc-table td input:focus {
   overflow: hidden;
 }
 .card-header {
-  padding: 6px 10px;
+  padding: 0 10px;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
   background: #f8fafc;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
 }
 .card-header h2 {
   font-size: 12.5px;
@@ -290,7 +308,8 @@ table.dinhmuc-table td input:focus {
 }
 table.tree-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 11px;
   white-space: nowrap;
 }
@@ -298,35 +317,48 @@ table.tree-table th {
   background: #f1f5f9;
   color: #334155;
   font-weight: 600;
-  padding: 5px 6px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 10;
   text-align: left;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 27px;
+  box-sizing: border-box;
 }
 table.tree-table td {
-  padding: 3px 5px;
+  padding: 0 5px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   vertical-align: middle;
-  height: 28px; /* Khớp đồng bộ chiều cao dòng */
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 27px;
+  box-sizing: border-box;
 }
 tr.tr-level-1 { background-color: #e67e22 !important; color: #ffffff; font-weight: 700; }
 tr.tr-level-1 td { border-color: #d35400; color: #ffffff; }
-tr.tr-level-1 input { background: transparent; color: #ffffff; font-weight: 700; border: none; width: 100%; }
+tr.tr-level-1 input { background: transparent; color: #ffffff; font-weight: 700; border: none; width: 100%; height: 22px; }
 tr.tr-level-2 { background-color: #d4e6f1 !important; color: #1b4f72; font-weight: 700; }
 tr.tr-level-2 td { border-color: #a9cce3; color: #1b4f72; }
-tr.tr-level-2 input { background: transparent; color: #1b4f72; font-weight: 700; border: none; width: 100%; }
+tr.tr-level-2 input { background: transparent; color: #1b4f72; font-weight: 700; border: none; width: 100%; height: 22px; }
 tr.tr-level-4-me { background-color: #fafbfc; font-style: italic; color: #475569; }
 tr.tr-level-4-me td.col-name { padding-left: 18px; }
 table.tree-table input, table.tree-table select {
   font-size: 11px;
-  padding: 2px 4px;
+  height: 21px;
+  line-height: 19px;
+  padding: 0 4px;
   border: 1px solid #cbd5e1;
   border-radius: 4px;
   width: 100%;
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 
 /* 2. CỘT PHẢI TRÊN: BIỂU ĐỒ */
@@ -393,21 +425,31 @@ table.sync-matrix-table {
 table.sync-matrix-table th {
   background: #f1f5f9;
   font-weight: 600;
-  padding: 5px 6px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 10;
   text-align: center;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 27px;
+  box-sizing: border-box;
 }
 table.sync-matrix-table td {
-  padding: 3px 5px;
+  padding: 0 5px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   text-align: right;
   font-family: var(--font-mono);
-  height: 28px; /* Khớp đúng 28px ngang hàng với dòng Hạng mục */
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 27px;
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 table.sync-matrix-table td.heso-input-cell {
   padding: 0;
@@ -436,6 +478,7 @@ table.sync-matrix-table tr.header-summary-row td {
 
 /* 4. KHỐI GIỮA: BẢNG MA TRẬN NHÂN SỰ ĐẦY ĐỦ (53 CHỨC DANH) */
 .nhansu-section {
+  height: 480px;
   max-height: 480px;
   display: flex;
   flex-direction: column;
@@ -457,19 +500,30 @@ table.nhansu-matrix-table th,
 table.heso-sync-columns-table th {
   background: #f1f5f9;
   font-weight: 600;
-  padding: 5px 6px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 10;
   text-align: center;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 27px;
+  box-sizing: border-box;
 }
 table.nhansu-matrix-table td,
 table.heso-sync-columns-table td {
-  padding: 3px 6px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 27px;
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 table.nhansu-matrix-table td.col-freeze-1 { position: sticky; left: 0; background: inherit; z-index: 5; text-align: center; width: 35px; min-width: 35px; max-width: 35px; }
 table.nhansu-matrix-table td.col-freeze-2 { position: sticky; left: 35px; background: inherit; z-index: 5; width: 90px; min-width: 90px; max-width: 90px; }
@@ -1676,21 +1730,21 @@ document.getElementById('toggleHesoBtn').addEventListener('click', () => {
 // Đồng bộ cuộn giữa bảng Hạng mục và bảng Hệ số XD/ME/HT
 const hmScroll = document.getElementById('hangmucScrollSync');
 const hsScroll = document.getElementById('hesoScrollSync');
-let isSyncingHm = false, isSyncingHs = false;
+let syncTopRowSource = null;
 
 hmScroll.addEventListener('scroll', () => {
-  if(!isSyncingHm && isHesoExpanded) {
-    isSyncingHs = true;
+  if(syncTopRowSource !== 'hs' && isHesoExpanded) {
+    syncTopRowSource = 'hm';
     hsScroll.scrollTop = hmScroll.scrollTop;
+    requestAnimationFrame(() => { if(syncTopRowSource === 'hm') syncTopRowSource = null; });
   }
-  isSyncingHm = false;
 });
 hsScroll.addEventListener('scroll', () => {
-  if(!isSyncingHs && isHesoExpanded) {
-    isSyncingHm = true;
+  if(syncTopRowSource !== 'hm' && isHesoExpanded) {
+    syncTopRowSource = 'hs';
     hmScroll.scrollTop = hsScroll.scrollTop;
+    requestAnimationFrame(() => { if(syncTopRowSource === 'hs') syncTopRowSource = null; });
   }
-  isSyncingHs = false;
 });
 
 /* ==========================================================================
@@ -2959,40 +3013,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const hesoScrollSync = document.getElementById('hesoScrollSync');
 
   if(nhansuWrap) {
-    let isSyncingX = false;
-    let isSyncingY = false;
+    let syncSourceX = null;
+    let syncSourceY = null;
 
     nhansuWrap.addEventListener('scroll', () => {
-      if(!isSyncingX && hesoNhansuWrap) {
-        isSyncingX = true;
-        hesoNhansuWrap.scrollLeft = nhansuWrap.scrollLeft;
+      if(syncSourceX !== 'heso') {
+        syncSourceX = 'nhansu';
+        if(hesoNhansuWrap) hesoNhansuWrap.scrollLeft = nhansuWrap.scrollLeft;
         if(hesoScrollSync) hesoScrollSync.scrollLeft = nhansuWrap.scrollLeft;
-        requestAnimationFrame(() => { isSyncingX = false; });
+        requestAnimationFrame(() => { if(syncSourceX === 'nhansu') syncSourceX = null; });
       }
-      if(!isSyncingY && dinhmucWrap) {
-        isSyncingY = true;
-        dinhmucWrap.scrollTop = nhansuWrap.scrollTop;
-        requestAnimationFrame(() => { isSyncingY = false; });
+      if(syncSourceY !== 'dinhmuc') {
+        syncSourceY = 'nhansu';
+        if(dinhmucWrap) dinhmucWrap.scrollTop = nhansuWrap.scrollTop;
+        requestAnimationFrame(() => { if(syncSourceY === 'nhansu') syncSourceY = null; });
       }
     });
 
     if(hesoNhansuWrap) {
       hesoNhansuWrap.addEventListener('scroll', () => {
-        if(!isSyncingX) {
-          isSyncingX = true;
+        if(syncSourceX !== 'nhansu') {
+          syncSourceX = 'heso';
           nhansuWrap.scrollLeft = hesoNhansuWrap.scrollLeft;
           if(hesoScrollSync) hesoScrollSync.scrollLeft = hesoNhansuWrap.scrollLeft;
-          requestAnimationFrame(() => { isSyncingX = false; });
+          requestAnimationFrame(() => { if(syncSourceX === 'heso') syncSourceX = null; });
         }
       });
     }
 
     if(dinhmucWrap) {
       dinhmucWrap.addEventListener('scroll', () => {
-        if(!isSyncingY) {
-          isSyncingY = true;
+        if(syncSourceY !== 'nhansu') {
+          syncSourceY = 'dinhmuc';
           nhansuWrap.scrollTop = dinhmucWrap.scrollTop;
-          requestAnimationFrame(() => { isSyncingY = false; });
+          requestAnimationFrame(() => { if(syncSourceY === 'dinhmuc') syncSourceY = null; });
         }
       });
     }
