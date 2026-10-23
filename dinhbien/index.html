@@ -292,13 +292,13 @@ body.mobile-view-mode .tonghop-stats-grid {
   }
 }
 
-/* Thanh kéo dọc phân chia 2 nửa màn hình Trái / Phải - MẠCH LIỀN TOÀN CỤC CHẠY SUỐT TỪ ĐỈNH XUỐNG ĐÁY */
+/* Thanh kéo dọc phân chia 2 nửa màn hình Trái / Phải - ĐƯỜNG KẺ MẢNH TINH TẾ, MỜ NHẸ */
 .global-col-resizer-line {
   position: absolute;
   top: 0;
   bottom: 0;
   left: calc(var(--left-col-pct) - 5px);
-  width: 22px;
+  width: 14px;
   cursor: col-resize;
   z-index: 70;
   display: flex;
@@ -307,56 +307,67 @@ body.mobile-view-mode .tonghop-stats-grid {
   user-select: none;
   touch-action: none;
   pointer-events: auto;
+  transition: opacity 0.25s ease;
 }
 .global-col-resizer-line::before {
   content: '';
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 10px;
-  width: 3px;
-  background: #3b82f6;
-  opacity: 0.85;
-  transition: opacity 0.15s ease, width 0.15s ease;
-  box-shadow: 0 0 4px rgba(37,99,235,0.25);
+  left: 6px;
+  width: 1px;
+  background: #94a3b8;
+  opacity: 0.4;
+  transition: opacity 0.15s ease, width 0.15s ease, background 0.15s ease;
 }
 .global-col-resizer-line::after {
   content: '⋮';
   position: sticky;
   top: 48vh;
   z-index: 3;
-  font-size: 14px;
-  font-weight: 900;
-  color: #ffffff;
-  background: #2563eb;
-  border: 1.5px solid #1d4ed8;
-  border-radius: 4px;
-  padding: 10px 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  padding: 6px 2px;
   line-height: 1;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   transition: all 0.15s ease;
   pointer-events: auto;
   cursor: col-resize;
+  opacity: 0.7;
 }
 .global-col-resizer-line:hover::before,
 .global-col-resizer-line.active::before,
 body.is-resizing-col .global-col-resizer-line::before {
-  background: #1d4ed8;
-  width: 5px;
-  left: 9px;
+  background: #3b82f6;
+  width: 2px;
+  left: 6px;
   opacity: 1;
+  box-shadow: 0 0 4px rgba(59,130,246,0.4);
 }
 .global-col-resizer-line:hover::after,
 .global-col-resizer-line.active::after,
 body.is-resizing-col .global-col-resizer-line::after {
-  background: #1d4ed8;
-  transform: scale(1.15);
+  color: #ffffff;
+  background: #2563eb;
+  border-color: #1d4ed8;
+  opacity: 1;
+  transform: scale(1.08);
 }
 
-/* Thanh kéo ngang phân chia giữa các tầng bảng - HITBOX RỘNG DỄ KÉO */
+/* Khi mở rộng bảng Hạng mục ra toàn màn hình: Làm mờ đường kẻ dọc và tay cầm */
+body.is-hangmuc-expanded .global-col-resizer-line {
+  opacity: 0.12 !important;
+  pointer-events: none !important;
+}
+
+/* Thanh kéo ngang phân chia giữa các tầng bảng - ĐƯỜNG KẺ MẢNH 1PX TINH TẾ */
 .row-resizer-bar {
-  height: 18px;
-  margin: -5px 0;
+  height: 12px;
+  margin: -3px 0;
   cursor: row-resize;
   display: flex;
   align-items: center;
@@ -373,40 +384,45 @@ body.is-resizing-col .global-col-resizer-line::after {
   left: 0;
   right: 0;
   top: 50%;
-  height: 2px;
-  background: #3b82f6;
-  opacity: 0.75;
+  height: 1px;
+  background: #94a3b8;
+  opacity: 0.4;
   transition: all 0.15s ease;
 }
 .row-resizer-bar::after {
   content: '⋯';
   position: relative;
   z-index: 2;
-  background: #2563eb;
-  border: 1px solid #1d4ed8;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 900;
-  padding: 1px 18px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0px 12px;
   border-radius: 999px;
-  line-height: 12px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  line-height: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   transition: all 0.15s ease;
   pointer-events: auto;
   cursor: row-resize;
+  opacity: 0.7;
 }
 .row-resizer-bar:hover::before,
 .row-resizer-bar.active::before,
 body.is-resizing-row .row-resizer-bar::before {
-  background: #1d4ed8;
-  height: 4px;
+  background: #3b82f6;
+  height: 2px;
   opacity: 1;
+  box-shadow: 0 0 4px rgba(59,130,246,0.3);
 }
 .row-resizer-bar:hover::after,
 .row-resizer-bar.active::after,
 body.is-resizing-row .row-resizer-bar::after {
-  background: #1d4ed8;
-  transform: scale(1.15);
+  color: #ffffff;
+  background: #2563eb;
+  border-color: #1d4ed8;
+  opacity: 1;
+  transform: scale(1.08);
 }
 body.is-resizing-col,
 body.is-resizing-col * {
@@ -5063,6 +5079,7 @@ if(btnExpandHangMuc) {
     const row2Grid = document.getElementById('row2Grid');
     if(!row2Grid) return;
     const isExpanded = row2Grid.classList.toggle('hangmuc-expanded-mode');
+    document.body.classList.toggle('is-hangmuc-expanded', isExpanded);
     btnExpandHangMuc.innerHTML = isExpanded ? '⤡ Thu về 2 cột' : '⤢ Mở rộng bảng';
     btnExpandHangMuc.style.background = isExpanded ? '#fef3c7' : '#eff6ff';
     btnExpandHangMuc.style.borderColor = isExpanded ? '#f59e0b' : '#93c5fd';
