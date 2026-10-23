@@ -4844,11 +4844,9 @@ function refreshDashboard() {
   updateTimelineInputsUI();
   if(typeof updateStickyHeaderOffset === 'function') updateStickyHeaderOffset();
 
-  // Giữ đồng bộ thanh cuộn ngang của Biểu đồ với bảng đang cuộn
-  const chartWrap = document.getElementById('chartScrollSync');
-  const nhansuWrap = document.getElementById('nhansuScrollSync');
-  if(chartWrap && nhansuWrap && chartWrap.scrollLeft !== nhansuWrap.scrollLeft) {
-    chartWrap.scrollLeft = nhansuWrap.scrollLeft;
+  // Giữ đồng bộ thanh cuộn ngang của cả 4 bảng bên phải (Biểu đồ, Hệ số tiến độ, Nhân sự, Hệ số nhân sự)
+  if(typeof syncAllRightHorizontalPanels === 'function') {
+    syncAllRightHorizontalPanels();
   }
 }
 
@@ -7013,8 +7011,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Đồng bộ cuộn ngang giữa cả 4 khối bên phải: Biểu đồ, Hệ số Tiến độ, Bảng Nhân Sự, và Hệ số Nhân sự
-  // Đồng bộ cuộn dọc giữa Bảng Định Mức (trái) và Bảng Nhân Sự (phải)
+  // =========================================================================
+  // ĐỒNG BỘ CUỘN NGANG HOÀN HẢO GIỮA CẢ 4 KHỐI BÊN PHẢI:
+  // 1. Biểu đồ phân bổ nhân lực (#chartScrollSync)
+  // 2. Bảng Hệ số tiến độ (#hesoScrollSync)
+  // 3. Bảng Ma trận Nhân sự 53 chức danh (#nhansuScrollSync)
+  // 4. Bảng Hệ số nhân sự (#hesoNhansuWrap)
+  // =========================================================================
   const chartWrap = document.getElementById('chartScrollSync');
   const hesoScrollSync = document.getElementById('hesoScrollSync');
   const nhansuWrap = document.getElementById('nhansuScrollSync') || document.querySelector('.nhansu-table-wrap');
@@ -7025,7 +7028,21 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeXPanel = null;
   let syncSourceY = null;
 
+  // Hàm toàn cục đồng bộ vị trí cuộn ngang của cả 4 bảng khi render lại hoặc đổi tab
+  window.syncAllRightHorizontalPanels = function(preferredSource = null) {
+    const src = preferredSource || (activeXPanel && activeXPanel.isConnected ? activeXPanel : null)
+      || nhansuWrap || chartWrap || hesoScrollSync || hesoNhansuWrap;
+    if(!src) return;
+    const targetLeft = src.scrollLeft;
+    rightScrollPanels.forEach(p => {
+      if(p && p !== src && p.scrollLeft !== targetLeft) {
+        p.scrollLeft = targetLeft;
+      }
+    });
+  };
+
   rightScrollPanels.forEach(panel => {
+    // 1. Lắng nghe sự kiện scroll thực tế (kéo thanh cuộn, touch, chuột giữa)
     panel.addEventListener('scroll', () => {
       if(activeXPanel && activeXPanel !== panel) return;
       activeXPanel = panel;
@@ -7038,9 +7055,17 @@ document.addEventListener('DOMContentLoaded', () => {
       requestAnimationFrame(() => {
         if(activeXPanel === panel) activeXPanel = null;
       });
-    });
+    }, { passive: true });
+
+    // 2. Hỗ trợ cuộn ngang mượt mà bằng con lăn chuột (Shift + Wheel hoặc chuột lăn ngang)
+    panel.addEventListener('wheel', (e) => {
+      if(e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        activeXPanel = panel;
+      }
+    }, { passive: true });
   });
 
+  // Đồng bộ cuộn dọc giữa Bảng Định Mức (trái) và Bảng Nhân Sự (phải)
   if(nhansuWrap && dinhmucWrap) {
     nhansuWrap.addEventListener('scroll', () => {
       if(syncSourceY !== 'dinhmuc' && currentDinhMucView === 'sync') {
@@ -7048,7 +7073,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dinhmucWrap.scrollTop = nhansuWrap.scrollTop;
         requestAnimationFrame(() => { if(syncSourceY === 'nhansu') syncSourceY = null; });
       }
-    });
+    }, { passive: true });
 
     dinhmucWrap.addEventListener('scroll', () => {
       if(syncSourceY !== 'nhansu' && currentDinhMucView === 'sync') {
@@ -7056,7 +7081,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nhansuWrap.scrollTop = dinhmucWrap.scrollTop;
         requestAnimationFrame(() => { if(syncSourceY === 'dinhmuc') syncSourceY = null; });
       }
-    });
+    }, { passive: true });
   }
 
   // =========================================================================
