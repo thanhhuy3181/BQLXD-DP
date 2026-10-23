@@ -976,6 +976,14 @@ footer.app-footer {
     <div style="font-weight:700; font-size:13px; color:#334155;">HỆ THỐNG ĐỊNH BIÊN</div>
     <h1>QUẢN LÝ ĐỊNH BIÊN</h1>
     <div class="header-right-tools">
+      <div style="display:inline-flex; gap:3px; align-items:center; background:#f8fafc; padding:2px 4px; border:1px solid var(--border); border-radius:5px;">
+        <button class="btn" id="btnUndo" disabled style="padding:2px 8px; font-size:11px; font-weight:700; color:#1e40af; border-color:#bfdbfe; background:#eff6ff;" title="Hoàn tác thao tác nhập liệu trước đó (Phím tắt: Ctrl + Z — Tối đa 100 bước)">
+          ↶ Hoàn tác (Ctrl+Z) <span id="lblUndoCount" style="font-family:var(--font-mono); font-size:10px; background:#dbeafe; color:#1d4ed8; padding:0 4px; border-radius:3px;">0/100</span>
+        </button>
+        <button class="btn" id="btnRedo" disabled style="padding:2px 7px; font-size:11px; font-weight:600; color:#475569;" title="Làm lại thao tác vừa hoàn tác (Phím tắt: Ctrl + Y hoặc Ctrl + Shift + Z)">
+          ↷ Làm lại <span id="lblRedoCount" style="font-family:var(--font-mono); font-size:10px; background:#e2e8f0; color:#334155; padding:0 4px; border-radius:3px;">0</span>
+        </button>
+      </div>
       <button class="btn" id="btnUserGuide" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;">
         📖 Hướng dẫn sử dụng
       </button>
@@ -1450,6 +1458,7 @@ function loadProject(vungId, bqlId) {
       if(!currentProjectData.treeRows || currentProjectData.treeRows.length === 0) {
         currentProjectData.treeRows = JSON.parse(JSON.stringify(SEED_TREE_ITEMS));
       }
+      initUndoStateForCurrentProject();
       return;
     }
   } catch(e){}
@@ -1463,15 +1472,155 @@ function loadProject(vungId, bqlId) {
     hesoCustom: {}, // { [tab_itemId_mk]: 0.5 }
     roundMode: 'normal'
   };
-  saveCurrentProject();
+  saveCurrentProject(true);
+  initUndoStateForCurrentProject();
 }
 
-function saveCurrentProject() {
+/* ==========================================================================
+   HỆ THỐNG UNDO / REDO (CTRL + Z / CTRL + Y) TỐI ĐA 100 LẦN CHO MỖI DỰ ÁN
+   ========================================================================== */
+const MAX_UNDO_STEPS = 100;
+const projectHistoryMap = {}; // { [storageKey]: { undoStack: [jsonStr], redoStack: [jsonStr], lastSnapshot: jsonStr } }
+let isPerformingUndoRedo = false;
+
+function getHistoryBucket() {
+  if(!currentProjectData) return null;
+  const key = makeStorageKey(currentProjectData.vungId, currentProjectData.id);
+  if(!projectHistoryMap[key]) {
+    projectHistoryMap[key] = {
+      undoStack: [],
+      redoStack: [],
+      lastSnapshot: JSON.stringify(currentProjectData)
+    };
+  }
+  return projectHistoryMap[key];
+}
+
+function initUndoStateForCurrentProject() {
+  if(!currentProjectData) return;
+  const bucket = getHistoryBucket();
+  if(bucket) {
+    bucket.lastSnapshot = JSON.stringify(currentProjectData);
+  }
+  updateUndoRedoButtonsUI();
+}
+
+function updateUndoRedoButtonsUI() {
+  const btnUndo = document.getElementById('btnUndo');
+  const btnRedo = document.getElementById('btnRedo');
+  const lblUndo = document.getElementById('lblUndoCount');
+  const lblRedo = document.getElementById('lblRedoCount');
+  const bucket = (!currentBqlId || !currentProjectData) ? null : getHistoryBucket();
+  const uCount = bucket ? bucket.undoStack.length : 0;
+  const rCount = bucket ? bucket.redoStack.length : 0;
+
+  if(btnUndo) {
+    btnUndo.disabled = uCount === 0;
+    btnUndo.style.opacity = uCount === 0 ? '0.5' : '1';
+    btnUndo.style.cursor = uCount === 0 ? 'not-allowed' : 'pointer';
+  }
+  if(btnRedo) {
+    btnRedo.disabled = rCount === 0;
+    btnRedo.style.opacity = rCount === 0 ? '0.5' : '1';
+    btnRedo.style.cursor = rCount === 0 ? 'not-allowed' : 'pointer';
+  }
+  if(lblUndo) lblUndo.textContent = `${uCount}/${MAX_UNDO_STEPS}`;
+  if(lblRedo) lblRedo.textContent = `${rCount}`;
+}
+
+function showUndoToast(msg) {
+  let toast = document.getElementById('undoStatusToast');
+  if(!toast) {
+    toast = document.createElement('div');
+    toast.id = 'undoStatusToast';
+    toast.style.cssText = 'position:fixed; bottom:18px; right:18px; z-index:9999; background:#1e293b; color:#fff; padding:7px 14px; border-radius:6px; font-size:11.5px; font-weight:600; box-shadow:0 6px 16px rgba(0,0,0,0.22); transition:opacity 0.2s ease; pointer-events:none; opacity:0;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 1800);
+}
+
+function performUndo() {
+  if(!currentBqlId || !currentProjectData) return;
+  const bucket = getHistoryBucket();
+  if(!bucket || bucket.undoStack.length === 0) return;
+
+  isPerformingUndoRedo = true;
+  try {
+    const currentSnap = JSON.stringify(currentProjectData);
+    bucket.redoStack.push(currentSnap);
+    if(bucket.redoStack.length > MAX_UNDO_STEPS) bucket.redoStack.shift();
+
+    const prevSnap = bucket.undoStack.pop();
+    bucket.lastSnapshot = prevSnap;
+    currentProjectData = JSON.parse(prevSnap);
+
+    const key = makeStorageKey(currentProjectData.vungId, currentProjectData.id);
+    localStorage.setItem(key, prevSnap);
+
+    const selRound = document.getElementById('selRoundMode');
+    if(selRound && currentProjectData.roundMode) selRound.value = currentProjectData.roundMode;
+
+    refreshDashboard();
+    updateUndoRedoButtonsUI();
+    showUndoToast(`↶ Đã hoàn tác (Còn ${bucket.undoStack.length}/${MAX_UNDO_STEPS} bước)`);
+  } finally {
+    isPerformingUndoRedo = false;
+  }
+}
+
+function performRedo() {
+  if(!currentBqlId || !currentProjectData) return;
+  const bucket = getHistoryBucket();
+  if(!bucket || bucket.redoStack.length === 0) return;
+
+  isPerformingUndoRedo = true;
+  try {
+    const currentSnap = JSON.stringify(currentProjectData);
+    bucket.undoStack.push(currentSnap);
+    if(bucket.undoStack.length > MAX_UNDO_STEPS) bucket.undoStack.shift();
+
+    const nextSnap = bucket.redoStack.pop();
+    bucket.lastSnapshot = nextSnap;
+    currentProjectData = JSON.parse(nextSnap);
+
+    const key = makeStorageKey(currentProjectData.vungId, currentProjectData.id);
+    localStorage.setItem(key, nextSnap);
+
+    const selRound = document.getElementById('selRoundMode');
+    if(selRound && currentProjectData.roundMode) selRound.value = currentProjectData.roundMode;
+
+    refreshDashboard();
+    updateUndoRedoButtonsUI();
+    showUndoToast(`↷ Đã làm lại (Undo: ${bucket.undoStack.length}/${MAX_UNDO_STEPS})`);
+  } finally {
+    isPerformingUndoRedo = false;
+  }
+}
+
+function saveCurrentProject(skipHistory = false) {
   if(!currentProjectData) return;
   if(!currentProjectData.hesoCustom) currentProjectData.hesoCustom = {};
   const key = makeStorageKey(currentProjectData.vungId, currentProjectData.id);
+  const newSnap = JSON.stringify(currentProjectData);
+
+  if(!skipHistory && !isPerformingUndoRedo) {
+    const bucket = getHistoryBucket();
+    if(bucket && bucket.lastSnapshot && bucket.lastSnapshot !== newSnap) {
+      bucket.undoStack.push(bucket.lastSnapshot);
+      if(bucket.undoStack.length > MAX_UNDO_STEPS) {
+        bucket.undoStack.shift();
+      }
+      bucket.redoStack = [];
+    }
+    if(bucket) bucket.lastSnapshot = newSnap;
+    updateUndoRedoButtonsUI();
+  }
+
   try {
-    localStorage.setItem(key, JSON.stringify(currentProjectData));
+    localStorage.setItem(key, newSnap);
   } catch(e){}
 }
 
@@ -3540,6 +3689,7 @@ function refreshDashboard() {
   renderChart(calcResultCache);
   renderMatrix(calcResultCache);
   updateStats(calcResultCache);
+  updateUndoRedoButtonsUI();
   if(typeof updateStickyHeaderOffset === 'function') updateStickyHeaderOffset();
 
   // Giữ đồng bộ thanh cuộn ngang của Biểu đồ với bảng đang cuộn
@@ -4503,6 +4653,36 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshDashboard();
   updateStickyHeaderOffset();
   window.addEventListener('resize', updateStickyHeaderOffset);
+
+  // Nút Hoàn tác (Ctrl+Z) & Làm lại (Ctrl+Y) trên thanh công cụ
+  const btnUndo = document.getElementById('btnUndo');
+  const btnRedo = document.getElementById('btnRedo');
+  if(btnUndo) btnUndo.addEventListener('click', performUndo);
+  if(btnRedo) btnRedo.addEventListener('click', performRedo);
+
+  // Phím tắt toàn trang: Ctrl + Z (Undo tối đa 100 bước) và Ctrl + Y / Ctrl + Shift + Z (Redo)
+  window.addEventListener('keydown', (e) => {
+    const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+    if(!isCtrlOrCmd || e.altKey) return;
+    const key = (e.key || '').toLowerCase();
+
+    if(key === 'z' && !e.shiftKey) {
+      // Nếu đang gõ trong ô input/select, blur trước để lưu thay đổi (hoặc nếu chưa gõ xong thì hoàn tác bước trước đó)
+      const activeEl = document.activeElement;
+      if(activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
+        activeEl.blur();
+      }
+      e.preventDefault();
+      performUndo();
+    } else if(key === 'y' || (key === 'z' && e.shiftKey)) {
+      const activeEl = document.activeElement;
+      if(activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
+        activeEl.blur();
+      }
+      e.preventDefault();
+      performRedo();
+    }
+  });
 
   // Đồng bộ cuộn ngang giữa cả 4 khối bên phải: Biểu đồ, Hệ số Tiến độ, Bảng Nhân Sự, và Hệ số Nhân sự
   // Đồng bộ cuộn dọc giữa Bảng Định Mức (trái) và Bảng Nhân Sự (phải)
