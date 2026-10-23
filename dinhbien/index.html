@@ -144,6 +144,7 @@ header.app-header {
   --left-col-pct: 42%;
   --row2-height: 360px;
   --row3-height: 480px;
+  --sticky-header-h: 112px;
 }
 
 .main-wrapper {
@@ -153,6 +154,17 @@ header.app-header {
   gap: 10px;
   flex: 1;
   position: relative;
+}
+
+/* GHIM CỐ ĐỊNH HÀNG 1 (TỔNG HỢP + BIỂU ĐỒ PHÂN BỔ NHÂN LỰC) Ở TRÊN CÙNG KHI CUỘN TRANG */
+#row1StickyGrid {
+  position: sticky;
+  top: var(--sticky-header-h);
+  z-index: 40;
+  background: var(--bg-body);
+  padding-top: 2px;
+  padding-bottom: 6px;
+  box-shadow: 0 6px 12px -6px rgba(15, 23, 42, 0.14);
 }
 
 /* LƯỚI 2 CỘT ĐỒNG BỘ TOÀN TRANG (CHO PHÉP CO KÉO TRÁI - PHẢI) */
@@ -581,7 +593,7 @@ table.tree-table input[type="date"]::-webkit-calendar-picker-indicator:hover {
 /* 2. CỘT PHẢI TRÊN: BIỂU ĐỒ (THẲNG HÀNG CỘT THÁNG 370PX + 68PX × THÁNG) */
 .chart-box-top {
   height: auto;
-  min-height: 220px;
+  min-height: 175px;
   padding: 0;
   background: #ffffff;
   overflow-x: auto;
@@ -603,7 +615,7 @@ table.chart-sync-table td.chart-freeze-axis {
   max-width: 370px;
   background: #ffffff;
   border-right: 1px solid var(--border);
-  padding: 6px 10px;
+  padding: 4px 10px;
   vertical-align: top;
   box-sizing: border-box;
 }
@@ -611,9 +623,9 @@ table.chart-sync-table td.chart-bar-col {
   width: 68px;
   min-width: 68px;
   max-width: 68px;
-  height: 112px;
+  height: 84px;
   vertical-align: bottom;
-  padding: 6px 8px 0 8px;
+  padding: 4px 8px 0 8px;
   border-right: 1px dashed #e2e8f0;
   border-bottom: 1px solid var(--border);
   box-sizing: border-box;
@@ -621,10 +633,10 @@ table.chart-sync-table td.chart-bar-col {
 }
 table.chart-sync-table tr.chart-month-row td,
 table.chart-sync-table tr.chart-stat-row td {
-  height: 22px;
-  min-height: 22px;
-  max-height: 22px;
-  line-height: 21px;
+  height: 19px;
+  min-height: 19px;
+  max-height: 19px;
+  line-height: 18px;
   text-align: center;
   font-size: 10.5px;
   font-weight: 600;
@@ -957,9 +969,9 @@ footer.app-footer {
 <div class="main-wrapper">
 
   <!-- =========================================================================
-       HÀNG 1: TRÁI (TỔNG HỢP) | PHẢI (BIỂU ĐỒ)
+       HÀNG 1: TRÁI (TỔNG HỢP) | PHẢI (BIỂU ĐỒ) - GHIM CỐ ĐỊNH TRÊN CÙNG KHI CUỘN
        ========================================================================= -->
-  <div class="dashboard-row-grid">
+  <div class="dashboard-row-grid" id="row1StickyGrid">
     <!-- CỘT TRÁI HÀNG 1: TỔNG HỢP -->
     <div class="card-box">
       <div class="card-header">
@@ -2428,7 +2440,7 @@ function renderChart(res) {
   if(!tbody) return;
   const months = res.months;
   const maxVal = Math.max(10, ...res.grandTotals);
-  const maxBarPx = 82; // Chiều cao tối đa cột biểu đồ (px)
+  const maxBarPx = 58; // Chiều cao tối đa cột biểu đồ (px) gọn gàng khi ghim trên cùng
   const isAgg = !!res.isAggregate;
 
   const lblChartTitle = document.getElementById('lblChartHeaderTitle');
@@ -2484,8 +2496,8 @@ function renderChart(res) {
   tbody.innerHTML = `
     <tr>
       <td class="chart-freeze-axis">
-        <div style="display:flex; flex-direction:column; justify-content:center; height:102px;">
-          <div style="font-weight:700; color:#0f172a; font-size:11.5px; margin-bottom:8px;">
+        <div style="display:flex; flex-direction:column; justify-content:center; height:76px;">
+          <div style="font-weight:700; color:#0f172a; font-size:11.5px; margin-bottom:6px;">
             ${isAgg ? `Phân bổ nhân lực Tổng (${res.projectCount} dự án)` : `Phân bổ nhân lực dự án`} — Đỉnh: <span style="color:#7e22ce;">${maxVal} người</span>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:11px; color:#334155;">
@@ -3281,6 +3293,14 @@ function refreshDashboard() {
   renderChart(calcResultCache);
   renderMatrix(calcResultCache);
   updateStats(calcResultCache);
+  if(typeof updateStickyHeaderOffset === 'function') updateStickyHeaderOffset();
+
+  // Giữ đồng bộ thanh cuộn ngang của Biểu đồ với bảng đang cuộn
+  const chartWrap = document.getElementById('chartScrollSync');
+  const nhansuWrap = document.getElementById('nhansuScrollSync');
+  if(chartWrap && nhansuWrap && chartWrap.scrollLeft !== nhansuWrap.scrollLeft) {
+    chartWrap.scrollLeft = nhansuWrap.scrollLeft;
+  }
 }
 
 function escHtml(str) {
@@ -4223,10 +4243,19 @@ document.getElementById('selRoundMode').addEventListener('change', (e) => {
 });
 
 // KHỞI ĐỘNG HỆ THỐNG
+function updateStickyHeaderOffset() {
+  const hdr = document.querySelector('header.app-header');
+  if(hdr) {
+    document.documentElement.style.setProperty('--sticky-header-h', hdr.offsetHeight + 'px');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadProject(currentVungId, currentBqlId);
   renderOrgHierarchyButtons();
   refreshDashboard();
+  updateStickyHeaderOffset();
+  window.addEventListener('resize', updateStickyHeaderOffset);
 
   // Đồng bộ cuộn ngang giữa cả 4 khối bên phải: Biểu đồ, Hệ số Tiến độ, Bảng Nhân Sự, và Hệ số Nhân sự
   // Đồng bộ cuộn dọc giữa Bảng Định Mức (trái) và Bảng Nhân Sự (phải)
