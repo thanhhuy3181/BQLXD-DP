@@ -708,18 +708,56 @@ table.sync-matrix-table td.col-heso-freeze {
   position: sticky;
   left: 0;
   z-index: 6;
-  width: 370px;
-  min-width: 370px;
-  max-width: 370px;
+  width: 245px;
+  min-width: 245px;
+  max-width: 245px;
   text-align: left;
   background: inherit;
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-table.sync-matrix-table thead th.col-heso-freeze {
+table.sync-matrix-table th.col-heso-freeze-kl,
+table.sync-matrix-table td.col-heso-freeze-kl {
+  position: sticky;
+  left: 245px;
+  z-index: 6;
+  width: 75px;
+  min-width: 75px;
+  max-width: 75px;
+  text-align: right;
+  font-family: var(--font-mono);
+  background: inherit;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+table.sync-matrix-table th.col-heso-freeze-dv,
+table.sync-matrix-table td.col-heso-freeze-dv {
+  position: sticky;
+  left: 320px;
+  z-index: 6;
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  background: inherit;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+table.sync-matrix-table thead th.col-heso-freeze,
+table.sync-matrix-table thead th.col-heso-freeze-kl,
+table.sync-matrix-table thead th.col-heso-freeze-dv {
   background: #f1f5f9;
   z-index: 20;
+  text-align: center;
+}
+table.sync-matrix-table thead th.col-heso-freeze {
+  text-align: left;
 }
 table.sync-matrix-table tbody tr {
   background: #ffffff;
@@ -727,7 +765,7 @@ table.sync-matrix-table tbody tr {
 table.sync-matrix-table th {
   background: #f1f5f9;
   font-weight: 600;
-  padding: 0 6px;
+  padding: 0 5px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   position: sticky;
@@ -737,7 +775,8 @@ table.sync-matrix-table th {
   height: 36px;
   min-height: 36px;
   max-height: 36px;
-  line-height: 35px;
+  line-height: 1.15;
+  vertical-align: middle;
   box-sizing: border-box;
 }
 table.sync-matrix-table td {
@@ -768,9 +807,9 @@ table.sync-matrix-table td.heso-input-cell input {
   outline: none;
 }
 table.sync-matrix-table td.heso-input-cell.customized input {
-  background: #fef08a;
-  font-weight: 700;
-  color: #854d0e;
+  font-weight: 800;
+  color: #9a3412;
+  text-decoration: underline;
 }
 table.sync-matrix-table tr.header-summary-row td {
   background: #fef3c7 !important;
@@ -1076,6 +1115,10 @@ footer.app-footer {
         <h2>
           <span>⚡ Hệ số XD, ME, HT, Kho, BPTC</span>
         </h2>
+        <div style="display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-muted);">
+          <span style="display:inline-flex; align-items:center; gap:4px;" title="Thời gian thi công: hiển thị nền màu vàng tương ứng với từ ngày bắt đầu đến ngày kết thúc thi công trong tháng"><i style="width:12px; height:12px; background:#fde047; border:1px solid #eab308; display:inline-block; border-radius:2px;"></i>Thi công</span>
+          <span style="display:inline-flex; align-items:center; gap:4px;" title="Thời gian bàn giao (sau thời gian thi công): hiển thị nền màu xanh da trời tương ứng với số ngày bàn giao trong tháng"><i style="width:12px; height:12px; background:#7dd3fc; border:1px solid #0284c7; display:inline-block; border-radius:2px;"></i>Bàn giao</span>
+        </div>
       </div>
       <!-- Thanh 5 Tab Hệ số -->
       <div class="heso-tabs-bar" id="hesoTabsBar">
@@ -2224,6 +2267,103 @@ let currentHesoTab = 'xd'; // 'xd' | 'me' | 'ht' | 'kho' | 'bptc'
 /* ==========================================================================
    4. RENDER BẢNG HỆ SỐ XD, ME, HT, KHO, BPTC (NGANG HÀNG VỚI HẠNG MỤC)
    ========================================================================== */
+function getHesoCellPhaseBgStyle(sStr, kStr, bStr, mDate) {
+  const s = parseDateAny(sStr);
+  const k = parseDateAny(kStr);
+  const b = parseDateAny(bStr);
+  if(!s) return '';
+
+  const y = mDate.getFullYear();
+  const mo = mDate.getMonth();
+  const dim = daysInMonth(y, mo);
+  const mStart = new Date(y, mo, 1);
+  const mEnd = new Date(y, mo + 1, 0);
+
+  const dayTypes = new Array(dim).fill('none');
+  const tcEnd = k || b;
+
+  // 1. Giai đoạn thi công (từ ngày bắt đầu thi công đến ngày kết thúc thi công): màu vàng (#fef08a)
+  if(tcEnd && s <= mEnd && tcEnd >= mStart) {
+    const d1 = s > mStart ? s.getDate() : 1;
+    const d2 = tcEnd < mEnd ? tcEnd.getDate() : dim;
+    for(let d = d1; d <= d2; d++) {
+      dayTypes[d - 1] = 'tc';
+    }
+  }
+
+  // 2. Giai đoạn bàn giao (sau ngày kết thúc thi công đến ngày kết thúc bàn giao): màu xanh da trời (#bae6fd)
+  if(k && b && b > k) {
+    const bgStart = new Date(k.getFullYear(), k.getMonth(), k.getDate() + 1);
+    if(bgStart <= mEnd && b >= mStart) {
+      const d1 = bgStart > mStart ? bgStart.getDate() : 1;
+      const d2 = b < mEnd ? b.getDate() : dim;
+      for(let d = d1; d <= d2; d++) {
+        if(dayTypes[d - 1] === 'none') {
+          dayTypes[d - 1] = 'bg';
+        }
+      }
+    }
+  }
+
+  if(dayTypes.every(t => t === 'none')) return '';
+
+  const colorMap = {
+    none: '#ffffff',
+    tc: '#fef08a', // Vàng thời gian thi công
+    bg: '#bae6fd'  // Xanh da trời thời gian bàn giao
+  };
+
+  if(dayTypes.every(t => t === dayTypes[0])) {
+    return `background: ${colorMap[dayTypes[0]]};`;
+  }
+
+  const stops = [];
+  let curType = dayTypes[0];
+  let startIdx = 0;
+  for(let i = 1; i <= dim; i++) {
+    if(i === dim || dayTypes[i] !== curType) {
+      const p1 = ((startIdx / dim) * 100).toFixed(1);
+      const p2 = ((i / dim) * 100).toFixed(1);
+      stops.push(`${colorMap[curType]} ${p1}%`, `${colorMap[curType]} ${p2}%`);
+      if(i < dim) {
+        curType = dayTypes[i];
+        startIdx = i;
+      }
+    }
+  }
+  return `background: linear-gradient(to right, ${stops.join(', ')});`;
+}
+
+function getHesoCellPhaseTooltip(sStr, kStr, bStr, mDate) {
+  const s = parseDateAny(sStr);
+  const k = parseDateAny(kStr);
+  const b = parseDateAny(bStr);
+  if(!s) return '';
+  const y = mDate.getFullYear();
+  const mo = mDate.getMonth();
+  const dim = daysInMonth(y, mo);
+  const mStart = new Date(y, mo, 1);
+  const mEnd = new Date(y, mo + 1, 0);
+  const parts = [];
+  const tcEnd = k || b;
+  if(tcEnd && s <= mEnd && tcEnd >= mStart) {
+    const d1 = s > mStart ? s.getDate() : 1;
+    const d2 = tcEnd < mEnd ? tcEnd.getDate() : dim;
+    parts.push(`Thi công (Vàng): ${d1}/${mo+1}–${d2}/${mo+1} (${d2 - d1 + 1}/${dim} ngày)`);
+  }
+  if(k && b && b > k) {
+    const bgStart = new Date(k.getFullYear(), k.getMonth(), k.getDate() + 1);
+    if(bgStart <= mEnd && b >= mStart) {
+      const d1 = bgStart > mStart ? bgStart.getDate() : 1;
+      const d2 = b < mEnd ? b.getDate() : dim;
+      if(d2 >= d1) {
+        parts.push(`Bàn giao (Xanh da trời): ${d1}/${mo+1}–${d2}/${mo+1} (${d2 - d1 + 1}/${dim} ngày)`);
+      }
+    }
+  }
+  return parts.join(' | ');
+}
+
 function renderSyncHesoTable(res) {
   const thead = document.getElementById('syncHesoHead');
   const tbody = document.getElementById('syncHesoBody');
@@ -2235,10 +2375,12 @@ function renderSyncHesoTable(res) {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
 
-  // Header tháng (Cột đầu cố định 370px, các cột tháng cố định 68px thẳng hàng tuyệt đối)
+  // Header tháng: 3 cột cố định tổng 370px (Hạng mục 245px + Khối lượng 75px + Đơn vị 50px) + các cột tháng 68px thẳng hàng tuyệt đối
   thead.innerHTML = `
     <tr>
       <th class="col-heso-freeze">Hạng mục / Hệ số (${tab.toUpperCase()})</th>
+      <th class="col-heso-freeze-kl">Khối<br>lượng</th>
+      <th class="col-heso-freeze-dv">Đơn<br>vị</th>
       ${months.map(m => `<th class="col-month-fixed">${monthLabel(m)}</th>`).join('')}
     </tr>
   `;
@@ -2268,6 +2410,8 @@ function renderSyncHesoTable(res) {
   html += `
     <tr class="header-summary-row">
       <td class="col-heso-freeze" style="text-align:left; font-weight:700;">${tabTitleMap[tab] || '★ TỔNG HỆ SỐ ĐIỀU ĐỘ'}</td>
+      <td class="col-heso-freeze-kl"></td>
+      <td class="col-heso-freeze-dv"></td>
       ${months.map((m, mIdx) => {
         let sum = 0;
         res.itemProgressDetail.forEach(it => {
@@ -2289,6 +2433,8 @@ function renderSyncHesoTable(res) {
             <td class="col-heso-freeze" style="text-align:left; font-weight:700; color:#fff; background:#e67e22;">
               ${escHtml(r.ten)}
             </td>
+            <td class="col-heso-freeze-kl" style="background:#e67e22;"></td>
+            <td class="col-heso-freeze-dv" style="background:#e67e22;"></td>
             ${months.map(() => `<td class="col-month-fixed" style="background:#e67e22;"></td>`).join('')}
           </tr>
         `;
@@ -2298,12 +2444,16 @@ function renderSyncHesoTable(res) {
             <td class="col-heso-freeze" style="text-align:left; font-weight:700; color:#1b4f72; background:#d4e6f1;">
               ${escHtml(r.ten)}
             </td>
+            <td class="col-heso-freeze-kl" style="background:#d4e6f1;"></td>
+            <td class="col-heso-freeze-dv" style="background:#d4e6f1;"></td>
             ${months.map(() => `<td class="col-month-fixed" style="background:#d4e6f1;"></td>`).join('')}
           </tr>
         `;
       } else {
         const it = res.itemProgressDetail.find(x => x.id === r.id);
         const ratioArr = getTabRatioArr(it);
+        const klDisplay = (r.kl != null && r.kl !== '') ? Number(r.kl).toLocaleString('vi-VN') : '';
+        const dvDisplay = escHtml(r.dv || 'căn');
 
         let cellsHtml = '';
         months.forEach((m, mIdx) => {
@@ -2311,17 +2461,20 @@ function renderSyncHesoTable(res) {
           const pr = ratioArr ? (ratioArr[mIdx] || 0) : 0;
           const key = `${tab}_${r.id}_${mk}`;
           const isCustom = currentProjectData.hesoCustom && currentProjectData.hesoCustom[key] != null;
-          
-          if(pr > 0 || isCustom) {
-            const displayPct = Math.round(pr * 100) + '%';
+          const bgStyle = getHesoCellPhaseBgStyle(r.batDau, r.ketThuc, r.banGiao, m);
+          const phaseTip = getHesoCellPhaseTooltip(r.batDau, r.ketThuc, r.banGiao, m);
+          const fullTitle = `${phaseTip ? phaseTip + ' — ' : ''}Gõ ví dụ: 50 rồi Enter để đặt 50%, gõ 100 để đặt lại 100%`;
+
+          if(pr > 0 || isCustom || bgStyle) {
+            const displayPct = (pr > 0 || isCustom) ? (Math.round(pr * 100) + '%') : '';
             cellsHtml += `
-              <td class="col-month-fixed heso-input-cell ${isCustom ? 'customized' : ''}" style="height:28px;">
+              <td class="col-month-fixed heso-input-cell ${isCustom ? 'customized' : ''}" style="height:28px; ${bgStyle}">
                 <input type="text" 
                        value="${displayPct}" 
                        data-tab="${tab}" 
                        data-id="${r.id}" 
                        data-mk="${mk}" 
-                       title="Gõ ví dụ: 50 rồi Enter để đặt 50%, gõ 100 để đặt lại 100%">
+                       title="${escHtml(fullTitle)}">
               </td>
             `;
           } else {
@@ -2334,6 +2487,8 @@ function renderSyncHesoTable(res) {
             <td class="col-heso-freeze" style="text-align:left; font-weight:500;" title="${escHtml(r.ten)}">
               ${escHtml(r.ten)}
             </td>
+            <td class="col-heso-freeze-kl" style="font-weight:600; color:#1e293b;" title="Khối lượng lấy từ bảng Hạng mục">${klDisplay}</td>
+            <td class="col-heso-freeze-dv" title="Đơn vị tính lấy từ bảng Hạng mục">${dvDisplay}</td>
             ${cellsHtml}
           </tr>
         `;
@@ -2341,14 +2496,36 @@ function renderSyncHesoTable(res) {
         // Đồng bộ 2 dòng in nghiêng M&E cấp 4 nếu hạng mục có M&E
         const hasMeSub = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng'].includes(r.loai);
         if(hasMeSub) {
+          const me1Kl = r.me1_kl != null ? r.me1_kl : r.kl;
+          const me2Kl = r.me2_kl != null ? r.me2_kl : r.kl;
+          const me1KlDisp = (me1Kl != null && me1Kl !== '') ? Number(me1Kl).toLocaleString('vi-VN') : '';
+          const me2KlDisp = (me2Kl != null && me2Kl !== '') ? Number(me2Kl).toLocaleString('vi-VN') : '';
+
+          const me1Bd = r.me1_bd || r.batDau || '';
+          const me1Kt = r.me1_kt || r.ketThuc || '';
+          const me2Bd = r.me2_bd || r.ketThuc || '';
+          const me2Kt = r.me2_kt || r.banGiao || '';
+
           html += `
             <tr class="tr-level-4-me" style="height:28px;">
               <td class="col-heso-freeze" style="text-align:left; padding-left:16px; color:#64748b; font-size:10.5px;">↳ M&amp;E — GĐ bê tông, cốt thép</td>
-              ${months.map(() => `<td class="col-month-fixed" style="color:#e2e8f0; text-align:center; height:28px;">·</td>`).join('')}
+              <td class="col-heso-freeze-kl" style="color:#64748b; font-style:italic;">${me1KlDisp}</td>
+              <td class="col-heso-freeze-dv" style="color:#64748b;">${dvDisplay}</td>
+              ${months.map((m) => {
+                const bg1 = getHesoCellPhaseBgStyle(me1Bd, me1Kt, '', m);
+                const tip1 = getHesoCellPhaseTooltip(me1Bd, me1Kt, '', m);
+                return `<td class="col-month-fixed" style="color:#94a3b8; text-align:center; height:28px; ${bg1}" title="${escHtml(tip1)}">·</td>`;
+              }).join('')}
             </tr>
             <tr class="tr-level-4-me" style="height:28px;">
               <td class="col-heso-freeze" style="text-align:left; padding-left:16px; color:#64748b; font-size:10.5px;">↳ M&amp;E — GĐ hoàn thiện</td>
-              ${months.map(() => `<td class="col-month-fixed" style="color:#e2e8f0; text-align:center; height:28px;">·</td>`).join('')}
+              <td class="col-heso-freeze-kl" style="color:#64748b; font-style:italic;">${me2KlDisp}</td>
+              <td class="col-heso-freeze-dv" style="color:#64748b;">${dvDisplay}</td>
+              ${months.map((m) => {
+                const bg2 = getHesoCellPhaseBgStyle(me2Bd, me2Kt, '', m);
+                const tip2 = getHesoCellPhaseTooltip(me2Bd, me2Kt, '', m);
+                return `<td class="col-month-fixed" style="color:#94a3b8; text-align:center; height:28px; ${bg2}" title="${escHtml(tip2)}">·</td>`;
+              }).join('')}
             </tr>
           `;
         }
