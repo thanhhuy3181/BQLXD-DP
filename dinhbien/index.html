@@ -547,15 +547,24 @@ table.dinhmuc-table td input {
   font-size: 10.5px;
   font-family: var(--font-mono);
   text-align: right;
-  border: 1px solid #cbd5e1;
+  border: 1px solid transparent;
   border-radius: 3px;
-  background: #fff;
+  background: transparent;
   vertical-align: middle;
   box-sizing: border-box;
+  color: #1e293b;
+  pointer-events: none;
 }
-table.dinhmuc-table td input:focus {
-  border-color: var(--primary);
+body.is-editing-dinhmuc table.dinhmuc-table td input {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  pointer-events: auto;
+  cursor: text;
+}
+body.is-editing-dinhmuc table.dinhmuc-table td input:focus {
+  border-color: #1d4ed8;
   background: #fef9c3;
+  box-shadow: inset 0 0 0 1px #1d4ed8;
   outline: none;
 }
 
@@ -1572,6 +1581,7 @@ footer.app-footer {
             <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;" title="Chỉ xem và đồng bộ Khối Kho">KHO</button>
             <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;" title="Chỉ xem và đồng bộ Khối Bộ phận Thi công (BPTC)">BPTC</button>
           </div>
+          <button class="btn" id="btnToggleEditDinhMuc" style="font-size:11px; padding:2px 9px; font-weight:700; background:#f1f5f9; border-color:#cbd5e1; color:#334155;" title="Chỉ khi bật nút này mới cho phép sửa các số trong bảng Định mức">🔒 Sửa định mức</button>
           <button class="btn" id="btnResetDinhMuc" style="font-size:10.5px; padding:2px 6px;" title="Khôi phục định mức chuẩn mặc định">↺ Mặc định</button>
         </div>
       </div>
@@ -3999,9 +4009,35 @@ function renderQlInputs(qlKey, defMin, defMax, defCalc, dmC) {
   `;
 }
 
+let isDinhMucEditable = false;
+
+function updateDinhMucEditButtonUI() {
+  const btn = document.getElementById('btnToggleEditDinhMuc');
+  if(!btn) return;
+  if(isDinhMucEditable) {
+    btn.innerHTML = '🔓 Đang sửa ĐM (Bấm để Khóa)';
+    btn.style.background = '#fef3c7';
+    btn.style.borderColor = '#f59e0b';
+    btn.style.color = '#92400e';
+    document.body.classList.add('is-editing-dinhmuc');
+  } else {
+    btn.innerHTML = '🔒 Sửa định mức';
+    btn.style.background = '#f1f5f9';
+    btn.style.borderColor = '#cbd5e1';
+    btn.style.color = '#334155';
+    document.body.classList.remove('is-editing-dinhmuc');
+  }
+}
+
 function bindDmInputs(tbody) {
   tbody.querySelectorAll('input.dm-input').forEach(inp => {
+    inp.disabled = !isDinhMucEditable;
     inp.addEventListener('change', (e) => {
+      if(!isDinhMucEditable) {
+        e.preventDefault();
+        showUndoToast('⚠️ Vui lòng nhấn nút "🔒 Sửa định mức" phía trên để chỉnh sửa!');
+        return;
+      }
       const k = e.target.dataset.dmk;
       const v = parseFloat(e.target.value);
       if(!currentProjectData.dinhMucCustom) currentProjectData.dinhMucCustom = {};
@@ -4024,6 +4060,7 @@ function renderDinhMucTable() {
 
   // Cập nhật active tab & title
   syncDeptTabsUI();
+  updateDinhMucEditButtonUI();
 
   // CHẾ ĐỘ 2: XEM NGUYÊN BẢN SHEET "ĐM BQL" TRONG FILE EXCEL
   if(currentDinhMucView === 'bql') {
@@ -4410,12 +4447,31 @@ if(dinhmucViewTabs) {
   });
 }
 
+const btnToggleEditDinhMuc = document.getElementById('btnToggleEditDinhMuc');
+if(btnToggleEditDinhMuc) {
+  btnToggleEditDinhMuc.addEventListener('click', () => {
+    isDinhMucEditable = !isDinhMucEditable;
+    updateDinhMucEditButtonUI();
+    renderDinhMucTable();
+    if(isDinhMucEditable) {
+      showUndoToast('🔓 Đã mở khóa cho phép sửa bảng Định mức');
+    } else {
+      showUndoToast('🔒 Đã khóa bảng Định mức để bảo vệ công thức');
+    }
+  });
+}
+
 const btnResetDinhMuc = document.getElementById('btnResetDinhMuc');
 if(btnResetDinhMuc) {
   btnResetDinhMuc.addEventListener('click', () => {
+    if(!isDinhMucEditable) {
+      showUndoToast('⚠️ Vui lòng nhấn nút "🔒 Sửa định mức" trước khi khôi phục!');
+      return;
+    }
     currentProjectData.dinhMucCustom = {};
     saveCurrentProject();
     refreshDashboard();
+    showUndoToast('↺ Đã khôi phục định mức chuẩn mặc định');
   });
 }
 
@@ -5401,8 +5457,9 @@ function applyValueToCellDomAndModel(td, rawValStr) {
     return true;
   }
 
-  // 4. Bảng Định mức (data-dmk)
+  // 4. Bảng Định mức (data-dmk) - Chỉ cho dán khi đã bật nút Sửa định mức!
   if(ctrl.dataset.dmk) {
+    if(!isDinhMucEditable) return false;
     const k = ctrl.dataset.dmk;
     const num = parseFloat(valStr.replace(/,/g, ''));
     if(!currentProjectData.dinhMucCustom) currentProjectData.dinhMucCustom = {};
