@@ -1233,13 +1233,41 @@ footer.app-footer {
 
     <!-- CỘT PHẢI HÀNG 1: BIỂU ĐỒ -->
     <div class="card-box">
-      <div class="card-header">
-        <h2><span id="lblChartHeaderTitle">📊 Biểu đồ phân bổ nhân lực</span></h2>
-        <div class="dept-sync-tabs" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
-          <button class="heso-tab-btn active" data-depttab="ALL" style="padding:1px 8px; font-size:11px;">Tổng</button>
-          <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button>
-          <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button>
-          <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button>
+      <div class="card-header" style="flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h2><span id="lblChartHeaderTitle">📊 Biểu đồ phân bổ nhân lực</span></h2>
+          <div class="dept-sync-tabs" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
+            <button class="heso-tab-btn active" data-depttab="ALL" style="padding:1px 8px; font-size:11px;">Tổng</button>
+            <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button>
+            <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button>
+            <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button>
+          </div>
+        </div>
+
+        <!-- 3 Ô ĐIỀU KHIỂN THỜI GIAN THEO YÊU CẦU: THÁNG HIỂN THỊ, THÁNG DIỄN GIẢI, NÚT TOÀN DỰ ÁN -->
+        <div id="chartTimelineControls" style="display:inline-flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; padding:2px 8px; border-radius:6px; font-size:11px; margin-left:auto;">
+          <!-- 1. Tháng hiển thị: Bắt đầu & Kết thúc -->
+          <div style="display:inline-flex; align-items:center; gap:3px;">
+            <span style="font-weight:700; color:#334155;" title="Hiển thị thời gian của biểu đồ và các bảng bên dưới theo thời gian mong muốn">Tháng hiển thị:</span>
+            <input type="month" id="filterMonthStart" style="padding:1px 4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px; font-family:var(--font-mono); background:#ffffff;" title="Tháng bắt đầu hiển thị">
+            <span style="color:#64748b;">–</span>
+            <input type="month" id="filterMonthEnd" style="padding:1px 4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px; font-family:var(--font-mono); background:#ffffff;" title="Tháng kết thúc hiển thị">
+          </div>
+
+          <div style="width:1px; height:18px; background:#cbd5e1; margin:0 2px;"></div>
+
+          <!-- 2. Tháng diễn giải (thường = tháng hiển thị, dùng khi diễn giải cách tính trong bảng excel xuất ra) -->
+          <div style="display:inline-flex; align-items:center; gap:3px;">
+            <span style="font-weight:700; color:#1e40af;" title="Thường = Tháng hiển thị, dùng để diễn giải cách tính trong bảng excel xuất ra">Tháng diễn giải:</span>
+            <input type="month" id="filterMonthDienGiai" style="padding:1px 4px; font-size:11px; border:1px solid #93c5fd; border-radius:4px; font-family:var(--font-mono); background:#eff6ff; color:#1e40af; font-weight:600;" title="Tháng diễn giải (sử dụng khi xuất Excel diễn giải)">
+          </div>
+
+          <div style="width:1px; height:18px; background:#cbd5e1; margin:0 2px;"></div>
+
+          <!-- 3. Nút Toàn dự án: reset về toàn bộ khoảng thời gian dự án -->
+          <button class="btn" id="btnFilterFullProject" style="background:#fef3c7; border-color:#f59e0b; color:#92400e; font-weight:700; padding:1px 8px; font-size:11px;" title="Hiển thị thời gian của biểu đồ và các bảng bên dưới của toàn dự án">
+            Toàn dự án
+          </button>
         </div>
       </div>
       <div class="chart-box-top" id="chartScrollSync">
@@ -1624,6 +1652,11 @@ let showMeSubRows = true;
 // Tab hiện tại của bảng Hạng mục công trình: 'da' (Tiến độ DA) | 'bptc' (Tiến độ BPTC)
 let currentHangMucTab = 'da';
 
+// Bộ lọc thời gian: Tháng hiển thị (Bắt đầu - Kết thúc) & Tháng diễn giải (cho Excel)
+let filterDisplayStart = ''; // định dạng 'YYYY-MM'
+let filterDisplayEnd = '';   // định dạng 'YYYY-MM'
+let filterDienGiai = '';     // định dạng 'YYYY-MM'
+
 function makeStorageKey(vungId, bqlId) {
   return `db_v2_${vungId}_${bqlId}`;
 }
@@ -1859,7 +1892,8 @@ function parseDateAny(str) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function getActiveMonths(projData = currentProjectData) {
+// Tính toàn bộ khoảng tháng tự nhiên của dự án (Toàn dự án)
+function getFullProjectMonths(projData = currentProjectData) {
   const rows = ((projData && projData.treeRows) || []).filter(r => r.level === 3);
   let min = null, max = null;
   rows.forEach(it => {
@@ -1882,8 +1916,24 @@ function getActiveMonths(projData = currentProjectData) {
     months.push(new Date(cur));
     cur = addMonths(cur, 1);
   }
-  if(months.length > 36) months.length = 36;
+  if(months.length > 48) months.length = 48;
   return months;
+}
+
+// Lấy danh sách tháng áp dụng (nếu người dùng chọn Tháng hiển thị Bắt đầu/Kết thúc thì cắt theo phạm vi đó)
+function getActiveMonths(projData = currentProjectData) {
+  const fullMonths = getFullProjectMonths(projData);
+  if(fullMonths.length === 0) return [new Date(2025, 6, 1)];
+
+  if(!filterDisplayStart && !filterDisplayEnd) {
+    return fullMonths;
+  }
+
+  const fStart = filterDisplayStart ? new Date(filterDisplayStart + '-01') : fullMonths[0];
+  const fEnd = filterDisplayEnd ? new Date(filterDisplayEnd + '-01') : fullMonths[fullMonths.length - 1];
+
+  const filtered = fullMonths.filter(m => m >= fStart && m <= fEnd);
+  return filtered.length > 0 ? filtered : fullMonths;
 }
 
 function getProjectDataSnapshot(vungId, bqlId, bqlTen) {
@@ -2420,14 +2470,21 @@ function calculateVungAggregate(vungId) {
   });
   if(!minD) { minD = new Date(2025, 6, 1); maxD = addMonths(minD, 12); }
 
-  const months = [];
+  let allMonths = [];
   let cur = new Date(minD.getFullYear(), minD.getMonth(), 1);
   const end = new Date(maxD.getFullYear(), maxD.getMonth(), 1);
   while(cur <= end) {
-    months.push(new Date(cur));
+    allMonths.push(new Date(cur));
     cur = addMonths(cur, 1);
   }
-  if(months.length > 48) months.length = 48;
+  if(allMonths.length > 48) allMonths.length = 48;
+  let months = allMonths;
+  if(filterDisplayStart || filterDisplayEnd) {
+    const fStart = filterDisplayStart ? new Date(filterDisplayStart + '-01') : allMonths[0];
+    const fEnd = filterDisplayEnd ? new Date(filterDisplayEnd + '-01') : allMonths[allMonths.length - 1];
+    const sub = allMonths.filter(m => m >= fStart && m <= fEnd);
+    if(sub.length > 0) months = sub;
+  }
 
   const numM = months.length;
   const rowsRaw = MATRIX_ROWS_META.map(() => Array(numM).fill(0));
@@ -2541,14 +2598,21 @@ function calculateKhoiAggregate() {
   });
   if(!minD) { minD = new Date(2025, 6, 1); maxD = addMonths(minD, 12); }
 
-  const months = [];
+  let allMonths = [];
   let cur = new Date(minD.getFullYear(), minD.getMonth(), 1);
   const end = new Date(maxD.getFullYear(), maxD.getMonth(), 1);
   while(cur <= end) {
-    months.push(new Date(cur));
+    allMonths.push(new Date(cur));
     cur = addMonths(cur, 1);
   }
-  if(months.length > 48) months.length = 48;
+  if(allMonths.length > 48) allMonths.length = 48;
+  let months = allMonths;
+  if(filterDisplayStart || filterDisplayEnd) {
+    const fStart = filterDisplayStart ? new Date(filterDisplayStart + '-01') : allMonths[0];
+    const fEnd = filterDisplayEnd ? new Date(filterDisplayEnd + '-01') : allMonths[allMonths.length - 1];
+    const sub = allMonths.filter(m => m >= fStart && m <= fEnd);
+    if(sub.length > 0) months = sub;
+  }
 
   const numM = months.length;
   const rowsRaw = MATRIX_ROWS_META.map(() => Array(numM).fill(0));
@@ -4271,6 +4335,7 @@ function refreshDashboard() {
   renderMatrix(calcResultCache);
   updateStats(calcResultCache);
   updateUndoRedoButtonsUI();
+  updateTimelineInputsUI();
   if(typeof updateStickyHeaderOffset === 'function') updateStickyHeaderOffset();
 
   // Giữ đồng bộ thanh cuộn ngang của Biểu đồ với bảng đang cuộn
@@ -5668,7 +5733,8 @@ async function exportExcelStandard() {
     }
   });
 
-  wsDienGiai.getCell('B2').value = 'BIỂU ĐỒ ĐỊNH BIÊN NĂM 2026 - ' + curProj.ten.toUpperCase();
+  const dgTargetMonthLabel = filterDienGiai ? ` (Tháng diễn giải: ${filterDienGiai})` : '';
+  wsDienGiai.getCell('B2').value = 'BIỂU ĐỒ ĐỊNH BIÊN NĂM 2026 - ' + curProj.ten.toUpperCase() + dgTargetMonthLabel;
   wsDienGiai.getCell('B2').font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF002060' } };
   wsDienGiai.getCell('B3').value = 'Trường hợp ngoại lệ (Chữ xanh) gồm:';
   wsDienGiai.getCell('B3').font = { name: 'Arial', size: 9.5, italic: true, color: { argb: 'FF166534' } };
@@ -6406,6 +6472,70 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================================
   // KHỞI TẠO CO KÉO ĐƯỜNG PHÂN CHIA DỌC (TRÁI - PHẢI) VÀ NGANG (TRÊN - DƯỚI)
   // =========================================================================
+// Cập nhật giá trị hiển thị trên 3 ô input thời gian (Tháng hiển thị, Tháng diễn giải)
+function updateTimelineInputsUI() {
+  const inpStart = document.getElementById('filterMonthStart');
+  const inpEnd = document.getElementById('filterMonthEnd');
+  const inpDg = document.getElementById('filterMonthDienGiai');
+  if(!inpStart || !inpEnd || !inpDg) return;
+
+  const fullMonths = getFullProjectMonths(currentProjectData);
+  if(fullMonths.length === 0) return;
+  const defStartStr = `${fullMonths[0].getFullYear()}-${String(fullMonths[0].getMonth() + 1).padStart(2, '0')}`;
+  const defEndStr = `${fullMonths[fullMonths.length - 1].getFullYear()}-${String(fullMonths[fullMonths.length - 1].getMonth() + 1).padStart(2, '0')}`;
+
+  inpStart.value = filterDisplayStart || defStartStr;
+  inpEnd.value = filterDisplayEnd || defEndStr;
+  inpDg.value = filterDienGiai || (filterDisplayStart || defStartStr);
+}
+
+// Lắng nghe sự kiện thay đổi trên 3 ô thời gian
+function initTimelineControls() {
+  const inpStart = document.getElementById('filterMonthStart');
+  const inpEnd = document.getElementById('filterMonthEnd');
+  const inpDg = document.getElementById('filterMonthDienGiai');
+  const btnFull = document.getElementById('btnFilterFullProject');
+
+  if(inpStart) {
+    inpStart.addEventListener('change', () => {
+      filterDisplayStart = inpStart.value;
+      // Tự động đồng bộ Tháng diễn giải bằng Tháng hiển thị bắt đầu nếu chưa đặt riêng
+      if(!filterDienGiai || filterDienGiai === inpStart.defaultValue) {
+        filterDienGiai = filterDisplayStart;
+        if(inpDg) inpDg.value = filterDienGiai;
+      }
+      refreshDashboard();
+      showUndoToast(`📅 Đã lọc hiển thị từ tháng: ${filterDisplayStart}`);
+    });
+  }
+
+  if(inpEnd) {
+    inpEnd.addEventListener('change', () => {
+      filterDisplayEnd = inpEnd.value;
+      refreshDashboard();
+      showUndoToast(`📅 Đã lọc hiển thị đến tháng: ${filterDisplayEnd}`);
+    });
+  }
+
+  if(inpDg) {
+    inpDg.addEventListener('change', () => {
+      filterDienGiai = inpDg.value;
+      showUndoToast(`📋 Đã chọn Tháng diễn giải cho Excel: ${filterDienGiai}`);
+    });
+  }
+
+  if(btnFull) {
+    btnFull.addEventListener('click', () => {
+      filterDisplayStart = '';
+      filterDisplayEnd = '';
+      filterDienGiai = '';
+      refreshDashboard();
+      showUndoToast('🔄 Đã hiển thị toàn bộ thời gian của Toàn dự án!');
+    });
+  }
+}
+initTimelineControls();
+
   const savedColPct = localStorage.getItem('db_v2_left_col_pct');
   const savedRow2H = localStorage.getItem('db_v2_row2_h');
   const savedRow3H = localStorage.getItem('db_v2_row3_h');
