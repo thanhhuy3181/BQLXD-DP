@@ -1507,6 +1507,20 @@ function loadProject(vungId, bqlId) {
       currentProjectData = JSON.parse(raw);
       if(!currentProjectData.treeRows || currentProjectData.treeRows.length === 0) {
         currentProjectData.treeRows = JSON.parse(JSON.stringify(SEED_TREE_ITEMS));
+      } else {
+        // Chuẩn hóa dữ liệu cũ nếu có dòng Đường giao thông, công viên mà kieu chưa khớp
+        currentProjectData.treeRows.forEach(r => {
+          if(r.level === 3) {
+            if(r.loai === 'Nhà xưởng') r.loai = 'Công trình nhà xưởng';
+            if(r.loai === 'Hạ tầng' || r.loai === 'Cảnh quan') {
+              r.kieu = r.loai === 'Cảnh quan' ? 'Công viên' : 'Đường giao thông';
+              r.loai = 'Đường giao thông, công viên';
+            }
+            if(r.loai === 'Đường giao thông, công viên' && r.kieu !== 'Đường giao thông' && r.kieu !== 'Công viên') {
+              r.kieu = (r.ten || '').toLowerCase().includes('công viên') ? 'Công viên' : 'Đường giao thông';
+            }
+          }
+        });
       }
       initUndoStateForCurrentProject();
       return;
@@ -1858,16 +1872,33 @@ function calculateSingleProject(projData) {
 
   // Tính chi tiết cho từng hạng mục để hiển thị ma trận Hệ số XD, ME, HT ngang hàng
   const itemProgressDetail = rows.map(it => {
-    const isThap = it.loai === 'Thấp tầng';
-    const isBietThu = it.kieu && it.kieu.includes('Biệt thự');
+    const loai = it.loai || 'Thấp tầng';
+    const kieu = it.kieu || '';
+    const tc = it.tc || '';
+    const isThap = loai === 'Thấp tầng';
+    const isCao = loai === 'Cao tầng';
+    const isKhac = loai === 'Các công trình khác';
+    const isNx = loai === 'Nhà xưởng' || loai === 'Công trình nhà xưởng';
+    const isDgtCv = loai === 'Đường giao thông, công viên';
+    const isCongVien = isDgtCv && kieu.toLowerCase().includes('công viên');
+
+    const isBietThu = kieu.includes('Biệt thự');
+    const isBtDonLap = kieu.includes('đơn lập');
+    const isBtSongLap = kieu.includes('song lập');
+    const isBtTuLap = kieu.includes('tứ lập');
+    const isBtCaiTao = kieu.includes('cải tạo');
+
+    // Hệ số điều chỉnh Biệt thự cho BQLXD & Kho (* Biệt thự = Liền kề × 0,8)
     const hsKieu = isBietThu ? 0.8 : 1.0;
-    const hsTcKieu = isBietThu ? 0.75 : 1.0;
+    // Hệ số điều chỉnh Biệt thự cho BPTC (* Đơn lập × 0,65; Song lập × 0,75; Tứ lập × 0,85; Cải tạo mặt ngoài × 2,0)
+    const hsTcKieu = isBtDonLap ? 0.65 : (isBtSongLap ? 0.75 : (isBtTuLap ? 0.85 : (isBtCaiTao ? 2.0 : (isBietThu ? 0.75 : 1.0))));
     const kl = it.kl || 0;
 
-    let tcIdx = 0;
-    if(it.tc && it.tc.includes('Full')) tcIdx = 1;
-    else if(it.tc && it.tc.includes('2 tầng')) tcIdx = 2;
-    else if(it.tc && it.tc.includes('1 tầng')) tcIdx = 3;
+    let tcIdx = 0; // 0: Xây thô, 1: Full NT (>=3T), 2: HTNT 2T, 3: HTNT 1T, 4: Hoàn thiện (Cao tầng/Khác/NX)
+    if(tc.includes('Full')) tcIdx = 1;
+    else if(tc.includes('2 tầng')) tcIdx = 2;
+    else if(tc.includes('1 tầng')) tcIdx = 3;
+    else if(tc.includes('Hoàn thiện')) tcIdx = 4;
 
     const xdRatio = [];
     const meRatio = [];
@@ -1885,7 +1916,7 @@ function calculateSingleProject(projData) {
       const prMe = getCustomHeso('me', it.id, mk, basePrMe);
       meRatio.push(prMe);
 
-      const basePrHt = (it.loai === 'Đường giao thông, công viên') ? basePrXd : 0;
+      const basePrHt = isDgtCv ? basePrXd : 0;
       const prHt = getCustomHeso('ht', it.id, mk, basePrHt);
       htRatio.push(prHt);
 
@@ -1900,60 +1931,105 @@ function calculateSingleProject(projData) {
         return (dmC[k] != null && dmC[k] > 0) ? dmC[k] : defaultVal;
       }
 
-      if(prXd > 0 && kl > 0) {
-        let baseThapXd = getDmVal('cb_xd','thap',50);
-        if(tcIdx === 1) baseThapXd = Math.round(baseThapXd * 0.7); // 35
-        else if(tcIdx === 2) baseThapXd = Math.round(baseThapXd * 0.76); // 38
-        else if(tcIdx === 3) baseThapXd = Math.round(baseThapXd * 0.8); // 40
-        let dm_cb_xd = isThap ? (baseThapXd * hsKieu) : getDmVal('cb_xd','khac',14000);
+      // 1. BQLXD - CBGS Xây dựng (T6)
+      if(prXd > 0 && kl > 0 && !isDgtCv) {
+        let dm_cb_xd = 0;
+        if(isThap) {
+          let baseThapXd = getDmVal('cb_xd','thap',50);
+          if(tcIdx === 1) baseThapXd = Math.round(baseThapXd * 0.7); // 35
+          else if(tcIdx === 2) baseThapXd = Math.round(baseThapXd * 0.76); // 38
+          else if(tcIdx === 3 || tcIdx === 4) baseThapXd = Math.round(baseThapXd * 0.8); // 40
+          dm_cb_xd = baseThapXd * hsKieu;
+        } else if(isCao) {
+          dm_cb_xd = (tcIdx === 4 || tcIdx === 1) ? 10000 : getDmVal('cb_xd','khac',14000);
+        } else if(isKhac) {
+          dm_cb_xd = (tcIdx === 4 || tcIdx === 1) ? 7500 : 9000;
+        } else if(isNx) {
+          dm_cb_xd = (tcIdx === 4 || tcIdx === 1) ? 15000 : 21000;
+        } else {
+          dm_cb_xd = getDmVal('cb_xd','khac',14000);
+        }
         if(dm_cb_xd > 0) cb_xd_arr[mIdx] += (kl / dm_cb_xd) * prXd;
       }
 
+      // 2. BQLXD - CBGS Hạ tầng (T6)
       if(prHt > 0 && kl > 0) {
-        if(it.loai === 'Đường giao thông, công viên' || it.loai === 'Các công trình khác') {
+        if(isDgtCv || isKhac) {
           let dm_cb_ht = getDmVal('cb_ht','khac',15000);
           cb_ht_arr[mIdx] += (kl / dm_cb_ht) * prHt;
         }
       }
 
+      // 3. KHO - Thủ kho Nhập liệu (T7) + Hiện trường (T8) (Tách riêng Đường giao thông vs Công viên, và từng loại công trình cấp 2 theo Sheet ĐM KHO)
       if(prKho > 0 && kl > 0) {
-        let dm_tk = isThap ? (getDmVal('thu_kho','thap',180) * hsKieu) : getDmVal('thu_kho','khac',36000);
+        let dm_tk = 36000;
+        if(isThap) {
+          // Thấp tầng: Xây thô = 180 căn, Hoàn thiện = 100 căn (* Biệt thự × 0,8)
+          const baseTkThap = (tcIdx === 0) ? getDmVal('thu_kho','thap',180) : 100;
+          dm_tk = baseTkThap * hsKieu;
+        } else if(isCao) {
+          // Cao tầng: Xây thô = 36.000 m2, Hoàn thiện = 20.000 m2
+          dm_tk = (tcIdx === 0) ? getDmVal('thu_kho','khac',36000) : 20000;
+        } else if(isDgtCv) {
+          // Đường giao thông, công viên: Công viên = 50.000 m2 (HT) / 200.000 (NL); Đường giao thông = 75.000 m2 (HT) / 300.000 (NL)
+          dm_tk = isCongVien ? 50000 : 75000;
+        } else if(isKhac) {
+          // Các công trình khác: TTTM = 25.000, Khách sạn = 15.000, Trường học/Bệnh viện = 12.500, Nhà máy/Nhà để xe nổi = 20.000
+          if(kieu.includes('Khách sạn')) dm_tk = 15000;
+          else if(kieu.includes('Trường học') || kieu.includes('Bệnh viện')) dm_tk = 12500;
+          else if(kieu.includes('Nhà máy') || kieu.includes('xe nổi')) dm_tk = 20000;
+          else dm_tk = 25000; // TTTM
+        } else if(isNx) {
+          dm_tk = 20000;
+        }
         thu_kho_arr[mIdx] += ((kl / dm_tk) * 0.3) * prKho;
       }
 
+      // 4. BPTC - Các chức danh Bộ phận Thi công (Sheet ĐM BPTC: Cao tầng HS 1; CT khác HS 0,75; Nhà xưởng/Công viên/Đường GT HS 1,5)
       if(prBptc > 0 && kl > 0) {
         const hsTcStd = tcIdx === 1 ? 0.7 : (tcIdx === 2 ? 0.75 : (tcIdx === 3 ? 0.8 : 1.0));
-        let dm_ktht = isThap ? (getDmVal('cv_ktht','thap',20) * hsTcStd * hsTcKieu) : getDmVal('cv_ktht','khac',4000);
+        const hsKhacScale = isKhac ? 0.75 : ((isNx || isDgtCv) ? 1.5 : 1.0);
+
+        let dm_ktht = isThap ? (getDmVal('cv_ktht','thap',20) * hsTcStd * hsTcKieu) : (getDmVal('cv_ktht','khac',4000) * hsKhacScale);
         cv_ktht_arr[mIdx] += (kl / dm_ktht) * prBptc;
 
-        let dm_qc = isThap ? (getDmVal('cv_qc','thap',150) * hsTcStd * hsTcKieu) : getDmVal('cv_qc','khac',30000);
-        let dm_shop = isThap ? (getDmVal('cv_shop','thap',150) * hsTcStd * hsTcKieu) : getDmVal('cv_shop','khac',30000);
-        let dm_atld = isThap ? (getDmVal('cv_atld','thap',150) * hsTcStd * hsTcKieu) : getDmVal('cv_atld','khac',30000);
+        let dm_qc = isThap ? (getDmVal('cv_qc','thap',150) * hsTcStd * hsTcKieu) : (getDmVal('cv_qc','khac',30000) * hsKhacScale);
+        let dm_shop = isThap ? (getDmVal('cv_shop','thap',150) * hsTcStd * hsTcKieu) : (getDmVal('cv_shop','khac',30000) * hsKhacScale);
+        let dm_atld = isThap ? (getDmVal('cv_atld','thap',150) * hsTcStd * hsTcKieu) : (getDmVal('cv_atld','khac',30000) * hsKhacScale);
         cv_qc_arr[mIdx] += (kl / dm_qc) * prBptc;
         cv_atld_arr[mIdx] += (kl / dm_atld) * prBptc;
         cv_shop_arr[mIdx] += (kl / dm_shop) * prBptc;
 
-        let dm_qs = isThap ? (getDmVal('cv_qs','thap',120) * hsTcStd * hsTcKieu) : getDmVal('cv_qs','khac',24000);
+        let dm_qs = isThap ? (getDmVal('cv_qs','thap',120) * hsTcStd * hsTcKieu) : (getDmVal('cv_qs','khac',24000) * hsKhacScale);
         cv_qs_arr[mIdx] += (kl / dm_qs) * prBptc;
 
-        let dm_nv_td = isThap ? (getDmVal('nv_td','thap',50) * hsTcStd * hsTcKieu) : getDmVal('nv_td','khac',10000);
-        let dm_cv_td = isThap ? (getDmVal('cv_td','thap',80) * hsTcStd * hsTcKieu) : getDmVal('cv_td','khac',16000);
+        let dm_nv_td = isThap ? (getDmVal('nv_td','thap',50) * hsTcStd * hsTcKieu) : (getDmVal('nv_td','khac',10000) * hsKhacScale);
+        let dm_cv_td = isThap ? (getDmVal('cv_td','thap',80) * hsTcStd * hsTcKieu) : (getDmVal('cv_td','khac',16000) * hsKhacScale);
         nv_tracdac_arr[mIdx] += (kl / dm_nv_td) * prBptc;
         cv_tracdac_arr[mIdx] += (kl / dm_cv_td) * prBptc;
 
-        let dm_nn = isThap ? (getDmVal('cv_nn','thap',500) * hsTcStd * hsTcKieu) : getDmVal('cv_nn','khac',160000);
-        let dm_kh = isThap ? (getDmVal('cv_kh','thap',2000) * hsTcStd * hsTcKieu) : getDmVal('cv_kh','khac',400000);
+        let dm_nn = isThap ? (getDmVal('cv_nn','thap',500) * hsTcStd * hsTcKieu) : (getDmVal('cv_nn','khac',160000) * hsKhacScale);
+        let dm_kh = isThap ? (getDmVal('cv_kh','thap',2000) * hsTcStd * hsTcKieu) : (getDmVal('cv_kh','khac',400000) * hsKhacScale);
         cv_noinghiep_tc_arr[mIdx] += (kl / dm_nn) * prBptc;
         cv_kehoach_tc_arr[mIdx] += (kl / dm_kh) * prBptc;
       }
 
-      // ME
+      // 5. BQLXD - CBGS M&E (T6) (Tách riêng Công viên = 120.000 m2 và Đường giao thông = 200.000 m2)
       if(prMe > 0 && kl > 0) {
-        let baseThapMe = getDmVal('cb_me','thap',250);
-        if(tcIdx === 1) baseThapMe = 70;
-        else if(tcIdx === 2) baseThapMe = 80;
-        else if(tcIdx === 3) baseThapMe = 90;
-        let dm_cb_me = isThap ? (baseThapMe * hsKieu) : getDmVal('cb_me','khac',22500);
+        let dm_cb_me = 22500;
+        if(isThap) {
+          let baseThapMe = getDmVal('cb_me','thap',250);
+          if(tcIdx === 1) baseThapMe = 70;
+          else if(tcIdx === 2) baseThapMe = 80;
+          else if(tcIdx === 3 || tcIdx === 4) baseThapMe = 90;
+          dm_cb_me = baseThapMe * hsKieu;
+        } else if(isDgtCv) {
+          dm_cb_me = isCongVien ? 120000 : 200000;
+        } else if(isNx) {
+          dm_cb_me = 50000;
+        } else {
+          dm_cb_me = getDmVal('cb_me','khac',22500);
+        }
         cb_me_arr[mIdx] += (kl / dm_cb_me) * prMe;
       }
     });
@@ -2394,6 +2470,77 @@ function calculateAll() {
    ========================================================================== */
 let dragSrcIdx = null;
 
+// Danh mục chuẩn Phân loại Công trình cấp 1 -> cấp 2 -> Tiêu chuẩn bàn giao & Đơn vị tính (Khớp 100% Sheet "Phân loại Ctr.Hm" & ĐM KHO)
+function getKieuOptionsByLoai(loai) {
+  if(loai === 'Thấp tầng') {
+    return [
+      { v: 'Liền kề, Shophouse, TMDV', l: 'LK, Shop, TMDV' },
+      { v: 'Biệt thự đơn lập', l: 'BT đơn lập' },
+      { v: 'Biệt thự song lập', l: 'BT song lập' },
+      { v: 'Biệt thự tứ lập', l: 'BT tứ lập' },
+      { v: 'Biệt thự cải tạo mặt ngoài', l: 'BT cải tạo MN' }
+    ];
+  }
+  if(loai === 'Các công trình khác') {
+    return [
+      { v: 'TTTM', l: 'TTTM' },
+      { v: 'Khách sạn', l: 'Khách sạn' },
+      { v: 'Trường học, Bệnh viện', l: 'Trường, BV' },
+      { v: 'Nhà máy, Nhà để xe nổi', l: 'Nhà máy, Xe nổi' }
+    ];
+  }
+  if(loai === 'Đường giao thông, công viên') {
+    return [
+      { v: 'Đường giao thông', l: 'Đường giao thông' },
+      { v: 'Công viên', l: 'Công viên' }
+    ];
+  }
+  // Cao tầng, Công trình nhà xưởng: không có phân loại cấp 2
+  return [
+    { v: '', l: '–' }
+  ];
+}
+
+function getTcOptionsByLoai(loai) {
+  if(loai === 'Thấp tầng') {
+    return [
+      { v: 'Xây thô', l: 'Xây thô' },
+      { v: 'Full Nội thất (3 tầng trở lên)', l: 'Full NT ≥3T' },
+      { v: 'HTNT (2 tầng)', l: 'HTNT (2 tầng)' },
+      { v: 'HTNT (1 tầng)', l: 'HTNT (1 tầng)' }
+    ];
+  }
+  if(loai === 'Đường giao thông, công viên') {
+    return [
+      { v: '', l: '–' },
+      { v: 'Hoàn thiện', l: 'Hoàn thiện' }
+    ];
+  }
+  // Cao tầng, Các công trình khác, Công trình nhà xưởng
+  return [
+    { v: 'Xây thô', l: 'Xây thô' },
+    { v: 'Hoàn thiện', l: 'Hoàn thiện' }
+  ];
+}
+
+function syncSubClassificationWhenLoaiChanged(rowObj) {
+  if(!rowObj) return;
+  const loai = rowObj.loai || 'Thấp tầng';
+  const kieuOpts = getKieuOptionsByLoai(loai);
+  const tcOpts = getTcOptionsByLoai(loai);
+
+  if(!kieuOpts.some(o => o.v === rowObj.kieu)) {
+    rowObj.kieu = kieuOpts[0] ? kieuOpts[0].v : '';
+  }
+  if(!tcOpts.some(o => o.v === rowObj.tc)) {
+    rowObj.tc = tcOpts[0] ? tcOpts[0].v : '';
+  }
+
+  if(loai === 'Thấp tầng') rowObj.dv = 'căn';
+  else if(loai === 'Đường giao thông, công viên') rowObj.dv = 'm²';
+  else rowObj.dv = 'm² sàn';
+}
+
 function renderTreeTable() {
   const tbody = document.getElementById('treeTableBody');
   tbody.innerHTML = '';
@@ -2487,28 +2634,22 @@ function renderTreeTable() {
       tbody.appendChild(tr);
     } else {
       sttCounter++;
+      const loaiVal = (r.loai === 'Nhà xưởng') ? 'Công trình nhà xưởng' : (r.loai || 'Thấp tầng');
       const loaiOpts = [
         { v: 'Thấp tầng', l: 'Thấp tầng' },
         { v: 'Cao tầng', l: 'Cao tầng' },
         { v: 'Các công trình khác', l: 'CT khác' },
-        { v: 'Nhà xưởng', l: 'Nhà xưởng' },
+        { v: 'Công trình nhà xưởng', l: 'CT nhà xưởng' },
         { v: 'Đường giao thông, công viên', l: 'Đường GT/CV' }
       ];
-      const kieuOpts = [
-        { v: '', l: '–' },
-        { v: 'Biệt thự đơn lập', l: 'BT đơn lập' },
-        { v: 'Biệt thự song lập', l: 'BT song lập' },
-        { v: 'Liền kề – Shophouse – TMDV', l: 'LK, Shop, TMDV' },
-        { v: 'Liền kề, Shophouse, TMDV', l: 'LK, Shop, TMDV' },
-        { v: 'TTTM', l: 'TTTM' }
-      ];
-      const tcOpts = [
-        { v: '', l: '–' },
-        { v: 'Full nội thất', l: 'Full NT' },
-        { v: 'Full Nội thất (3 tầng trở lên)', l: 'Full NT ≥3T' },
-        { v: 'Xây thô', l: 'Xây thô' },
-        { v: 'Hoàn thiện', l: 'Hoàn thiện' }
-      ];
+      const kieuOpts = getKieuOptionsByLoai(loaiVal);
+      if(r.kieu && !kieuOpts.some(o => o.v === r.kieu)) {
+        kieuOpts.push({ v: r.kieu, l: r.kieu });
+      }
+      const tcOpts = getTcOptionsByLoai(loaiVal);
+      if(r.tc && !tcOpts.some(o => o.v === r.tc)) {
+        tcOpts.push({ v: r.tc, l: r.tc });
+      }
 
       tr.innerHTML = `
         <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon" style="color:#64748b;">⠿</span></td>
@@ -2516,18 +2657,18 @@ function renderTreeTable() {
         <td style="text-align:center; font-weight:600; color:#334155;">${sttCounter}</td>
         <td><input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten" title="${escHtml(r.ten)}"></td>
         <td>
-          <select data-id="${r.id}" data-f="loai" title="${escHtml(r.loai || '')}">
-            ${loaiOpts.map(o => `<option value="${o.v}" ${r.loai===o.v?'selected':''}>${o.l}</option>`).join('')}
+          <select data-id="${r.id}" data-f="loai" title="${escHtml(loaiVal)}">
+            ${loaiOpts.map(o => `<option value="${o.v}" ${loaiVal===o.v?'selected':''}>${o.l}</option>`).join('')}
           </select>
         </td>
         <td>
           <select data-id="${r.id}" data-f="kieu" title="${escHtml(r.kieu || '')}">
-            ${kieuOpts.map(o => `<option value="${o.v}" ${r.kieu===o.v?'selected':''}>${o.l}</option>`).join('')}
+            ${kieuOpts.map(o => `<option value="${o.v}" ${(r.kieu || '')===o.v?'selected':''}>${o.l}</option>`).join('')}
           </select>
         </td>
         <td>
           <select data-id="${r.id}" data-f="tc" title="${escHtml(r.tc || '')}">
-            ${tcOpts.map(o => `<option value="${o.v}" ${r.tc===o.v?'selected':''}>${o.l}</option>`).join('')}
+            ${tcOpts.map(o => `<option value="${o.v}" ${(r.tc || '')===o.v?'selected':''}>${o.l}</option>`).join('')}
           </select>
         </td>
         <td><input type="date" value="${r.batDau || ''}" data-id="${r.id}" data-f="batDau"></td>
@@ -2538,8 +2679,8 @@ function renderTreeTable() {
       `;
       tbody.appendChild(tr);
 
-      // Tự sinh thêm 2 dòng in nghiêng Level 4 cho M&E (Thấp tầng / Cao tầng / Công trình khác / Nhà xưởng)
-      const hasMeSub = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng'].includes(r.loai);
+      // Tự sinh thêm 2 dòng in nghiêng Level 4 cho M&E (Thấp tầng / Cao tầng / Công trình khác / Công trình nhà xưởng)
+      const hasMeSub = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(r.loai);
       if(hasMeSub) {
         const sub1 = document.createElement('tr');
         sub1.className = 'tr-level-4-me';
@@ -2609,9 +2750,7 @@ function renderTreeTable() {
       if(r) {
         r[f] = val;
         if(f === 'loai') {
-          if(val === 'Thấp tầng') r.dv = 'căn';
-          else if(val === 'Cao tầng') r.dv = 'm² sàn';
-          else r.dv = 'm²';
+          syncSubClassificationWhenLoaiChanged(r);
         }
         saveCurrentProject();
         refreshDashboard();
@@ -2852,7 +2991,7 @@ function renderSyncHesoTable(res) {
         `;
 
         // Đồng bộ 2 dòng in nghiêng M&E cấp 4 nếu hạng mục có M&E
-        const hasMeSub = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng'].includes(r.loai);
+        const hasMeSub = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(r.loai);
         if(hasMeSub) {
           const me1Kl = r.me1_kl != null ? r.me1_kl : r.kl;
           const me2Kl = r.me2_kl != null ? r.me2_kl : r.kl;
@@ -4234,9 +4373,7 @@ function applyValueToCellDomAndModel(td, rawValStr) {
       if(matched) {
         rObj[f] = matched.value;
         if(f === 'loai') {
-          if(matched.value === 'Thấp tầng') rObj.dv = 'căn';
-          else if(matched.value === 'Cao tầng') rObj.dv = 'm² sàn';
-          else rObj.dv = 'm²';
+          syncSubClassificationWhenLoaiChanged(rObj);
         }
       }
     } else {
