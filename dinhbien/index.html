@@ -714,21 +714,21 @@ table.tree-table select:focus {
   background: #fef9c3;
   box-shadow: inset 0 0 0 1.5px #2563eb;
 }
-table.tree-table input[type="date"] {
+table.tree-table input.input-date-dmy {
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  padding: 0 2px;
+  font-size: 11px;
+  padding: 0 4px;
+  text-align: center;
+  color: #1e293b;
+  letter-spacing: -0.2px;
 }
-table.tree-table input[type="date"]::-webkit-calendar-picker-indicator {
-  padding: 0;
-  margin: 0;
-  width: 12px;
-  height: 12px;
-  cursor: pointer;
-  opacity: 0.6;
+table.tree-table input.input-date-dmy:focus {
+  background: #fef9c3;
+  color: #0f172a;
 }
-table.tree-table input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
+table.tree-table input.input-date-dmy::placeholder {
+  color: #94a3b8;
+  font-size: 10px;
 }
 .row-del-btn {
   border: none;
@@ -1505,9 +1505,9 @@ footer.app-footer {
               <th class="col-phanloai- toggle-col" style="width:80px;" title="Loại Công trình / Hạng mục (cấp 1)">Loại CT<br>(cấp 1)</th>
               <th class="col-phanloai- toggle-col" style="width:82px;" title="Loại Công trình / Hạng mục (cấp 2)">Loại CT<br>(cấp 2)</th>
               <th class="col-phanloai- toggle-col" style="width:76px;" title="Tiêu chuẩn bàn giao">TC<br>bàn giao</th>
-              <th id="thHmBatDau" style="width:86px;">Bắt đầu<br>thi công</th>
-              <th id="thHmKetThuc" style="width:86px;">Kết thúc<br>thi công</th>
-              <th id="thHmBanGiao" style="width:86px;">Kết thúc<br>bàn giao</th>
+              <th id="thHmBatDau" style="width:86px;" title="Định dạng: ngày/tháng/năm (dd/mm/yyyy)">Bắt đầu<br>(dd/mm/yy)</th>
+              <th id="thHmKetThuc" style="width:86px;" title="Định dạng: ngày/tháng/năm (dd/mm/yyyy)">Kết thúc<br>(dd/mm/yy)</th>
+              <th id="thHmBanGiao" style="width:86px;" title="Định dạng: ngày/tháng/năm (dd/mm/yyyy)">Bàn giao<br>(dd/mm/yy)</th>
               <th id="thHmKl" style="width:65px;">Khối<br>lượng</th>
               <th style="width:38px;">Đơn<br>vị</th>
             </tr>
@@ -2094,6 +2094,17 @@ function parseDateAny(str) {
   }
   const d = new Date(str);
   return isNaN(d.getTime()) ? null : d;
+}
+
+// Chuyển đổi bất kỳ chuỗi ngày tháng / Date object sang định dạng chuẩn DD/MM/YYYY
+function formatToDdMmYyyy(val) {
+  if(!val) return '';
+  const d = (val instanceof Date) ? val : parseDateAny(val);
+  if(!d || isNaN(d.getTime())) return String(val);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 // Tính toàn bộ khoảng tháng tự nhiên của dự án (Toàn dự án)
@@ -3140,9 +3151,9 @@ function renderTreeTable() {
         <td style="text-align:center; font-weight:600; color:#334155;">${sttCounter}</td>
         <td><input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten" title="${escHtml(r.ten)}"></td>
         ${phanLoaiCellsHtml}
-        <td><input type="date" style="${bptcInputStyle}" value="${curBd}" data-id="${r.id}" data-f="${fFieldBd}"></td>
-        <td><input type="date" style="${bptcInputStyle}" value="${curKt}" data-id="${r.id}" data-f="${fFieldKt}"></td>
-        <td><input type="date" style="${bptcInputStyle}" value="${curBg}" data-id="${r.id}" data-f="${fFieldBg}"></td>
+        <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curBd)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldBd}" title="Định dạng: dd/mm/yyyy (Ví dụ: 01/07/2025)"></td>
+        <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curKt)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldKt}" title="Định dạng: dd/mm/yyyy (Ví dụ: 01/03/2026)"></td>
+        <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curBg)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldBg}" title="Định dạng: dd/mm/yyyy (Ví dụ: 30/05/2026)"></td>
         <td><input type="number" style="text-align:right; font-family:var(--font-mono); font-weight:600; ${bptcInputStyle}" value="${curKl}" data-id="${r.id}" data-f="${fFieldKl}"></td>
         <td><input type="text" style="text-align:center; font-size:10.5px; color:var(--text-muted); ${dvWarnStyle}" value="${escHtml(r.dv || '')}" data-id="${r.id}" data-f="dv"${dvWarnTip}></td>
       `;
@@ -3160,8 +3171,8 @@ function renderTreeTable() {
           <td style="text-align:center; color:#64748b;">4</td>
           <td></td>
           <td class="col-name" colspan="${spanMeSubName}" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ bê tông, cốt thép</td>
-          <td><input type="date" value="${r.me1_bd || r.batDau || ''}" data-id="${r.id}" data-f="me1_bd"></td>
-          <td><input type="date" value="${r.me1_kt || r.ketThuc || ''}" data-id="${r.id}" data-f="me1_kt"></td>
+          <td><input type="text" class="input-date-dmy" value="${formatToDdMmYyyy(r.me1_bd || r.batDau || '')}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me1_bd"></td>
+          <td><input type="text" class="input-date-dmy" value="${formatToDdMmYyyy(r.me1_kt || r.ketThuc || '')}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me1_kt"></td>
           <td></td>
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me1_kl != null ? r.me1_kl : (r.kl || '')}" data-id="${r.id}" data-f="me1_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
@@ -3177,8 +3188,8 @@ function renderTreeTable() {
           <td style="text-align:center; color:#64748b;">4</td>
           <td></td>
           <td class="col-name" colspan="${spanMeSubName}" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ hoàn thiện</td>
-          <td><input type="date" value="${r.me2_bd || r.ketThuc || ''}" data-id="${r.id}" data-f="me2_bd"></td>
-          <td><input type="date" value="${r.me2_kt || r.banGiao || ''}" data-id="${r.id}" data-f="me2_kt"></td>
+          <td><input type="text" class="input-date-dmy" value="${formatToDdMmYyyy(r.me2_bd || r.ketThuc || '')}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me2_bd"></td>
+          <td><input type="text" class="input-date-dmy" value="${formatToDdMmYyyy(r.me2_kt || r.banGiao || '')}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me2_kt"></td>
           <td></td>
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me2_kl != null ? r.me2_kl : (r.kl || '')}" data-id="${r.id}" data-f="me2_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
@@ -6024,7 +6035,7 @@ async function exportExcelStandard() {
   months.forEach((mDate, idx) => {
     const c = 6 + idx;
     wsTongHop.getCell(2, c).value = mDate;
-    wsTongHop.getCell(2, c).numFmt = 'yyyy-mm-dd';
+    wsTongHop.getCell(2, c).numFmt = 'dd/mm/yyyy';
     wsTongHop.getCell(3, c).value = idx + 9;
   });
 
@@ -6147,7 +6158,7 @@ async function exportExcelStandard() {
   wsDienGiai.getCell(7, 9).value = 'ĐỊNH BIÊN THEO THÁNG';
   months.forEach((mDate, i) => {
     wsDienGiai.getCell(8, 9 + i).value = mDate;
-    wsDienGiai.getCell(8, 9 + i).numFmt = 'yyyy-mm-dd';
+    wsDienGiai.getCell(8, 9 + i).numFmt = 'dd/mm/yyyy';
   });
   for(let c = 1; c <= 8 + numM; c++) {
     wsDienGiai.getCell(9, c).value = c;
@@ -6186,10 +6197,16 @@ async function exportExcelStandard() {
       const childStartRow = dgRow;
       level3Rows.forEach(it => {
         wsDienGiai.getCell(dgRow, 2).value = '   + ' + it.ten;
-        wsDienGiai.getCell(dgRow, 3).value = it.batDau || '';
-        wsDienGiai.getCell(dgRow, 4).value = it.ketThuc || '';
-        wsDienGiai.getCell(dgRow, 5).value = it.banGiao || '';
-        wsDienGiai.getCell(dgRow, 6).value = `${it.batDau || ''} đến ${it.banGiao || it.ketThuc || ''}`;
+        const dBatDau = parseDateAny(it.batDau);
+        const dKetThuc = parseDateAny(it.ketThuc);
+        const dBanGiao = parseDateAny(it.banGiao);
+        if(dBatDau) { wsDienGiai.getCell(dgRow, 3).value = dBatDau; wsDienGiai.getCell(dgRow, 3).numFmt = 'dd/mm/yyyy'; }
+        else wsDienGiai.getCell(dgRow, 3).value = '';
+        if(dKetThuc) { wsDienGiai.getCell(dgRow, 4).value = dKetThuc; wsDienGiai.getCell(dgRow, 4).numFmt = 'dd/mm/yyyy'; }
+        else wsDienGiai.getCell(dgRow, 4).value = '';
+        if(dBanGiao) { wsDienGiai.getCell(dgRow, 5).value = dBanGiao; wsDienGiai.getCell(dgRow, 5).numFmt = 'dd/mm/yyyy'; }
+        else wsDienGiai.getCell(dgRow, 5).value = '';
+        wsDienGiai.getCell(dgRow, 6).value = `${formatToDdMmYyyy(it.batDau)} đến ${formatToDdMmYyyy(it.banGiao || it.ketThuc)}`;
         wsDienGiai.getCell(dgRow, 7).value = `KL: ${it.kl || 0} ${it.dv || ''}`;
         wsDienGiai.getRow(dgRow).outlineLevel = 1;
         wsDienGiai.getRow(dgRow).font = { name: 'Arial', size: 9.5 };
@@ -6315,9 +6332,15 @@ async function exportExcelStandard() {
       const phanLoai = [it.loai, it.kieu, it.tc].filter(Boolean).join(' / ');
       wsTienDo.getCell(tdRow, 3).value = phanLoai;
       wsTienDo.getCell(tdRow, 4).value = 'Ban QLXD';
-      wsTienDo.getCell(tdRow, 5).value = it.batDau || '';
-      wsTienDo.getCell(tdRow, 6).value = it.ketThuc || '';
-      wsTienDo.getCell(tdRow, 7).value = it.banGiao || '';
+      const td_bd = parseDateAny(it.batDau);
+      const td_kt = parseDateAny(it.ketThuc);
+      const td_bg = parseDateAny(it.banGiao);
+      if(td_bd) { wsTienDo.getCell(tdRow, 5).value = td_bd; wsTienDo.getCell(tdRow, 5).numFmt = 'dd/mm/yyyy'; }
+      else wsTienDo.getCell(tdRow, 5).value = '';
+      if(td_kt) { wsTienDo.getCell(tdRow, 6).value = td_kt; wsTienDo.getCell(tdRow, 6).numFmt = 'dd/mm/yyyy'; }
+      else wsTienDo.getCell(tdRow, 6).value = '';
+      if(td_bg) { wsTienDo.getCell(tdRow, 7).value = td_bg; wsTienDo.getCell(tdRow, 7).numFmt = 'dd/mm/yyyy'; }
+      else wsTienDo.getCell(tdRow, 7).value = '';
       wsTienDo.getCell(tdRow, 8).value = it.kl || 0;
       wsTienDo.getCell(tdRow, 9).value = it.kl || 0;
       wsTienDo.getCell(tdRow, 10).value = it.dv || 'căn';
