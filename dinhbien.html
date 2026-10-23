@@ -838,7 +838,8 @@ table.sync-matrix-table td {
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   text-align: right;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-size: 11px;
   height: 28px;
   min-height: 28px;
   max-height: 28px;
@@ -855,14 +856,14 @@ table.sync-matrix-table td.heso-input-cell input {
   border: none;
   background: transparent;
   text-align: right;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
   padding: 0 4px;
   outline: none;
 }
 table.sync-matrix-table td.heso-input-cell.customized input {
-  font-weight: 800;
-  color: #9a3412;
+  font-weight: 700;
+  color: #dc2626 !important;
   text-decoration: underline;
 }
 table.sync-matrix-table tr.header-summary-row td {
@@ -1130,9 +1131,17 @@ footer.app-footer {
     <!-- CỘT TRÁI HÀNG 2: BẢNG HẠNG MỤC (DẠNG EXCEL) -->
     <div class="card-box hangmuc-col" id="hangmucCard">
       <div class="card-header">
-        <h2>
-          <span>Hạng mục công trình</span>
-        </h2>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <h2>
+            <span>Hạng mục công trình</span>
+          </h2>
+          <!-- Thanh 2 Tab: Tiến độ DA và Tiến độ BPTC -->
+          <div id="hangmucTabsBar" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
+            <button class="heso-tab-btn active" data-hmtab="da" style="padding:1px 8px; font-size:10.5px;" title="Tiến độ &amp; Khối lượng toàn Dự án (dùng cho BQLXD, Kho, M&amp;E, Hạ tầng)">Tiến độ DA</button>
+            <button class="heso-tab-btn" data-hmtab="bptc" style="padding:1px 8px; font-size:10.5px;" title="Tiến độ &amp; Khối lượng riêng của Bộ phận Thi công (BPTC có thể làm 100% hoặc chỉ làm 1 phần khối lượng dự án)">Tiến độ BPTC</button>
+          </div>
+          <button class="btn" id="btnSyncBptcFromDa" style="display:none; background:#fff7ed; border-color:#fdba74; color:#c2410c; font-weight:600; font-size:10.5px; padding:1px 6px;" title="Copy toàn bộ Khối lượng &amp; Tiến độ từ tab Tiến độ DA sang Tiến độ BPTC">⇄ Lấy bằng KL &amp; Tiến độ DA</button>
+        </div>
         <div style="display:flex; gap:3px; align-items:center; flex-wrap:wrap;">
           <select id="selMucCap" style="font-size:11px; padding:2px 4px; border-radius:4px; border:1px solid var(--border);">
             <option value="1">Mục cấp</option>
@@ -1483,6 +1492,9 @@ let isHesoNhansuExpanded = true;
 let showPhanLoaiCols = true;
 let showMeSubRows = true;
 
+// Tab hiện tại của bảng Hạng mục công trình: 'da' (Tiến độ DA) | 'bptc' (Tiến độ BPTC)
+let currentHangMucTab = 'da';
+
 function makeStorageKey(vungId, bqlId) {
   return `db_v2_${vungId}_${bqlId}`;
 }
@@ -1726,6 +1738,11 @@ function getActiveMonths(projData = currentProjectData) {
     const e = parseDateAny(it.banGiao) || parseDateAny(it.ketThuc) || s;
     if(s && (!min || s < min)) min = s;
     if(e && (!max || e > max)) max = e;
+
+    const sBp = parseDateAny(it.bptc_batDau);
+    const eBp = parseDateAny(it.bptc_banGiao) || parseDateAny(it.bptc_ketThuc) || sBp;
+    if(sBp && (!min || sBp < min)) min = sBp;
+    if(eBp && (!max || eBp > max)) max = eBp;
   });
   if(!min) { min = new Date(2025, 6, 1); max = addMonths(min, 12); }
   const start = new Date(min.getFullYear(), min.getMonth(), 1);
@@ -1873,7 +1890,8 @@ function calculateSingleProject(projData) {
     if(hesoCustom[key] != null) {
       return hesoCustom[key];
     }
-    return baseRatio; // Mặc định theo tỉ lệ tiến độ (thường là 1.0 = 100%)
+    // Mặc định là 100% (1.0) đối với tất cả các tháng nằm trong thời gian thi công/bàn giao
+    return 1.0;
   }
 
   // Tính chi tiết cho từng hạng mục để hiển thị ma trận Hệ số XD, ME, HT ngang hàng
@@ -1899,6 +1917,11 @@ function calculateSingleProject(projData) {
     // Hệ số điều chỉnh Biệt thự cho BPTC (* Đơn lập × 0,65; Song lập × 0,75; Tứ lập × 0,85; Cải tạo mặt ngoài × 2,0)
     const hsTcKieu = isBtDonLap ? 0.65 : (isBtSongLap ? 0.75 : (isBtTuLap ? 0.85 : (isBtCaiTao ? 2.0 : (isBietThu ? 0.75 : 1.0))));
     const kl = it.kl || 0;
+    // Khối lượng & Tiến độ riêng của Bộ phận Thi công (BPTC): nếu chưa tách riêng thì mặc định lấy bằng Tiến độ & Khối lượng DA
+    const klBptc = (it.bptc_kl != null && it.bptc_kl !== '') ? (parseFloat(it.bptc_kl) || 0) : kl;
+    const bptcBd = it.bptc_batDau || it.batDau;
+    const bptcKt = it.bptc_ketThuc || it.ketThuc;
+    const bptcBg = it.bptc_banGiao || it.banGiao;
 
     let tcIdx = 0; // 0: Xây thô, 1: Full NT (>=3T), 2: HTNT 2T, 3: HTNT 1T, 4: Hoàn thiện (Cao tầng/Khác/NX)
     if(tc.includes('Full')) tcIdx = 1;
@@ -1929,7 +1952,8 @@ function calculateSingleProject(projData) {
       const prKho = getCustomHeso('kho', it.id, mk, basePrXd);
       khoRatio.push(prKho);
 
-      const prBptc = getCustomHeso('bptc', it.id, mk, basePrXd);
+      const basePrBptc = klBptc > 0 ? calcRatio(bptcBd, bptcBg || bptcKt, mDate) : 0;
+      const prBptc = getCustomHeso('bptc', it.id, mk, basePrBptc);
       bptcRatio.push(prBptc);
 
       function getDmVal(dmKey, field, defaultVal) {
@@ -1991,33 +2015,33 @@ function calculateSingleProject(projData) {
         thu_kho_arr[mIdx] += ((kl / dm_tk) * 0.3) * prKho;
       }
 
-      // 4. BPTC - Các chức danh Bộ phận Thi công (Sheet ĐM BPTC: Cao tầng HS 1; CT khác HS 0,75; Nhà xưởng/Công viên/Đường GT HS 1,5)
-      if(prBptc > 0 && kl > 0) {
+      // 4. BPTC - Các chức danh Bộ phận Thi công (Sheet ĐM BPTC: dùng klBptc riêng của tab Tiến độ BPTC)
+      if(prBptc > 0 && klBptc > 0) {
         const hsTcStd = tcIdx === 1 ? 0.7 : (tcIdx === 2 ? 0.75 : (tcIdx === 3 ? 0.8 : 1.0));
         const hsKhacScale = isKhac ? 0.75 : ((isNx || isDgtCv) ? 1.5 : 1.0);
 
         let dm_ktht = isThap ? (getDmVal('cv_ktht','thap',20) * hsTcStd * hsTcKieu) : (getDmVal('cv_ktht','khac',4000) * hsKhacScale);
-        cv_ktht_arr[mIdx] += (kl / dm_ktht) * prBptc;
+        cv_ktht_arr[mIdx] += (klBptc / dm_ktht) * prBptc;
 
         let dm_qc = isThap ? (getDmVal('cv_qc','thap',150) * hsTcStd * hsTcKieu) : (getDmVal('cv_qc','khac',30000) * hsKhacScale);
         let dm_shop = isThap ? (getDmVal('cv_shop','thap',150) * hsTcStd * hsTcKieu) : (getDmVal('cv_shop','khac',30000) * hsKhacScale);
         let dm_atld = isThap ? (getDmVal('cv_atld','thap',150) * hsTcStd * hsTcKieu) : (getDmVal('cv_atld','khac',30000) * hsKhacScale);
-        cv_qc_arr[mIdx] += (kl / dm_qc) * prBptc;
-        cv_atld_arr[mIdx] += (kl / dm_atld) * prBptc;
-        cv_shop_arr[mIdx] += (kl / dm_shop) * prBptc;
+        cv_qc_arr[mIdx] += (klBptc / dm_qc) * prBptc;
+        cv_atld_arr[mIdx] += (klBptc / dm_atld) * prBptc;
+        cv_shop_arr[mIdx] += (klBptc / dm_shop) * prBptc;
 
         let dm_qs = isThap ? (getDmVal('cv_qs','thap',120) * hsTcStd * hsTcKieu) : (getDmVal('cv_qs','khac',24000) * hsKhacScale);
-        cv_qs_arr[mIdx] += (kl / dm_qs) * prBptc;
+        cv_qs_arr[mIdx] += (klBptc / dm_qs) * prBptc;
 
         let dm_nv_td = isThap ? (getDmVal('nv_td','thap',50) * hsTcStd * hsTcKieu) : (getDmVal('nv_td','khac',10000) * hsKhacScale);
         let dm_cv_td = isThap ? (getDmVal('cv_td','thap',80) * hsTcStd * hsTcKieu) : (getDmVal('cv_td','khac',16000) * hsKhacScale);
-        nv_tracdac_arr[mIdx] += (kl / dm_nv_td) * prBptc;
-        cv_tracdac_arr[mIdx] += (kl / dm_cv_td) * prBptc;
+        nv_tracdac_arr[mIdx] += (klBptc / dm_nv_td) * prBptc;
+        cv_tracdac_arr[mIdx] += (klBptc / dm_cv_td) * prBptc;
 
         let dm_nn = isThap ? (getDmVal('cv_nn','thap',500) * hsTcStd * hsTcKieu) : (getDmVal('cv_nn','khac',160000) * hsKhacScale);
         let dm_kh = isThap ? (getDmVal('cv_kh','thap',2000) * hsTcStd * hsTcKieu) : (getDmVal('cv_kh','khac',400000) * hsKhacScale);
-        cv_noinghiep_tc_arr[mIdx] += (kl / dm_nn) * prBptc;
-        cv_kehoach_tc_arr[mIdx] += (kl / dm_kh) * prBptc;
+        cv_noinghiep_tc_arr[mIdx] += (klBptc / dm_nn) * prBptc;
+        cv_kehoach_tc_arr[mIdx] += (klBptc / dm_kh) * prBptc;
       }
 
       // 5. BQLXD - CBGS M&E (T6) (Tách riêng Công viên = 120.000 m2 và Đường giao thông = 200.000 m2)
@@ -2647,26 +2671,36 @@ function renderTreeTable() {
       tbody.appendChild(tr);
     } else {
       sttCounter++;
-      const loaiVal = (r.loai === 'Nhà xưởng') ? 'Công trình nhà xưởng' : (r.loai || 'Thấp tầng');
+      const loaiVal = (r.loai === 'Nhà xưởng') ? 'Công trình nhà xưởng' : (r.loai || '');
       const loaiOpts = [
+        { v: '', l: '– Chọn loại CT –' },
         { v: 'Thấp tầng', l: 'Thấp tầng' },
         { v: 'Cao tầng', l: 'Cao tầng' },
         { v: 'Các công trình khác', l: 'CT khác' },
         { v: 'Công trình nhà xưởng', l: 'CT nhà xưởng' },
         { v: 'Đường giao thông, công viên', l: 'Đường GT/CV' }
       ];
-      const kieuOpts = getKieuOptionsByLoai(loaiVal);
+      const kieuOpts = loaiVal ? getKieuOptionsByLoai(loaiVal) : [{ v: '', l: '–' }];
       if(r.kieu && !kieuOpts.some(o => o.v === r.kieu)) {
         kieuOpts.push({ v: r.kieu, l: r.kieu });
       }
-      const tcOpts = getTcOptionsByLoai(loaiVal);
+      const tcOpts = loaiVal ? getTcOptionsByLoai(loaiVal) : [{ v: '', l: '–' }];
       if(r.tc && !tcOpts.some(o => o.v === r.tc)) {
         tcOpts.push({ v: r.tc, l: r.tc });
       }
 
+      // Cảnh báo màu đỏ cam nếu đơn vị bị lệch so với Loại công trình đã chọn
+      const isDvWarn = isUnitMismatched(loaiVal, r.dv);
+      const dvWarnStyle = isDvWarn
+        ? 'background:#fee2e2 !important; color:#b91c1c !important; font-weight:700 !important; border:1px solid #f87171 !important; border-radius:3px;'
+        : '';
+      const dvWarnTip = isDvWarn
+        ? ` title="⚠️ Cảnh báo lệch đơn vị: Loại CT '${loaiVal}' thường dùng đơn vị khác (hiện là '${escHtml(r.dv)}')"`
+        : '';
+
       const phanLoaiCellsHtml = showPhanLoaiCols ? `
         <td class="toggle-col">
-          <select data-id="${r.id}" data-f="loai" title="${escHtml(loaiVal)}">
+          <select data-id="${r.id}" data-f="loai" title="${escHtml(loaiVal || 'Chưa chọn phân loại')}">
             ${loaiOpts.map(o => `<option value="${o.v}" ${loaiVal===o.v?'selected':''}>${o.l}</option>`).join('')}
           </select>
         </td>
@@ -2692,7 +2726,7 @@ function renderTreeTable() {
         <td><input type="date" value="${r.ketThuc || ''}" data-id="${r.id}" data-f="ketThuc"></td>
         <td><input type="date" value="${r.banGiao || ''}" data-id="${r.id}" data-f="banGiao"></td>
         <td><input type="number" style="text-align:right; font-family:var(--font-mono); font-weight:600;" value="${r.kl || ''}" data-id="${r.id}" data-f="kl"></td>
-        <td><input type="text" style="text-align:center; font-size:10.5px; color:var(--text-muted);" value="${escHtml(r.dv || 'căn')}" data-id="${r.id}" data-f="dv"></td>
+        <td><input type="text" style="text-align:center; font-size:10.5px; color:var(--text-muted); ${dvWarnStyle}" value="${escHtml(r.dv || '')}" data-id="${r.id}" data-f="dv"${dvWarnTip}></td>
       `;
       tbody.appendChild(tr);
 
@@ -2987,7 +3021,10 @@ function renderSyncHesoTable(res) {
           const fullTitle = `${phaseTip ? phaseTip + ' — ' : ''}Gõ ví dụ: 50 rồi Enter để đặt 50%, gõ 100 để đặt lại 100%`;
 
           if(pr > 0 || isCustom || bgStyle) {
-            const displayPct = (pr > 0 || isCustom) ? (Math.round(pr * 100) + '%') : '';
+            // Mặc định hiển thị 100% nếu trong tiến độ/thi công/bàn giao và chưa tùy chỉnh
+            const displayPct = isCustom
+              ? (Math.round(currentProjectData.hesoCustom[key] * 100) + '%')
+              : (pr > 0 || bgStyle ? '100%' : '');
             cellsHtml += `
               <td class="col-month-fixed heso-input-cell ${isCustom ? 'customized' : ''}" style="height:28px; ${bgStyle}">
                 <input type="text" 
@@ -2995,7 +3032,8 @@ function renderSyncHesoTable(res) {
                        data-tab="${tab}" 
                        data-id="${r.id}" 
                        data-mk="${mk}" 
-                       title="${escHtml(fullTitle)}">
+                       title="${escHtml(fullTitle)}"
+                       readonly>
               </td>
             `;
           } else {
@@ -3056,22 +3094,26 @@ function renderSyncHesoTable(res) {
 
   tbody.innerHTML = html;
 
-  // Lắng nghe sự kiện gõ ô và Enter: Gõ 50 -> 50%
+  // Lắng nghe sự kiện kích đúp (dblclick) vào ô để sửa riêng lẻ (Excel inline edit)
   tbody.querySelectorAll('input').forEach(inp => {
-    inp.addEventListener('focus', (e) => {
-      // Khi focus bỏ ký tự % để dễ gõ
-      let v = e.target.value.replace('%', '').trim();
-      e.target.value = v;
-      e.target.select();
+    inp.addEventListener('dblclick', (e) => {
+      inp.removeAttribute('readonly');
+      let v = inp.value.replace('%', '').trim();
+      inp.value = v;
+      inp.focus();
+      inp.select();
     });
 
     inp.addEventListener('blur', (e) => {
-      applyHesoInput(e.target);
+      if(!inp.hasAttribute('readonly')) {
+        inp.setAttribute('readonly', 'true');
+        applyHesoInput(inp);
+      }
     });
 
     inp.addEventListener('keydown', (e) => {
       if(e.key === 'Enter') {
-        e.target.blur(); // Trigger applyHesoInput
+        inp.blur();
       }
     });
   });
@@ -3095,8 +3137,12 @@ function applyHesoInput(inputElem) {
     let ratio = num > 1 ? (num / 100) : num;
     if(ratio < 0) ratio = 0;
     
-    // Lưu lại
-    currentProjectData.hesoCustom[key] = ratio;
+    // Chỉ lưu custom nếu khác giá trị mặc định 100% (1.0), nếu đưa về 100% thì xóa khỏi custom để quay về màu chữ đen bình thường
+    if(Math.abs(ratio - 1.0) < 1e-4) {
+      delete currentProjectData.hesoCustom[key];
+    } else {
+      currentProjectData.hesoCustom[key] = ratio;
+    }
   }
 
   saveCurrentProject();
@@ -4223,6 +4269,43 @@ if(btnExpandHangMuc) {
   });
 }
 
+// Hàm nhận biết chuỗi ngày tháng theo định dạng DD/MM/YYYY, D/M/YYYY, YYYY-MM-DD
+function isDateStringCandidate(str) {
+  if(!str) return false;
+  str = String(str).trim();
+  if(!str) return false;
+  if(str.includes('/')) {
+    const parts = str.split('/');
+    if(parts.length === 3) {
+      const d = parseInt(parts[0]), m = parseInt(parts[1]), y = parseInt(parts[2]);
+      return !isNaN(d) && !isNaN(m) && !isNaN(y) && d >= 1 && d <= 31 && m >= 1 && m <= 12;
+    }
+  }
+  if(str.includes('-')) {
+    const parts = str.split('-');
+    if(parts.length === 3 && parts[0].length === 4) {
+      const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+      return !isNaN(d) && !isNaN(m) && !isNaN(y) && d >= 1 && d <= 31 && m >= 1 && m <= 12;
+    }
+  }
+  return false;
+}
+
+// Kiểm tra đơn vị có lệch so với Loại công trình không để cảnh báo bôi màu
+function isUnitMismatched(loai, dv) {
+  if(!loai || !dv) return false;
+  const l = loai.trim();
+  const d = dv.trim().toLowerCase();
+  if(l === 'Thấp tầng') {
+    return d !== 'căn';
+  } else if(l === 'Đường giao thông, công viên') {
+    return d !== 'm²' && d !== 'm2';
+  } else {
+    // Cao tầng, Các công trình khác, Công trình nhà xưởng
+    return d !== 'm² sàn' && d !== 'm2 sàn' && d !== 'm²' && d !== 'm2';
+  }
+}
+
 // Chuẩn hóa ngày tháng khi dán từ Excel (DD/MM/YYYY hoặc YYYY-MM-DD -> YYYY-MM-DD)
 function normalizeExcelDate(raw) {
   if(!raw) return '';
@@ -4373,88 +4456,79 @@ function importRowsFromTsvText(text) {
       return;
     }
 
-    let loai = 'Thấp tầng', kieu = 'Liền kề, Shophouse, TMDV', tc = 'Xây thô';
-    let batDau = '', ketThuc = '', banGiao = '', kl = 50, dv = 'căn';
+      let loai = '', kieu = '', tc = '';
+      let batDau = '', ketThuc = '', banGiao = '', kl = 0, dv = '';
 
-    const c1 = cols[1] || '';
-    const isC1Date = c1.includes('/') || (c1.includes('-') && c1.length >= 8);
+      // Tự động phân tích các cột còn lại: Cột nào là ngày tháng thì đưa vào 3 cột ngày tháng; cột nào là số thì đưa vào Khối lượng; cột nào là đơn vị thì đưa vào Đơn vị
+      const nonNameCols = cols.slice(1);
+      const datesFound = [];
+      let numberFound = null;
+      let unitFound = '';
+      const textCols = [];
 
-    // Trường hợp A: Cột 1 là Ngày bắt đầu luôn (do người dùng tắt Phân loại công trình hoặc copy bảng chỉ có Tên | Bắt đầu | Kết thúc | Bàn giao | KL | Đv)
-    if(isC1Date || !showPhanLoaiCols) {
-      const inferred = inferClassificationFromName(ten);
-      loai = inferred.loai;
-      kieu = inferred.kieu;
-      tc   = inferred.tc;
-
-      if(isC1Date) {
-        batDau  = normalizeExcelDate(cols[1]) || '2025-07-01';
-        ketThuc = normalizeExcelDate(cols[2]) || '2026-03-01';
-        banGiao = normalizeExcelDate(cols[3]) || ketThuc;
-        kl = parseFloat((cols[4] || '50').replace(/,/g, '')) || 50;
-        dv = cols[5] || '';
-      } else {
-        // Trường hợp Tên | KL | Đv | Bắt đầu | Kết thúc | Bàn giao
-        kl = parseFloat((cols[1] || '50').replace(/,/g, '')) || 50;
-        const c2 = cols[2] || '';
-        if(c2 && !c2.includes('/') && !c2.includes('-')) {
-          dv = c2;
-          batDau  = normalizeExcelDate(cols[3]) || '2025-07-01';
-          ketThuc = normalizeExcelDate(cols[4]) || '2026-03-01';
-          banGiao = normalizeExcelDate(cols[5]) || ketThuc;
+      nonNameCols.forEach(rawC => {
+        const c = rawC.trim();
+        if(!c) return;
+        if(isDateStringCandidate(c)) {
+          datesFound.push(normalizeExcelDate(c));
         } else {
-          batDau  = normalizeExcelDate(cols[2]) || '2025-07-01';
-          ketThuc = normalizeExcelDate(cols[3]) || '2026-03-01';
-          banGiao = normalizeExcelDate(cols[4]) || ketThuc;
+          // Thử parse số
+          const cleaned = c.replace(/,/g, '');
+          if(!isNaN(cleaned) && cleaned !== '' && !isNaN(parseFloat(cleaned))) {
+            if(numberFound === null) numberFound = parseFloat(cleaned);
+          } else if(['căn', 'm²', 'm2', 'm² sàn', 'm2 sàn', 'ha', 'km', 'md', 'mdài', 'tấn', 'kg'].includes(c.toLowerCase())) {
+            unitFound = c;
+          } else {
+            textCols.push(c);
+          }
         }
-      }
-    } else {
-      // Trường hợp B: Có đầy đủ cột Phân loại: Tên (0) | Loại 1 (1) | Loại 2 (2) | TC (3) | ...
-      loai = cols[1] || 'Thấp tầng';
-      kieu = cols[2] || '';
-      tc   = cols[3] || '';
+      });
 
-      const c4 = cols[4] || '';
-      if(c4.includes('/') || (c4.includes('-') && c4.length >= 8)) {
-        batDau  = normalizeExcelDate(cols[4]) || '2025-07-01';
-        ketThuc = normalizeExcelDate(cols[5]) || '2026-03-01';
-        banGiao = normalizeExcelDate(cols[6]) || ketThuc;
-        kl = parseFloat((cols[7] || '50').replace(/,/g, '')) || 50;
-        dv = cols[8] || '';
+      // Kiểm tra xem có cột phân loại rõ ràng trong textCols không (Loại cấp 1, cấp 2, TC bàn giao)
+      const validLoaiList = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Công trình nhà xưởng', 'Đường giao thông, công viên', 'Đường GT/CV'];
+      const foundLoaiIdx = textCols.findIndex(t => validLoaiList.some(v => v.toLowerCase() === t.toLowerCase()));
+
+      if(foundLoaiIdx >= 0) {
+        loai = textCols[foundLoaiIdx];
+        if(loai === 'Đường GT/CV') loai = 'Đường giao thông, công viên';
+        kieu = textCols[foundLoaiIdx + 1] || '';
+        tc   = textCols[foundLoaiIdx + 2] || '';
       } else {
-        kl = parseFloat((cols[4] || '50').replace(/,/g, '')) || 50;
-        const c5 = cols[5] || '';
-        if(c5 && !c5.includes('/') && !c5.includes('-') && isNaN(Date.parse(c5))) {
-          dv = c5;
-          batDau  = normalizeExcelDate(cols[6]) || '2025-07-01';
-          ketThuc = normalizeExcelDate(cols[7]) || '2026-03-01';
-          banGiao = normalizeExcelDate(cols[8]) || ketThuc;
-        } else {
-          batDau  = normalizeExcelDate(cols[5]) || '2025-07-01';
-          ketThuc = normalizeExcelDate(cols[6]) || '2026-03-01';
-          banGiao = normalizeExcelDate(cols[7]) || ketThuc;
-        }
+        // Không có cột phân loại trong khi paste -> Để trống theo yêu cầu!
+        loai = '';
+        kieu = '';
+        tc   = '';
       }
-    }
 
-    const rowItem = {
-      id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-      level: 3,
-      stt: '',
-      ten,
-      loai,
-      kieu,
-      tc,
-      kl,
-      dv,
-      batDau,
-      ketThuc,
-      banGiao
-    };
-    // Chuẩn hóa phân loại cấp 1, cấp 2, TC bàn giao & đơn vị tính
-    syncSubClassificationWhenLoaiChanged(rowItem);
-    if(dv) rowItem.dv = dv;
-    // Tự động khởi tạo 2 giai đoạn M&E (bê tông cốt thép & hoàn thiện) cho hạng mục có M&E
-    ensureMeStagesForRow(rowItem);
+      // Đưa 3 cột ngày tháng đã nhận diện vào đúng thứ tự Bắt đầu -> Kết thúc thi công -> Kết thúc bàn giao
+      if(datesFound.length >= 1) batDau = datesFound[0];
+      if(datesFound.length >= 2) ketThuc = datesFound[1];
+      if(datesFound.length >= 3) banGiao = datesFound[2];
+      else if(datesFound.length === 2) banGiao = ketThuc;
+
+      // Đưa khối lượng và đơn vị
+      kl = numberFound != null ? numberFound : 0;
+      dv = unitFound || (loai === 'Thấp tầng' ? 'căn' : (loai === 'Đường giao thông, công viên' ? 'm²' : (loai ? 'm² sàn' : '')));
+
+      const rowItem = {
+        id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        level: 3,
+        stt: '',
+        ten,
+        loai,
+        kieu,
+        tc,
+        kl,
+        dv,
+        batDau,
+        ketThuc,
+        banGiao
+      };
+      if(loai) {
+        syncSubClassificationWhenLoaiChanged(rowItem);
+        if(unitFound) rowItem.dv = unitFound;
+        ensureMeStagesForRow(rowItem);
+      }
 
     newRows.push(rowItem);
     lastLevel3Row = rowItem;
@@ -4486,7 +4560,8 @@ let excelRangeSelection = {
   isSelecting: false,
   anchorCoords: null, // { r, c }
   focusCoords: null,  // { r, c }
-  selectedCells: []
+  selectedCells: [],
+  disjointCells: [] // Danh sách các ô chọn rời rạc khi giữ Ctrl
 };
 
 function getVisualColIndex(td) {
@@ -4531,6 +4606,7 @@ function clearExcelRangeSelection() {
     el.classList.remove('excel-cell-selected', 'excel-cell-anchor');
   });
   excelRangeSelection.selectedCells = [];
+  excelRangeSelection.disjointCells = [];
 }
 
 function highlightExcelRangeSelection() {
@@ -4538,25 +4614,40 @@ function highlightExcelRangeSelection() {
     el.classList.remove('excel-cell-selected', 'excel-cell-anchor');
   });
   excelRangeSelection.selectedCells = [];
-  const { tableEl, anchorCoords, focusCoords } = excelRangeSelection;
-  if(!tableEl || !anchorCoords || !focusCoords) return;
-
-  const r1 = Math.min(anchorCoords.r, focusCoords.r);
-  const r2 = Math.max(anchorCoords.r, focusCoords.r);
-  const c1 = Math.min(anchorCoords.c, focusCoords.c);
-  const c2 = Math.max(anchorCoords.c, focusCoords.c);
+  const { tableEl, anchorCoords, focusCoords, disjointCells } = excelRangeSelection;
+  if(!tableEl) return;
 
   const seen = new Set();
-  for(let r = r1; r <= r2; r++) {
-    for(let c = c1; c <= c2; c++) {
-      const cell = getCellAtVisualCoords(tableEl, r, c);
-      if(cell && !cell.classList.contains('col-drag-handle') && !seen.has(cell)) {
+
+  // 1. Thêm các ô chọn rời rạc khi giữ Ctrl
+  if(disjointCells && disjointCells.length > 0) {
+    disjointCells.forEach(({ cell, r, c }) => {
+      if(cell && !seen.has(cell)) {
         seen.add(cell);
         cell.classList.add('excel-cell-selected');
-        if(r === anchorCoords.r && c === anchorCoords.c) {
-          cell.classList.add('excel-cell-anchor');
-        }
         excelRangeSelection.selectedCells.push({ cell, r, c });
+      }
+    });
+  }
+
+  // 2. Thêm vùng chọn chữ nhật (anchorCoords -> focusCoords)
+  if(anchorCoords && focusCoords) {
+    const r1 = Math.min(anchorCoords.r, focusCoords.r);
+    const r2 = Math.max(anchorCoords.r, focusCoords.r);
+    const c1 = Math.min(anchorCoords.c, focusCoords.c);
+    const c2 = Math.max(anchorCoords.c, focusCoords.c);
+
+    for(let r = r1; r <= r2; r++) {
+      for(let c = c1; c <= c2; c++) {
+        const cell = getCellAtVisualCoords(tableEl, r, c);
+        if(cell && !cell.classList.contains('col-drag-handle') && !seen.has(cell)) {
+          seen.add(cell);
+          cell.classList.add('excel-cell-selected');
+          if(r === anchorCoords.r && c === anchorCoords.c) {
+            cell.classList.add('excel-cell-anchor');
+          }
+          excelRangeSelection.selectedCells.push({ cell, r, c });
+        }
       }
     }
   }
@@ -4625,7 +4716,12 @@ function applyValueToCellDomAndModel(td, rawValStr) {
       let num = parseFloat(cleaned);
       let ratio = num > 1 ? (num / 100) : num;
       if(ratio < 0) ratio = 0;
-      currentProjectData.hesoCustom[key] = ratio;
+      // Chỉ đánh dấu sửa nếu giá trị khác với mặc định 100% (1.0)
+      if(Math.abs(ratio - 1.0) < 1e-4) {
+        delete currentProjectData.hesoCustom[key];
+      } else {
+        currentProjectData.hesoCustom[key] = ratio;
+      }
     }
     return true;
   }
@@ -4835,6 +4931,25 @@ function initExcelRangeSelectionOnTables() {
       const info = getRowAndColOfCell(td, tableEl);
       if(!info) return;
 
+      // Hỗ trợ giữ Ctrl để click chọn thêm nhiều ô rời rạc
+      if(e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if(excelRangeSelection.tableEl !== tableEl) {
+          clearExcelRangeSelection();
+          excelRangeSelection.tableEl = tableEl;
+        }
+        // Kiểm tra xem ô này đã có trong danh sách chọn chưa
+        const existIdx = excelRangeSelection.disjointCells.findIndex(d => d.cell === td);
+        if(existIdx >= 0) {
+          excelRangeSelection.disjointCells.splice(existIdx, 1);
+        } else {
+          excelRangeSelection.disjointCells.push({ cell: td, r: info.r, c: info.c });
+        }
+        highlightExcelRangeSelection();
+        return;
+      }
+
+      // Hỗ trợ giữ Shift để mở rộng vùng chọn từ ô anchor
       if(e.shiftKey && excelRangeSelection.tableEl === tableEl && excelRangeSelection.anchorCoords) {
         e.preventDefault();
         excelRangeSelection.focusCoords = { r: info.r, c: info.c };
@@ -4844,6 +4959,7 @@ function initExcelRangeSelectionOnTables() {
 
       excelRangeSelection.tableEl = tableEl;
       excelRangeSelection.isSelecting = true;
+      excelRangeSelection.disjointCells = [];
       excelRangeSelection.anchorCoords = { r: info.r, c: info.c };
       excelRangeSelection.focusCoords = { r: info.r, c: info.c };
       highlightExcelRangeSelection();
@@ -4898,31 +5014,55 @@ function initExcelRangeSelectionOnTables() {
     }
   });
 
-  // Lắng nghe phím Delete / Backspace khi đang bôi chọn nhiều ô (xóa nhanh giá trị các ô trong vùng bôi chọn)
+  // Lắng nghe sự kiện gõ phím khi đang bôi chọn nhiều ô để đồng loạt sửa (Batch Edit) hoặc Delete
   window.addEventListener('keydown', (e) => {
-    if(e.key !== 'Delete' && e.key !== 'Backspace') return;
     const activeEl = document.activeElement;
-    if(activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) return;
-    if(!excelRangeSelection.tableEl || excelRangeSelection.selectedCells.length <= 1) return;
+    const isTypingInsideEditableInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT') && !activeEl.hasAttribute('readonly');
+    if(isTypingInsideEditableInput) return;
 
-    e.preventDefault();
-    let changed = false;
-    excelRangeSelection.selectedCells.forEach(({ cell }) => {
-      if(applyValueToCellDomAndModel(cell, '')) changed = true;
-    });
-    if(changed) {
-      const savedSel = {
-        tableEl: excelRangeSelection.tableEl,
-        anchor: { ...excelRangeSelection.anchorCoords },
-        focus: { ...excelRangeSelection.focusCoords }
-      };
-      saveCurrentProject();
-      refreshDashboard();
-      excelRangeSelection.tableEl = savedSel.tableEl;
-      excelRangeSelection.anchorCoords = savedSel.anchor;
-      excelRangeSelection.focusCoords = savedSel.focus;
-      highlightExcelRangeSelection();
-      showUndoToast('⌫ Đã xóa dữ liệu vùng chọn (Ctrl+Z để hoàn tác)');
+    if(!excelRangeSelection.tableEl || excelRangeSelection.selectedCells.length === 0) return;
+
+    // 1. Phím Delete hoặc Backspace: Xóa dữ liệu các ô trong vùng chọn
+    if(e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      let changed = false;
+      excelRangeSelection.selectedCells.forEach(({ cell }) => {
+        if(applyValueToCellDomAndModel(cell, '')) changed = true;
+      });
+      if(changed) {
+        saveCurrentProject();
+        refreshDashboard();
+        highlightExcelRangeSelection();
+        showUndoToast('⌫ Đã xóa dữ liệu các ô đã chọn (Ctrl+Z để hoàn tác)');
+      }
+      return;
+    }
+
+    // 2. Nếu người dùng gõ số hoặc ký tự (ví dụ gõ 5, 8, 0... hoặc chữ) khi đang bôi chọn nhiều ô (hoặc 1 ô chưa vào chế độ dblclick):
+    // Cho phép đồng loạt sửa giá trị cho tất cả các ô đang được chọn (Shift / Ctrl / drag)
+    if(excelRangeSelection.selectedCells.length > 0 && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      // Chỉ kích hoạt khi bảng đang chọn là Hạng mục hoặc Hệ số
+      const tableId = excelRangeSelection.tableEl.id;
+      if(['treeTable', 'syncHesoTable', 'dinhmucTable', 'tableHesoNhansu'].includes(tableId)) {
+        e.preventDefault();
+        const firstKey = e.key;
+        const promptMsg = excelRangeSelection.selectedCells.length > 1
+          ? `Nhập giá trị mới để sửa đồng loạt cho ${excelRangeSelection.selectedCells.length} ô đang chọn:`
+          : `Nhập giá trị mới cho ô đang chọn:`;
+        const val = prompt(promptMsg, firstKey);
+        if(val !== null) {
+          let changed = false;
+          excelRangeSelection.selectedCells.forEach(({ cell }) => {
+            if(applyValueToCellDomAndModel(cell, val)) changed = true;
+          });
+          if(changed) {
+            saveCurrentProject();
+            refreshDashboard();
+            highlightExcelRangeSelection();
+            showUndoToast(`✏️ Đã sửa đồng loạt ${excelRangeSelection.selectedCells.length} ô (Ctrl+Z để hoàn tác)`);
+          }
+        }
+      }
     }
   });
 }
