@@ -1346,7 +1346,7 @@ footer.app-footer {
       <div class="card-header">
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <h2>
-            <span>⚡ Hệ số XD, ME, HT, Kho, BPTC</span>
+            <span id="lblHesoHeaderTitle">⚡ Hệ số tiến độ</span>
           </h2>
           <!-- Thanh 5 Tab Hệ số đặt ngay trên thanh tiêu đề để 2 bảng Trái-Phải thẳng hàng từng dòng từ trên xuống -->
           <div id="hesoTabsBar" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
@@ -1385,14 +1385,14 @@ footer.app-footer {
     <div class="card-box dinhmuc-section" id="dinhmucCard">
       <div class="card-header">
         <h2>
-          <span>📐 Định mức (BQLXD, KHO, BPTC)</span>
+          <span id="lblDinhmucHeaderTitle">📐 Định mức</span>
         </h2>
         <div style="display:flex; align-items:center; gap:4px;">
-          <div id="dinhmucViewTabs" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
-            <button class="heso-tab-btn active" data-dmview="sync" style="padding:1px 6px; font-size:10.5px;" title="Hiển thị đầy đủ các cột định mức và đồng bộ từng dòng với bảng Nhân sự bên phải">Đồng bộ (Đủ 3 khối)</button>
-            <button class="heso-tab-btn" data-dmview="bql" style="padding:1px 6px; font-size:10.5px;" title="Xem đúng mẫu Sheet ĐM BQL trong Excel">Sheet ĐM BQL</button>
-            <button class="heso-tab-btn" data-dmview="kho" style="padding:1px 6px; font-size:10.5px;" title="Xem đúng mẫu Sheet ĐM KHO trong Excel">Sheet ĐM KHO</button>
-            <button class="heso-tab-btn" data-dmview="bptc" style="padding:1px 6px; font-size:10.5px;" title="Xem đúng mẫu Sheet ĐM BPTC trong Excel">Sheet ĐM BPTC</button>
+          <div class="dept-sync-tabs" id="dinhmucTabsBar" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
+            <button class="heso-tab-btn active" data-depttab="ALL" style="padding:1px 8px; font-size:11px;" title="Đồng bộ toàn bộ: Tổng hợp định mức đủ 3 khối BQLXD, KHO, BPTC">Tổng</button>
+            <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;" title="Chỉ xem và đồng bộ Khối BQLXD">BQLXD</button>
+            <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;" title="Chỉ xem và đồng bộ Khối Kho">KHO</button>
+            <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;" title="Chỉ xem và đồng bộ Khối Bộ phận Thi công (BPTC)">BPTC</button>
           </div>
           <button class="btn" id="btnResetDinhMuc" style="font-size:10.5px; padding:2px 6px;" title="Khôi phục định mức chuẩn mặc định">↺ Mặc định</button>
         </div>
@@ -1428,7 +1428,7 @@ footer.app-footer {
     <div class="card-box nhansu-section">
       <div class="card-header">
         <h2>
-          <span id="lblMatrixHeaderTitle">👥 Nhân sự (BQLXD, KHO, BPTC)</span>
+          <span id="lblMatrixHeaderTitle">👥 Nhân sự</span>
         </h2>
         <div style="display:flex; align-items:center; gap:8px;">
           <div class="dept-sync-tabs" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
@@ -1471,7 +1471,7 @@ footer.app-footer {
     <div class="card-box heso-nhansu-section">
       <div class="card-header">
         <h2>
-          <span>⚙️ Hệ số nhân sự (Vi chỉnh hệ số điều chỉnh theo chức danh)</span>
+          <span id="lblHesoNhansuHeaderTitle">⚙️ Hệ số nhân sự</span>
         </h2>
         <div class="dept-sync-tabs" id="hesoNhansuTabsBar" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
           <button class="heso-tab-btn active" data-depttab="ALL" style="padding:1px 8px; font-size:11px;">Tổng</button>
@@ -3139,10 +3139,11 @@ function renderSyncHesoTable(res) {
   const months = res.months;
   const tab = currentHesoTab;
 
-  // Cập nhật tab active
+  // Cập nhật tab active & header title
   document.querySelectorAll('#hesoTabsBar .heso-tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
+  updateAllSectionTitles(currentDeptSyncTab, tab);
 
   // Header tháng: 3 cột cố định tổng 370px (Hạng mục 245px + Khối lượng 75px + Đơn vị 50px) + các cột tháng 68px thẳng hàng tuyệt đối
   thead.innerHTML = `
@@ -3363,14 +3364,33 @@ function applyHesoInput(inputElem) {
   refreshDashboard();
 }
 
-// Bắt sự kiện chuyển 5 Tab
+// Bắt sự kiện chuyển 5 Tab ở Bảng Hệ số tiến độ:
+// Khi ấn KHO -> nhảy sang tab KHO ở các bảng còn lại
+// Khi ấn BPTC -> nhảy sang tab BPTC ở các bảng còn lại
+// Khi ấn XD, ME, HT -> chuyển các bảng còn lại sang tab BQLXD
 document.getElementById('hesoTabsBar').addEventListener('click', (e) => {
   const btn = e.target.closest('.heso-tab-btn');
   if(!btn) return;
   const tab = btn.dataset.tab;
   if(tab && tab !== currentHesoTab) {
     currentHesoTab = tab;
-    renderSyncHesoTable(calcResultCache);
+    
+    // Đồng bộ sang 3 bảng kia
+    let targetDept = currentDeptSyncTab;
+    if(tab === 'kho') targetDept = 'KHO';
+    else if(tab === 'bptc') targetDept = 'BPTC';
+    else if(tab === 'xd' || tab === 'me' || tab === 'ht') targetDept = 'BQLXD';
+    
+    currentDeptSyncTab = targetDept;
+    syncDeptTabsUI();
+
+    if(calcResultCache) {
+      renderSyncHesoTable(calcResultCache);
+      renderChart(calcResultCache);
+      renderMatrix(calcResultCache);
+      renderHesoNhansuTable(calcResultCache);
+      renderDinhMucTable();
+    }
   }
 });
 
@@ -3401,10 +3421,49 @@ let calcResultCache = null;
 let resourceChartInstance = null;
 let currentDeptSyncTab = 'ALL'; // 'ALL' | 'BQLXD' | 'KHO' | 'BPTC' — Đồng bộ cả 3 bảng: Biểu đồ, Nhân sự, Hệ số nhân sự
 
+function updateAllSectionTitles(deptTab, hesoTab) {
+  const dTab = deptTab || currentDeptSyncTab;
+  const hTab = hesoTab || currentHesoTab;
+
+  // 1. Tiêu đề Bảng Hệ số tiến độ: "⚡ Hệ số tiến độ - <Tên Tab con>"
+  const lblHesoTitle = document.getElementById('lblHesoHeaderTitle');
+  if(lblHesoTitle) {
+    const hesoTabNames = { xd: 'XD', me: 'ME', ht: 'HT', kho: 'KHO', bptc: 'BPTC' };
+    const hName = hesoTabNames[hTab] || (hTab ? hTab.toUpperCase() : 'XD');
+    lblHesoTitle.textContent = `⚡ Hệ số tiến độ - ${hName}`;
+  }
+
+  // 2. Tiêu đề Bảng Định mức: "📐 Định mức" (khi Tổng) hoặc "📐 Định mức - <Tên Tab con>"
+  const lblDmTitle = document.getElementById('lblDinhmucHeaderTitle');
+  if(lblDmTitle) {
+    lblDmTitle.textContent = (dTab === 'ALL') ? '📐 Định mức' : `📐 Định mức - ${dTab}`;
+  }
+
+  // 3. Tiêu đề Bảng Nhân sự: "👥 Nhân sự — <Tên BQL>" (khi Tổng) hoặc "👥 Nhân sự - <Tên Tab con> — <Tên BQL>"
+  const lblMatrixTitle = document.getElementById('lblMatrixHeaderTitle');
+  if(lblMatrixTitle) {
+    const projName = currentProjectData?.ten || 'BQLXD Đan Phượng';
+    const isAgg = !!calcResultCache?.isAggregate;
+    const scopeLabel = isAgg ? (calcResultCache?.aggScope === 'KHOI' ? 'Khối XD' : 'Vùng') : projName;
+    if(dTab === 'ALL') {
+      lblMatrixTitle.textContent = isAgg ? `👥 Nhân sự — ${scopeLabel} (Gộp ${calcResultCache?.projectCount || 0} dự án)` : `👥 Nhân sự — ${projName}`;
+    } else {
+      lblMatrixTitle.textContent = isAgg ? `👥 Nhân sự - ${dTab} — ${scopeLabel}` : `👥 Nhân sự - ${dTab} — ${projName}`;
+    }
+  }
+
+  // 4. Tiêu đề Bảng Hệ số nhân sự: "⚙️ Hệ số nhân sự" (khi Tổng) hoặc "⚙️ Hệ số nhân sự - <Tên Tab con>"
+  const lblHsnsTitle = document.getElementById('lblHesoNhansuHeaderTitle');
+  if(lblHsnsTitle) {
+    lblHsnsTitle.textContent = (dTab === 'ALL') ? '⚙️ Hệ số nhân sự' : `⚙️ Hệ số nhân sự - ${dTab}`;
+  }
+}
+
 function syncDeptTabsUI() {
   document.querySelectorAll('.dept-sync-tabs [data-depttab]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.depttab === currentDeptSyncTab);
   });
+  updateAllSectionTitles(currentDeptSyncTab, currentHesoTab);
 }
 
 function renderChart(res) {
@@ -3536,13 +3595,7 @@ function renderMatrix(res) {
     ? 'Khối XD (Toàn bộ Vùng & Dự án)'
     : (document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng');
 
-  const lblMatrixTitle = document.getElementById('lblMatrixHeaderTitle');
-  if(lblMatrixTitle) {
-    const tabTxt = tab === 'ALL' ? 'BQLXD, KHO, BPTC' : tab;
-    lblMatrixTitle.textContent = isAgg
-      ? `👥 Nhân sự Tổng (${tabTxt}) — ${scopeLabel} (Tổng gộp ${res.projectCount} dự án)`
-      : `👥 Nhân sự (${tabTxt}) — ${currentProjectData?.ten || ''}`;
-  }
+  updateAllSectionTitles(tab, currentHesoTab);
 
   thead.innerHTML = `
     <tr>
@@ -3711,10 +3764,8 @@ function renderDinhMucTable() {
   if(!tbody || !thead) return;
   const dmC = currentProjectData.dinhMucCustom || {};
 
-  // Cập nhật active tab
-  document.querySelectorAll('#dinhmucViewTabs .heso-tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.dmview === currentDinhMucView);
-  });
+  // Cập nhật active tab & title
+  syncDeptTabsUI();
 
   // CHẾ ĐỘ 2: XEM NGUYÊN BẢN SHEET "ĐM BQL" TRONG FILE EXCEL
   if(currentDinhMucView === 'bql') {
@@ -4231,7 +4282,7 @@ function renderHesoNhansuTable(res) {
   });
 }
 
-// Bắt sự kiện chuyển 4 Tab đồng bộ (Tổng, BQLXD, KHO, BPTC) ở cả 3 bảng: Biểu đồ, Nhân sự, Hệ số nhân sự
+// Bắt sự kiện chuyển 4 Tab đồng bộ (Tổng, BQLXD, KHO, BPTC) ở cả 4 bảng: Biểu đồ, Định mức, Nhân sự, Hệ số nhân sự
 document.querySelectorAll('.dept-sync-tabs').forEach(bar => {
   bar.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-depttab]');
@@ -4239,14 +4290,29 @@ document.querySelectorAll('.dept-sync-tabs').forEach(bar => {
     const tab = btn.dataset.depttab;
     if(tab && tab !== currentDeptSyncTab) {
       currentDeptSyncTab = tab;
+
+      // Đồng bộ sang bảng Hệ số tiến độ theo quy tắc đặc thù:
+      // - Khi ấn KHO -> Hệ số tiến độ tự nhảy sang tab kho
+      // - Khi ấn BPTC -> Hệ số tiến độ tự nhảy sang tab bptc
+      // - Khi ấn BQLXD -> BQLXD có 3 phân hệ (XD, ME, HT), nên nếu đang ở kho/bptc thì đưa về xd, còn nếu đã là xd/me/ht thì giữ nguyên!
+      if(tab === 'KHO') {
+        currentHesoTab = 'kho';
+      } else if(tab === 'BPTC') {
+        currentHesoTab = 'bptc';
+      } else if(tab === 'BQLXD') {
+        if(currentHesoTab === 'kho' || currentHesoTab === 'bptc') {
+          currentHesoTab = 'xd';
+        }
+      }
+
       syncDeptTabsUI();
+
       if(calcResultCache) {
         renderChart(calcResultCache);
         renderMatrix(calcResultCache);
         renderHesoNhansuTable(calcResultCache);
-      }
-      if(currentDinhMucView === 'sync') {
         renderDinhMucTable();
+        renderSyncHesoTable(calcResultCache);
       }
     }
   });
