@@ -1128,22 +1128,25 @@ function roundVal(v, mode) {
 
 const MATRIX_ROWS_META = [
   // I. KHỐI BAN QUẢN LÝ XÂY DỰNG (ĐM BQL)
-  {stt:1,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Giám đốc BQLXD Cấp 3', cap:'T4', type:'lead_bql', dmThap:'', dmKhac:'', rule:'QL 5–7 ĐTGS (T5)', qlKey:'gd_bql3', qlTarget:'Đội trưởng GSXD, GSME, GS Hạ tầng (T5)', qlMin:5, qlMax:7, qlCalc:6, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'GĐ Cấp 1(T2): 4–5 T3 (4,5); Cấp 2(T3): 5–7 T4 (6)'},
-  {stt:2,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Trợ lý GĐ BQLXD / CV Nội nghiệp', cap:'T6', type:'fixed', val:0, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Theo quy mô DA'},
-  {stt:3,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSXD', cap:'T5', type:'dt_xd', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS XD', qlKey:'dt_xd', qlTarget:'CBGS kỹ thuật XD (T6), NVGS kỹ thuật XD (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
-  {stt:4,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Xây dựng)', cap:'T6', type:'cb_xd', dmKey:'cb_xd', dmThap:50, dmKhac:14000, rule:'KL ÷ Định mức', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:14000, ct_ht:10000, khac:'9.000 / 7.500', nx:'21.000 / 15.000', dgt:'', hsNote:'Biệt thự × 0,8'},
-  {stt:5,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSME', cap:'T5', type:'dt_me', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS ME', qlKey:'dt_me', qlTarget:'CBGS kỹ thuật M&E (T6), NVGS kỹ thuật M&E (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
-  {stt:6,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (M&E)', cap:'T6', type:'cb_me', dmKey:'cb_me', dmThap:250, dmKhac:22500, rule:'KL ÷ ĐM (BTCT/HT)', tt_tho:250, tt_full:70, tt_ht2:80, tt_ht1:90, ct_tho:'4 tòa (BTCT)', ct_ht:22500, khac:'4 CT / 22.500', nx:'100.000 / 50.000', dgt:'120.000(CV)/200.000(ĐGT)', hsNote:'GĐ BTCT: 500 căn | Biệt thự × 0,8'},
-  {stt:7,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GS Hạ tầng', cap:'T5', type:'dt_ht', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS HT', qlKey:'dt_ht', qlTarget:'CBGS kỹ thuật Hạ tầng (T6), NVGS kỹ thuật Hạ tầng (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
-  {stt:8,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Hạ tầng)', cap:'T6', type:'cb_ht', dmKey:'cb_ht', dmThap:'', dmKhac:15000, rule:'1 CB / CT (~15.000m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:15000, ct_ht:15000, khac:15000, nx:15000, dgt:15000, hsNote:'1 CB/Công trình (~15.000 m²)'},
-  {stt:9,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên QLTK tại BQLXD', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
-  {stt:10, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Trắc đạc)', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
-  {stt:11, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CBGS Cây xanh', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
-  {stt:12, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Xây dựng', cap:'T7', type:'nv_xd', dmKey:'nv_xd', dmThap:35, dmKhac:9800, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:35, tt_full:25, tt_ht2:27, tt_ht1:28, ct_tho:9800, ct_ht:7000, khac:'6.300 / 5.250', nx:'14.700 / 10.500', dgt:'', hsNote:'90% CBGS T6 + 10%×1,5 NVGS T7'},
-  {stt:13, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT M&E', cap:'T7', type:'nv_me', dmKey:'nv_me', dmThap:175, dmKhac:15750, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:175, tt_full:49, tt_ht2:56, tt_ht1:63, ct_tho:'3 tòa (BTCT)', ct_ht:15750, khac:'3 CT / 15.750', nx:'70.000 / 35.000', dgt:'84.000(CV)/140.000(ĐGT)', hsNote:'GĐ BTCT: 350 căn | Biệt thự × 0,8'},
-  {stt:14, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Hạ tầng', cap:'T7', type:'nv_ht', dmKey:'nv_ht', dmThap:'', dmKhac:10500, rule:'1 NV / CT (~10.500m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:10500, ct_ht:10500, khac:10500, nx:10500, dgt:10500, hsNote:'1 CB/Công trình (~10.500 m²)'},
-  {stt:15, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên Hành chính', cap:'T7', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
-  {stt:16, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên ATLĐ và VSMT', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:1,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Giám đốc BQLXD Cấp 1', cap:'T2', type:'gd_bql1', dmThap:'', dmKhac:'', rule:'QL 4–5 GĐ Cấp 2 (T3)', qlKey:'gd_bql1', qlTarget:'Giám đốc BQLXD Cấp 2 (T3)', qlMin:4, qlMax:5, qlCalc:4.5, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Theo quy mô đại dự án'},
+  {stt:2,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Giám đốc BQLXD Cấp 2', cap:'T3', type:'gd_bql2', dmThap:'', dmKhac:'', rule:'QL 5–7 GĐ Cấp 3 (T4)', qlKey:'gd_bql2', qlTarget:'Giám đốc BQLXD Cấp 3 (T4)', qlMin:5, qlMax:7, qlCalc:6, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Nếu có 1 GĐ cấp 2 thì có 1 Trợ lý'},
+  {stt:3,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Giám đốc BQLXD Cấp 3', cap:'T4', type:'lead_bql', dmThap:'', dmKhac:'', rule:'QL 5–7 ĐTGS (T5)', qlKey:'gd_bql3', qlTarget:'Đội trưởng GSXD, GSME, GS Hạ tầng (T5)', qlMin:5, qlMax:7, qlCalc:6, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tối thiểu 1 người khi DA chạy'},
+  {stt:4,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Trợ lý GĐ BQLXD', cap:'T5', type:'tro_ly_bql', dmThap:'', dmKhac:'', rule:'1 Trợ lý / 1 GĐ Cấp 2', qlKey:'tro_ly_bql', qlTarget:'Giám đốc BQLXD Cấp 2 (T3) — Có 1 GĐ Cấp 2 thì có 1 Trợ lý', qlMin:1, qlMax:1, qlCalc:1, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'1 GĐ Cấp 2 → 1 Trợ lý'},
+  {stt:5,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSXD', cap:'T5', type:'dt_xd', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS XD', qlKey:'dt_xd', qlTarget:'CBGS kỹ thuật XD (T6), NVGS kỹ thuật XD (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
+  {stt:6,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Xây dựng)', cap:'T6', type:'cb_xd', dmKey:'cb_xd', dmThap:50, dmKhac:14000, rule:'KL ÷ Định mức', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:14000, ct_ht:10000, khac:'9.000 / 7.500', nx:'21.000 / 15.000', dgt:'', hsNote:'Biệt thự × 0,8'},
+  {stt:7,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSME', cap:'T5', type:'dt_me', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS ME', qlKey:'dt_me', qlTarget:'CBGS kỹ thuật M&E (T6), NVGS kỹ thuật M&E (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
+  {stt:8,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (M&E)', cap:'T6', type:'cb_me', dmKey:'cb_me', dmThap:250, dmKhac:22500, rule:'KL ÷ ĐM (BTCT/HT)', tt_tho:250, tt_full:70, tt_ht2:80, tt_ht1:90, ct_tho:'4 tòa (BTCT)', ct_ht:22500, khac:'4 CT / 22.500', nx:'100.000 / 50.000', dgt:'120.000(CV)/200.000(ĐGT)', hsNote:'GĐ BTCT: 500 căn | Biệt thự × 0,8'},
+  {stt:9,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GS Hạ tầng', cap:'T5', type:'dt_ht', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS HT', qlKey:'dt_ht', qlTarget:'CBGS kỹ thuật Hạ tầng (T6), NVGS kỹ thuật Hạ tầng (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
+  {stt:10, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Hạ tầng)', cap:'T6', type:'cb_ht', dmKey:'cb_ht', dmThap:'', dmKhac:15000, rule:'1 CB / CT (~15.000m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:15000, ct_ht:15000, khac:15000, nx:15000, dgt:15000, hsNote:'1 CB/Công trình (~15.000 m²)'},
+  {stt:11, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên QLTK tại BQLXD', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:12, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Trắc đạc)', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:13, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CBGS Cây xanh', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:14, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Xây dựng', cap:'T7', type:'nv_xd', dmKey:'nv_xd', dmThap:35, dmKhac:9800, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:35, tt_full:25, tt_ht2:27, tt_ht1:28, ct_tho:9800, ct_ht:7000, khac:'6.300 / 5.250', nx:'14.700 / 10.500', dgt:'', hsNote:'90% CBGS T6 + 10%×1,5 NVGS T7'},
+  {stt:15, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT M&E', cap:'T7', type:'nv_me', dmKey:'nv_me', dmThap:175, dmKhac:15750, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:175, tt_full:49, tt_ht2:56, tt_ht1:63, ct_tho:'3 tòa (BTCT)', ct_ht:15750, khac:'3 CT / 15.750', nx:'70.000 / 35.000', dgt:'84.000(CV)/140.000(ĐGT)', hsNote:'GĐ BTCT: 350 căn | Biệt thự × 0,8'},
+  {stt:16, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Hạ tầng', cap:'T7', type:'nv_ht', dmKey:'nv_ht', dmThap:'', dmKhac:10500, rule:'1 NV / CT (~10.500m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:10500, ct_ht:10500, khac:10500, nx:10500, dgt:10500, hsNote:'1 CB/Công trình (~10.500 m²)'},
+  {stt:17, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên Nội nghiệp', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:18, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên Hành chính', cap:'T7', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:19, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên ATLĐ và VSMT', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
 
   // II. KHỐI KHO DỰ ÁN (ĐM KHO)
   {stt:1,  pb:'KHO', bp:'BP Kho', cd:'Tổng quản lý kho (theo vùng)', cap:'T4', type:'lead_kho_vung', dmThap:'', dmKhac:'', rule:'QL 4–6 Trưởng kho (T5)', qlKey:'tql_kho', qlTarget:'Trưởng kho (T5)', qlMin:4, qlMax:6, qlCalc:5, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Theo vùng (0 tại DA)'},
@@ -1330,19 +1333,49 @@ function calculateAll() {
     };
   });
 
+  const dmC = currentProjectData.dinhMucCustom || {};
+  function getQlCalc(qlKey, defaultCalc) {
+    const k = `ql_${qlKey}_calc`;
+    return (dmC[k] != null && dmC[k] > 0) ? dmC[k] : defaultCalc;
+  }
+
+  let dt_xd_arr = Array(numM).fill(0);
+  let dt_me_arr = Array(numM).fill(0);
+  let dt_ht_arr = Array(numM).fill(0);
+  let gd_bql3_arr = Array(numM).fill(0);
+  let gd_bql2_arr = Array(numM).fill(0);
+  let gd_bql1_arr = Array(numM).fill(0);
+  let tro_ly_bql_arr = Array(numM).fill(0);
+
+  months.forEach((mDate, mIdx) => {
+    const hasActive = rows.some(it => calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate) > 0);
+    const cXd = getQlCalc('dt_xd', 10);
+    const cMe = getQlCalc('dt_me', 10);
+    const cHt = getQlCalc('dt_ht', 10);
+    const cGd3 = getQlCalc('gd_bql3', 6);
+    const cGd2 = getQlCalc('gd_bql2', 6);
+    const cGd1 = getQlCalc('gd_bql1', 4.5);
+    const cTroLy = getQlCalc('tro_ly_bql', 1);
+
+    dt_xd_arr[mIdx] = cb_xd_arr[mIdx] > 0 ? Math.max(1, cb_xd_arr[mIdx] / cXd) : 0;
+    dt_me_arr[mIdx] = cb_me_arr[mIdx] > 0 ? (cb_me_arr[mIdx] >= 8 ? Math.ceil(cb_me_arr[mIdx]/cMe) : (cb_me_arr[mIdx] > 3 ? 1 : 0)) : 0;
+    dt_ht_arr[mIdx] = cb_ht_arr[mIdx] > 0 ? Math.max(1, Math.ceil(cb_ht_arr[mIdx] / cHt)) : 0;
+
+    const totalDt = dt_xd_arr[mIdx] + dt_me_arr[mIdx] + dt_ht_arr[mIdx];
+    gd_bql3_arr[mIdx] = hasActive ? Math.max(1, Math.floor(totalDt / cGd3) || 1) : 0;
+    gd_bql2_arr[mIdx] = totalDt >= (cGd3 * cGd2) ? Math.floor(gd_bql3_arr[mIdx] / cGd2) : 0;
+    gd_bql1_arr[mIdx] = gd_bql2_arr[mIdx] >= cGd1 ? Math.floor(gd_bql2_arr[mIdx] / cGd1) : 0;
+  });
+
+  // Vòng 1: Tính các chức danh trừ Trợ lý GĐ BQLXD để nếu người dùng có bật/chỉnh hệ số GĐ cấp 2 thì Trợ lý tự ăn theo
   MATRIX_ROWS_META.forEach((meta, rIdx) => {
+    if(meta.type === 'tro_ly_bql') return;
     months.forEach((mDate, mIdx) => {
       const mk = monthKey(mDate);
       const adjKey = `${rIdx}_${mk}`;
       const userAdj = adj[adjKey] != null ? adj[adjKey] : 1.0;
       let raw = 0;
       const hasActive = rows.some(it => calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate) > 0);
-
-      const dmC = currentProjectData.dinhMucCustom || {};
-      function getQlCalc(qlKey, defaultCalc) {
-        const k = `ql_${qlKey}_calc`;
-        return (dmC[k] != null && dmC[k] > 0) ? dmC[k] : defaultCalc;
-      }
 
       switch(meta.type) {
         case 'cb_xd': raw = cb_xd_arr[mIdx]; break;
@@ -1353,22 +1386,19 @@ function calculateAll() {
         case 'nv_ht': raw = cb_ht_arr[mIdx] * 0.1 * 1.5; break;
         case 'fixed_active': raw = hasActive ? meta.val : 0; break;
         case 'fixed': raw = meta.val; break;
-        case 'dt_xd': {
-          const c = getQlCalc('dt_xd', 10);
-          raw = cb_xd_arr[mIdx] > 0 ? Math.max(1, cb_xd_arr[mIdx] / c) : 0;
+        case 'dt_xd': raw = dt_xd_arr[mIdx]; break;
+        case 'dt_me': raw = dt_me_arr[mIdx]; break;
+        case 'dt_ht': raw = dt_ht_arr[mIdx]; break;
+        case 'lead_bql': raw = gd_bql3_arr[mIdx]; break;
+        case 'gd_bql2': {
+          // Nếu người dùng nhập hệ số > 0 cho GĐ Cấp 2 mà raw=0 thì cho phép bật thành 1 * userAdj
+          raw = gd_bql2_arr[mIdx] > 0 ? gd_bql2_arr[mIdx] : (adj[adjKey] != null && adj[adjKey] > 0 && hasActive ? 1 : 0);
           break;
         }
-        case 'dt_me': {
-          const c = getQlCalc('dt_me', 10);
-          raw = cb_me_arr[mIdx] > 0 ? (cb_me_arr[mIdx] >= 8 ? Math.ceil(cb_me_arr[mIdx]/c) : (cb_me_arr[mIdx] > 3 ? 1 : 0)) : 0;
+        case 'gd_bql1': {
+          raw = gd_bql1_arr[mIdx] > 0 ? gd_bql1_arr[mIdx] : (adj[adjKey] != null && adj[adjKey] > 0 && hasActive ? 1 : 0);
           break;
         }
-        case 'dt_ht': {
-          const c = getQlCalc('dt_ht', 10);
-          raw = cb_ht_arr[mIdx] > 0 ? Math.max(1, Math.ceil(cb_ht_arr[mIdx] / c)) : 0;
-          break;
-        }
-        case 'lead_bql': raw = hasActive ? 1 : 0; break;
 
         case 'thu_kho_sum': raw = thu_kho_arr[mIdx]; break;
         case 'group_kho': {
@@ -1438,6 +1468,23 @@ function calculateAll() {
       }
     });
   });
+
+  // Vòng 2: Tính Trợ lý GĐ BQLXD (T5): Nếu có 1 Giám đốc BQLXD Cấp 2 thì sẽ có 1 Trợ lý
+  const gd2RowIdx = MATRIX_ROWS_META.findIndex(m => m.type === 'gd_bql2');
+  const troLyRowIdx = MATRIX_ROWS_META.findIndex(m => m.type === 'tro_ly_bql');
+  if(troLyRowIdx >= 0) {
+    const cTroLy = getQlCalc('tro_ly_bql', 1);
+    months.forEach((mDate, mIdx) => {
+      const mk = monthKey(mDate);
+      const adjKey = `${troLyRowIdx}_${mk}`;
+      const userAdj = adj[adjKey] != null ? adj[adjKey] : 1.0;
+      const gd2Count = gd2RowIdx >= 0 ? rowsFinal[gd2RowIdx][mIdx] : 0;
+      const raw = gd2Count > 0 ? (gd2Count * cTroLy) : 0;
+      const valAfterAdj = raw * userAdj;
+      rowsRaw[troLyRowIdx][mIdx] = valAfterAdj;
+      rowsFinal[troLyRowIdx][mIdx] = valAfterAdj > 0 ? Math.max(0, roundVal(valAfterAdj, roundMode)) : 0;
+    });
+  }
 
   const bqlTotals = Array(numM).fill(0);
   const khoTotals = Array(numM).fill(0);
@@ -2103,10 +2150,11 @@ function renderDinhMucTable() {
       { tt: '8', cd: 'Đội trưởng giám sát M&E (T5)', qlTarget: 'CBGS kỹ thuật M&E, NVGS kỹ thuật M&E', qlKey: 'dt_me', min: 8, max: 12, calc: 10, note: 'Tầm quản lý dùng chung' },
       { tt: '9', cd: 'Đội trưởng giám sát Hạ tầng (T5)', qlTarget: 'CBGS kỹ thuật Hạ tầng, NVGS kỹ thuật Hạ tầng', qlKey: 'dt_ht', min: 8, max: 12, calc: 10, note: 'Tầm quản lý dùng chung' },
       { tt: '10', cd: 'GĐ BQLXD cấp 3 (T4)', qlTarget: 'Đội trưởng giám sát XD, Đội trưởng giám sát M&E, Đội trưởng giám sát Hạ tầng', qlKey: 'gd_bql3', min: 5, max: 7, calc: 6, note: '1 người điều hành BQLXD' },
-      { tt: '11', cd: 'GĐ BQLXD cấp 2 (T3)', qlTarget: 'GĐ BQLXD cấp 3', qlKey: 'gd_bql2', min: 5, max: 7, calc: 6, note: 'Theo quy mô dự án' },
+      { tt: '11', cd: 'GĐ BQLXD cấp 2 (T3)', qlTarget: 'GĐ BQLXD cấp 3 (Nếu có 1 GĐ cấp 2 thì có 1 Trợ lý)', qlKey: 'gd_bql2', min: 5, max: 7, calc: 6, note: 'Có 1 GĐ cấp 2 → 1 Trợ lý' },
       { tt: '12', cd: 'GĐ BQLXD cấp 1 (T2)', qlTarget: 'GĐ BQLXD cấp 2', qlKey: 'gd_bql1', min: 4, max: 5, calc: 4.5, note: 'Theo quy mô đại dự án' },
-      { tt: '13', cd: 'CBGS Trắc đạc, Cây xanh, ATLĐ, QLTK, Nội nghiệp (T6)', spanAll: 'Định mức cố định dùng chung toàn dự án: Mỗi vị trí 1 người / BQLXD', note: 'Cố định 1 người/DA' },
-      { tt: '14', cd: 'Chuyên viên Hành chính Ban (T7)', spanAll: 'Định mức cố định dùng chung toàn dự án: 1 người / BQLXD', note: 'Cố định 1 người/DA' }
+      { tt: '13', cd: 'Trợ lý GĐ BQLXD (T5)', qlTarget: 'Giám đốc BQLXD Cấp 2 (T3)', qlKey: 'tro_ly_bql', min: 1, max: 1, calc: 1, note: 'Nếu có 1 GĐ cấp 2 sẽ có 1 Trợ lý' },
+      { tt: '14', cd: 'CBGS Trắc đạc, Cây xanh, ATLĐ, QLTK, Nội nghiệp (T6)', spanAll: 'Định mức cố định dùng chung toàn dự án: Mỗi vị trí 1 người / BQLXD', note: 'Cố định 1 người/DA' },
+      { tt: '15', cd: 'Chuyên viên Hành chính Ban (T7)', spanAll: 'Định mức cố định dùng chung toàn dự án: 1 người / BQLXD', note: 'Cố định 1 người/DA' }
     ];
     tbody.innerHTML = rowsBql.map(r => {
       if(r.header) return `<tr class="${r.cls}"><td class="dm-freeze-1">${r.tt}</td><td colspan="10" style="font-weight:700;">${r.cd}</td></tr>`;
