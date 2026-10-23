@@ -141,7 +141,7 @@ header.app-header {
    BỐ CỤC CHÍNH (ALL-IN-ONE 2-COLUMN MASTER GRID DASHBOARD - RESIZABLE SPLITTERS)
    ========================================================================== */
 :root {
-  --left-col-pct: 42%;
+  --left-col-pct: 54%;
   --row2-height: 360px;
   --row3-height: 480px;
   --sticky-header-h: 112px;
@@ -1272,18 +1272,18 @@ footer.app-footer {
         <table class="tree-table" id="treeTable">
           <thead>
             <tr>
-              <th style="width:18px;" title="Kéo thả sắp xếp"></th>
-              <th style="width:24px;" title="Cấp mục lục (1, 2, 3, 4)">Cấp</th>
-              <th style="width:24px;">TT</th>
-              <th style="width:155px; text-align:left; padding-left:6px;">Tên công trình /<br>Hạng mục</th>
-              <th class="col-phanloai- toggle-col" style="width:68px;" title="Loại Công trình / Hạng mục (cấp 1)">Loại CT<br>(cấp 1)</th>
-              <th class="col-phanloai- toggle-col" style="width:74px;" title="Loại Công trình / Hạng mục (cấp 2)">Loại CT<br>(cấp 2)</th>
-              <th class="col-phanloai- toggle-col" style="width:66px;" title="Tiêu chuẩn bàn giao">TC<br>bàn giao</th>
-              <th style="width:78px;">Bắt đầu<br>thi công</th>
-              <th style="width:78px;">Kết thúc<br>thi công</th>
-              <th style="width:78px;">Kết thúc<br>bàn giao</th>
-              <th style="width:56px;">Khối<br>lượng</th>
-              <th style="width:36px;">Đơn<br>vị</th>
+              <th style="width:20px;" title="Kéo thả sắp xếp"></th>
+              <th style="width:26px;" title="Cấp mục lục (1, 2, 3, 4)">Cấp</th>
+              <th style="width:26px;">TT</th>
+              <th id="thHmTen" style="width:180px; min-width:160px; text-align:left; padding-left:6px;">Tên công trình /<br>Hạng mục</th>
+              <th class="col-phanloai- toggle-col" style="width:80px;" title="Loại Công trình / Hạng mục (cấp 1)">Loại CT<br>(cấp 1)</th>
+              <th class="col-phanloai- toggle-col" style="width:82px;" title="Loại Công trình / Hạng mục (cấp 2)">Loại CT<br>(cấp 2)</th>
+              <th class="col-phanloai- toggle-col" style="width:76px;" title="Tiêu chuẩn bàn giao">TC<br>bàn giao</th>
+              <th id="thHmBatDau" style="width:86px;">Bắt đầu<br>thi công</th>
+              <th id="thHmKetThuc" style="width:86px;">Kết thúc<br>thi công</th>
+              <th id="thHmBanGiao" style="width:86px;">Kết thúc<br>bàn giao</th>
+              <th id="thHmKl" style="width:65px;">Khối<br>lượng</th>
+              <th style="width:38px;">Đơn<br>vị</th>
             </tr>
           </thead>
           <tbody id="treeTableBody">
@@ -2692,6 +2692,17 @@ function renderTreeTable() {
   const spanSummaryAndHeader = showPhanLoaiCols ? 9 : 6;
   const spanMeSubName = showPhanLoaiCols ? 4 : 1;
 
+  // Cập nhật tiêu đề cột theo tab đang chọn (Tiến độ DA vs Tiến độ BPTC)
+  const isBptcTab = (currentHangMucTab === 'bptc');
+  const thBd = document.getElementById('thHmBatDau');
+  const thKt = document.getElementById('thHmKetThuc');
+  const thBg = document.getElementById('thHmBanGiao');
+  const thKl = document.getElementById('thHmKl');
+  if(thBd) thBd.innerHTML = isBptcTab ? 'Bắt đầu<br><span style="color:#c2410c;">BPTC</span>' : 'Bắt đầu<br>thi công';
+  if(thKt) thKt.innerHTML = isBptcTab ? 'Kết thúc<br><span style="color:#c2410c;">BPTC</span>' : 'Kết thúc<br>thi công';
+  if(thBg) thBg.innerHTML = isBptcTab ? 'Bàn giao<br><span style="color:#c2410c;">BPTC</span>' : 'Kết thúc<br>bàn giao';
+  if(thKl) thKl.innerHTML = isBptcTab ? 'KL riêng<br><span style="color:#c2410c;">BPTC</span>' : 'Khối<br>lượng';
+
   // Tính STT tự động cho level 3
   let sttCounter = 0;
 
@@ -2706,7 +2717,7 @@ function renderTreeTable() {
     <td style="text-align:center;">0</td>
     <td></td>
     <td colspan="${spanSummaryAndHeader}" style="font-weight:700; color:#92400e; padding-left:6px;">
-      TỔNG HỢP TIẾN ĐỘ DỰ ÁN (${totalItemsCount} hạng mục thi công)
+      ${isBptcTab ? '★ TIẾN ĐỘ & KHỐI LƯỢNG BỘ PHẬN THI CÔNG (BPTC)' : 'TỔNG HỢP TIẾN ĐỘ DỰ ÁN'} (${totalItemsCount} hạng mục thi công)
     </td>
   `;
   tbody.appendChild(trSummary);
@@ -2825,16 +2836,26 @@ function renderTreeTable() {
         </td>
       ` : '';
 
+      const curBd = isBptcTab ? (r.bptc_batDau || r.batDau || '') : (r.batDau || '');
+      const curKt = isBptcTab ? (r.bptc_ketThuc || r.ketThuc || '') : (r.ketThuc || '');
+      const curBg = isBptcTab ? (r.bptc_banGiao || r.banGiao || '') : (r.banGiao || '');
+      const curKl = isBptcTab ? (r.bptc_kl != null && r.bptc_kl !== '' ? r.bptc_kl : (r.kl != null ? r.kl : '')) : (r.kl != null ? r.kl : '');
+      const fFieldBd = isBptcTab ? 'bptc_batDau' : 'batDau';
+      const fFieldKt = isBptcTab ? 'bptc_ketThuc' : 'ketThuc';
+      const fFieldBg = isBptcTab ? 'bptc_banGiao' : 'banGiao';
+      const fFieldKl = isBptcTab ? 'bptc_kl' : 'kl';
+      const bptcInputStyle = isBptcTab ? 'background:#fff7ed; color:#9a3412; font-weight:600;' : '';
+
       tr.innerHTML = `
         <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon" style="color:#64748b;">⠿</span></td>
         <td style="text-align:center;">3</td>
         <td style="text-align:center; font-weight:600; color:#334155;">${sttCounter}</td>
         <td><input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten" title="${escHtml(r.ten)}"></td>
         ${phanLoaiCellsHtml}
-        <td><input type="date" value="${r.batDau || ''}" data-id="${r.id}" data-f="batDau"></td>
-        <td><input type="date" value="${r.ketThuc || ''}" data-id="${r.id}" data-f="ketThuc"></td>
-        <td><input type="date" value="${r.banGiao || ''}" data-id="${r.id}" data-f="banGiao"></td>
-        <td><input type="number" style="text-align:right; font-family:var(--font-mono); font-weight:600;" value="${r.kl || ''}" data-id="${r.id}" data-f="kl"></td>
+        <td><input type="date" style="${bptcInputStyle}" value="${curBd}" data-id="${r.id}" data-f="${fFieldBd}"></td>
+        <td><input type="date" style="${bptcInputStyle}" value="${curKt}" data-id="${r.id}" data-f="${fFieldKt}"></td>
+        <td><input type="date" style="${bptcInputStyle}" value="${curBg}" data-id="${r.id}" data-f="${fFieldBg}"></td>
+        <td><input type="number" style="text-align:right; font-family:var(--font-mono); font-weight:600; ${bptcInputStyle}" value="${curKl}" data-id="${r.id}" data-f="${fFieldKl}"></td>
         <td><input type="text" style="text-align:center; font-size:10.5px; color:var(--text-muted); ${dvWarnStyle}" value="${escHtml(r.dv || '')}" data-id="${r.id}" data-f="dv"${dvWarnTip}></td>
       `;
       tbody.appendChild(tr);
@@ -2909,14 +2930,14 @@ function renderTreeTable() {
       const id = e.target.dataset.id;
       const f = e.target.dataset.f;
       let val = e.target.value;
-      if(f === 'kl' || f === 'me1_kl' || f === 'me2_kl') val = parseFloat(val) || 0;
+      if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl') val = parseFloat(val) || 0;
       const r = currentProjectData.treeRows.find(x => x.id === id);
       if(r) {
         r[f] = val;
         if(f === 'loai') {
           syncSubClassificationWhenLoaiChanged(r);
           ensureMeStagesForRow(r);
-        } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'kl') {
+        } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'kl' || f === 'bptc_batDau' || f === 'bptc_ketThuc' || f === 'bptc_banGiao' || f === 'bptc_kl') {
           ensureMeStagesForRow(r);
         }
         saveCurrentProject();
@@ -4329,6 +4350,46 @@ if(btnXoaDongHm) {
   });
 }
 
+// Tab Hạng mục công trình: Chuyển đổi giữa 'Tiến độ DA' và 'Tiến độ BPTC'
+const hangmucTabsBar = document.getElementById('hangmucTabsBar');
+if(hangmucTabsBar) {
+  hangmucTabsBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-hmtab]');
+    if(!btn) return;
+    const tab = btn.dataset.hmtab;
+    currentHangMucTab = tab;
+    hangmucTabsBar.querySelectorAll('[data-hmtab]').forEach(b => b.classList.toggle('active', b.dataset.hmtab === tab));
+    const btnSync = document.getElementById('btnSyncBptcFromDa');
+    if(btnSync) btnSync.style.display = (tab === 'bptc') ? 'inline-block' : 'none';
+    clearExcelRangeSelection();
+    renderTreeTable();
+    showUndoToast(tab === 'bptc' 
+      ? '📋 Đang ở tab Tiến độ BPTC: Khối lượng & Tiến độ riêng của Bộ phận Thi công' 
+      : '📋 Đang ở tab Tiến độ DA: Khối lượng & Tiến độ toàn Dự án');
+  });
+}
+
+// Nút Đồng bộ toàn bộ Khối lượng & Tiến độ từ DA sang BPTC
+const btnSyncBptcFromDa = document.getElementById('btnSyncBptcFromDa');
+if(btnSyncBptcFromDa) {
+  btnSyncBptcFromDa.addEventListener('click', () => {
+    const rows = currentProjectData.treeRows || [];
+    let count = 0;
+    rows.forEach(r => {
+      if(r.level === 3) {
+        r.bptc_batDau = r.batDau || '';
+        r.bptc_ketThuc = r.ketThuc || '';
+        r.bptc_banGiao = r.banGiao || '';
+        r.bptc_kl = (r.kl != null) ? r.kl : 0;
+        count++;
+      }
+    });
+    saveCurrentProject();
+    refreshDashboard();
+    showUndoToast(`✓ Đã đồng bộ toàn bộ ${count} hạng mục từ Tiến độ DA sang Tiến độ BPTC!`);
+  });
+}
+
 // Nút Tắt / Mở 3 cột Phân loại công trình (Cấp 1, Cấp 2, TC bàn giao) để dễ Paste từ Excel
 const btnTogglePhanLoaiCols = document.getElementById('btnTogglePhanLoaiCols');
 if(btnTogglePhanLoaiCols) {
@@ -4776,11 +4837,11 @@ function applyValueToCellDomAndModel(td, rawValStr) {
     const rObj = (currentProjectData.treeRows || []).find(x => x.id === id);
     if(!rObj) return false;
 
-    if(f === 'kl' || f === 'me1_kl' || f === 'me2_kl') {
+    if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl') {
       const num = parseFloat(valStr.replace(/,/g, ''));
       rObj[f] = isNaN(num) ? 0 : num;
       ensureMeStagesForRow(rObj);
-    } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'me1_bd' || f === 'me1_kt' || f === 'me2_bd' || f === 'me2_kt') {
+    } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'bptc_batDau' || f === 'bptc_ketThuc' || f === 'bptc_banGiao' || f === 'me1_bd' || f === 'me1_kt' || f === 'me2_bd' || f === 'me2_kt') {
       const norm = normalizeExcelDate(valStr);
       if(norm || valStr === '') rObj[f] = norm;
       ensureMeStagesForRow(rObj);
@@ -6361,7 +6422,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Nhấp đúp để đặt lại tỷ lệ mặc định 42% - 58%
     handle.addEventListener('dblclick', () => {
-      document.documentElement.style.setProperty('--left-col-pct', '42%');
+      document.documentElement.style.setProperty('--left-col-pct', '54%');
       localStorage.removeItem('db_v2_left_col_pct');
     });
   });
