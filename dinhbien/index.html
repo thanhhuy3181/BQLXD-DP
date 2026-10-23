@@ -2171,10 +2171,13 @@ function getActiveMonths(projData = currentProjectData) {
     return fullMonths;
   }
 
-  const fStart = filterDisplayStart ? new Date(filterDisplayStart + '-01') : fullMonths[0];
-  const fEnd = filterDisplayEnd ? new Date(filterDisplayEnd + '-01') : fullMonths[fullMonths.length - 1];
+  const startKey = filterDisplayStart || monthKey(fullMonths[0]);
+  const endKey = filterDisplayEnd || monthKey(fullMonths[fullMonths.length - 1]);
 
-  const filtered = fullMonths.filter(m => m >= fStart && m <= fEnd);
+  const filtered = fullMonths.filter(m => {
+    const mk = monthKey(m);
+    return mk >= startKey && mk <= endKey;
+  });
   return filtered.length > 0 ? filtered : fullMonths;
 }
 
@@ -2722,9 +2725,12 @@ function calculateVungAggregate(vungId) {
   if(allMonths.length > 48) allMonths.length = 48;
   let months = allMonths;
   if(filterDisplayStart || filterDisplayEnd) {
-    const fStart = filterDisplayStart ? new Date(filterDisplayStart + '-01') : allMonths[0];
-    const fEnd = filterDisplayEnd ? new Date(filterDisplayEnd + '-01') : allMonths[allMonths.length - 1];
-    const sub = allMonths.filter(m => m >= fStart && m <= fEnd);
+    const startKey = filterDisplayStart || monthKey(allMonths[0]);
+    const endKey = filterDisplayEnd || monthKey(allMonths[allMonths.length - 1]);
+    const sub = allMonths.filter(m => {
+      const mk = monthKey(m);
+      return mk >= startKey && mk <= endKey;
+    });
     if(sub.length > 0) months = sub;
   }
 
@@ -2850,9 +2856,12 @@ function calculateKhoiAggregate() {
   if(allMonths.length > 48) allMonths.length = 48;
   let months = allMonths;
   if(filterDisplayStart || filterDisplayEnd) {
-    const fStart = filterDisplayStart ? new Date(filterDisplayStart + '-01') : allMonths[0];
-    const fEnd = filterDisplayEnd ? new Date(filterDisplayEnd + '-01') : allMonths[allMonths.length - 1];
-    const sub = allMonths.filter(m => m >= fStart && m <= fEnd);
+    const startKey = filterDisplayStart || monthKey(allMonths[0]);
+    const endKey = filterDisplayEnd || monthKey(allMonths[allMonths.length - 1]);
+    const sub = allMonths.filter(m => {
+      const mk = monthKey(m);
+      return mk >= startKey && mk <= endKey;
+    });
     if(sub.length > 0) months = sub;
   }
 
@@ -7003,9 +7012,16 @@ function updateTimelineInputsUI() {
   const defStartStr = `${fullMonths[0].getFullYear()}-${String(fullMonths[0].getMonth() + 1).padStart(2, '0')}`;
   const defEndStr = `${fullMonths[fullMonths.length - 1].getFullYear()}-${String(fullMonths[fullMonths.length - 1].getMonth() + 1).padStart(2, '0')}`;
 
-  inpStart.value = filterDisplayStart || defStartStr;
-  inpEnd.value = filterDisplayEnd || defEndStr;
-  inpDg.value = filterDienGiai || (filterDisplayStart || defStartStr);
+  // Không đè lên giá trị người dùng đang thao tác nếu input đang được focus
+  if(document.activeElement !== inpStart) {
+    inpStart.value = filterDisplayStart || defStartStr;
+  }
+  if(document.activeElement !== inpEnd) {
+    inpEnd.value = filterDisplayEnd || defEndStr;
+  }
+  if(document.activeElement !== inpDg) {
+    inpDg.value = filterDienGiai || (filterDisplayStart || defStartStr);
+  }
 }
 
 // Lắng nghe sự kiện thay đổi trên 3 ô thời gian
@@ -7015,32 +7031,55 @@ function initTimelineControls() {
   const inpDg = document.getElementById('filterMonthDienGiai');
   const btnFull = document.getElementById('btnFilterFullProject');
 
+  const onStartChange = () => {
+    if(!inpStart.value) return;
+    filterDisplayStart = inpStart.value;
+    if(filterDisplayEnd && filterDisplayStart > filterDisplayEnd) {
+      filterDisplayEnd = filterDisplayStart;
+      if(inpEnd) inpEnd.value = filterDisplayEnd;
+    }
+    // Tự động đồng bộ Tháng diễn giải bằng Tháng bắt đầu nếu chưa chọn riêng
+    if(!filterDienGiai || filterDienGiai < filterDisplayStart || (filterDisplayEnd && filterDienGiai > filterDisplayEnd)) {
+      filterDienGiai = filterDisplayStart;
+      if(inpDg) inpDg.value = filterDienGiai;
+    }
+    refreshDashboard();
+    showUndoToast(`📅 Đã lọc hiển thị từ: ${filterDisplayStart} đến ${filterDisplayEnd || 'cuối'}`);
+  };
+
+  const onEndChange = () => {
+    if(!inpEnd.value) return;
+    filterDisplayEnd = inpEnd.value;
+    if(filterDisplayStart && filterDisplayEnd < filterDisplayStart) {
+      filterDisplayStart = filterDisplayEnd;
+      if(inpStart) inpStart.value = filterDisplayStart;
+    }
+    if(filterDienGiai && filterDienGiai > filterDisplayEnd) {
+      filterDienGiai = filterDisplayEnd;
+      if(inpDg) inpDg.value = filterDienGiai;
+    }
+    refreshDashboard();
+    showUndoToast(`📅 Đã lọc hiển thị đến tháng: ${filterDisplayEnd}`);
+  };
+
+  const onDgChange = () => {
+    filterDienGiai = inpDg.value;
+    showUndoToast(`📋 Đã chọn Tháng diễn giải cho Excel: ${filterDienGiai}`);
+  };
+
   if(inpStart) {
-    inpStart.addEventListener('change', () => {
-      filterDisplayStart = inpStart.value;
-      // Tự động đồng bộ Tháng diễn giải bằng Tháng hiển thị bắt đầu nếu chưa đặt riêng
-      if(!filterDienGiai || filterDienGiai === inpStart.defaultValue) {
-        filterDienGiai = filterDisplayStart;
-        if(inpDg) inpDg.value = filterDienGiai;
-      }
-      refreshDashboard();
-      showUndoToast(`📅 Đã lọc hiển thị từ tháng: ${filterDisplayStart}`);
-    });
+    inpStart.addEventListener('input', onStartChange);
+    inpStart.addEventListener('change', onStartChange);
   }
 
   if(inpEnd) {
-    inpEnd.addEventListener('change', () => {
-      filterDisplayEnd = inpEnd.value;
-      refreshDashboard();
-      showUndoToast(`📅 Đã lọc hiển thị đến tháng: ${filterDisplayEnd}`);
-    });
+    inpEnd.addEventListener('input', onEndChange);
+    inpEnd.addEventListener('change', onEndChange);
   }
 
   if(inpDg) {
-    inpDg.addEventListener('change', () => {
-      filterDienGiai = inpDg.value;
-      showUndoToast(`📋 Đã chọn Tháng diễn giải cho Excel: ${filterDienGiai}`);
-    });
+    inpDg.addEventListener('input', onDgChange);
+    inpDg.addEventListener('change', onDgChange);
   }
 
   if(btnFull) {
