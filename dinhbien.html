@@ -592,6 +592,35 @@ table.tree-table input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 .row-del-btn:hover { color: #ef4444; font-weight: 700; }
 
+/* Cột đầu tiên (Kéo thả di chuyển dòng): chỉ hiện icon ⠿ khi đưa chuột vào cột đầu tiên */
+td.col-drag-handle {
+  text-align: center;
+  cursor: grab;
+  user-select: none;
+}
+td.col-drag-handle .drag-icon {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  font-size: 12px;
+  display: inline-block;
+}
+td.col-drag-handle:hover .drag-icon {
+  opacity: 1;
+}
+td.col-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Bôi chọn vùng ô như bảng Excel (Range Selection) */
+td.excel-cell-selected {
+  background-color: rgba(37, 99, 235, 0.16) !important;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.55) !important;
+}
+td.excel-cell-selected.excel-cell-anchor {
+  background-color: rgba(37, 99, 235, 0.24) !important;
+  box-shadow: inset 0 0 0 2px #1d4ed8 !important;
+}
+
 /* 2. CỘT PHẢI TRÊN: BIỂU ĐỒ (THẲNG HÀNG CỘT THÁNG 370PX + 68PX × THÁNG) */
 .chart-box-top {
   height: auto;
@@ -2251,17 +2280,27 @@ function renderTreeTable() {
       tr.style.outline = '1.5px solid var(--primary)';
     }
 
-    // Drag & Drop cho mọi dòng
-    tr.draggable = true;
+    // Drag & Drop: chỉ cho phép kéo di chuyển dòng khi nhấn giữ chuột vào cột đầu tiên (td.col-drag-handle)
+    tr.draggable = false;
     tr.addEventListener('dragstart', (e) => {
+      if(!tr.draggable) { e.preventDefault(); return; }
       dragSrcIdx = idx;
       tr.style.opacity = '0.4';
       e.dataTransfer.effectAllowed = 'move';
     });
-    tr.addEventListener('dragend', () => { tr.style.opacity = '1'; });
-    tr.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; tr.style.borderTop = '2px solid var(--primary)'; });
+    tr.addEventListener('dragend', () => {
+      tr.style.opacity = '1';
+      tr.draggable = false;
+    });
+    tr.addEventListener('dragover', (e) => {
+      if(dragSrcIdx === null) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      tr.style.borderTop = '2px solid var(--primary)';
+    });
     tr.addEventListener('dragleave', () => { tr.style.borderTop = ''; });
     tr.addEventListener('drop', (e) => {
+      if(dragSrcIdx === null) return;
       e.preventDefault();
       tr.style.borderTop = '';
       const dropIdx = parseInt(tr.dataset.idx);
@@ -2272,13 +2311,14 @@ function renderTreeTable() {
         refreshDashboard();
       }
       dragSrcIdx = null;
+      tr.draggable = false;
     });
 
     if(r.level === 1) {
       sttCounter = 0;
       tr.className = 'tr-level-1' + (r.id === selectedRowId ? ' row-selected' : '');
       tr.innerHTML = `
-        <td style="text-align:center; cursor:grab;">⠿</td>
+        <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon">⠿</span></td>
         <td style="text-align:center;">1</td>
         <td></td>
         <td colspan="9">
@@ -2290,7 +2330,7 @@ function renderTreeTable() {
       sttCounter = 0;
       tr.className = 'tr-level-2' + (r.id === selectedRowId ? ' row-selected' : '');
       tr.innerHTML = `
-        <td style="text-align:center; cursor:grab;">⠿</td>
+        <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon">⠿</span></td>
         <td style="text-align:center;">2</td>
         <td></td>
         <td colspan="9" style="padding-left:14px;">
@@ -2324,7 +2364,7 @@ function renderTreeTable() {
       ];
 
       tr.innerHTML = `
-        <td style="text-align:center; color:#94a3b8; cursor:grab;" title="Kéo thả dòng">⠿</td>
+        <td class="col-drag-handle" title="Giữ chuột để kéo di chuyển dòng"><span class="drag-icon" style="color:#64748b;">⠿</span></td>
         <td style="text-align:center;">3</td>
         <td style="text-align:center; font-weight:600; color:#334155;">${sttCounter}</td>
         <td><input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten" title="${escHtml(r.ten)}"></td>
@@ -2384,6 +2424,20 @@ function renderTreeTable() {
         `;
         tbody.appendChild(sub2);
       }
+    }
+
+    // Chỉ bật draggable khi nhấn chuột vào cột đầu tiên (td.col-drag-handle)
+    const dragCell = tr.querySelector('td.col-drag-handle');
+    if(dragCell) {
+      dragCell.addEventListener('mousedown', () => {
+        tr.draggable = true;
+      });
+      dragCell.addEventListener('mouseup', () => {
+        tr.draggable = false;
+      });
+      dragCell.addEventListener('mouseleave', () => {
+        if(dragSrcIdx === null) tr.draggable = false;
+      });
     }
 
     tr.addEventListener('click', () => {
@@ -3900,14 +3954,379 @@ function importRowsFromTsvText(text) {
   return newRows.length;
 }
 
-// Hỗ trợ nhấn Ctrl+V trực tiếp trên bảng Hạng mục để dán nhiều dòng từ Excel
-const treeTableEl = document.getElementById('treeTable');
-if(treeTableEl) {
-  treeTableEl.addEventListener('paste', (e) => {
+// =========================================================================
+// HỖ TRỢ BÔI CHỌN VÙNG Ô NHƯ EXCEL & PASTE (CTRL+V) THEO VÙNG TRÊN TOÀN BẢNG
+// =========================================================================
+let excelRangeSelection = {
+  tableEl: null,
+  isSelecting: false,
+  anchorCoords: null, // { r, c }
+  focusCoords: null,  // { r, c }
+  selectedCells: []
+};
+
+function getVisualColIndex(td) {
+  if(!td || !td.parentElement) return 0;
+  let colIdx = 0;
+  for(const cell of td.parentElement.children) {
+    if(cell === td) return colIdx;
+    colIdx += (cell.colSpan || 1);
+  }
+  return colIdx;
+}
+
+function getRowAndColOfCell(td, tableEl) {
+  if(!td || !tableEl) return null;
+  const tbody = tableEl.querySelector('tbody');
+  if(!tbody) return null;
+  const tr = td.closest('tr');
+  if(!tr || tr.parentElement !== tbody) return null;
+  const rows = Array.from(tbody.children);
+  const r = rows.indexOf(tr);
+  if(r < 0) return null;
+  const c = getVisualColIndex(td);
+  return { r, c, tr, td };
+}
+
+function getCellAtVisualCoords(tableEl, r, c) {
+  const tbody = tableEl?.querySelector('tbody');
+  if(!tbody) return null;
+  const tr = tbody.children[r];
+  if(!tr) return null;
+  let curC = 0;
+  for(const cell of tr.children) {
+    const span = cell.colSpan || 1;
+    if(c >= curC && c < curC + span) return cell;
+    curC += span;
+  }
+  return null;
+}
+
+function clearExcelRangeSelection() {
+  document.querySelectorAll('td.excel-cell-selected, td.excel-cell-anchor').forEach(el => {
+    el.classList.remove('excel-cell-selected', 'excel-cell-anchor');
+  });
+  excelRangeSelection.selectedCells = [];
+}
+
+function highlightExcelRangeSelection() {
+  document.querySelectorAll('td.excel-cell-selected, td.excel-cell-anchor').forEach(el => {
+    el.classList.remove('excel-cell-selected', 'excel-cell-anchor');
+  });
+  excelRangeSelection.selectedCells = [];
+  const { tableEl, anchorCoords, focusCoords } = excelRangeSelection;
+  if(!tableEl || !anchorCoords || !focusCoords) return;
+
+  const r1 = Math.min(anchorCoords.r, focusCoords.r);
+  const r2 = Math.max(anchorCoords.r, focusCoords.r);
+  const c1 = Math.min(anchorCoords.c, focusCoords.c);
+  const c2 = Math.max(anchorCoords.c, focusCoords.c);
+
+  const seen = new Set();
+  for(let r = r1; r <= r2; r++) {
+    for(let c = c1; c <= c2; c++) {
+      const cell = getCellAtVisualCoords(tableEl, r, c);
+      if(cell && !cell.classList.contains('col-drag-handle') && !seen.has(cell)) {
+        seen.add(cell);
+        cell.classList.add('excel-cell-selected');
+        if(r === anchorCoords.r && c === anchorCoords.c) {
+          cell.classList.add('excel-cell-anchor');
+        }
+        excelRangeSelection.selectedCells.push({ cell, r, c });
+      }
+    }
+  }
+}
+
+// Áp dụng giá trị chuỗi được paste vào một ô <td> (chứa input/select) mà không cần render lại từng ô lẻ
+function applyValueToCellDomAndModel(td, rawValStr) {
+  if(!td) return false;
+  const valStr = String(rawValStr ?? '').trim();
+  const ctrl = td.querySelector('input, select');
+  if(!ctrl) return false;
+
+  // 1. Bảng Hạng mục công trình (data-id, data-f)
+  if(ctrl.dataset.id && ctrl.dataset.f && !ctrl.dataset.tab) {
+    const id = ctrl.dataset.id;
+    const f = ctrl.dataset.f;
+    const rObj = (currentProjectData.treeRows || []).find(x => x.id === id);
+    if(!rObj) return false;
+
+    if(f === 'kl' || f === 'me1_kl' || f === 'me2_kl') {
+      const num = parseFloat(valStr.replace(/,/g, ''));
+      rObj[f] = isNaN(num) ? 0 : num;
+    } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'me1_bd' || f === 'me1_kt' || f === 'me2_bd' || f === 'me2_kt') {
+      const norm = normalizeExcelDate(valStr);
+      if(norm || valStr === '') rObj[f] = norm;
+    } else if(ctrl.tagName === 'SELECT') {
+      const opts = Array.from(ctrl.options);
+      const lower = valStr.toLowerCase();
+      const matched = opts.find(o => o.value.toLowerCase() === lower || o.textContent.trim().toLowerCase() === lower)
+                   || opts.find(o => o.value.toLowerCase().includes(lower) || o.textContent.trim().toLowerCase().includes(lower));
+      if(matched) {
+        rObj[f] = matched.value;
+        if(f === 'loai') {
+          if(matched.value === 'Thấp tầng') rObj.dv = 'căn';
+          else if(matched.value === 'Cao tầng') rObj.dv = 'm² sàn';
+          else rObj.dv = 'm²';
+        }
+      }
+    } else {
+      rObj[f] = valStr;
+    }
+    return true;
+  }
+
+  // 2. Bảng Hệ số tiến độ XD, ME, HT, Kho, BPTC (data-tab, data-id, data-mk)
+  if(ctrl.dataset.tab && ctrl.dataset.id && ctrl.dataset.mk) {
+    const tab = ctrl.dataset.tab;
+    const itemId = ctrl.dataset.id;
+    const mk = ctrl.dataset.mk;
+    if(!currentProjectData.hesoCustom) currentProjectData.hesoCustom = {};
+    const key = `${tab}_${itemId}_${mk}`;
+    const cleaned = valStr.replace('%', '').trim();
+    if(cleaned === '' || isNaN(parseFloat(cleaned))) {
+      delete currentProjectData.hesoCustom[key];
+    } else {
+      let num = parseFloat(cleaned);
+      let ratio = num > 1 ? (num / 100) : num;
+      if(ratio < 0) ratio = 0;
+      currentProjectData.hesoCustom[key] = ratio;
+    }
+    return true;
+  }
+
+  // 3. Bảng Hệ số nhân sự (data-ridx, data-mk)
+  if(ctrl.dataset.ridx != null && ctrl.dataset.mk) {
+    const rIdx = ctrl.dataset.ridx;
+    const mk = ctrl.dataset.mk;
+    if(!currentProjectData.adj) currentProjectData.adj = {};
+    const cleaned = valStr.replace('%', '').trim();
+    if(cleaned === '' || isNaN(parseFloat(cleaned))) {
+      delete currentProjectData.adj[`${rIdx}_${mk}`];
+    } else {
+      let num = parseFloat(cleaned);
+      let ratio = num > 1 ? (num / 100) : num;
+      if(ratio === 1.0) delete currentProjectData.adj[`${rIdx}_${mk}`];
+      else currentProjectData.adj[`${rIdx}_${mk}`] = ratio;
+    }
+    return true;
+  }
+
+  // 4. Bảng Định mức (data-dmk)
+  if(ctrl.dataset.dmk) {
+    const k = ctrl.dataset.dmk;
+    const num = parseFloat(valStr.replace(/,/g, ''));
+    if(!currentProjectData.dinhMucCustom) currentProjectData.dinhMucCustom = {};
+    if(!isNaN(num) && num > 0) currentProjectData.dinhMucCustom[k] = num;
+    else delete currentProjectData.dinhMucCustom[k];
+    return true;
+  }
+
+  return false;
+}
+
+// Dán dữ liệu từ Clipboard vào vùng ô đang bôi chọn (hoặc từ ô bắt đầu) như trong Excel
+function pasteClipboardIntoTableRange(clipText, targetTable, fallbackTd) {
+  if(!clipText || !targetTable) return false;
+  const rawLines = clipText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  if(rawLines.length > 1 && rawLines[rawLines.length - 1] === '') rawLines.pop();
+  const matrix = rawLines.map(line => line.split('\t'));
+  if(matrix.length === 0) return false;
+
+  let startR = 0, startC = 0, endR = 0, endC = 0;
+  if(excelRangeSelection.tableEl === targetTable && excelRangeSelection.anchorCoords && excelRangeSelection.focusCoords) {
+    startR = Math.min(excelRangeSelection.anchorCoords.r, excelRangeSelection.focusCoords.r);
+    endR   = Math.max(excelRangeSelection.anchorCoords.r, excelRangeSelection.focusCoords.r);
+    startC = Math.min(excelRangeSelection.anchorCoords.c, excelRangeSelection.focusCoords.c);
+    endC   = Math.max(excelRangeSelection.anchorCoords.c, excelRangeSelection.focusCoords.c);
+  } else if(fallbackTd) {
+    const info = getRowAndColOfCell(fallbackTd, targetTable);
+    if(!info) return false;
+    startR = endR = info.r;
+    startC = endC = info.c;
+  } else {
+    return false;
+  }
+
+  // Nếu trên bảng Hạng mục công trình mà người dùng dán nhiều dòng vượt quá số dòng hiện có, tự động chèn thêm dòng mới để nhận đủ dữ liệu Excel
+  if(targetTable.id === 'treeTable' && matrix.length > 1) {
+    const tbody = targetTable.querySelector('tbody');
+    const totalDomRows = tbody ? tbody.children.length : 0;
+    if(startR + matrix.length > totalDomRows) {
+      const missingCount = (startR + matrix.length) - totalDomRows;
+      for(let k = 0; k < missingCount; k++) {
+        currentProjectData.treeRows.push({
+          id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          level: 3,
+          stt: '',
+          ten: 'Hạng mục mới',
+          loai: 'Thấp tầng',
+          kieu: 'Liền kề, Shophouse, TMDV',
+          tc: 'Xây thô',
+          kl: 50,
+          dv: 'căn',
+          batDau: '2025-07-01',
+          ketThuc: '2026-03-01',
+          banGiao: '2026-05-30'
+        });
+      }
+      renderTreeTable();
+    }
+  }
+
+  let changed = false;
+  const selRowsCount = endR - startR + 1;
+  const selColsCount = endC - startC + 1;
+
+  // Trường hợp 1: Copy 1 giá trị duy nhất và bôi chọn nhiều ô -> Fill toàn bộ vùng đã bôi chọn bằng giá trị đó (chuẩn Excel)
+  if(matrix.length === 1 && matrix[0].length === 1 && (selRowsCount > 1 || selColsCount > 1)) {
+    const singleVal = matrix[0][0];
+    for(let r = startR; r <= endR; r++) {
+      for(let c = startC; c <= endC; c++) {
+        const cell = getCellAtVisualCoords(targetTable, r, c);
+        if(cell && applyValueToCellDomAndModel(cell, singleVal)) {
+          changed = true;
+        }
+      }
+    }
+  } else {
+    // Trường hợp 2: Dán vùng 2D từ Excel bắt đầu từ ô (startR, startC)
+    const maxR = Math.max(matrix.length, selRowsCount);
+    const maxC = Math.max(matrix[0]?.length || 1, selColsCount);
+    const applyR = matrix.length > 1 ? matrix.length : maxR;
+    const applyC = (matrix[0]?.length || 1) > 1 ? matrix[0].length : maxC;
+
+    for(let dr = 0; dr < applyR; dr++) {
+      const rowArr = matrix[dr % matrix.length];
+      for(let dc = 0; dc < applyC; dc++) {
+        const val = rowArr[dc % rowArr.length];
+        if(val === undefined) continue;
+        const cell = getCellAtVisualCoords(targetTable, startR + dr, startC + dc);
+        if(cell && applyValueToCellDomAndModel(cell, val)) {
+          changed = true;
+        }
+      }
+    }
+  }
+
+  if(changed) {
+    saveCurrentProject();
+    refreshDashboard();
+    // Khôi phục vùng bôi chọn sau khi render lại
+    excelRangeSelection.tableEl = targetTable;
+    excelRangeSelection.anchorCoords = { r: startR, c: startC };
+    excelRangeSelection.focusCoords = {
+      r: Math.max(endR, startR + matrix.length - 1),
+      c: Math.max(endC, startC + (matrix[0]?.length || 1) - 1)
+    };
+    highlightExcelRangeSelection();
+    showUndoToast('📋 Đã dán dữ liệu vào vùng chọn (Nhấn Ctrl+Z nếu muốn hoàn tác)');
+  }
+  return changed;
+}
+
+function initExcelRangeSelectionOnTables() {
+  const tableIds = ['treeTable', 'syncHesoTable', 'dinhmucTable', 'tableHesoNhansu'];
+  tableIds.forEach(id => {
+    const tableEl = document.getElementById(id);
+    if(!tableEl) return;
+
+    tableEl.addEventListener('mousedown', (e) => {
+      if(e.button !== 0) return;
+      const td = e.target.closest('td');
+      if(!td || td.classList.contains('col-drag-handle')) return;
+      const info = getRowAndColOfCell(td, tableEl);
+      if(!info) return;
+
+      if(e.shiftKey && excelRangeSelection.tableEl === tableEl && excelRangeSelection.anchorCoords) {
+        e.preventDefault();
+        excelRangeSelection.focusCoords = { r: info.r, c: info.c };
+        highlightExcelRangeSelection();
+        return;
+      }
+
+      excelRangeSelection.tableEl = tableEl;
+      excelRangeSelection.isSelecting = true;
+      excelRangeSelection.anchorCoords = { r: info.r, c: info.c };
+      excelRangeSelection.focusCoords = { r: info.r, c: info.c };
+      highlightExcelRangeSelection();
+    });
+
+    tableEl.addEventListener('mouseover', (e) => {
+      if(!excelRangeSelection.isSelecting || excelRangeSelection.tableEl !== tableEl) return;
+      const td = e.target.closest('td');
+      if(!td || td.classList.contains('col-drag-handle')) return;
+      const info = getRowAndColOfCell(td, tableEl);
+      if(!info) return;
+      if(excelRangeSelection.focusCoords.r !== info.r || excelRangeSelection.focusCoords.c !== info.c) {
+        // Khi người dùng kéo chuột qua từ 2 ô trở lên, blur input đang focus để bôi vùng mượt như Excel
+        if(document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
+          document.activeElement.blur();
+        }
+        window.getSelection()?.removeAllRanges();
+        excelRangeSelection.focusCoords = { r: info.r, c: info.c };
+        highlightExcelRangeSelection();
+      }
+    });
+  });
+
+  window.addEventListener('mouseup', () => {
+    excelRangeSelection.isSelecting = false;
+  });
+
+  // Lắng nghe sự kiện Paste (Ctrl+V) toàn cục cho vùng ô đang chọn trên bất kỳ bảng nào
+  window.addEventListener('paste', (e) => {
     const clipText = (e.clipboardData || window.clipboardData)?.getData('text');
-    if(clipText && (clipText.includes('\t') || clipText.includes('\n'))) {
+    if(!clipText) return;
+
+    const activeEl = document.activeElement;
+    const activeTd = activeEl ? activeEl.closest('td') : null;
+    const activeTable = activeTd ? activeTd.closest('table') : excelRangeSelection.tableEl;
+    if(!activeTable) return;
+
+    const hasMultiSelection = excelRangeSelection.tableEl === activeTable
+      && excelRangeSelection.anchorCoords && excelRangeSelection.focusCoords
+      && (excelRangeSelection.anchorCoords.r !== excelRangeSelection.focusCoords.r || excelRangeSelection.anchorCoords.c !== excelRangeSelection.focusCoords.c);
+    const isMultiCellClipboard = clipText.includes('\t') || clipText.includes('\n');
+
+    // Nếu người dùng đang bôi chọn nhiều ô HOẶC dữ liệu copy từ Excel có nhiều ô (tab/xuống dòng) HOẶC đang không đặt con trỏ gõ chữ bên trong input
+    const isTypingInSingleInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT') && !hasMultiSelection && !isMultiCellClipboard;
+    if(isTypingInSingleInput) return; // Để trình duyệt paste bình thường vào 1 ô đang gõ
+
+    if(pasteClipboardIntoTableRange(clipText, activeTable, activeTd)) {
+      e.preventDefault();
+    } else if(activeTable.id === 'treeTable' && isMultiCellClipboard) {
       e.preventDefault();
       importRowsFromTsvText(clipText);
+    }
+  });
+
+  // Lắng nghe phím Delete / Backspace khi đang bôi chọn nhiều ô (xóa nhanh giá trị các ô trong vùng bôi chọn)
+  window.addEventListener('keydown', (e) => {
+    if(e.key !== 'Delete' && e.key !== 'Backspace') return;
+    const activeEl = document.activeElement;
+    if(activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) return;
+    if(!excelRangeSelection.tableEl || excelRangeSelection.selectedCells.length <= 1) return;
+
+    e.preventDefault();
+    let changed = false;
+    excelRangeSelection.selectedCells.forEach(({ cell }) => {
+      if(applyValueToCellDomAndModel(cell, '')) changed = true;
+    });
+    if(changed) {
+      const savedSel = {
+        tableEl: excelRangeSelection.tableEl,
+        anchor: { ...excelRangeSelection.anchorCoords },
+        focus: { ...excelRangeSelection.focusCoords }
+      };
+      saveCurrentProject();
+      refreshDashboard();
+      excelRangeSelection.tableEl = savedSel.tableEl;
+      excelRangeSelection.anchorCoords = savedSel.anchor;
+      excelRangeSelection.focusCoords = savedSel.focus;
+      highlightExcelRangeSelection();
+      showUndoToast('⌫ Đã xóa dữ liệu vùng chọn (Ctrl+Z để hoàn tác)');
     }
   });
 }
@@ -3915,17 +4334,30 @@ if(treeTableEl) {
 const btnPasteExcel = document.getElementById('btnPasteExcel');
 if(btnPasteExcel) {
   btnPasteExcel.addEventListener('click', async () => {
+    const treeTableEl = document.getElementById('treeTable');
     try {
       const text = await navigator.clipboard.readText();
       if(!text || !text.trim()) {
-        alert('Clipboard đang trống! Hãy copy các dòng từ Excel trước.');
+        alert('Clipboard đang trống! Hãy copy các ô hoặc dòng từ Excel trước.');
         return;
       }
-      importRowsFromTsvText(text);
+      if(excelRangeSelection.tableEl === treeTableEl && excelRangeSelection.anchorCoords) {
+        if(!pasteClipboardIntoTableRange(text, treeTableEl, null)) {
+          importRowsFromTsvText(text);
+        }
+      } else {
+        importRowsFromTsvText(text);
+      }
     } catch(err) {
-      const manual = prompt('Dán dữ liệu từ Excel (mỗi dòng 1 hạng mục, cách nhau bằng Tab):');
+      const manual = prompt('Dán dữ liệu từ Excel (hỗ trợ dán theo vùng ô đang chọn hoặc thêm dòng mới):');
       if(manual && manual.trim()) {
-        importRowsFromTsvText(manual);
+        if(excelRangeSelection.tableEl === treeTableEl && excelRangeSelection.anchorCoords) {
+          if(!pasteClipboardIntoTableRange(manual, treeTableEl, null)) {
+            importRowsFromTsvText(manual);
+          }
+        } else {
+          importRowsFromTsvText(manual);
+        }
       }
     }
   });
@@ -4651,6 +5083,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadProject(currentVungId, currentBqlId);
   renderOrgHierarchyButtons();
   refreshDashboard();
+  initExcelRangeSelectionOnTables();
   updateStickyHeaderOffset();
   window.addEventListener('resize', updateStickyHeaderOffset);
 
