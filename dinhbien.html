@@ -207,8 +207,8 @@ body.is-resizing-col .col-resizer-handle::after {
 
 /* Thanh kéo ngang phân chia giữa (Hạng mục + Hệ số) và (Định mức + Nhân sự) */
 .row-resizer-bar {
-  height: 10px;
-  margin: -4px 0;
+  height: 8px;
+  margin: -3px 0;
   cursor: row-resize;
   display: flex;
   align-items: center;
@@ -228,22 +228,19 @@ body.is-resizing-col .col-resizer-handle::after {
   height: 1px;
   background: #cbd5e1;
 }
-.row-resizer-bar span {
+.row-resizer-bar::after {
+  content: '⋯';
   position: relative;
   z-index: 2;
   background: #e2e8f0;
   border: 1px solid #cbd5e1;
-  color: #475569;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 0 12px;
-  height: 14px;
-  line-height: 12px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 0 10px;
+  height: 10px;
+  line-height: 8px;
+  border-radius: 6px;
 }
 .row-resizer-bar:hover,
 .row-resizer-bar.active {
@@ -254,8 +251,8 @@ body.is-resizing-col .col-resizer-handle::after {
   background: #2563eb;
   height: 2px;
 }
-.row-resizer-bar:hover span,
-.row-resizer-bar.active span {
+.row-resizer-bar:hover::after,
+.row-resizer-bar.active::after {
   background: #2563eb;
   border-color: #1d4ed8;
   color: #ffffff;
@@ -921,6 +918,9 @@ footer.app-footer {
     <div style="font-weight:700; font-size:13px; color:#334155;">HỆ THỐNG ĐỊNH BIÊN</div>
     <h1>QUẢN LÝ ĐỊNH BIÊN</h1>
     <div class="header-right-tools">
+      <button class="btn" id="btnUserGuide" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;">
+        📖 Hướng dẫn sử dụng
+      </button>
       <button class="btn btn-success" id="btnExportExcel">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Xuất Excel Chuẩn (11 Sheet)
@@ -1031,9 +1031,6 @@ footer.app-footer {
           <button class="btn" id="btnExpandHangMuc" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;" title="Mở rộng toàn màn hình để nhập/copy/paste/chèn như bảng Excel">⤢ Mở rộng bảng</button>
         </div>
       </div>
-      <div class="hangmuc-help-text" style="padding:4px 10px; font-size:10.5px; color:var(--text-muted); border-bottom:1px solid var(--border); background:#ffffff; line-height:1.35;">
-        <b>Thao tác như bảng Excel:</b> Click trực tiếp vào ô để gõ sửa (không viền hộp), nhấn <b>Ctrl+V</b> tại bất kỳ dòng nào để dán nhiều dòng copy từ Excel, hoặc bấm <b>"⤢ Mở rộng bảng"</b> để phóng rộng toàn chiều ngang. Đang chọn 1 dòng thì <b>"+ Thêm HM" / "+ Mục lục"</b> sẽ chèn ngay sau dòng đó.
-      </div>
       <div class="hangmuc-table-wrap" id="hangmucScrollSync">
         <table class="tree-table" id="treeTable">
           <thead>
@@ -1065,7 +1062,6 @@ footer.app-footer {
         <h2>
           <span>⚡ Hệ số XD, ME, HT, Kho, BPTC</span>
         </h2>
-        <span style="font-size:10.5px; color:#64748b; font-weight:500;">Đồng bộ dòng với bảng Hạng mục &amp; thẳng hàng cột tháng</span>
       </div>
       <!-- Thanh 5 Tab Hệ số -->
       <div class="heso-tabs-bar" id="hesoTabsBar">
@@ -1087,9 +1083,7 @@ footer.app-footer {
   </div>
 
   <!-- Thanh kéo ngang phân chia giữa (Hạng mục + Hệ số) và (Định mức + Nhân sự) -->
-  <div class="row-resizer-bar" id="rowResizer23" title="Kéo lên / xuống để thay đổi chiều cao khối (Hạng mục + Hệ số) và (Định mức + Nhân sự) — Nhấp đúp để đặt lại">
-    <span>⇅ Kéo lên / xuống điều chỉnh chiều cao bảng</span>
-  </div>
+  <div class="row-resizer-bar" id="rowResizer23" title="Kéo lên / xuống để điều chỉnh chiều cao bảng (Nhấp đúp để đặt lại)"></div>
 
   <!-- =========================================================================
        HÀNG 3: TRÁI (ĐỊNH MỨC: BQLXD, KHO, BPTC) | PHẢI (NHÂN SỰ: BQLXD, KHO, BPTC)
@@ -1167,9 +1161,7 @@ footer.app-footer {
   </div>
 
   <!-- Thanh kéo ngang điều chỉnh chiều cao bảng Định mức + Nhân sự -->
-  <div class="row-resizer-bar" id="rowResizer34" title="Kéo lên / xuống để thay đổi chiều cao bảng Định mức &amp; Nhân sự — Nhấp đúp để đặt lại">
-    <span>⇅ Kéo lên / xuống điều chỉnh chiều cao Định mức &amp; Nhân sự</span>
-  </div>
+  <div class="row-resizer-bar" id="rowResizer34" title="Kéo lên / xuống để điều chỉnh chiều cao bảng (Nhấp đúp để đặt lại)"></div>
 
   <!-- =========================================================================
        HÀNG 4: TRÁI (TRỐNG) | PHẢI (HỆ SỐ NHÂN SỰ - THẲNG CỘT VỚI NHÂN SỰ)
@@ -1225,6 +1217,93 @@ footer.app-footer {
     <div class="modal-actions">
       <button class="btn" id="btnCancelModal">Hủy</button>
       <button class="btn btn-primary" id="btnConfirmAddBql">Tạo BQLXD</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal HƯỚNG DẪN SỬ DỤNG CHI TIẾT -->
+<div class="modal-overlay" id="modalUserGuide">
+  <div class="modal-card" style="width: 880px; max-width: 95vw; max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+    <div style="padding: 14px 20px; background: #1e293b; color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px;">📖 HƯỚNG DẪN SỬ DỤNG HỆ THỐNG ĐỊNH BIÊN NHÂN SỰ</h3>
+      <button class="btn" id="btnCloseGuideTop" style="background: rgba(255,255,255,0.15); color: #fff; border: none; padding: 3px 10px;">✕ Đóng</button>
+    </div>
+    <div style="padding: 18px 22px; overflow-y: auto; font-size: 12.5px; line-height: 1.6; color: #1e293b; display: flex; flex-direction: column; gap: 16px;">
+
+      <!-- MỤC 1 -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; background: #f8fafc;">
+        <h4 style="color: #1d4ed8; margin-bottom: 6px; font-size: 13.5px;">1. Phân cấp Quản lý Tổ chức (Khối XD → BQL Vùng → Dự án / BQLXD)</h4>
+        <ul style="padding-left: 18px; margin: 0;">
+          <li><b>Xem từng Dự án / BQLXD:</b> Ấn vào nút tên dự án ở hàng thứ 3 (ví dụ: <b>BQLXD Đan Phượng</b>, <b>BQLXD ABC</b>) để nhập hạng mục, tiến độ, hệ số và tính toán định biên chi tiết cho dự án đó. Ấn nút <b>"+"</b> để thêm dự án mới.</li>
+          <li><b>Xem Tổng hợp Vùng:</b> Ấn vào nút Vùng ở hàng thứ 2 (ví dụ: <b>BQL DAMB (Miền Bắc)</b>) để xem <b>Biểu đồ phân bổ nhân lực Tổng</b> và <b>Bảng Nhân sự Tổng</b> cộng gộp toàn bộ các dự án trực thuộc vùng theo dòng thời gian.</li>
+          <li><b>Co kéo bố cục màn hình:</b> Kéo thanh phân chia dọc ở giữa để điều chỉnh độ rộng 2 nửa màn hình Trái/Phải; kéo thanh phân chia ngang để tăng/giảm chiều cao các bảng (nhấp đúp vào thanh kéo để khôi phục mặc định).</li>
+        </ul>
+      </div>
+
+      <!-- MỤC 2 -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; background: #ffffff;">
+        <h4 style="color: #1d4ed8; margin-bottom: 6px; font-size: 13.5px;">2. Cách thức Nhập liệu Hạng mục Công trình &amp; Hệ số Tiến độ</h4>
+        <ul style="padding-left: 18px; margin: 0;">
+          <li><b>Nhập trực tiếp như bảng Excel:</b> Click vào bất kỳ ô nào trong bảng <b>Hạng mục công trình</b> để sửa tên, chọn <i>Loại CT (cấp 1)</i>, <i>Loại CT (cấp 2)</i>, <i>Tiêu chuẩn bàn giao</i>, ngày <i>Bắt đầu thi công</i>, <i>Kết thúc thi công</i>, <i>Kết thúc bàn giao</i>, <i>Khối lượng</i> và <i>Đơn vị</i>.</li>
+          <li><b>Copy / Paste từ Excel:</b> Copy vùng dữ liệu từ file Excel rồi nhấn <b>Ctrl + V</b> trực tiếp trên bảng (hoặc bấm nút <b>"📋 Dán Excel"</b>). Hệ thống tự động chèn các dòng mới ngay sau dòng đang chọn.</li>
+          <li><b>Phóng rộng bảng Hạng mục:</b> Bấm nút <b>"⤢ Mở rộng bảng"</b> để mở rộng bảng Hạng mục ra toàn màn hình khi cần nhập/chỉnh sửa nhiều dòng; bấm lại để thu về bố cục 2 cột.</li>
+          <li><b>Phân cấp Mục lục &amp; Kéo thả:</b> Click chọn dòng rồi bấm <b>"+ Thêm HM"</b>, <b>"+ Mục lục"</b>, <b>"‹ Lên cấp"</b>, <b>"› Xuống cấp"</b> hoặc <b>"✕ Xóa dòng"</b>. Giữ biểu tượng <code>⠿</code> ở đầu dòng để kéo thả sắp xếp thứ tự.</li>
+          <li><b>Tách riêng tiến độ M&amp;E (Cấp 4):</b> Các hạng mục <i>Thấp tầng, Cao tầng, Công trình khác, Nhà xưởng</i> tự động sinh thêm 2 dòng in nghiêng cấp 4 (<i>GĐ bê tông cốt thép</i> và <i>GĐ hoàn thiện</i>) để tùy chỉnh riêng tiến độ/khối lượng M&amp;E nếu cần.</li>
+          <li><b>Bảng Hệ số XD, ME, HT, Kho, BPTC (bên phải):</b> Tự động tính tỷ lệ hoạt động từng tháng (0%–100%) theo ngày bắt đầu/kết thúc/bàn giao. Người dùng có thể click vào bất kỳ ô tháng nào, gõ số (ví dụ <code>50</code> rồi nhấn Enter để đặt <code>50%</code>) nhằm điều chỉnh hệ số tiến độ.</li>
+        </ul>
+      </div>
+
+      <!-- MỤC 3 -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; background: #f8fafc;">
+        <h4 style="color: #1d4ed8; margin-bottom: 6px; font-size: 13.5px;">3. Phương pháp Tính toán &amp; Bảng Định mức Chuẩn (BQLXD, KHO, BPTC)</h4>
+        <ul style="padding-left: 18px; margin: 0;">
+          <li><b>4 Chế độ xem Bảng Định mức:</b>
+            <ul style="padding-left: 18px; margin-top: 4px;">
+              <li><b>Đồng bộ (Đủ 3 khối):</b> Khớp 1–1 từng dòng với bảng Nhân sự bên phải (cuộn dọc đồng bộ).</li>
+              <li><b>Sheet ĐM BQL / Sheet ĐM KHO / Sheet ĐM BPTC:</b> Hiển thị nguyên bản cấu trúc 3 bảng Phụ lục Định mức trong file Excel chuẩn.</li>
+            </ul>
+          </li>
+          <li><b>Công thức tính Cán bộ / Chuyên viên theo khối lượng:</b>
+            <br><code>Nhân sự tháng = Σ [ (Khối lượng hạng mục ÷ Định mức áp dụng) × Hệ số tiến độ tháng ] × Hệ số điều chỉnh nhân sự</code>
+          </li>
+          <li><b>Hệ số loại hình &amp; Biệt thự:</b>
+            <ul style="padding-left: 18px; margin-top: 4px;">
+              <li><b>Khối BQLXD &amp; Khối Kho:</b> Biệt thự tính định mức bằng <b>Liền kề × 0,8</b>; Nhân viên GSKT (T7) tính theo tỷ lệ <b>90% CBGS (T6) + 10% × 1,5 NVGS (T7)</b>.</li>
+              <li><b>Bộ phận Thi công (BPTC):</b> Hệ số tiêu chuẩn bàn giao (Xây thô = <code>1,0</code>; Full NT ≥3T = <code>0,7</code>; HTNT 2T = <code>0,75</code>; HTNT 1T = <code>0,8</code>); Biệt thự đơn lập <code>× 0,65</code>, Song lập <code>× 0,75</code>, Tứ lập <code>× 0,85</code>.</li>
+            </ul>
+          </li>
+          <li><b>Định mức Tầm quản lý (Dùng chung toàn dự án):</b>
+            <ul style="padding-left: 18px; margin-top: 4px;">
+              <li>Áp dụng chung trên tổng nhân sự cấp dưới của toàn dự án (không chia lẻ theo loại hình công trình). Người dùng có thể sửa trực tiếp ô <b>Min / Max / Dùng để tính</b> trên bảng Định mức.</li>
+              <li><b>Quy tắc Trợ lý GĐ BQLXD (T5):</b> Nếu dự án có <b>1 Giám đốc BQLXD Cấp 2 (T3)</b> thì hệ thống tự động bố trí <b>1 Trợ lý GĐ BQLXD (T5)</b> tương ứng.</li>
+            </ul>
+          </li>
+          <li><b>Bảng Hệ số nhân sự (Hàng 4 bên phải):</b> Cho phép vi chỉnh tỷ lệ % nhân sự của từng chức danh ở từng tháng cụ thể.</li>
+        </ul>
+      </div>
+
+      <!-- MỤC 4 -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; background: #ffffff;">
+        <h4 style="color: #1d4ed8; margin-bottom: 6px; font-size: 13.5px;">4. Dữ liệu Xuất ra File Excel Chuẩn (11 Sheet)</h4>
+        <p style="margin: 0 0 6px 0;">Khi bấm nút <b>"Xuất Excel Chuẩn (11 Sheet)"</b> ở góc trên bên phải, phần mềm xuất ra file <code>.xlsx</code> đầy đủ định dạng gồm đúng 11 Sheet theo mẫu báo cáo chuẩn:</p>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 16px; font-size: 12px;">
+          <div><b>1. Tổng hợp:</b> Bảng tổng hợp nhân sự toàn dự án theo tháng.</div>
+          <div><b>2. Diễn giải:</b> Thuyết minh quy mô và thông số dự án.</div>
+          <div><b>3. Tính toán theo tiến độ:</b> Chi tiết định biên 3 khối theo tháng.</div>
+          <div><b>4. Hệ số CB:</b> Ma trận hệ số điều chỉnh cán bộ theo chức danh.</div>
+          <div><b>5. Ctr.Hm của DA:</b> Danh mục công trình, hạng mục, KL &amp; tiến độ.</div>
+          <div><b>6. Phân loại Ctr.Hm:</b> Bảng danh mục chuẩn phân loại công trình.</div>
+          <div><b>7. Phân loại Chức danh:</b> Hệ thống cấp bậc (T2–T8) &amp; chức danh.</div>
+          <div><b>8. Định mức:</b> Bảng tổng hợp định mức áp dụng cho dự án.</div>
+          <div><b>9. ĐM BQLXD:</b> Phụ lục chuẩn Định mức lao động các BQLXD.</div>
+          <div><b>10. ĐM KHO:</b> Phụ lục chuẩn Định mức lao động mảng Kho dự án.</div>
+          <div><b>11. ĐM BPTC:</b> Phụ lục chuẩn Định mức Bộ phận Thi công.</div>
+        </div>
+      </div>
+
+    </div>
+    <div style="padding: 10px 20px; background: #f1f5f9; border-top: 1px solid #cbd5e1; display: flex; justify-content: flex-end;">
+      <button class="btn btn-primary" id="btnCloseGuideBottom">Đã hiểu &amp; Đóng hướng dẫn</button>
     </div>
   </div>
 </div>
@@ -1941,8 +2020,8 @@ function renderTreeTable() {
     <td style="text-align:center;">★</td>
     <td style="text-align:center;">0</td>
     <td></td>
-    <td colspan="9" style="font-weight:700; color:#92400e;">
-      TỔNG HỢP TIẾN ĐỘ DỰ ÁN (${totalItemsCount} hạng mục thi công) — Đồng bộ dòng với bảng Hệ số bên phải
+    <td colspan="9" style="font-weight:700; color:#92400e; padding-left:6px;">
+      TỔNG HỢP TIẾN ĐỘ DỰ ÁN (${totalItemsCount} hạng mục thi công)
     </td>
   `;
   tbody.appendChild(trSummary);
@@ -2408,27 +2487,21 @@ function renderChart(res) {
   tbody.innerHTML = `
     <tr>
       <td class="chart-freeze-axis">
-        <div style="display:flex; flex-direction:column; justify-content:space-between; height:102px;">
-          <div>
-            <div style="font-weight:700; color:#0f172a; font-size:11.5px; margin-bottom:5px;">
-              ${isAgg ? `Phân bổ nhân lực Tổng (${res.projectCount} dự án)` : `Phân bổ nhân lực dự án`} — Đỉnh: <span style="color:#7e22ce;">${maxVal} người</span>
-            </div>
-            <div style="display:flex; flex-wrap:wrap; gap:10px; font-size:11px; color:#334155;">
-              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#2563eb; display:inline-block; border-radius:2px;"></i><b style="color:#1d4ed8;">BQLXD</b></span>
-              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#d97706; display:inline-block; border-radius:2px;"></i><b style="color:#b45309;">Kho</b></span>
-              <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#059669; display:inline-block; border-radius:2px;"></i><b style="color:#047857;">BPTC</b></span>
-            </div>
+        <div style="display:flex; flex-direction:column; justify-content:center; height:102px;">
+          <div style="font-weight:700; color:#0f172a; font-size:11.5px; margin-bottom:8px;">
+            ${isAgg ? `Phân bổ nhân lực Tổng (${res.projectCount} dự án)` : `Phân bổ nhân lực dự án`} — Đỉnh: <span style="color:#7e22ce;">${maxVal} người</span>
           </div>
-          <div style="font-size:10px; color:#64748b; display:flex; justify-content:space-between; border-top:1px dashed #e2e8f0; padding-top:4px;">
-            <span>Số đỉnh trên cột = Tổng nhân sự</span>
-            <span>Dưới cột: Tổng + 3 bộ phận ↓</span>
+          <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:11px; color:#334155;">
+            <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#2563eb; display:inline-block; border-radius:2px;"></i><b style="color:#1d4ed8;">BQLXD</b></span>
+            <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#d97706; display:inline-block; border-radius:2px;"></i><b style="color:#b45309;">Kho</b></span>
+            <span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:11px; height:11px; background:#059669; display:inline-block; border-radius:2px;"></i><b style="color:#047857;">BPTC</b></span>
           </div>
         </div>
       </td>
       ${barsCells}
     </tr>
     <tr class="chart-month-row">
-      <td class="chart-freeze-axis" style="font-weight:700;">THÁNG THI CÔNG →</td>
+      <td class="chart-freeze-axis" style="font-weight:700;">THÁNG</td>
       ${monthCells}
     </tr>
     <tr class="chart-stat-row">
@@ -3502,6 +3575,24 @@ document.querySelectorAll('#rowVung [data-vung]').forEach(btn => {
 document.getElementById('btnCancelModal').addEventListener('click', () => {
   document.getElementById('modalAddBql').classList.remove('open');
 });
+
+// Mở / Đóng Modal Hướng dẫn sử dụng
+const modalUserGuide = document.getElementById('modalUserGuide');
+const btnUserGuide = document.getElementById('btnUserGuide');
+if(btnUserGuide && modalUserGuide) {
+  btnUserGuide.addEventListener('click', () => modalUserGuide.classList.add('open'));
+}
+['btnCloseGuideTop', 'btnCloseGuideBottom'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el && modalUserGuide) {
+    el.addEventListener('click', () => modalUserGuide.classList.remove('open'));
+  }
+});
+if(modalUserGuide) {
+  modalUserGuide.addEventListener('click', (e) => {
+    if(e.target === modalUserGuide) modalUserGuide.classList.remove('open');
+  });
+}
 
 document.getElementById('btnConfirmAddBql').addEventListener('click', () => {
   const name = document.getElementById('newBqlName').value.trim();
