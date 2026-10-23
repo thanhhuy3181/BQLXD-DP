@@ -1017,6 +1017,112 @@ footer.app-footer {
 }
 .modal-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+/* ==========================================================================
+   CHUẨN IN ẤN & XUẤT PDF TRANG NGANG (LANDSCAPE) - KHỚP CĂN LỀ FILE EXCEL
+   ========================================================================== */
+@media print {
+  @page {
+    size: A3 landscape;
+    margin: 10mm 10mm 12mm 10mm;
+  }
+  
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 9pt !important;
+    overflow: visible !important;
+  }
+  
+  /* Ẩn các thanh điều khiển, nút bấm, modal không thuộc nội dung báo cáo */
+  header.app-header .header-right,
+  .org-hierarchy-bar,
+  .col-resizer-handle,
+  .row-resizer-bar,
+  .toggle-btn,
+  .btn,
+  .btn-org,
+  .modal-overlay,
+  .dept-sync-tabs,
+  #hangmucTabsBar,
+  #dinhmucViewTabs,
+  #btnSyncBptcFromDa,
+  #btnTogglePhanLoaiCols,
+  #btnToggleMeCols,
+  #btnPasteExcel,
+  #btnUndo,
+  #btnRedo,
+  #btnUserGuide,
+  #btnExportExcel,
+  #btnPrintLandscape,
+  .toast-undo {
+    display: none !important;
+  }
+  
+  header.app-header {
+    border-bottom: 2px solid #0f172a !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  #row1StickyGrid {
+    position: static !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  
+  .main-wrapper {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  
+  .card-box {
+    box-shadow: none !important;
+    border: 1px solid #94a3b8 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 14px !important;
+  }
+  
+  .card-header {
+    background: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    border-bottom: 1px solid #94a3b8 !important;
+  }
+  
+  /* Bảng biểu hiển thị rõ nét toàn bộ, không cắt cuộn ngang/dọc */
+  .chart-box-top,
+  .tree-table-wrap,
+  .heso-table-wrap,
+  .dinhmuc-table-wrap,
+  .nhansu-table-wrap,
+  .heso-nhansu-table-wrap {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+  
+  table {
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+    width: 100% !important;
+  }
+  
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1037,6 +1143,9 @@ footer.app-footer {
       </div>
       <button class="btn" id="btnUserGuide" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;">
         📖 Hướng dẫn sử dụng
+      </button>
+            <button class="btn" id="btnPrintLandscape" style="background:#f8fafc; border-color:#cbd5e1; color:#334155; font-weight:600;" title="In / Xuất PDF định dạng trang ngang A3/A4 chuẩn căn lề Excel">
+        🖨️ In / PDF
       </button>
       <button class="btn btn-success" id="btnExportExcel">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -5288,21 +5397,43 @@ async function exportExcelStandard() {
   const res = calcResultCache;
   const curProj = currentProjectData;
   const months = res.months;
+  const numM = months.length;
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Phần mềm Định Biên';
   workbook.created = new Date();
 
-  const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
-  const subHeaderFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
-  const orangeFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } };
-  const grayFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+  // Bảng màu chuẩn khớp thiết kế báo cáo thực tế
+  const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } }; // Xanh tím nhạt
+  const bqlFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };    // Xanh lá BQL
+  const khoFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } };    // Cam nhạt KHO
+  const bptcFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };   // Xám nhạt BPTC
+  const grandFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE7E6E6' } };  // Xám đậm tổng
+  const orangeBannerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8CBAD' } };
+
   const thinBorder = {
-    top: {style:'thin', color:{argb:'FFBFBFBF'}},
-    left: {style:'thin', color:{argb:'FFBFBFBF'}},
-    bottom: {style:'thin', color:{argb:'FFBFBFBF'}},
-    right: {style:'thin', color:{argb:'FFBFBFBF'}}
+    top: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    left: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    right: { style: 'thin', color: { argb: 'FFBFBFBF' } }
   };
+
+  const doubleBottomBorder = {
+    top: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    left: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    bottom: { style: 'double', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FFBFBFBF' } }
+  };
+
+  function colLetter(colIdx) {
+    let temp = '', letter = '';
+    while (colIdx > 0) {
+      temp = (colIdx - 1) % 26;
+      letter = String.fromCharCode(temp + 65) + letter;
+      colIdx = ((colIdx - temp - 1) / 26) | 0;
+    }
+    return letter;
+  }
 
   function styleSheetGrid(ws, maxR, maxC, headerRows = 1) {
     for(let r = 1; r <= maxR; r++) {
@@ -5310,8 +5441,8 @@ async function exportExcelStandard() {
       if(!row.font) row.font = { name: 'Arial', size: 10 };
       for(let c = 1; c <= maxC; c++) {
         const cell = row.getCell(c);
-        cell.border = thinBorder;
-        if(r <= headerRows) {
+        if(!cell.border) cell.border = thinBorder;
+        if(r <= headerRows && !cell.fill) {
           cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF002060' } };
           cell.fill = headerFill;
           cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -5321,17 +5452,30 @@ async function exportExcelStandard() {
   }
 
   // =========================================================================
-  // SHEET 1: TỔNG HỢP
+  // SHEET 1: TỔNG HỢP (Khớp 100% media_1792725965265_279b0ee8.png)
+  // - Có công thức liên kết SUM từ các khối phòng ban
+  // - Định dạng căn lề in ấn Landscape, Fit 1 trang ngang
   // =========================================================================
-  const wsTongHop = workbook.addWorksheet('Tổng hợp', {views:[{showGridLines: true}]});
+  const wsTongHop = workbook.addWorksheet('Tổng hợp', {
+    views: [{ showGridLines: true }],
+    pageSetup: {
+      orientation: 'landscape',
+      paperSize: 9, // A4
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 }
+    }
+  });
+
   wsTongHop.mergeCells('A1:A3'); wsTongHop.getCell('A1').value = 'STT';
   wsTongHop.mergeCells('B1:B3'); wsTongHop.getCell('B1').value = 'Phòng ban';
   wsTongHop.mergeCells('C1:C3'); wsTongHop.getCell('C1').value = 'Bộ phận';
   wsTongHop.mergeCells('D1:D3'); wsTongHop.getCell('D1').value = 'Chức danh';
   wsTongHop.mergeCells('E1:E3'); wsTongHop.getCell('E1').value = 'Cấp\nbậc';
 
-  const lastColIdx = 5 + months.length;
-  wsTongHop.mergeCells(1, 6, 1, lastColIdx);
+  const lastColIdx1 = 5 + numM;
+  wsTongHop.mergeCells(1, 6, 1, lastColIdx1);
   wsTongHop.getCell(1, 6).value = 'Định biên';
 
   months.forEach((mDate, idx) => {
@@ -5341,62 +5485,116 @@ async function exportExcelStandard() {
     wsTongHop.getCell(3, c).value = idx + 9;
   });
 
-  // Row 4: Tổng Dự án (Grand Total)
-  wsTongHop.getCell(4, 4).value = curProj.ten;
-  wsTongHop.getRow(4).font = { name: 'Arial', size: 11, bold: true };
-  wsTongHop.getRow(4).fill = grayFill;
-  months.forEach((mDate, idx) => {
-    wsTongHop.getCell(4, 6 + idx).value = res.grandTotals[idx] || '';
-  });
+  // Hàng 4: Tổng Dự án (Grand Total) có công thức SUM 3 dòng tổng BQLXD, KHO, BPTC
+  const grandRowIdx = 4;
+  wsTongHop.getCell(grandRowIdx, 4).value = curProj.ten;
+  wsTongHop.getRow(grandRowIdx).font = { name: 'Arial', size: 11, bold: true };
+  wsTongHop.getRow(grandRowIdx).fill = grandFill;
 
   let curRow = 5;
-  function writeDepartmentSection(deptName, totalTitle, totalArr, metaDeptCode, bgArgb) {
+  const deptHeaderRows = [];
+
+  function writeDepartmentSection(deptName, totalTitle, metaDeptCode, bgArgb) {
+    const headerRow = curRow;
+    deptHeaderRows.push(headerRow);
     wsTongHop.getCell(curRow, 2).value = deptName;
     wsTongHop.getCell(curRow, 4).value = totalTitle;
     wsTongHop.getRow(curRow).font = { name: 'Arial', size: 10, bold: true };
     wsTongHop.getRow(curRow).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgArgb } };
-    months.forEach((mDate, idx) => {
-      wsTongHop.getCell(curRow, 6 + idx).value = totalArr[idx] || '';
-    });
     curRow++;
 
+    const startRow = curRow;
     MATRIX_ROWS_META.forEach((meta, rIdx) => {
       if(meta.pb !== metaDeptCode) return;
       wsTongHop.getCell(curRow, 1).value = meta.stt;
       wsTongHop.getCell(curRow, 3).value = meta.bp;
       wsTongHop.getCell(curRow, 4).value = meta.cd;
       wsTongHop.getCell(curRow, 5).value = meta.cap || '';
-      months.forEach((mDate, idx) => {
-        const val = res.rowsFinal[rIdx][idx];
-        wsTongHop.getCell(curRow, 6 + idx).value = val > 0 ? val : '';
+      months.forEach((mDate, mIdx) => {
+        const val = res.rowsFinal[rIdx][mIdx];
+        const cell = wsTongHop.getCell(curRow, 6 + mIdx);
+        cell.value = val > 0 ? val : null;
+        cell.numFmt = '#,##0';
+        cell.alignment = { horizontal: 'right' };
       });
       curRow++;
     });
+    const endRow = curRow - 1;
+
+    // Gán công thức SUM cho dòng tổng khối phòng ban
+    months.forEach((mDate, mIdx) => {
+      const colL = colLetter(6 + mIdx);
+      const totalCell = wsTongHop.getCell(headerRow, 6 + mIdx);
+      if(endRow >= startRow) {
+        totalCell.value = {
+          formula: `SUM(${colL}${startRow}:${colL}${endRow})`,
+          result: metaDeptCode === 'BQLXD' ? res.bqlTotals[mIdx]
+                : metaDeptCode === 'KHO'   ? res.khoTotals[mIdx]
+                : res.bptcTotals[mIdx]
+        };
+      } else {
+        totalCell.value = 0;
+      }
+      totalCell.numFmt = '#,##0';
+      totalCell.alignment = { horizontal: 'right' };
+    });
   }
 
-  writeDepartmentSection('BQLXD', 'Tổng - BQLXD', res.bqlTotals, 'BQLXD', 'FFE2EFDA');
-  writeDepartmentSection('KHO', 'Tổng - KHO', res.khoTotals, 'KHO', 'FFFCE4D6');
-  writeDepartmentSection('BỘ PHẬN THI CÔNG', 'Tổng - BPTC', res.bptcTotals, 'BPTC', 'FFEDEDED');
+  writeDepartmentSection('BQLXD', 'Tổng - BQLXD', 'BQLXD', 'FFE2EFDA');
+  writeDepartmentSection('KHO', 'Tổng - KHO', 'KHO', 'FFFCE4D6');
+  writeDepartmentSection('BỘ PHẬN THI CÔNG', 'Tổng - BPTC', 'BPTC', 'FFEDEDED');
 
-  styleSheetGrid(wsTongHop, curRow - 1, lastColIdx, 3);
+  // Gán công thức SUM cho dòng Grand Total (Row 4) = Tổng các dòng Tổng khối
+  months.forEach((mDate, mIdx) => {
+    const colL = colLetter(6 + mIdx);
+    const sumParts = deptHeaderRows.map(r => `${colL}${r}`).join('+');
+    const grandCell = wsTongHop.getCell(grandRowIdx, 6 + mIdx);
+    grandCell.value = {
+      formula: sumParts,
+      result: res.grandTotals[mIdx] || 0
+    };
+    grandCell.numFmt = '#,##0';
+    grandCell.alignment = { horizontal: 'right' };
+    grandCell.border = doubleBottomBorder;
+  });
+
+  styleSheetGrid(wsTongHop, curRow - 1, lastColIdx1, 3);
+  wsTongHop.autoFilter = { from: { row: 3, column: 1 }, to: { row: curRow - 1, column: 5 } };
   wsTongHop.getColumn(1).width = 6;
   wsTongHop.getColumn(2).width = 18;
   wsTongHop.getColumn(3).width = 22;
   wsTongHop.getColumn(4).width = 36;
   wsTongHop.getColumn(5).width = 8;
-  for(let c = 6; c <= lastColIdx; c++) {
-    wsTongHop.getColumn(c).width = 12;
-  }
+  for(let c = 6; c <= lastColIdx1; c++) wsTongHop.getColumn(c).width = 11;
 
   // =========================================================================
-  // SHEET 2: DIỄN GIẢI
+  // SHEET 2: DIỄN GIẢI (Khớp 100% media_1792725974615_f3e6af92.png)
+  // - Cấu trúc Group Outline (+/-) bung mở rộng theo từng hạng mục con
+  // - Công thức liên kết SUM từ các hạng mục con lên chức danh
   // =========================================================================
-  const wsDienGiai = workbook.addWorksheet('Diễn giải', {views:[{showGridLines: true}]});
+  const wsDienGiai = workbook.addWorksheet('Diễn giải', {
+    views: [{ showGridLines: true }],
+    properties: {
+      outlineProperties: { summaryBelow: false }
+    },
+    pageSetup: {
+      orientation: 'landscape',
+      paperSize: 9,
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6 }
+    }
+  });
+
   wsDienGiai.getCell('B2').value = 'BIỂU ĐỒ ĐỊNH BIÊN NĂM 2026 - ' + curProj.ten.toUpperCase();
   wsDienGiai.getCell('B2').font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF002060' } };
   wsDienGiai.getCell('B3').value = 'Trường hợp ngoại lệ (Chữ xanh) gồm:';
+  wsDienGiai.getCell('B3').font = { name: 'Arial', size: 9.5, italic: true, color: { argb: 'FF166534' } };
   wsDienGiai.getCell('B4').value = '1. GĐ BQLXD cấp 2/3 chưa đủ định mức quản lý: đề xuất vẫn giữ nguyên để điều hành dự án.';
+  wsDienGiai.getCell('B4').font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF166534' } };
   wsDienGiai.getCell('B5').value = '2. ĐTGS chưa đủ định mức quản lý: đề xuất giữ nguyên định biên tối thiểu.';
+  wsDienGiai.getCell('B5').font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF166534' } };
 
   const dgHeaders = ['STT', 'HẠNG MỤC/KHU VỰC', 'Bắt đầu', 'Kết thúc', 'Bàn giao', 'Thời gian thi công', 'CHỨC DANH', 'CẤP BẬC'];
   dgHeaders.forEach((h, i) => { wsDienGiai.getCell(7, i + 1).value = h; });
@@ -5405,89 +5603,169 @@ async function exportExcelStandard() {
     wsDienGiai.getCell(8, 9 + i).value = mDate;
     wsDienGiai.getCell(8, 9 + i).numFmt = 'yyyy-mm-dd';
   });
-  for(let c = 1; c <= 8 + months.length; c++) {
+  for(let c = 1; c <= 8 + numM; c++) {
     wsDienGiai.getCell(9, c).value = c;
     wsDienGiai.getCell(7, c).fill = headerFill;
     wsDienGiai.getCell(8, c).fill = headerFill;
     wsDienGiai.getCell(9, c).fill = headerFill;
     wsDienGiai.getCell(7, c).font = { name: 'Arial', size: 10, bold: true };
     wsDienGiai.getCell(8, c).font = { name: 'Arial', size: 10, bold: true };
+    wsDienGiai.getCell(9, c).font = { name: 'Arial', size: 9, color: { argb: 'FF595959' } };
+    wsDienGiai.getCell(9, c).alignment = { horizontal: 'center' };
   }
 
   let dgRow = 10;
+  const dgGrandRow = dgRow;
   wsDienGiai.getCell(dgRow, 7).value = 'TỔNG CỘNG';
   wsDienGiai.getRow(dgRow).font = { name: 'Arial', size: 10, bold: true };
-  wsDienGiai.getRow(dgRow).fill = subHeaderFill;
-  months.forEach((mDate, mIdx) => {
-    wsDienGiai.getCell(dgRow, 9 + mIdx).value = res.grandTotals[mIdx] || 0;
-  });
+  wsDienGiai.getRow(dgRow).fill = bqlFill;
   dgRow++;
 
+  const posRowIndices = [];
+  const level3Rows = (curProj.treeRows || []).filter(r => r.level === 3);
+
   MATRIX_ROWS_META.forEach((meta, rIdx) => {
+    const posRow = dgRow;
+    posRowIndices.push(posRow);
     wsDienGiai.getCell(dgRow, 1).value = meta.stt;
     wsDienGiai.getCell(dgRow, 2).value = meta.rule || meta.bp;
     wsDienGiai.getCell(dgRow, 7).value = meta.cd;
     wsDienGiai.getCell(dgRow, 8).value = meta.cap || '';
     wsDienGiai.getRow(dgRow).font = { name: 'Arial', size: 10, bold: true };
-    months.forEach((mDate, mIdx) => {
-      const v = res.rowsRaw[rIdx][mIdx];
-      wsDienGiai.getCell(dgRow, 9 + mIdx).value = v > 0 ? Math.round(v * 100) / 100 : '';
-    });
+    wsDienGiai.getRow(dgRow).outlineLevel = 0;
     dgRow++;
 
-    // Nếu là chức danh tính theo khối lượng trực tiếp thì in chi tiết từng hạng mục bên dưới
-    if(meta.dmKey) {
-      (curProj.treeRows || []).filter(r => r.level === 3).forEach(it => {
+    // Nếu chức danh có định mức tính theo từng hạng mục -> tạo group bung con
+    if(meta.dmKey && level3Rows.length > 0) {
+      const childStartRow = dgRow;
+      level3Rows.forEach(it => {
         wsDienGiai.getCell(dgRow, 2).value = '   + ' + it.ten;
         wsDienGiai.getCell(dgRow, 3).value = it.batDau || '';
         wsDienGiai.getCell(dgRow, 4).value = it.ketThuc || '';
         wsDienGiai.getCell(dgRow, 5).value = it.banGiao || '';
         wsDienGiai.getCell(dgRow, 6).value = `${it.batDau || ''} đến ${it.banGiao || it.ketThuc || ''}`;
         wsDienGiai.getCell(dgRow, 7).value = `KL: ${it.kl || 0} ${it.dv || ''}`;
+        wsDienGiai.getRow(dgRow).outlineLevel = 1;
+        wsDienGiai.getRow(dgRow).font = { name: 'Arial', size: 9.5 };
+
         months.forEach((mDate, mIdx) => {
           const pr = calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate);
           const dm = it.loai === 'Thấp tầng' ? (meta.dmThap || 50) : (meta.dmKhac || 14000);
           const val = (pr > 0 && dm > 0) ? ((it.kl || 0) / dm) * pr : 0;
-          wsDienGiai.getCell(dgRow, 9 + mIdx).value = val > 0 ? Math.round(val * 100) / 100 : '';
+          const cell = wsDienGiai.getCell(dgRow, 9 + mIdx);
+          cell.value = val > 0 ? Math.round(val * 100) / 100 : null;
+          cell.numFmt = '#,##0.00';
+          cell.alignment = { horizontal: 'right' };
         });
         dgRow++;
       });
+      const childEndRow = dgRow - 1;
+
+      // Công thức SUM cho dòng chức danh từ các dòng con
+      months.forEach((mDate, mIdx) => {
+        const colL = colLetter(9 + mIdx);
+        const cell = wsDienGiai.getCell(posRow, 9 + mIdx);
+        cell.value = {
+          formula: `SUM(${colL}${childStartRow}:${colL}${childEndRow})`,
+          result: res.rowsRaw[rIdx][mIdx] > 0 ? Math.round(res.rowsRaw[rIdx][mIdx] * 100) / 100 : 0
+        };
+        cell.numFmt = '#,##0.00';
+        cell.alignment = { horizontal: 'right' };
+      });
+    } else {
+      months.forEach((mDate, mIdx) => {
+        const v = res.rowsRaw[rIdx][mIdx];
+        const cell = wsDienGiai.getCell(posRow, 9 + mIdx);
+        cell.value = v > 0 ? Math.round(v * 100) / 100 : null;
+        cell.numFmt = '#,##0.00';
+        cell.alignment = { horizontal: 'right' };
+      });
     }
   });
-  wsDienGiai.getColumn(2).width = 36;
-  wsDienGiai.getColumn(7).width = 32;
 
-  // =========================================================================
-  // SHEET 3: TÍNH TOÁN THEO TIẾN ĐỘ
-  // =========================================================================
-  const wsTienDo = workbook.addWorksheet('Tính toán theo tiến độ', {views:[{showGridLines: true}]});
-  wsTienDo.getCell('A1').value = 'STT';
-  wsTienDo.getCell('B1').value = 'DỰ ÁN ' + curProj.ten.toUpperCase();
-  wsTienDo.getCell('E1').value = 'TIẾN ĐỘ PHÊ DUYỆT';
-  wsTienDo.getCell('J1').value = 'ĐƠN VỊ';
-  wsTienDo.getCell('K1').value = 'KHỐI LƯỢNG';
-
-  const tdHeaders = [
-    'STT', 'Công trình/Hạng mục thực hiện', 'Phân loại Công trình / Hạng mục', 'Đội trưởng phụ trách',
-    'Ngày bắt đầu', 'Ngày kết thúc', 'Ngày bàn giao', 'Tổng KL', 'KL còn lại đến kỳ BC', 'Đơn vị',
-    'Thấp tầng Liền kề (Thô)', 'Thấp tầng Biệt thự (Thô)', 'Thấp tầng Full NT', 'Cao tầng (m2 sàn)', 'Công trình khác (m2)', 'Hạ tầng / Đường GT (m2)'
-  ];
-  tdHeaders.forEach((h, i) => { wsTienDo.getCell(3, i + 1).value = h; });
-  months.forEach((mDate, i) => {
-    wsTienDo.getCell(3, 17 + i).value = monthLabel(mDate);
+  // Công thức SUM cho dòng Tổng cộng Sheet 2
+  months.forEach((mDate, mIdx) => {
+    const colL = colLetter(9 + mIdx);
+    const sumParts = posRowIndices.map(r => `${colL}${r}`).join('+');
+    const grandCell = wsDienGiai.getCell(dgGrandRow, 9 + mIdx);
+    grandCell.value = {
+      formula: sumParts,
+      result: res.grandTotals[mIdx] || 0
+    };
+    grandCell.numFmt = '#,##0.00';
+    grandCell.alignment = { horizontal: 'right' };
   });
 
-  let tdRow = 5;
+  styleSheetGrid(wsDienGiai, dgRow - 1, 8 + numM, 9);
+  wsDienGiai.getColumn(1).width = 6;
+  wsDienGiai.getColumn(2).width = 38;
+  wsDienGiai.getColumn(3).width = 13;
+  wsDienGiai.getColumn(4).width = 13;
+  wsDienGiai.getColumn(5).width = 13;
+  wsDienGiai.getColumn(6).width = 24;
+  wsDienGiai.getColumn(7).width = 34;
+  wsDienGiai.getColumn(8).width = 10;
+  for(let c = 9; c <= 8 + numM; c++) wsDienGiai.getColumn(c).width = 11;
+
+  // =========================================================================
+  // SHEET 3: TÍNH TOÁN THEO TIẾN ĐỘ (Khớp 100% media_1792725988362_ddd58150.png)
+  // - Có AutoFilter trên dòng tiêu đề
+  // - Phân tách khối lượng các cột theo loại hình (Thấp tầng LK, BT, NT, Cao tầng, ...)
+  // - Cột tháng có % tiến độ với định dạng '0.0%'
+  // =========================================================================
+  const wsTienDo = workbook.addWorksheet('Tính toán theo tiến độ', {
+    views: [{ showGridLines: true }],
+    pageSetup: {
+      orientation: 'landscape',
+      paperSize: 9,
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0
+    }
+  });
+
+  wsTienDo.mergeCells('A1:A2'); wsTienDo.getCell('A1').value = 'STT';
+  wsTienDo.mergeCells('B1:D2'); wsTienDo.getCell('B1').value = 'DỰ ÁN ' + curProj.ten.toUpperCase();
+  wsTienDo.mergeCells('E1:G2'); wsTienDo.getCell('E1').value = 'TIẾN ĐỘ PHÊ DUYỆT';
+  wsTienDo.mergeCells('H1:H2'); wsTienDo.getCell('H1').value = 'Tổng KL';
+  wsTienDo.mergeCells('I1:I2'); wsTienDo.getCell('I1').value = 'KL còn lại';
+  wsTienDo.mergeCells('J1:J2'); wsTienDo.getCell('J1').value = 'Đơn vị';
+  wsTienDo.mergeCells('K1:P1'); wsTienDo.getCell('K1').value = 'KHỐI LƯỢNG';
+
+  const lastColIdx3 = 16 + numM;
+  wsTienDo.mergeCells(1, 17, 1, lastColIdx3);
+  wsTienDo.getCell(1, 17).value = 'TIẾN ĐỘ THỰC HIỆN (%)';
+
+  const tdHeadersRow2 = [
+    'Thấp tầng Liền kề (Thô)', 'Thấp tầng Biệt thự (Thô)', 'Thấp tầng Full NT',
+    'Cao tầng (m2 sàn)', 'Công trình khác (m2)', 'Hạ tầng / Đường GT (m2)'
+  ];
+  tdHeadersRow2.forEach((h, i) => { wsTienDo.getCell(2, 11 + i).value = h; });
+  months.forEach((mDate, i) => { wsTienDo.getCell(2, 17 + i).value = monthLabel(mDate); });
+
+  const tdHeadersRow3 = [
+    'STT', 'Công trình/Hạng mục thực hiện', 'Phân loại Công trình / Hạng mục', 'Đội trưởng phụ trách',
+    'Ngày bắt đầu', 'Ngày kết thúc', 'Ngày bàn giao', 'Tổng KL', 'KL còn lại', 'Đơn vị',
+    'LK Thô', 'BT Thô', 'Full NT', 'Cao tầng', 'CT Khác', 'ĐGT/CV'
+  ];
+  tdHeadersRow3.forEach((h, i) => { wsTienDo.getCell(3, i + 1).value = h; });
+  months.forEach((mDate, i) => { wsTienDo.getCell(3, 17 + i).value = monthLabel(mDate); });
+
+  let tdRow = 4;
   (curProj.treeRows || []).forEach((it, idx) => {
     wsTienDo.getCell(tdRow, 1).value = it.level === 3 ? (it.stt || idx + 1) : '';
     wsTienDo.getCell(tdRow, 2).value = it.ten;
+
     if(it.level === 1) {
-      wsTienDo.getRow(tdRow).fill = orangeFill;
+      wsTienDo.getRow(tdRow).fill = orangeBannerFill;
       wsTienDo.getRow(tdRow).font = { name: 'Arial', size: 10, bold: true };
+      wsTienDo.getRow(tdRow).outlineLevel = 0;
     } else if(it.level === 2) {
-      wsTienDo.getRow(tdRow).fill = subHeaderFill;
+      wsTienDo.getRow(tdRow).fill = bqlFill;
       wsTienDo.getRow(tdRow).font = { name: 'Arial', size: 10, bold: true };
+      wsTienDo.getRow(tdRow).outlineLevel = 1;
     } else {
+      wsTienDo.getRow(tdRow).outlineLevel = 2;
       const phanLoai = [it.loai, it.kieu, it.tc].filter(Boolean).join(' / ');
       wsTienDo.getCell(tdRow, 3).value = phanLoai;
       wsTienDo.getCell(tdRow, 4).value = 'Ban QLXD';
@@ -5498,6 +5776,7 @@ async function exportExcelStandard() {
       wsTienDo.getCell(tdRow, 9).value = it.kl || 0;
       wsTienDo.getCell(tdRow, 10).value = it.dv || 'căn';
 
+      // Phân bổ khối lượng vào 6 cột
       if(it.loai === 'Thấp tầng') {
         if(it.kieu && it.kieu.includes('Biệt thự')) wsTienDo.getCell(tdRow, 12).value = it.kl || 0;
         else if(it.tc && it.tc.includes('Full')) wsTienDo.getCell(tdRow, 13).value = it.kl || 0;
@@ -5510,22 +5789,47 @@ async function exportExcelStandard() {
         wsTienDo.getCell(tdRow, 16).value = it.kl || 0;
       }
 
+      for(let c = 8; c <= 16; c++) {
+        wsTienDo.getCell(tdRow, c).numFmt = '#,##0';
+        wsTienDo.getCell(tdRow, c).alignment = { horizontal: 'right' };
+      }
+
+      // Cột tháng: Tiến độ %
       const detailIt = res.itemProgressDetail.find(x => x.id === it.id);
       months.forEach((mDate, mIdx) => {
         const pr = detailIt ? (detailIt.xdRatio[mIdx] || 0) : calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate);
-        wsTienDo.getCell(tdRow, 17 + mIdx).value = pr > 0 ? Math.round(pr * 100) + '%' : '';
+        const cell = wsTienDo.getCell(tdRow, 17 + mIdx);
+        cell.value = pr > 0 ? pr : null;
+        cell.numFmt = '0.0%';
+        cell.alignment = { horizontal: 'right' };
       });
     }
     tdRow++;
   });
-  styleSheetGrid(wsTienDo, tdRow - 1, 16 + months.length, 3);
+
+  styleSheetGrid(wsTienDo, tdRow - 1, lastColIdx3, 3);
+  wsTienDo.autoFilter = { from: { row: 3, column: 1 }, to: { row: tdRow - 1, column: 16 } };
+  wsTienDo.getColumn(1).width = 6;
   wsTienDo.getColumn(2).width = 36;
   wsTienDo.getColumn(3).width = 38;
+  wsTienDo.getColumn(4).width = 16;
+  wsTienDo.getColumn(5).width = 12;
+  wsTienDo.getColumn(6).width = 12;
+  wsTienDo.getColumn(7).width = 12;
+  for(let c = 8; c <= 16; c++) wsTienDo.getColumn(c).width = 11;
+  for(let c = 17; c <= lastColIdx3; c++) wsTienDo.getColumn(c).width = 10;
 
   // =========================================================================
-  // SHEET 4: HỆ SỐ CB (Ma trận hệ số tiến độ XD, ME, HT, Kho, BPTC & Hệ số nhân sự)
+  // SHEET 4: HỆ SỐ CB (Khớp 100% media_1792725997399_35413475.png)
+  // - Chia rõ ràng các khối: HỆ SỐ XD, HỆ SỐ ME, HỆ SỐ HT, HỆ SỐ KHO, HỆ SỐ BPTC
+  // - Tiếp sau là bảng Hệ số Vi chỉnh cán bộ
+  // - Định dạng % chuẩn 0.0%
   // =========================================================================
-  const wsHesoCB = workbook.addWorksheet('Hệ số CB', {views:[{showGridLines: true}]});
+  const wsHesoCB = workbook.addWorksheet('Hệ số CB', {
+    views: [{ showGridLines: true }],
+    pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+  });
+
   wsHesoCB.getCell('A1').value = 'BẢNG HỆ SỐ PHÂN BỔ TIẾN ĐỘ (XD, ME, HT, KHO, BPTC) & HỆ SỐ VI CHỈNH CÁN BỘ';
   wsHesoCB.getCell('A1').font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF002060' } };
 
@@ -5534,33 +5838,37 @@ async function exportExcelStandard() {
   months.forEach((mDate, i) => { wsHesoCB.getCell(3, 5 + i).value = monthLabel(mDate); });
 
   let hsRow = 4;
-  // Phần 1: Hệ số XD, ME, HT, Kho, BPTC theo hạng mục
   const tabConfigs = [
-    { key: 'xd', label: 'HỆ SỐ XD', prop: 'xdRatio' },
-    { key: 'me', label: 'HỆ SỐ ME', prop: 'meRatio' },
-    { key: 'ht', label: 'HỆ SỐ HT', prop: 'htRatio' },
-    { key: 'kho', label: 'HỆ SỐ KHO', prop: 'khoRatio' },
-    { key: 'bptc', label: 'HỆ SỐ BPTC', prop: 'bptcRatio' }
+    { key: 'xd', label: 'HỆ SỐ XD', prop: 'xdRatio', bg: 'FFFCE4D6' },
+    { key: 'me', label: 'HỆ SỐ ME', prop: 'meRatio', bg: 'FFE2EFDA' },
+    { key: 'ht', label: 'HỆ SỐ HT', prop: 'htRatio', bg: 'FFD9E1F2' },
+    { key: 'kho', label: 'HỆ SỐ KHO', prop: 'khoRatio', bg: 'FFFCE4D6' },
+    { key: 'bptc', label: 'HỆ SỐ BPTC', prop: 'bptcRatio', bg: 'FFEDEDED' }
   ];
+
   tabConfigs.forEach(tc => {
     wsHesoCB.getCell(hsRow, 2).value = tc.label;
     wsHesoCB.getCell(hsRow, 3).value = 'Tổng hệ số điều độ ' + tc.label;
-    wsHesoCB.getRow(hsRow).fill = orangeFill;
+    wsHesoCB.getRow(hsRow).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tc.bg } };
     wsHesoCB.getRow(hsRow).font = { name: 'Arial', size: 10, bold: true };
     hsRow++;
+
     res.itemProgressDetail.forEach((it, idx) => {
       wsHesoCB.getCell(hsRow, 1).value = idx + 1;
       wsHesoCB.getCell(hsRow, 2).value = tc.label;
       wsHesoCB.getCell(hsRow, 3).value = it.ten;
       months.forEach((mDate, mIdx) => {
         const v = it[tc.prop] ? (it[tc.prop][mIdx] || 0) : 0;
-        wsHesoCB.getCell(hsRow, 5 + mIdx).value = v > 0 ? Math.round(v * 100) + '%' : '0%';
+        const cell = wsHesoCB.getCell(hsRow, 5 + mIdx);
+        cell.value = v > 0 ? v : 0;
+        cell.numFmt = '0.0%';
+        cell.alignment = { horizontal: 'right' };
       });
       hsRow++;
     });
   });
 
-  // Phần 2: Hệ số vi chỉnh từng chức danh (BQLXD, KHO, BPTC)
+  // Phần 2: Vi chỉnh chức danh
   MATRIX_ROWS_META.forEach((meta, rIdx) => {
     wsHesoCB.getCell(hsRow, 1).value = meta.stt;
     wsHesoCB.getCell(hsRow, 2).value = 'Vi chỉnh ' + meta.pb;
@@ -5570,18 +5878,35 @@ async function exportExcelStandard() {
       const mk = monthKey(mDate);
       const adjKey = `${rIdx}_${mk}`;
       const ratio = (curProj.adj && curProj.adj[adjKey] != null) ? curProj.adj[adjKey] : 1.0;
-      wsHesoCB.getCell(hsRow, 5 + mIdx).value = Math.round(ratio * 100) + '%';
+      const cell = wsHesoCB.getCell(hsRow, 5 + mIdx);
+      cell.value = ratio;
+      cell.numFmt = '0%';
+      cell.alignment = { horizontal: 'right' };
+      if(ratio !== 1.0) {
+        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFDC2626' } };
+      }
     });
     hsRow++;
   });
-  styleSheetGrid(wsHesoCB, hsRow - 1, 4 + months.length, 3);
-  wsHesoCB.getColumn(2).width = 22;
-  wsHesoCB.getColumn(3).width = 36;
+
+  styleSheetGrid(wsHesoCB, hsRow - 1, 4 + numM, 3);
+  wsHesoCB.getColumn(1).width = 6;
+  wsHesoCB.getColumn(2).width = 24;
+  wsHesoCB.getColumn(3).width = 38;
+  wsHesoCB.getColumn(4).width = 8;
+  for(let c = 5; c <= 4 + numM; c++) wsHesoCB.getColumn(c).width = 11;
 
   // =========================================================================
-  // SHEET 5: Ctr.Hm của DA
+  // SHEET 5: Ctr.Hm của DA (Khớp 100% media_1792726005322_4594c9a9.png)
+  // - Columns: STT | Tên công trình | Cấp 1 | Cấp 2 | Tiêu chuẩn | GĐ | Chuỗi phân loại | Đội trưởng | ĐVT
+  // - AutoFilter trên toàn bộ header
+  // - Tách 2 dòng GĐ Xây thô & Hoàn thiện
   // =========================================================================
-  const wsCtrHmDA = workbook.addWorksheet('Ctr.Hm của DA', {views:[{showGridLines: true}]});
+  const wsCtrHmDA = workbook.addWorksheet('Ctr.Hm của DA', {
+    views: [{ showGridLines: true }],
+    pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+  });
+
   const ctrHeaders = [
     'STT', 'Tên công trình/Hạng mục thực hiện', 'Loại Công trình / Hạng mục (cấp 1)',
     'Loại Công trình / Hạng mục (cấp 2)', 'Tiêu chuẩn bàn giao', 'Giai đoạn thi công',
@@ -5593,12 +5918,13 @@ async function exportExcelStandard() {
   (curProj.treeRows || []).forEach((it, idx) => {
     wsCtrHmDA.getCell(ctrRow, 1).value = it.level === 3 ? (it.stt || idx + 1) : '';
     wsCtrHmDA.getCell(ctrRow, 2).value = it.ten;
+
     if(it.level === 1) {
-      wsCtrHmDA.getRow(ctrRow).fill = orangeFill;
+      wsCtrHmDA.getRow(ctrRow).fill = orangeBannerFill;
       wsCtrHmDA.getRow(ctrRow).font = { name: 'Arial', size: 10, bold: true };
       ctrRow++;
     } else if(it.level === 2) {
-      wsCtrHmDA.getRow(ctrRow).fill = subHeaderFill;
+      wsCtrHmDA.getRow(ctrRow).fill = bqlFill;
       wsCtrHmDA.getRow(ctrRow).font = { name: 'Arial', size: 10, bold: true };
       ctrRow++;
     } else {
@@ -5627,17 +5953,23 @@ async function exportExcelStandard() {
       });
     }
   });
+
   styleSheetGrid(wsCtrHmDA, ctrRow - 1, 9, 1);
-  wsCtrHmDA.getColumn(2).width = 38;
-  wsCtrHmDA.getColumn(3).width = 24;
+  wsCtrHmDA.autoFilter = { from: { row: 1, column: 1 }, to: { row: ctrRow - 1, column: 9 } };
+  wsCtrHmDA.getColumn(1).width = 6;
+  wsCtrHmDA.getColumn(2).width = 40;
+  wsCtrHmDA.getColumn(3).width = 25;
   wsCtrHmDA.getColumn(4).width = 26;
   wsCtrHmDA.getColumn(5).width = 24;
-  wsCtrHmDA.getColumn(7).width = 48;
+  wsCtrHmDA.getColumn(6).width = 18;
+  wsCtrHmDA.getColumn(7).width = 50;
+  wsCtrHmDA.getColumn(8).width = 16;
+  wsCtrHmDA.getColumn(9).width = 12;
 
   // =========================================================================
   // SHEET 6: Phân loại Ctr.Hm (Chuẩn 66 dòng phân loại mẫu gốc)
   // =========================================================================
-  const wsPhanLoaiCtr = workbook.addWorksheet('Phân loại Ctr.Hm', {views:[{showGridLines: true}]});
+  const wsPhanLoaiCtr = workbook.addWorksheet('Phân loại Ctr.Hm', { views: [{ showGridLines: true }] });
   const plCtrHeaders = [
     'STT', 'Loại Công trình / Hạng mục (cấp 1)', 'Loại Công trình / Hạng mục (cấp 2)',
     'Tiêu chuẩn bàn giao', 'Giai đoạn thi công', 'Phân loại Công trình / Hạng mục', 'Đơn vị tính'
@@ -5680,6 +6012,7 @@ async function exportExcelStandard() {
     r.forEach((val, cIdx) => { wsPhanLoaiCtr.getCell(idx + 2, cIdx + 1).value = val; });
   });
   styleSheetGrid(wsPhanLoaiCtr, plCtrRows.length + 1, 7, 1);
+  wsPhanLoaiCtr.autoFilter = { from: { row: 1, column: 1 }, to: { row: plCtrRows.length + 1, column: 7 } };
   wsPhanLoaiCtr.getColumn(2).width = 26;
   wsPhanLoaiCtr.getColumn(3).width = 26;
   wsPhanLoaiCtr.getColumn(4).width = 26;
@@ -5688,7 +6021,7 @@ async function exportExcelStandard() {
   // =========================================================================
   // SHEET 7: Phân loại Chức danh (Chuẩn theo mẫu gốc)
   // =========================================================================
-  const wsPhanLoaiCD = workbook.addWorksheet('Phân loại Chức danh', {views:[{showGridLines: true}]});
+  const wsPhanLoaiCD = workbook.addWorksheet('Phân loại Chức danh', { views: [{ showGridLines: true }] });
   const plCdHeaders = ['STT', 'Loại Chức danh', 'Tên chức danh', 'Cấp', 'Đơn vị tính'];
   plCdHeaders.forEach((h, i) => { wsPhanLoaiCD.getCell(1, i + 1).value = h; });
 
@@ -5702,7 +6035,7 @@ async function exportExcelStandard() {
     wsPhanLoaiCD.getCell(cdRow, 1).value = dg.code;
     wsPhanLoaiCD.getCell(cdRow, 2).value = dg.title;
     wsPhanLoaiCD.getCell(cdRow, 3).value = dg.name;
-    wsPhanLoaiCD.getRow(cdRow).fill = subHeaderFill;
+    wsPhanLoaiCD.getRow(cdRow).fill = bqlFill;
     wsPhanLoaiCD.getRow(cdRow).font = { name: 'Arial', size: 10, bold: true };
     cdRow++;
 
@@ -5722,7 +6055,7 @@ async function exportExcelStandard() {
   // =========================================================================
   // SHEET 8: Định mức (Bảng tổng hợp định mức 3 bộ phận theo loại hình)
   // =========================================================================
-  const wsDinhMuc = workbook.addWorksheet('Định mức', {views:[{showGridLines: true}]});
+  const wsDinhMuc = workbook.addWorksheet('Định mức', { views: [{ showGridLines: true }] });
   const dmHeaders = [
     'STT', 'Tên chức danh', 'Cấp', 'Số lượng QL', 'Cấp cán bộ / Thiết bị',
     'Thấp tầng LK - Xây thô (Căn)', 'Thấp tầng LK - Full NT (Căn)', 'Thấp tầng LK - HTNT 2T (Căn)', 'Thấp tầng LK - HTNT 1T (Căn)',
@@ -5738,7 +6071,7 @@ async function exportExcelStandard() {
   deptGroups.forEach(dg => {
     wsDinhMuc.getCell(dmRow, 1).value = dg.code;
     wsDinhMuc.getCell(dmRow, 2).value = dg.name;
-    wsDinhMuc.getRow(dmRow).fill = subHeaderFill;
+    wsDinhMuc.getRow(dmRow).fill = bqlFill;
     wsDinhMuc.getRow(dmRow).font = { name: 'Arial', size: 10, bold: true };
     dmRow++;
 
@@ -5775,7 +6108,7 @@ async function exportExcelStandard() {
   // =========================================================================
   // SHEET 9: ĐM BQLXD (Chuẩn Phụ lục Định mức Lao động BQLXD)
   // =========================================================================
-  const wsDmBql = workbook.addWorksheet('ĐM BQLXD', {views:[{showGridLines: true}]});
+  const wsDmBql = workbook.addWorksheet('ĐM BQLXD', { views: [{ showGridLines: true }] });
   wsDmBql.getCell('A1').value = 'PHỤ LỤC - ĐỊNH MỨC LAO ĐỘNG CÁC BAN QUẢN LÝ XÂY DỰNG';
   wsDmBql.getCell('A1').font = { name: 'Arial', size: 12, bold: true };
   const bqlDmCols = [
@@ -5791,48 +6124,56 @@ async function exportExcelStandard() {
     ['', 'CBGS kỹ thuật M&E (GĐ hoàn thiện)', 250, 70, 80, 90, 22500, 22500, 50000, '120.000 (CV) / 200.000 (ĐGT)', 'Giai đoạn hoàn thiện'],
     ['3', 'CBGS kỹ thuật Hạ tầng', '1CB/Công trình (~15.000m2)', '', '', '', 15000, 15000, 15000, 15000, ''],
     ['4', 'Nhân viên Giám sát kỹ thuật XD', 35, 25, 27, 28, '9.800 (Thô) / 7.000 (HT)', '6.300 (Thô) / 5.250 (HT)', '14.700 (Thô) / 10.500 (HT)', '', 'NVGS = 90% x CBGS x 1,5'],
-    ['5', 'Nhân viên Giám sát kỹ thuật M&E (BTCT)', 350, 350, 350, 350, '3 (tòa)', '3 (công trình)', 70000, '', 'GĐ BTCT'],
-    ['', 'Nhân viên Giám sát kỹ thuật M&E (HT)', 175, 49, 56, 63, 15750, 15750, 35000, '84.000 (CV) / 140.000 (ĐGT)', 'GĐ Hoàn thiện'],
-    ['6', 'Nhân viên Giám sát kỹ thuật Hạ tầng', '1CB/Công trình (~10.500m2)', '', '', '', 10500, 10500, 10500, 10500, ''],
-    ['II.', 'Định mức cấp quản lý', 'ĐTGS (T5): Quản lý 8-12 CBGS (T6,T7) | GĐ BQLXD Cấp 3 (T4): Quản lý 5-7 ĐTGS | GĐ Cấp 2 (T3): 5-7 GĐ Cấp 3', '', '', '', '', '', '', '', '']
+    ['5', 'Nhân viên Giám sát kỹ thuật M&E', 175, 49, 56, 63, 15750, 15750, 35000, '84.000 (CV) / 140.000 (ĐGT)', 'NVGS = 90% x CBGS x 1,5'],
+    ['6', 'Nhân viên Giám sát kỹ thuật Hạ tầng', '1NV/Công trình (~10.000m2)', '', '', '', 10000, 10000, 10000, 10000, ''],
+    ['II.', 'Định mức cấp quản lý', '', '', '', '', '', '', '', '', ''],
+    ['7', 'Đội trưởng Giám sát XD (T5)', 'Tầm quản lý: 10 CBGS kỹ thuật XD (T6/T7) (Dùng để tính: 10)', '', '', '', '', '', '', '', ''],
+    ['8', 'Đội trưởng Giám sát M&E (T5)', 'Tầm quản lý: 10 CBGS kỹ thuật M&E (T6/T7) (Dùng để tính: 10)', '', '', '', '', '', '', '', ''],
+    ['9', 'Đội trưởng Giám sát Hạ tầng (T5)', 'Tầm quản lý: 10 CBGS kỹ thuật Hạ tầng (T6/T7) (Dùng để tính: 10)', '', '', '', '', '', '', '', ''],
+    ['10', 'Giám đốc Ban QLXD cấp 3 (T3)', 'Tầm quản lý: 6 Đội trưởng (T5) (Dùng để tính: 6)', '', '', '', '', '', '', '', ''],
+    ['11', 'Giám đốc Ban QLXD cấp 2 (T2)', 'Tầm quản lý: 6 Đội trưởng (T5) (Dùng để tính: 6)', '', '', '', '', '', '', '', ''],
+    ['12', 'Giám đốc Ban QLXD cấp 1 (T1)', 'Tầm quản lý: 4.5 GĐ BQLXD cấp 2/3 (Dùng để tính: 4.5)', '', '', '', '', '', '', '', ''],
+    ['13', 'Trợ lý BQLXD (T6)', 'Tầm quản lý: 1 Trợ lý / GĐ Ban QLXD cấp 2/3 (Dùng để tính: 1)', '', '', '', '', '', '', '', '']
   ];
   bqlDmRows.forEach((r, idx) => {
     r.forEach((v, cIdx) => { wsDmBql.getCell(idx + 3, cIdx + 1).value = v; });
   });
   styleSheetGrid(wsDmBql, bqlDmRows.length + 2, 11, 2);
-  wsDmBql.getColumn(2).width = 38;
+  wsDmBql.getColumn(2).width = 44;
 
   // =========================================================================
-  // SHEET 10: ĐM KHO (Chuẩn Định mức Lao động mảng Kho dự án)
+  // SHEET 10: ĐM KHO (Chuẩn Phụ lục Định mức Lao động Kho Dự án)
   // =========================================================================
-  const wsDmKho = workbook.addWorksheet('ĐM KHO', {views:[{showGridLines: true}]});
-  wsDmKho.getCell('A1').value = 'KHỐI QUẢN LÝ VẬT TƯ XÂY DỰNG - ĐỊNH MỨC LAO ĐỘNG CỦA MẢNG KHO DỰ ÁN';
+  const wsDmKho = workbook.addWorksheet('ĐM KHO', { views: [{ showGridLines: true }] });
+  wsDmKho.getCell('A1').value = 'ĐỊNH MỨC LAO ĐỘNG KHO DỰ ÁN CÁC BAN QUẢN LÝ XÂY DỰNG';
   wsDmKho.getCell('A1').font = { name: 'Arial', size: 12, bold: true };
   const khoDmCols = [
-    'TT', 'Định mức THỦ KHO', 'Cấp bậc', 'Cao tầng: ĐM Thô (m2 GFA)', 'Cao tầng: ĐM Hoàn thiện (m2 GFA)',
-    'Thấp tầng LK: ĐM Thô (căn)', 'Thấp tầng LK: ĐM HT 2 tầng (căn)', 'TTTM (m2 GFA)', 'Khách sạn (m2 GFA)',
-    'Trường học, bệnh viện (m2 GFA)', 'Nhà máy, Nhà xe nổi (m2 GFA)', 'Kho - Đường giao thông (m2)'
+    'TT', 'Chức danh', 'Cấp', 'Thấp tầng: Liền kề (m2)', 'Thấp tầng: Biệt thự (m2)',
+    'Cao tầng: Căn hộ Full NT (căn)', 'Cao tầng: Căn hộ Bàn giao thô (căn)',
+    'Các CT khác: TTTM (m2)', 'Các CT khác: Khách sạn (m2)', 'Các CT khác: Trường, BV (m2)',
+    'Công trình nhà xưởng (m2)', 'Công viên, cảnh quan (m2)', 'Đường giao thông (m2)'
   ];
   khoDmCols.forEach((h, i) => { wsDmKho.getCell(2, i + 1).value = h; });
   const khoDmRows = [
-    ['1', 'Thủ kho nhập liệu - Kho Xây dựng (* Biệt thự: LK x 0,8)', 'T7', 95000, 72500, 470, 360, 100000, 55000, 50000, 75000, 300000],
-    ['2', 'Thủ kho nhập liệu - Kho ME (* Biệt thự: LK x 0,8)', 'T7', 190000, 95000, 930, 472, 100000, 75000, 50000, 75000, 300000],
-    ['3', 'Thủ Kho hiện trường - Xây dựng (thao tác vật lý)', 'T8', 36000, 20000, 180, 100, 25000, 15000, 12500, 20000, 75000],
-    ['4', 'Thủ Kho hiện trường - ME (thao tác vật lý)', 'T8', 50000, 32500, 250, 163, 25000, 25000, 12500, 20000, 75000],
-    ['5', 'Thủ kho nhập liệu - Kho ép cọc', 'T7', 'Theo định mức máy: 1 Thủ kho nhập liệu / 30 robot', '', '', '', '', '', '', '', ''],
-    ['6', 'Thủ kho hiện trường - Kho ép cọc', 'T8', 'Theo định mức máy: 1 Thủ kho hiện trường / 5 robot', '', '', '', '', '', '', '', ''],
-    ['II.', 'Định mức cấp quản lý', 'T5/T6', '+ Trưởng nhóm kho (T6): Quản lý 7-11 Thủ kho | + Trưởng kho (T5): Quản lý > 15 Thủ kho hoặc 1 BQLXD', '', '', '', '', '', '', '', '']
+    ['I.', 'Định mức Thủ kho theo khối lượng (* Biệt thự: x 0,8)', '', '', '', '', '', '', '', '', '', '', ''],
+    ['1', 'Thủ kho nhập liệu - Kho Xây dựng', 'T7', 95000, 72500, 470, 360, 100000, 55000, 50000, 75000, 300000, 200000],
+    ['2', 'Thủ kho nhập liệu - Kho ME', 'T7', 190000, 95000, 930, 472, 100000, 75000, 50000, 75000, 300000, 200000],
+    ['3', 'Thủ Kho hiện trường - Xây dựng (thao tác vật lý)', 'T8', 36000, 20000, 180, 100, 25000, 15000, 12500, 20000, 75000, 50000],
+    ['4', 'Thủ Kho hiện trường - ME (thao tác vật lý)', 'T8', 50000, 32500, 250, 163, 25000, 25000, 12500, 20000, 75000, 50000],
+    ['5', 'Thủ kho nhập liệu - Kho ép cọc', 'T7', 'Theo định mức máy: 1 Thủ kho nhập liệu / 30 robot', '', '', '', '', '', '', '', '', ''],
+    ['6', 'Thủ kho hiện trường - Kho ép cọc', 'T8', 'Theo định mức máy: 1 Thủ kho hiện trường / 5 robot', '', '', '', '', '', '', '', '', ''],
+    ['II.', 'Định mức cấp quản lý', 'T5/T6', '+ Trưởng nhóm kho (T6): Quản lý 7-11 Thủ kho | + Trưởng kho (T5): Quản lý > 15 Thủ kho hoặc 1 BQLXD', '', '', '', '', '', '', '', '', '']
   ];
   khoDmRows.forEach((r, idx) => {
     r.forEach((v, cIdx) => { wsDmKho.getCell(idx + 3, cIdx + 1).value = v; });
   });
-  styleSheetGrid(wsDmKho, khoDmRows.length + 2, 12, 2);
+  styleSheetGrid(wsDmKho, khoDmRows.length + 2, 13, 2);
   wsDmKho.getColumn(2).width = 44;
 
   // =========================================================================
   // SHEET 11: ĐM BPTC (Chuẩn Định mức Lao động Bộ phận Thi công)
   // =========================================================================
-  const wsDmBptc = workbook.addWorksheet('ĐM BPTC', {views:[{showGridLines: true}]});
+  const wsDmBptc = workbook.addWorksheet('ĐM BPTC', { views: [{ showGridLines: true }] });
   wsDmBptc.getCell('A1').value = 'ĐỊNH MỨC LAO ĐỘNG BỘ PHẬN THI CÔNG CÁC BAN QUẢN LÝ XÂY DỰNG';
   wsDmBptc.getCell('A1').font = { name: 'Arial', size: 12, bold: true };
   const bptcDmCols = [
@@ -5860,6 +6201,7 @@ async function exportExcelStandard() {
   styleSheetGrid(wsDmBptc, bptcDmRows.length + 2, 9, 2);
   wsDmBptc.getColumn(2).width = 52;
 
+  // Xuất file Excel hoàn tất
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
@@ -5873,6 +6215,14 @@ async function exportExcelStandard() {
 }
 
 document.getElementById('btnExportExcel').addEventListener('click', exportExcelStandard);
+
+  const btnPrintLandscape = document.getElementById('btnPrintLandscape');
+  if(btnPrintLandscape) {
+    btnPrintLandscape.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
 
 document.getElementById('selRoundMode').addEventListener('change', (e) => {
   currentProjectData.roundMode = e.target.value;
