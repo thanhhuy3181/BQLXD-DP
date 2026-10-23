@@ -3168,27 +3168,35 @@ function renderSyncHesoTable(res) {
     return it.xdRatio;
   };
 
-  // 1. DÒNG TỔNG (LUÔN HIỂN THỊ DÙ THU GỌN HAY MỞ RỘNG)
+  // 1. DÒNG HỆ SỐ ĐIỀU CHỈNH TIẾN ĐỘ (TRUNG BÌNH CÁC HỆ SỐ, KHÔNG PHẢI CỘNG DỒN)
   const tabTitleMap = {
-    xd: '★ TỔNG HỆ SỐ ĐIỀU ĐỘ (XD)',
-    me: '★ TỔNG HỆ SỐ ĐIỀU ĐỘ (ME)',
-    ht: '★ TỔNG HỆ SỐ ĐIỀU ĐỘ (HT)',
-    kho: '★ TỔNG HỆ SỐ ĐIỀU ĐỘ (KHO)',
-    bptc: '★ TỔNG HỆ SỐ ĐIỀU ĐỘ (BPTC)'
+    xd: '★ HỆ SỐ ĐIỀU CHỈNH TIẾN ĐỘ (XD)',
+    me: '★ HỆ SỐ ĐIỀU CHỈNH TIẾN ĐỘ (ME)',
+    ht: '★ HỆ SỐ ĐIỀU CHỈNH TIẾN ĐỘ (HT)',
+    kho: '★ HỆ SỐ ĐIỀU CHỈNH TIẾN ĐỘ (KHO)',
+    bptc: '★ HỆ SỐ ĐIỀU CHỈNH TIẾN ĐỘ (BPTC)'
   };
 
   html += `
     <tr class="header-summary-row">
-      <td class="col-heso-freeze" style="text-align:left; font-weight:700;">${tabTitleMap[tab] || '★ TỔNG HỆ SỐ ĐIỀU ĐỘ'}</td>
+      <td class="col-heso-freeze" style="text-align:left; font-weight:700;">${tabTitleMap[tab] || '★ HỆ SỐ ĐIỀU CHỈNH TIẾN ĐỘ'}</td>
       <td class="col-heso-freeze-kl"></td>
       <td class="col-heso-freeze-dv"></td>
       ${months.map((m, mIdx) => {
         let sum = 0;
+        let count = 0;
         res.itemProgressDetail.forEach(it => {
           const arr = getTabRatioArr(it);
-          sum += (arr[mIdx] || 0);
+          const v = arr ? (arr[mIdx] || 0) : 0;
+          if(v > 0) {
+            sum += v;
+            count++;
+          }
         });
-        return `<td class="col-month-fixed">${sum > 0 ? (Math.round(sum * 10) / 10).toFixed(1) : '–'}</td>`;
+        if(count === 0) return `<td class="col-month-fixed" style="color:#cbd5e1; text-align:center;">–</td>`;
+        const avgRatio = sum / count;
+        const avgPct = Math.round(avgRatio * 100) + '%';
+        return `<td class="col-month-fixed" style="font-weight:700; color:#92400e; text-align:center;" title="Trung bình ${count} hạng mục đang thực hiện trong tháng: ${avgPct}">${avgPct}</td>`;
       }).join('')}
     </tr>
   `;
@@ -6060,12 +6068,14 @@ async function exportExcelStandard() {
   ];
 
   tabConfigs.forEach(tc => {
+    const summaryRowIdx = hsRow;
     wsHesoCB.getCell(hsRow, 2).value = tc.label;
-    wsHesoCB.getCell(hsRow, 3).value = 'Tổng hệ số điều độ ' + tc.label;
+    wsHesoCB.getCell(hsRow, 3).value = 'Hệ số điều chỉnh tiến độ ' + tc.label;
     wsHesoCB.getRow(hsRow).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tc.bg } };
     wsHesoCB.getRow(hsRow).font = { name: 'Arial', size: 10, bold: true };
     hsRow++;
 
+    const itemStartRow = hsRow;
     res.itemProgressDetail.forEach((it, idx) => {
       wsHesoCB.getCell(hsRow, 1).value = idx + 1;
       wsHesoCB.getCell(hsRow, 2).value = tc.label;
@@ -6078,6 +6088,27 @@ async function exportExcelStandard() {
         cell.alignment = { horizontal: 'right' };
       });
       hsRow++;
+    });
+
+    // Tính giá trị trung bình cho dòng summaryRowIdx
+    months.forEach((mDate, mIdx) => {
+      let sum = 0, count = 0;
+      res.itemProgressDetail.forEach(it => {
+        const v = it[tc.prop] ? (it[tc.prop][mIdx] || 0) : 0;
+        if(v > 0) {
+          sum += v;
+          count++;
+        }
+      });
+      const sumCell = wsHesoCB.getCell(summaryRowIdx, 5 + mIdx);
+      if(count > 0) {
+        sumCell.value = sum / count;
+        sumCell.numFmt = '0.0%';
+      } else {
+        sumCell.value = 0;
+        sumCell.numFmt = '0.0%';
+      }
+      sumCell.alignment = { horizontal: 'right' };
     });
   });
 
