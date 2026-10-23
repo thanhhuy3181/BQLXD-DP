@@ -713,7 +713,17 @@ tr.tr-level-2 input { background: transparent !important; color: #1b4f72 !import
 tr.tr-level-4-me { background-color: #fafbfc; font-style: italic; color: #475569; }
 tr.tr-level-4-me td.col-name { padding-left: 16px; }
 /* Hiển thị ô nhập phẳng như ô Excel (không viền vuông bên trong) */
-table.tree-table input,
+/* Ẩn mũi tên tăng giảm (spin button) cho các ô nhập số trên toàn bảng */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.tree-table input,
 table.tree-table select {
   font-size: 11px;
   font-family: inherit;
@@ -3296,6 +3306,40 @@ function renderTreeTable() {
   });
 
   tbody.querySelectorAll('input, select').forEach(el => {
+    // 1. Phím Enter: Lưu giá trị và tự động chuyển con trỏ xuống ô ở dòng dưới (cùng cột) như Excel
+    el.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') {
+        e.preventDefault();
+        el.blur(); // kích hoạt change lưu dữ liệu
+
+        const curTd = el.closest('td');
+        const curTr = el.closest('tr');
+        if(!curTd || !curTr) return;
+
+        const cellInfo = getRowAndColOfCell(curTd, document.getElementById('treeTable'));
+        if(!cellInfo) return;
+
+        const allTrs = Array.from(tbody.querySelectorAll('tr'));
+        const curRowIdx = allTrs.indexOf(curTr);
+        const targetCol = cellInfo.c;
+
+        // Tìm dòng tiếp theo bên dưới có ô nhập liệu tại cột này
+        for(let nextIdx = curRowIdx + 1; nextIdx < allTrs.length; nextIdx++) {
+          const nextTr = allTrs[nextIdx];
+          const nextCell = getCellAtVisualCoords(document.getElementById('treeTable'), nextIdx, targetCol);
+          if(nextCell) {
+            const nextInput = nextCell.querySelector('input:not([readonly]), select:not([disabled])');
+            if(nextInput) {
+              nextInput.focus();
+              if(nextInput.select) nextInput.select();
+              break;
+            }
+          }
+        }
+      }
+    });
+
+    // 2. Sự kiện change: Lưu giá trị và xử lý các ràng buộc
     el.addEventListener('change', (e) => {
       const id = e.target.dataset.id;
       const f = e.target.dataset.f;
@@ -3304,11 +3348,22 @@ function renderTreeTable() {
       const r = currentProjectData.treeRows.find(x => x.id === id);
       if(r) {
         r[f] = val;
+
+        // Nếu người dùng trực tiếp sửa dòng con M&E thì đánh dấu sửa riêng (không tự đè lại khi sửa dòng chính)
+        if(f === 'me1_kl') {
+          r.me1_custom_kl = true;
+        } else if(f === 'me2_kl') {
+          r.me2_custom_kl = true;
+        }
+
         if(f === 'loai') {
           syncSubClassificationWhenLoaiChanged(r);
           ensureMeStagesForRow(r);
-        } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'kl' || f === 'bptc_batDau' || f === 'bptc_ketThuc' || f === 'bptc_banGiao' || f === 'bptc_kl') {
-          ensureMeStagesForRow(r);
+        } else if(f === 'kl') {
+          // Khi sửa số dòng hạng mục chính (kl), 2 dòng con ME tự nhảy theo trừ khi đã sửa riêng
+          ensureMeStagesForRow(r, true);
+        } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'bptc_batDau' || f === 'bptc_ketThuc' || f === 'bptc_banGiao' || f === 'bptc_kl') {
+          ensureMeStagesForRow(r, false);
         }
         saveCurrentProject();
         refreshDashboard();
@@ -5124,16 +5179,23 @@ function inferClassificationFromName(tenStr) {
 }
 
 // Khởi tạo tự động các trường M&E chia theo 2 giai đoạn (GĐ bê tông cốt thép & GĐ hoàn thiện) cho hạng mục có M&E
-function ensureMeStagesForRow(rObj) {
+function ensureMeStagesForRow(rObj, fromKlChange = false) {
   if(!rObj || rObj.level !== 3) return;
   const hasMe = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(rObj.loai);
   if(hasMe) {
     if(!rObj.me1_bd && rObj.batDau) rObj.me1_bd = rObj.batDau;
     if(!rObj.me1_kt && rObj.ketThuc) rObj.me1_kt = rObj.ketThuc;
-    if(rObj.me1_kl == null && rObj.kl != null) rObj.me1_kl = rObj.kl;
     if(!rObj.me2_bd && rObj.ketThuc) rObj.me2_bd = rObj.ketThuc;
     if(!rObj.me2_kt && (rObj.banGiao || rObj.ketThuc)) rObj.me2_kt = rObj.banGiao || rObj.ketThuc;
-    if(rObj.me2_kl == null && rObj.kl != null) rObj.me2_kl = rObj.kl;
+
+    // Tự nhảy khối lượng theo dòng hạng mục chính trừ khi người dùng đã sửa riêng (me1_custom_kl / me2_custom_kl)
+    if(fromKlChange) {
+      if(!rObj.me1_custom_kl) rObj.me1_kl = rObj.kl != null ? rObj.kl : 0;
+      if(!rObj.me2_custom_kl) rObj.me2_kl = rObj.kl != null ? rObj.kl : 0;
+    } else {
+      if(rObj.me1_kl == null && rObj.kl != null) rObj.me1_kl = rObj.kl;
+      if(rObj.me2_kl == null && rObj.kl != null) rObj.me2_kl = rObj.kl;
+    }
   }
 }
 
