@@ -343,10 +343,20 @@ table.dinhmuc-table td input:focus {
 }
 .card-header .toggle-btn:hover { background: #e2e8f0; }
 
-/* 1. HẠNG MỤC / CÔNG TRÌNH (CỘT TRÁI) */
+/* 1. HẠNG MỤC / CÔNG TRÌNH (CỘT TRÁI - DẠNG EXCEL KHÔNG VIỀN Ô CON) */
 .hangmuc-col {
   display: flex;
   flex-direction: column;
+  transition: all 0.2s ease;
+}
+.dashboard-row-grid.hangmuc-expanded-mode {
+  grid-template-columns: 1fr !important;
+}
+.dashboard-row-grid.hangmuc-expanded-mode > .heso-section {
+  display: none !important;
+}
+.dashboard-row-grid.hangmuc-expanded-mode .hangmuc-table-wrap {
+  max-height: 75vh;
 }
 .hangmuc-table-wrap {
   flex: 1;
@@ -358,27 +368,29 @@ table.tree-table {
   border-collapse: separate;
   border-spacing: 0;
   font-size: 11px;
-  white-space: nowrap;
+  table-layout: fixed;
 }
 table.tree-table th {
   background: #f1f5f9;
   color: #334155;
-  font-weight: 600;
-  padding: 0 6px;
+  font-weight: 700;
+  padding: 2px 4px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 10;
-  text-align: left;
-  height: 28px;
-  min-height: 28px;
-  max-height: 28px;
-  line-height: 27px;
+  text-align: center;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  line-height: 1.25;
+  white-space: normal;
+  vertical-align: middle;
   box-sizing: border-box;
 }
 table.tree-table td {
-  padding: 0 5px;
+  padding: 0;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
   vertical-align: middle;
@@ -387,26 +399,73 @@ table.tree-table td {
   max-height: 28px;
   line-height: 27px;
   box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+table.tree-table tr.row-selected td {
+  background-color: #eff6ff !important;
 }
 tr.tr-level-1 { background-color: #e67e22 !important; color: #ffffff; font-weight: 700; }
-tr.tr-level-1 td { border-color: #d35400; color: #ffffff; }
-tr.tr-level-1 input { background: transparent; color: #ffffff; font-weight: 700; border: none; width: 100%; height: 22px; }
+tr.tr-level-1 td { border-color: #d35400; color: #ffffff; background-color: #e67e22 !important; }
+tr.tr-level-1 input { background: transparent !important; color: #ffffff !important; font-weight: 700 !important; }
 tr.tr-level-2 { background-color: #d4e6f1 !important; color: #1b4f72; font-weight: 700; }
-tr.tr-level-2 td { border-color: #a9cce3; color: #1b4f72; }
-tr.tr-level-2 input { background: transparent; color: #1b4f72; font-weight: 700; border: none; width: 100%; height: 22px; }
+tr.tr-level-2 td { border-color: #a9cce3; color: #1b4f72; background-color: #d4e6f1 !important; }
+tr.tr-level-2 input { background: transparent !important; color: #1b4f72 !important; font-weight: 700 !important; }
 tr.tr-level-4-me { background-color: #fafbfc; font-style: italic; color: #475569; }
-tr.tr-level-4-me td.col-name { padding-left: 18px; }
-table.tree-table input, table.tree-table select {
+tr.tr-level-4-me td.col-name { padding-left: 16px; }
+/* Hiển thị ô nhập phẳng như ô Excel (không viền vuông bên trong) */
+table.tree-table input,
+table.tree-table select {
   font-size: 11px;
-  height: 21px;
-  line-height: 19px;
-  padding: 0 4px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
+  font-family: inherit;
+  height: 100%;
   width: 100%;
-  vertical-align: middle;
+  padding: 0 4px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  outline: none;
   box-sizing: border-box;
+  display: block;
 }
+table.tree-table select {
+  padding: 0 2px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+table.tree-table input:focus,
+table.tree-table select:focus {
+  background: #fef9c3;
+  box-shadow: inset 0 0 0 1.5px #2563eb;
+}
+table.tree-table input[type="date"] {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 0 2px;
+}
+table.tree-table input[type="date"]::-webkit-calendar-picker-indicator {
+  padding: 0;
+  margin: 0;
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+table.tree-table input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+.row-del-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.row-del-btn:hover { color: #ef4444; font-weight: 700; }
 
 /* 2. CỘT PHẢI TRÊN: BIỂU ĐỒ (THẲNG HÀNG CỘT THÁNG 370PX + 68PX × THÁNG) */
 .chart-box-top {
@@ -544,10 +603,10 @@ table.sync-matrix-table th {
   top: 0;
   z-index: 10;
   text-align: center;
-  height: 28px;
-  min-height: 28px;
-  max-height: 28px;
-  line-height: 27px;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  line-height: 35px;
   box-sizing: border-box;
 }
 table.sync-matrix-table td {
@@ -825,46 +884,48 @@ footer.app-footer {
   <!-- =========================================================================
        HÀNG 2: TRÁI (HẠNG MỤC) | PHẢI (HỆ SỐ XD, ME, HT, KHO, BPTC)
        ========================================================================= -->
-  <div class="dashboard-row-grid">
+  <div class="dashboard-row-grid" id="row2Grid">
 
-    <!-- CỘT TRÁI HÀNG 2: BẢNG HẠNG MỤC -->
-    <div class="card-box hangmuc-col">
+    <!-- CỘT TRÁI HÀNG 2: BẢNG HẠNG MỤC (DẠNG EXCEL) -->
+    <div class="card-box hangmuc-col" id="hangmucCard">
       <div class="card-header">
         <h2>
           <span>Hạng mục công trình</span>
         </h2>
-        <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
-          <select id="selMucCap" style="font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid var(--border);">
+        <div style="display:flex; gap:3px; align-items:center; flex-wrap:wrap;">
+          <select id="selMucCap" style="font-size:11px; padding:2px 4px; border-radius:4px; border:1px solid var(--border);">
             <option value="1">Mục cấp</option>
             <option value="1">Mục lục cấp 1</option>
             <option value="2">Mục lục cấp 2</option>
           </select>
-          <button class="btn" id="btnThemMucLuc">+ Thêm mục lục</button>
-          <button class="btn" id="btnLenCap">‹ Lên cấp</button>
-          <button class="btn" id="btnXuongCap">› Xuống cấp</button>
-          <button class="btn" id="btnPasteExcel" title="Dán dữ liệu từ Excel">📋 Dán từ Excel</button>
-          <button class="btn btn-primary" id="btnThemHangMuc">+ Thêm hạng mục</button>
+          <button class="btn" id="btnThemMucLuc" title="Chèn mục lục cấp 1/2">+ Mục lục</button>
+          <button class="btn" id="btnLenCap" title="Tăng cấp mục lục">‹ Lên cấp</button>
+          <button class="btn" id="btnXuongCap" title="Hạ cấp mục lục">› Xuống cấp</button>
+          <button class="btn" id="btnXoaDongHm" title="Xóa dòng đang chọn (Delete)" style="color:#dc2626;">✕ Xóa dòng</button>
+          <button class="btn" id="btnPasteExcel" title="Dán vùng bảng copy từ Excel (hoặc nhấn Ctrl+V trực tiếp trên bảng)">📋 Dán Excel</button>
+          <button class="btn btn-primary" id="btnThemHangMuc" title="Chèn thêm hạng mục mới ngay dưới dòng đang chọn">+ Thêm HM</button>
+          <button class="btn" id="btnExpandHangMuc" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;" title="Mở rộng toàn màn hình để nhập/copy/paste/chèn như bảng Excel">⤢ Mở rộng bảng</button>
         </div>
       </div>
-      <div class="hangmuc-help-text" style="padding:5px 10px; font-size:10.5px; color:var(--text-muted); border-bottom:1px solid var(--border); background:#ffffff; line-height:1.45;">
-        Click vào một dòng để chọn (giữ Ctrl để chọn thêm, giữ Shift để chọn cả khoảng), rồi bấm <b>"Lên cấp"/"Xuống cấp"</b>. Đang chọn đúng 1 dòng thì "+ Thêm mục lục"/"+ Thêm hạng mục" sẽ chèn ngay sau dòng đó; không chọn dòng nào thì thêm vào cuối danh sách. Ngày gõ trực tiếp dạng ngày/tháng/năm (năm 2 hoặc 4 số đều được) hoặc bấm 📅 để chọn trên lịch. Hạng mục Thấp tầng/Cao tầng/Công trình khác/Nhà xưởng tự sinh thêm 2 dòng in nghiêng để nhập riêng dữ liệu cho M&amp;E — khối lượng mặc định lấy theo hạng mục chính, chỉ tách riêng khi anh/chị tự sửa.
+      <div class="hangmuc-help-text" style="padding:4px 10px; font-size:10.5px; color:var(--text-muted); border-bottom:1px solid var(--border); background:#ffffff; line-height:1.35;">
+        <b>Thao tác như bảng Excel:</b> Click trực tiếp vào ô để gõ sửa (không viền hộp), nhấn <b>Ctrl+V</b> tại bất kỳ dòng nào để dán nhiều dòng copy từ Excel, hoặc bấm <b>"⤢ Mở rộng bảng"</b> để phóng rộng toàn chiều ngang. Đang chọn 1 dòng thì <b>"+ Thêm HM" / "+ Mục lục"</b> sẽ chèn ngay sau dòng đó.
       </div>
       <div class="hangmuc-table-wrap" id="hangmucScrollSync">
         <table class="tree-table" id="treeTable">
           <thead>
             <tr>
-              <th style="width:20px;"></th>
-              <th style="width:32px; text-align:center;">Level</th>
-              <th style="width:28px; text-align:center;">STT</th>
-              <th style="min-width:170px;">Tên công trình / hạng mục</th>
-              <th style="width:125px;">Loại Công trình / Hạng mục (cấp 1)</th>
-              <th style="width:135px;">Loại Công trình / Hạng mục (cấp 2)</th>
-              <th style="width:105px;">Tiêu chuẩn bàn giao</th>
-              <th style="width:65px; text-align:right;">Khối lượng</th>
-              <th style="width:35px;">Đv</th>
-              <th style="width:95px;">Bắt đầu thi công</th>
-              <th style="width:95px;">Kết thúc thi công</th>
-              <th style="width:95px;">Kết thúc bàn giao</th>
+              <th style="width:18px;" title="Kéo thả sắp xếp"></th>
+              <th style="width:24px;" title="Cấp mục lục (1, 2, 3, 4)">Cấp</th>
+              <th style="width:24px;">TT</th>
+              <th style="width:155px; text-align:left; padding-left:6px;">Tên công trình /<br>Hạng mục</th>
+              <th style="width:68px;" title="Loại Công trình / Hạng mục (cấp 1)">Loại CT<br>(cấp 1)</th>
+              <th style="width:74px;" title="Loại Công trình / Hạng mục (cấp 2)">Loại CT<br>(cấp 2)</th>
+              <th style="width:66px;" title="Tiêu chuẩn bàn giao">TC<br>bàn giao</th>
+              <th style="width:78px;">Bắt đầu<br>thi công</th>
+              <th style="width:78px;">Kết thúc<br>thi công</th>
+              <th style="width:78px;">Kết thúc<br>bàn giao</th>
+              <th style="width:56px;">Khối<br>lượng</th>
+              <th style="width:36px;">Đơn<br>vị</th>
             </tr>
           </thead>
           <tbody id="treeTableBody">
@@ -1618,7 +1679,10 @@ function renderTreeTable() {
     const tr = document.createElement('tr');
     tr.dataset.id = r.id;
     tr.dataset.idx = idx;
-    if(r.id === selectedRowId) tr.style.outline = '2px solid var(--primary)';
+    if(r.id === selectedRowId) {
+      tr.classList.add('row-selected');
+      tr.style.outline = '1.5px solid var(--primary)';
+    }
 
     // Drag & Drop cho mọi dòng
     tr.draggable = true;
@@ -1645,7 +1709,7 @@ function renderTreeTable() {
 
     if(r.level === 1) {
       sttCounter = 0;
-      tr.className = 'tr-level-1';
+      tr.className = 'tr-level-1' + (r.id === selectedRowId ? ' row-selected' : '');
       tr.innerHTML = `
         <td style="text-align:center; cursor:grab;">⠿</td>
         <td style="text-align:center;">1</td>
@@ -1657,7 +1721,7 @@ function renderTreeTable() {
       tbody.appendChild(tr);
     } else if(r.level === 2) {
       sttCounter = 0;
-      tr.className = 'tr-level-2';
+      tr.className = 'tr-level-2' + (r.id === selectedRowId ? ' row-selected' : '');
       tr.innerHTML = `
         <td style="text-align:center; cursor:grab;">⠿</td>
         <td style="text-align:center;">2</td>
@@ -1672,42 +1736,51 @@ function renderTreeTable() {
       const loaiOpts = [
         { v: 'Thấp tầng', l: 'Thấp tầng' },
         { v: 'Cao tầng', l: 'Cao tầng' },
-        { v: 'Các công trình khác', l: 'Công trình khác' },
+        { v: 'Các công trình khác', l: 'CT khác' },
         { v: 'Nhà xưởng', l: 'Nhà xưởng' },
-        { v: 'Đường giao thông, công viên', l: 'Đường giao thông' }
+        { v: 'Đường giao thông, công viên', l: 'Đường GT/CV' }
       ];
       const kieuOpts = [
-        '', 'Biệt thự đơn lập', 'Biệt thự song lập', 'Liền kề – Shophouse – TMDV', 'Liền kề, Shophouse, TMDV', 'TTTM'
+        { v: '', l: '–' },
+        { v: 'Biệt thự đơn lập', l: 'BT đơn lập' },
+        { v: 'Biệt thự song lập', l: 'BT song lập' },
+        { v: 'Liền kề – Shophouse – TMDV', l: 'LK, Shop, TMDV' },
+        { v: 'Liền kề, Shophouse, TMDV', l: 'LK, Shop, TMDV' },
+        { v: 'TTTM', l: 'TTTM' }
       ];
       const tcOpts = [
-        '', 'Full nội thất', 'Full Nội thất (3 tầng trở lên)', 'Xây thô', 'Hoàn thiện'
+        { v: '', l: '–' },
+        { v: 'Full nội thất', l: 'Full NT' },
+        { v: 'Full Nội thất (3 tầng trở lên)', l: 'Full NT ≥3T' },
+        { v: 'Xây thô', l: 'Xây thô' },
+        { v: 'Hoàn thiện', l: 'Hoàn thiện' }
       ];
 
       tr.innerHTML = `
-        <td style="text-align:center; color:#94a3b8; cursor:grab;">⠿</td>
+        <td style="text-align:center; color:#94a3b8; cursor:grab;" title="Kéo thả dòng">⠿</td>
         <td style="text-align:center;">3</td>
         <td style="text-align:center; font-weight:600; color:#334155;">${sttCounter}</td>
-        <td><input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten"></td>
+        <td><input type="text" value="${escHtml(r.ten)}" data-id="${r.id}" data-f="ten" title="${escHtml(r.ten)}"></td>
         <td>
-          <select data-id="${r.id}" data-f="loai" style="font-size:10.5px;">
+          <select data-id="${r.id}" data-f="loai" title="${escHtml(r.loai || '')}">
             ${loaiOpts.map(o => `<option value="${o.v}" ${r.loai===o.v?'selected':''}>${o.l}</option>`).join('')}
           </select>
         </td>
         <td>
-          <select data-id="${r.id}" data-f="kieu" style="font-size:10.5px;">
-            ${kieuOpts.map(o => `<option value="${o}" ${r.kieu===o?'selected':''}>${o || '–'}</option>`).join('')}
+          <select data-id="${r.id}" data-f="kieu" title="${escHtml(r.kieu || '')}">
+            ${kieuOpts.map(o => `<option value="${o.v}" ${r.kieu===o.v?'selected':''}>${o.l}</option>`).join('')}
           </select>
         </td>
         <td>
-          <select data-id="${r.id}" data-f="tc" style="font-size:10.5px;">
-            ${tcOpts.map(o => `<option value="${o}" ${r.tc===o?'selected':''}>${o || '–'}</option>`).join('')}
+          <select data-id="${r.id}" data-f="tc" title="${escHtml(r.tc || '')}">
+            ${tcOpts.map(o => `<option value="${o.v}" ${r.tc===o.v?'selected':''}>${o.l}</option>`).join('')}
           </select>
         </td>
-        <td><input type="number" style="text-align:right; font-family:var(--font-mono);" value="${r.kl || ''}" data-id="${r.id}" data-f="kl"></td>
-        <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
         <td><input type="date" value="${r.batDau || ''}" data-id="${r.id}" data-f="batDau"></td>
         <td><input type="date" value="${r.ketThuc || ''}" data-id="${r.id}" data-f="ketThuc"></td>
         <td><input type="date" value="${r.banGiao || ''}" data-id="${r.id}" data-f="banGiao"></td>
+        <td><input type="number" style="text-align:right; font-family:var(--font-mono); font-weight:600;" value="${r.kl || ''}" data-id="${r.id}" data-f="kl"></td>
+        <td><input type="text" style="text-align:center; font-size:10.5px; color:var(--text-muted);" value="${escHtml(r.dv || 'căn')}" data-id="${r.id}" data-f="dv"></td>
       `;
       tbody.appendChild(tr);
 
@@ -1720,12 +1793,12 @@ function renderTreeTable() {
           <td></td>
           <td style="text-align:center; color:#64748b;">4</td>
           <td></td>
-          <td class="col-name" colspan="4" style="padding-left:20px; color:#475569;">↳ M&amp;E — GĐ bê tông, cốt thép</td>
-          <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me1_kl != null ? r.me1_kl : (r.kl || '')}" data-id="${r.id}" data-f="me1_kl"></td>
-          <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
+          <td class="col-name" colspan="4" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ bê tông, cốt thép</td>
           <td><input type="date" value="${r.me1_bd || r.batDau || ''}" data-id="${r.id}" data-f="me1_bd"></td>
           <td><input type="date" value="${r.me1_kt || r.ketThuc || ''}" data-id="${r.id}" data-f="me1_kt"></td>
           <td></td>
+          <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me1_kl != null ? r.me1_kl : (r.kl || '')}" data-id="${r.id}" data-f="me1_kl"></td>
+          <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
         `;
         tbody.appendChild(sub1);
 
@@ -1735,21 +1808,25 @@ function renderTreeTable() {
           <td></td>
           <td style="text-align:center; color:#64748b;">4</td>
           <td></td>
-          <td class="col-name" colspan="4" style="padding-left:20px; color:#475569;">↳ M&amp;E — GĐ hoàn thiện</td>
-          <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me2_kl != null ? r.me2_kl : (r.kl || '')}" data-id="${r.id}" data-f="me2_kl"></td>
-          <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
+          <td class="col-name" colspan="4" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ hoàn thiện</td>
           <td><input type="date" value="${r.me2_bd || r.ketThuc || ''}" data-id="${r.id}" data-f="me2_bd"></td>
           <td><input type="date" value="${r.me2_kt || r.banGiao || ''}" data-id="${r.id}" data-f="me2_kt"></td>
           <td></td>
+          <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me2_kl != null ? r.me2_kl : (r.kl || '')}" data-id="${r.id}" data-f="me2_kl"></td>
+          <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
         `;
         tbody.appendChild(sub2);
       }
     }
 
-    tr.addEventListener('click', (e) => {
-      if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+    tr.addEventListener('click', () => {
+      if(selectedRowId !== r.id) {
         selectedRowId = r.id;
-        renderTreeTable();
+        tbody.querySelectorAll('tr').forEach(rowEl => {
+          const isSel = rowEl.dataset.id === selectedRowId;
+          rowEl.classList.toggle('row-selected', isSel);
+          rowEl.style.outline = isSel ? '1.5px solid var(--primary)' : '';
+        });
       }
     });
   });
@@ -2841,6 +2918,147 @@ document.getElementById('btnXuongCap').addEventListener('click', () => {
   }
 });
 
+// Xóa dòng đang chọn
+const btnXoaDongHm = document.getElementById('btnXoaDongHm');
+if(btnXoaDongHm) {
+  btnXoaDongHm.addEventListener('click', () => {
+    if(!selectedRowId) {
+      alert('Hãy click chọn một dòng trong bảng Hạng mục trước khi xóa!');
+      return;
+    }
+    const idx = currentProjectData.treeRows.findIndex(x => x.id === selectedRowId);
+    if(idx >= 0) {
+      currentProjectData.treeRows.splice(idx, 1);
+      selectedRowId = currentProjectData.treeRows[idx]?.id || currentProjectData.treeRows[idx - 1]?.id || null;
+      saveCurrentProject();
+      refreshDashboard();
+    }
+  });
+}
+
+// Mở rộng / Thu nhỏ bảng Hạng mục công trình toàn chiều ngang để thao tác như bảng Excel
+const btnExpandHangMuc = document.getElementById('btnExpandHangMuc');
+if(btnExpandHangMuc) {
+  btnExpandHangMuc.addEventListener('click', () => {
+    const row2Grid = document.getElementById('row2Grid');
+    if(!row2Grid) return;
+    const isExpanded = row2Grid.classList.toggle('hangmuc-expanded-mode');
+    btnExpandHangMuc.innerHTML = isExpanded ? '⤡ Thu về 2 cột' : '⤢ Mở rộng bảng';
+    btnExpandHangMuc.style.background = isExpanded ? '#fef3c7' : '#eff6ff';
+    btnExpandHangMuc.style.borderColor = isExpanded ? '#f59e0b' : '#93c5fd';
+    btnExpandHangMuc.style.color = isExpanded ? '#92400e' : '#1d4ed8';
+  });
+}
+
+// Chuẩn hóa ngày tháng khi dán từ Excel (DD/MM/YYYY hoặc YYYY-MM-DD -> YYYY-MM-DD)
+function normalizeExcelDate(raw) {
+  if(!raw) return '';
+  const d = parseDateAny(raw);
+  if(!d || isNaN(d.getTime())) return '';
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Hàm xử lý dán dữ liệu nhiều dòng từ Excel (Hỗ trợ cả thứ tự cột mới: Tên | Loại 1 | Loại 2 | TC | Bắt đầu | Kết thúc | Bàn giao | KL | Đv, và thứ tự cột cũ)
+function importRowsFromTsvText(text) {
+  if(!text || !text.trim()) return 0;
+  const lines = text.trim().split(/\r?\n/);
+  const newRows = [];
+
+  lines.forEach(line => {
+    const cols = line.split('\t').map(c => c.trim());
+    if(!cols.length || !cols.some(Boolean)) return;
+
+    // Nếu chỉ có 1 cột chữ (Mục lục)
+    if(cols.filter(Boolean).length === 1) {
+      newRows.push({
+        id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        level: 2,
+        stt: '',
+        ten: cols[0]
+      });
+      return;
+    }
+
+    const ten = cols[0] || 'Hạng mục mới';
+    const loai = cols[1] || 'Thấp tầng';
+    const kieu = cols[2] || 'Liền kề, Shophouse, TMDV';
+    const tc = cols[3] || 'Xây thô';
+
+    // Tự động nhận diện thứ tự cột: Nếu cột 4 là ngày (có dấu / hoặc -) thì theo thứ tự mới: Bắt đầu(4), Kết thúc(5), Bàn giao(6), KL(7), Đv(8)
+    let batDau = '', ketThuc = '', banGiao = '', kl = 50, dv = 'căn';
+    const c4 = cols[4] || '';
+    if(c4.includes('/') || (c4.includes('-') && c4.length >= 8)) {
+      batDau = normalizeExcelDate(cols[4]) || '2025-07-01';
+      ketThuc = normalizeExcelDate(cols[5]) || '2026-03-01';
+      banGiao = normalizeExcelDate(cols[6]) || '2026-05-30';
+      kl = parseFloat((cols[7] || '50').replace(/,/g, '')) || 50;
+      dv = cols[8] || (loai === 'Thấp tầng' ? 'căn' : 'm²');
+    } else {
+      kl = parseFloat((cols[4] || '50').replace(/,/g, '')) || 50;
+      // Kiểm tra nếu cột 5 là đơn vị hay ngày
+      const c5 = cols[5] || '';
+      if(c5 && !c5.includes('/') && !c5.includes('-') && isNaN(Date.parse(c5))) {
+        dv = c5;
+        batDau = normalizeExcelDate(cols[6]) || '2025-07-01';
+        ketThuc = normalizeExcelDate(cols[7]) || '2026-03-01';
+        banGiao = normalizeExcelDate(cols[8]) || '2026-05-30';
+      } else {
+        dv = loai === 'Thấp tầng' ? 'căn' : 'm²';
+        batDau = normalizeExcelDate(cols[5]) || '2025-07-01';
+        ketThuc = normalizeExcelDate(cols[6]) || '2026-03-01';
+        banGiao = normalizeExcelDate(cols[7]) || '2026-05-30';
+      }
+    }
+
+    newRows.push({
+      id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+      level: 3,
+      stt: '',
+      ten,
+      loai,
+      kieu,
+      tc,
+      kl,
+      dv,
+      batDau,
+      ketThuc,
+      banGiao
+    });
+  });
+
+  if(newRows.length > 0) {
+    const rows = currentProjectData.treeRows;
+    if(selectedRowId) {
+      const idx = rows.findIndex(x => x.id === selectedRowId);
+      if(idx >= 0) {
+        rows.splice(idx + 1, 0, ...newRows);
+      } else {
+        rows.push(...newRows);
+      }
+    } else {
+      rows.push(...newRows);
+    }
+    saveCurrentProject();
+    refreshDashboard();
+  }
+  return newRows.length;
+}
+
+// Hỗ trợ nhấn Ctrl+V trực tiếp trên bảng Hạng mục để dán nhiều dòng từ Excel
+const treeTableEl = document.getElementById('treeTable');
+if(treeTableEl) {
+  treeTableEl.addEventListener('paste', (e) => {
+    const clipText = (e.clipboardData || window.clipboardData)?.getData('text');
+    if(clipText && (clipText.includes('\t') || clipText.includes('\n'))) {
+      e.preventDefault();
+      importRowsFromTsvText(clipText);
+    }
+  });
+}
+
 const btnPasteExcel = document.getElementById('btnPasteExcel');
 if(btnPasteExcel) {
   btnPasteExcel.addEventListener('click', async () => {
@@ -2850,51 +3068,11 @@ if(btnPasteExcel) {
         alert('Clipboard đang trống! Hãy copy các dòng từ Excel trước.');
         return;
       }
-      const lines = text.trim().split(/\r?\n/);
-      lines.forEach(line => {
-        const cols = line.split('\t');
-        if(cols.length >= 1 && cols[0].trim()) {
-          currentProjectData.treeRows.push({
-            id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-            level: 3,
-            stt: '',
-            ten: cols[0].trim(),
-            loai: cols[1] ? cols[1].trim() : 'Thấp tầng',
-            kieu: cols[2] ? cols[2].trim() : 'Liền kề – Shophouse – TMDV',
-            tc: cols[3] ? cols[3].trim() : 'Xây thô',
-            kl: parseFloat(cols[4]) || 50,
-            dv: 'căn',
-            batDau: cols[5] ? cols[5].trim() : '2025-07-01',
-            ketThuc: cols[6] ? cols[6].trim() : '2026-03-01',
-            banGiao: cols[7] ? cols[7].trim() : '2026-05-30'
-          });
-        }
-      });
-      saveCurrentProject();
-      refreshDashboard();
+      importRowsFromTsvText(text);
     } catch(err) {
       const manual = prompt('Dán dữ liệu từ Excel (mỗi dòng 1 hạng mục, cách nhau bằng Tab):');
       if(manual && manual.trim()) {
-        manual.trim().split(/\r?\n/).forEach(line => {
-          const cols = line.split('\t');
-          if(cols[0]?.trim()) {
-            currentProjectData.treeRows.push({
-              id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-              level: 3,
-              ten: cols[0].trim(),
-              loai: 'Thấp tầng',
-              kieu: 'Liền kề – Shophouse – TMDV',
-              tc: 'Xây thô',
-              kl: parseFloat(cols[1]) || 50,
-              dv: 'căn',
-              batDau: '2025-07-01',
-              ketThuc: '2026-03-01',
-              banGiao: '2026-05-30'
-            });
-          }
-        });
-        saveCurrentProject();
-        refreshDashboard();
+        importRowsFromTsvText(manual);
       }
     }
   });
