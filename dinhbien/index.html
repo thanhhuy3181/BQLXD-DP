@@ -874,16 +874,13 @@ footer.app-footer {
       </div>
     </div>
 
-    <!-- CỘT PHẢI HÀNG 2: HỆ SỐ XD, ME, HT, KHO, BPTC -->
+    <!-- CỘT PHẢI HÀNG 2: HỆ SỐ XD, ME, HT, KHO, BPTC (LUÔN MỞ RỘNG CHI TIẾT) -->
     <div class="card-box heso-section">
       <div class="card-header">
         <h2>
           <span>⚡ Hệ số XD, ME, HT, Kho, BPTC</span>
         </h2>
-        <button class="toggle-btn" id="toggleHesoBtn" title="Bấm để mở rộng / thu gọn">
-          <span id="toggleHesoIcon">▼</span>
-          <span id="toggleHesoText">Mở rộng chi tiết</span>
-        </button>
+        <span style="font-size:10.5px; color:#64748b; font-weight:500;">Đồng bộ dòng với bảng Hạng mục &amp; thẳng hàng cột tháng</span>
       </div>
       <!-- Thanh 5 Tab Hệ số -->
       <div class="heso-tabs-bar" id="hesoTabsBar">
@@ -1075,8 +1072,8 @@ let currentBqlId = 'dan_phuong';
 let currentProjectData = null;
 let selectedRowId = null;
 
-// Trạng thái thu gọn/mở rộng (Bình thường chỉ 1 dòng, bấm mở xuống thì mở hết)
-let isHesoExpanded = false;
+// Hệ số tiến độ (XD, ME, HT, Kho, BPTC) luôn mở rộng đầy đủ các dòng
+let isHesoExpanded = true;
 let isHesoNhansuExpanded = false;
 
 function makeStorageKey(vungId, bqlId) {
@@ -1601,6 +1598,22 @@ function renderTreeTable() {
   // Tính STT tự động cho level 3
   let sttCounter = 0;
 
+  // Dòng Tổng hợp dự án đầu tiên để khớp 1-1 với dòng "★ TỔNG HỆ SỐ ĐIỀU ĐỘ" bên bảng Hệ số tiến độ
+  const trSummary = document.createElement('tr');
+  trSummary.style.background = '#fef3c7';
+  trSummary.style.fontWeight = '700';
+  trSummary.style.color = '#92400e';
+  const totalItemsCount = rows.filter(x => x.level !== 1 && x.level !== 2).length;
+  trSummary.innerHTML = `
+    <td style="text-align:center;">★</td>
+    <td style="text-align:center;">0</td>
+    <td></td>
+    <td colspan="9" style="font-weight:700; color:#92400e;">
+      TỔNG HỢP TIẾN ĐỘ DỰ ÁN (${totalItemsCount} hạng mục thi công) — Đồng bộ dòng với bảng Hệ số bên phải
+    </td>
+  `;
+  tbody.appendChild(trSummary);
+
   rows.forEach((r, idx) => {
     const tr = document.createElement('tr');
     tr.dataset.id = r.id;
@@ -1829,19 +1842,19 @@ function renderSyncHesoTable(res) {
       if(r.level === 1) {
         html += `
           <tr class="tr-level-1" style="height:28px;">
-            <td class="col-heso-freeze" style="text-align:left; font-weight:700; color:#fff; background:#1b4f72;">
+            <td class="col-heso-freeze" style="text-align:left; font-weight:700; color:#fff; background:#e67e22;">
               ${escHtml(r.ten)}
             </td>
-            ${months.map(() => `<td class="col-month-fixed" style="background:#1b4f72;"></td>`).join('')}
+            ${months.map(() => `<td class="col-month-fixed" style="background:#e67e22;"></td>`).join('')}
           </tr>
         `;
       } else if(r.level === 2) {
         html += `
           <tr class="tr-level-2" style="height:28px;">
-            <td class="col-heso-freeze" style="text-align:left; font-weight:700; color:#1b4f72; background:#d6eaf8;">
+            <td class="col-heso-freeze" style="text-align:left; font-weight:700; color:#1b4f72; background:#d4e6f1;">
               ${escHtml(r.ten)}
             </td>
-            ${months.map(() => `<td class="col-month-fixed" style="background:#d6eaf8;"></td>`).join('')}
+            ${months.map(() => `<td class="col-month-fixed" style="background:#d4e6f1;"></td>`).join('')}
           </tr>
         `;
       } else {
@@ -1959,28 +1972,20 @@ document.getElementById('hesoTabsBar').addEventListener('click', (e) => {
   }
 });
 
-// Bật/tắt mở rộng Hệ số XD, ME, HT...
-document.getElementById('toggleHesoBtn').addEventListener('click', () => {
-  isHesoExpanded = !isHesoExpanded;
-  document.getElementById('toggleHesoIcon').textContent = isHesoExpanded ? '▲' : '▼';
-  document.getElementById('toggleHesoText').textContent = isHesoExpanded ? 'Thu gọn 1 dòng' : 'Mở rộng chi tiết';
-  renderSyncHesoTable(calcResultCache);
-});
-
-// Đồng bộ cuộn giữa bảng Hạng mục và bảng Hệ số XD/ME/HT
+// Đồng bộ cuộn dọc giữa bảng Hạng mục và bảng Hệ số XD/ME/HT
 const hmScroll = document.getElementById('hangmucScrollSync');
 const hsScroll = document.getElementById('hesoScrollSync');
 let syncTopRowSource = null;
 
 hmScroll.addEventListener('scroll', () => {
-  if(syncTopRowSource !== 'hs' && isHesoExpanded) {
+  if(syncTopRowSource !== 'hs') {
     syncTopRowSource = 'hm';
     hsScroll.scrollTop = hmScroll.scrollTop;
     requestAnimationFrame(() => { if(syncTopRowSource === 'hm') syncTopRowSource = null; });
   }
 });
 hsScroll.addEventListener('scroll', () => {
-  if(syncTopRowSource !== 'hm' && isHesoExpanded) {
+  if(syncTopRowSource !== 'hm') {
     syncTopRowSource = 'hs';
     hmScroll.scrollTop = hsScroll.scrollTop;
     requestAnimationFrame(() => { if(syncTopRowSource === 'hs') syncTopRowSource = null; });
