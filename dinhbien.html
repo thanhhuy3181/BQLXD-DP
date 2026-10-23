@@ -288,6 +288,27 @@ body.is-resizing-row * {
   padding: 10px;
   flex: 1;
 }
+/* Chế độ Tổng hợp Vùng (BQL DAMB, DAMT, DAMN) hoặc Khối XD: Xếp dọc 3 bảng (Tổng hợp -> Biểu đồ nhân lực Tổng -> Nhân sự Tổng) để Biểu đồ và Nhân sự Tổng thẳng hàng cột tháng tuyệt đối */
+#row1StickyGrid.agg-vertical-mode {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px;
+}
+#row1StickyGrid.agg-vertical-mode > .col-resizer-handle {
+  display: none !important;
+}
+#row1StickyGrid.agg-vertical-mode .tonghop-stats-grid {
+  grid-template-columns: repeat(4, 1fr);
+  padding: 6px 10px;
+}
+.nhansu-section.agg-expanded-mode {
+  height: auto !important;
+  max-height: none !important;
+}
+.nhansu-section.agg-expanded-mode .nhansu-table-wrap {
+  max-height: none !important;
+  overflow-y: visible !important;
+}
 .stat-mini-box {
   background: #f8fafc;
   border: 1px solid var(--border-light);
@@ -1031,7 +1052,7 @@ footer.app-footer {
   <div class="org-hierarchy-bar">
     <!-- Cấp 1: Khối XD -->
     <div class="org-row">
-      <button class="btn-org active" style="font-weight:800;">Khối XD</button>
+      <button class="btn-org" id="btnKhoiXd" style="font-weight:800;" title="Xem tổng hợp gộp toàn bộ Khối XD (Tất cả các Vùng & Dự án)">Khối XD</button>
     </div>
     <!-- Cấp 2: BQL Vùng -->
     <div class="org-row" id="rowVung">
@@ -2222,6 +2243,7 @@ function calculateVungAggregate(vungId) {
 
   return {
     isAggregate: true,
+    aggScope: 'VUNG',
     projectCount: bqlList.length,
     projectBreakdown,
     months,
@@ -2235,7 +2257,132 @@ function calculateVungAggregate(vungId) {
   };
 }
 
+function calculateKhoiAggregate() {
+  const vungBtns = Array.from(document.querySelectorAll('#rowVung [data-vung]'));
+  const vungEntries = vungBtns.length > 0
+    ? vungBtns.map(b => ({ id: b.dataset.vung, ten: b.textContent.trim() }))
+    : DEFAULT_VUNGS;
+
+  const allProjEntries = [];
+  vungEntries.forEach(v => {
+    const bqlList = getBqlRegistry(v.id);
+    (bqlList || []).forEach(b => {
+      const pData = getProjectDataSnapshot(v.id, b.id, b.ten);
+      allProjEntries.push({
+        vungId: v.id,
+        vungTen: v.ten,
+        bql: b,
+        res: calculateSingleProject(pData)
+      });
+    });
+  });
+
+  if(allProjEntries.length === 0) {
+    const fallbackMonths = [new Date(2025, 6, 1)];
+    return {
+      isAggregate: true,
+      aggScope: 'KHOI',
+      projectCount: 0,
+      projectBreakdown: [],
+      months: fallbackMonths,
+      rowsRaw: MATRIX_ROWS_META.map(() => [0]),
+      rowsFinal: MATRIX_ROWS_META.map(() => [0]),
+      bqlTotals: [0],
+      khoTotals: [0],
+      bptcTotals: [0],
+      grandTotals: [0],
+      itemProgressDetail: []
+    };
+  }
+
+  let minD = null, maxD = null;
+  allProjEntries.forEach(({ res }) => {
+    if(res.months && res.months.length > 0) {
+      const s = res.months[0];
+      const e = res.months[res.months.length - 1];
+      if(!minD || s < minD) minD = new Date(s);
+      if(!maxD || e > maxD) maxD = new Date(e);
+    }
+  });
+  if(!minD) { minD = new Date(2025, 6, 1); maxD = addMonths(minD, 12); }
+
+  const months = [];
+  let cur = new Date(minD.getFullYear(), minD.getMonth(), 1);
+  const end = new Date(maxD.getFullYear(), maxD.getMonth(), 1);
+  while(cur <= end) {
+    months.push(new Date(cur));
+    cur = addMonths(cur, 1);
+  }
+  if(months.length > 48) months.length = 48;
+
+  const numM = months.length;
+  const rowsRaw = MATRIX_ROWS_META.map(() => Array(numM).fill(0));
+  const rowsFinal = MATRIX_ROWS_META.map(() => Array(numM).fill(0));
+  const bqlTotals = Array(numM).fill(0);
+  const khoTotals = Array(numM).fill(0);
+  const bptcTotals = Array(numM).fill(0);
+  const grandTotals = Array(numM).fill(0);
+
+  const projectBreakdown = allProjEntries.map(({ vungTen, bql, res }) => {
+    const mkMap = {};
+    res.months.forEach((m, idx) => { mkMap[monthKey(m)] = idx; });
+
+    const pGrand = Array(numM).fill(0);
+    const pBql = Array(numM).fill(0);
+    const pKho = Array(numM).fill(0);
+    const pBptc = Array(numM).fill(0);
+
+    months.forEach((m, uIdx) => {
+      const pIdx = mkMap[monthKey(m)];
+      if(pIdx !== undefined) {
+        pGrand[uIdx] = res.grandTotals[pIdx] || 0;
+        pBql[uIdx] = res.bqlTotals[pIdx] || 0;
+        pKho[uIdx] = res.khoTotals[pIdx] || 0;
+        pBptc[uIdx] = res.bptcTotals[pIdx] || 0;
+
+        bqlTotals[uIdx] += pBql[uIdx];
+        khoTotals[uIdx] += pKho[uIdx];
+        bptcTotals[uIdx] += pBptc[uIdx];
+        grandTotals[uIdx] += pGrand[uIdx];
+
+        MATRIX_ROWS_META.forEach((_, rIdx) => {
+          rowsRaw[rIdx][uIdx] += (res.rowsRaw[rIdx][pIdx] || 0);
+          rowsFinal[rIdx][uIdx] += (res.rowsFinal[rIdx][pIdx] || 0);
+        });
+      }
+    });
+
+    return {
+      id: bql.id,
+      vungTen,
+      ten: `${bql.ten} (${vungTen})`,
+      grandTotals: pGrand,
+      bqlTotals: pBql,
+      khoTotals: pKho,
+      bptcTotals: pBptc
+    };
+  });
+
+  return {
+    isAggregate: true,
+    aggScope: 'KHOI',
+    projectCount: allProjEntries.length,
+    projectBreakdown,
+    months,
+    rowsRaw,
+    rowsFinal,
+    bqlTotals,
+    khoTotals,
+    bptcTotals,
+    grandTotals,
+    itemProgressDetail: []
+  };
+}
+
 function calculateAll() {
+  if(!currentVungId) {
+    return calculateKhoiAggregate();
+  }
   if(!currentBqlId) {
     return calculateVungAggregate(currentVungId);
   }
@@ -2855,10 +3002,12 @@ function renderChart(res) {
   const tabSuffix = tab === 'ALL' ? '' : ` [${tab}]`;
 
   const lblChartTitle = document.getElementById('lblChartHeaderTitle');
+  const scopeLabel = res.aggScope === 'KHOI'
+    ? 'Khối XD (Toàn bộ Vùng & Dự án)'
+    : (document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng');
   if(lblChartTitle) {
-    const vungName = document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng';
     lblChartTitle.textContent = isAgg
-      ? `📊 Biểu đồ phân bổ nhân lực Tổng${tabSuffix} — ${vungName} (Gộp ${res.projectCount} dự án)`
+      ? `📊 Biểu đồ phân bổ nhân lực Tổng${tabSuffix} — ${scopeLabel} (Gộp ${res.projectCount} dự án)`
       : `📊 Biểu đồ phân bổ nhân lực${tabSuffix} — ${currentProjectData?.ten || ''}`;
   }
 
@@ -2960,13 +3109,15 @@ function renderMatrix(res) {
   const months = res.months;
   const tab = currentDeptSyncTab;
   const isAgg = !!res.isAggregate;
-  const vungName = document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng';
+  const scopeLabel = res.aggScope === 'KHOI'
+    ? 'Khối XD (Toàn bộ Vùng & Dự án)'
+    : (document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng');
 
   const lblMatrixTitle = document.getElementById('lblMatrixHeaderTitle');
   if(lblMatrixTitle) {
     const tabTxt = tab === 'ALL' ? 'BQLXD, KHO, BPTC' : tab;
     lblMatrixTitle.textContent = isAgg
-      ? `👥 Nhân sự Tổng (${tabTxt}) — ${vungName} (Tổng gộp ${res.projectCount} dự án)`
+      ? `👥 Nhân sự Tổng (${tabTxt}) — ${scopeLabel} (Tổng gộp ${res.projectCount} dự án)`
       : `👥 Nhân sự (${tabTxt}) — ${currentProjectData?.ten || ''}`;
   }
 
@@ -2983,11 +3134,15 @@ function renderMatrix(res) {
   let html = '';
 
   if(tab === 'ALL') {
+    const grandScopeCol = res.aggScope === 'KHOI' ? 'TỔNG KHỐI XD' : (isAgg ? 'TỔNG VÙNG' : 'DỰ ÁN');
+    const grandTitleCol = res.aggScope === 'KHOI'
+      ? `TỔNG NHÂN SỰ TOÀN KHỐI XD (${res.projectCount} DỰ ÁN)`
+      : (isAgg ? `TỔNG NHÂN SỰ (${res.projectCount} DỰ ÁN)` : 'TỔNG CỘNG NHÂN SỰ BQLXD');
     html += `
       <tr class="row-grand-total">
         <td class="col-freeze-1">★</td>
-        <td class="col-freeze-2">${isAgg ? 'TỔNG VÙNG' : 'DỰ ÁN'}</td>
-        <td class="col-freeze-3">${isAgg ? `TỔNG NHÂN SỰ (${res.projectCount} DỰ ÁN)` : 'TỔNG CỘNG NHÂN SỰ BQLXD'}</td>
+        <td class="col-freeze-2">${grandScopeCol}</td>
+        <td class="col-freeze-3">${grandTitleCol}</td>
         <td class="col-freeze-4"></td>
         ${res.grandTotals.map(v => `<td class="num-cell col-month-fixed" style="font-weight:700;">${v > 0 ? v : ''}</td>`).join('')}
       </tr>
@@ -3699,8 +3854,10 @@ function updateStats(res) {
   const elBqlName = document.getElementById('lblCurrentBqlName');
   if(elBqlName) {
     if(res.isAggregate) {
-      const vungName = document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng';
-      elBqlName.textContent = `TỔNG HỢP: ${vungName} (${res.projectCount} dự án)`;
+      const scopeName = res.aggScope === 'KHOI'
+        ? 'KHỐI XD (TOÀN BỘ CÁC VÙNG)'
+        : (document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng');
+      elBqlName.textContent = `TỔNG HỢP: ${scopeName} (${res.projectCount} dự án)`;
     } else if(currentProjectData) {
       elBqlName.textContent = currentProjectData.ten;
     }
@@ -3711,25 +3868,36 @@ function refreshDashboard() {
   calcResultCache = calculateAll();
   const isAgg = !!calcResultCache.isAggregate;
 
+  const row1StickyGrid = document.getElementById('row1StickyGrid');
   const row2Grid = document.getElementById('row2Grid');
   const row3Grid = document.getElementById('row3Grid');
   const row4Grid = document.getElementById('row4Grid');
   const dinhmucCard = document.getElementById('dinhmucCard');
+  const nhansuCard = document.querySelector('.nhansu-section');
   const rowResizer23 = document.getElementById('rowResizer23');
+  const rowResizer34 = document.getElementById('rowResizer34');
   const colResizerRow3 = document.getElementById('colResizerRow3');
 
   if(isAgg) {
-    // Chế độ Tổng Vùng (ví dụ khi ấn vào BQL DAMB): Chỉ hiển thị Biểu đồ phân bổ nhân lực Tổng & Nhân sự Tổng (gộp các dự án)
+    // Chế độ Tổng Vùng (ví dụ BQL DAMB) hoặc Tổng Khối XD:
+    // Sắp xếp theo chiều dọc từ trên xuống dưới: 1. TỔNG HỢP -> 2. Biểu đồ phân bổ nhân lực Tổng -> 3. Nhân sự Tổng
+    // Nhờ đó Biểu đồ và Nhân sự Tổng cùng rộng 100% và thẳng hàng cột tháng (370px + 68px × tháng) tuyệt đối!
+    if(row1StickyGrid) row1StickyGrid.classList.add('agg-vertical-mode');
+    if(nhansuCard) nhansuCard.classList.add('agg-expanded-mode');
     if(row2Grid) row2Grid.style.display = 'none';
     if(rowResizer23) rowResizer23.style.display = 'none';
+    if(rowResizer34) rowResizer34.style.display = 'none';
     if(row4Grid) row4Grid.style.display = 'none';
     if(dinhmucCard) dinhmucCard.style.display = 'none';
     if(colResizerRow3) colResizerRow3.style.display = 'none';
     if(row3Grid) row3Grid.style.gridTemplateColumns = '1fr';
   } else {
     // Chế độ Chi tiết từng BQLXD
+    if(row1StickyGrid) row1StickyGrid.classList.remove('agg-vertical-mode');
+    if(nhansuCard) nhansuCard.classList.remove('agg-expanded-mode');
     if(row2Grid) row2Grid.style.display = '';
     if(rowResizer23) rowResizer23.style.display = '';
+    if(rowResizer34) rowResizer34.style.display = '';
     if(row4Grid) row4Grid.style.display = '';
     if(dinhmucCard) dinhmucCard.style.display = '';
     if(colResizerRow3) colResizerRow3.style.display = '';
@@ -4367,9 +4535,42 @@ if(btnPasteExcel) {
    9. QUẢN LÝ BQL VÙNG & BQLXD (NÚT BẤM BẬT CHỌN THEO HÌNH VẼ)
    ========================================================================== */
 function renderOrgHierarchyButtons() {
+  // Cập nhật trạng thái nút Khối XD và các nút Vùng
+  const btnKhoiXd = document.getElementById('btnKhoiXd');
+  if(btnKhoiXd) {
+    btnKhoiXd.classList.toggle('active', !currentVungId);
+  }
+  document.querySelectorAll('#rowVung [data-vung]').forEach(b => {
+    b.classList.toggle('active', b.dataset.vung === currentVungId);
+  });
+
   // Render BQLXD theo Vùng hiện tại
   const rowBql = document.getElementById('rowBql');
   rowBql.innerHTML = '';
+
+  if(!currentVungId) {
+    // Khi đang chọn Khối XD (Tổng toàn khối): hiển thị tất cả BQLXD của các vùng để bấm nhanh nếu cần
+    const vungBtns = Array.from(document.querySelectorAll('#rowVung [data-vung]'));
+    vungBtns.forEach(vb => {
+      const vId = vb.dataset.vung;
+      const bqlList = getBqlRegistry(vId);
+      bqlList.forEach(b => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-org';
+        btn.textContent = b.ten;
+        btn.title = `Thuộc ${vb.textContent.trim()}`;
+        btn.addEventListener('click', () => {
+          currentVungId = vId;
+          currentBqlId = b.id;
+          loadProject(currentVungId, currentBqlId);
+          renderOrgHierarchyButtons();
+          refreshDashboard();
+        });
+        rowBql.appendChild(btn);
+      });
+    });
+    return;
+  }
 
   const bqlList = getBqlRegistry(currentVungId);
   bqlList.forEach(b => {
@@ -4399,11 +4600,20 @@ function renderOrgHierarchyButtons() {
   rowBql.appendChild(btnPlus);
 }
 
+// Lắng nghe chọn Khối XD: Gộp toàn bộ dự án của tất cả các Vùng (currentVungId = '', currentBqlId = '')
+const btnKhoiXdEl = document.getElementById('btnKhoiXd');
+if(btnKhoiXdEl) {
+  btnKhoiXdEl.addEventListener('click', () => {
+    currentVungId = '';
+    currentBqlId = '';
+    renderOrgHierarchyButtons();
+    refreshDashboard();
+  });
+}
+
 // Lắng nghe chọn Vùng: Khi ấn vào BQL Vùng (VD: BQL DAMB) -> Hiển thị chế độ GỘP CÁC DỰ ÁN BÊN DƯỚI (currentBqlId = '')
 document.querySelectorAll('#rowVung [data-vung]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('#rowVung [data-vung]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
     currentVungId = btn.dataset.vung;
     currentBqlId = ''; // Chế độ Tổng hợp Vùng (gộp tất cả dự án con)
     renderOrgHierarchyButtons();
