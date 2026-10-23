@@ -5022,6 +5022,37 @@ function initExcelRangeSelectionOnTables() {
 
     if(!excelRangeSelection.tableEl || excelRangeSelection.selectedCells.length === 0) return;
 
+    // Copy (Ctrl + C) dữ liệu vùng chọn vào Clipboard
+    if((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+      if(!activeEl || activeEl.tagName !== 'INPUT' || activeEl.hasAttribute('readonly')) {
+        if(excelRangeSelection.selectedCells.length > 0) {
+          const cells = excelRangeSelection.selectedCells;
+          const minR = Math.min(...cells.map(x => x.r));
+          const maxR = Math.max(...cells.map(x => x.r));
+          const minC = Math.min(...cells.map(x => x.c));
+          const maxC = Math.max(...cells.map(x => x.c));
+
+          const rowLines = [];
+          for(let r = minR; r <= maxR; r++) {
+            const rowVals = [];
+            for(let c = minC; c <= maxC; c++) {
+              const item = cells.find(x => x.r === r && x.c === c);
+              if(item) {
+                const inp = item.cell.querySelector('input, select');
+                rowVals.push(inp ? (inp.value || '') : item.cell.textContent.trim());
+              } else {
+                rowVals.push('');
+              }
+            }
+            rowLines.push(rowVals.join('\t'));
+          }
+          const copyStr = rowLines.join('\r\n');
+          navigator.clipboard?.writeText(copyStr);
+          showUndoToast(`📋 Đã copy ${cells.length} ô vào Clipboard`);
+        }
+      }
+    }
+
     // 1. Phím Delete hoặc Backspace: Xóa dữ liệu các ô trong vùng chọn
     if(e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
