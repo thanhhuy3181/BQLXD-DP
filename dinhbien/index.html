@@ -138,25 +138,137 @@ header.app-header {
 .btn-success:hover { background: #047857; }
 
 /* ==========================================================================
-   BỐ CỤC CHÍNH (ALL-IN-ONE 2-COLUMN MASTER GRID DASHBOARD)
+   BỐ CỤC CHÍNH (ALL-IN-ONE 2-COLUMN MASTER GRID DASHBOARD - RESIZABLE SPLITTERS)
    ========================================================================== */
+:root {
+  --left-col-pct: 42%;
+  --row2-height: 360px;
+  --row3-height: 480px;
+}
+
 .main-wrapper {
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   flex: 1;
+  position: relative;
 }
 
-/* LƯỚI 2 CỘT ĐỒNG BỘ TOÀN TRANG (TRÁI 42% - PHẢI 58%) */
+/* LƯỚI 2 CỘT ĐỒNG BỘ TOÀN TRANG (CHO PHÉP CO KÉO TRÁI - PHẢI) */
 .dashboard-row-grid {
   display: grid;
-  grid-template-columns: 42% 58%;
+  grid-template-columns: var(--left-col-pct) calc(100% - var(--left-col-pct) - 12px);
   gap: 12px;
   align-items: stretch;
+  position: relative;
 }
 .dashboard-row-grid > * {
   min-width: 0;
+}
+
+/* Thanh kéo dọc phân chia 2 nửa màn hình Trái / Phải */
+.col-resizer-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--left-col-pct) + 2px);
+  width: 8px;
+  cursor: col-resize;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+.col-resizer-handle::after {
+  content: '⋮';
+  font-size: 13px;
+  font-weight: 900;
+  color: #94a3b8;
+  background: #e2e8f0;
+  border-radius: 3px;
+  padding: 6px 1px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: all 0.15s ease;
+}
+.col-resizer-handle:hover,
+body.is-resizing-col .col-resizer-handle {
+  background: rgba(37, 99, 235, 0.18);
+}
+.col-resizer-handle:hover::after,
+body.is-resizing-col .col-resizer-handle::after {
+  background: #2563eb;
+  color: #ffffff;
+  opacity: 1;
+}
+
+/* Thanh kéo ngang phân chia giữa (Hạng mục + Hệ số) và (Định mức + Nhân sự) */
+.row-resizer-bar {
+  height: 10px;
+  margin: -4px 0;
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 45;
+  border-radius: 4px;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+.row-resizer-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: #cbd5e1;
+}
+.row-resizer-bar span {
+  position: relative;
+  z-index: 2;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 12px;
+  height: 14px;
+  line-height: 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.row-resizer-bar:hover,
+.row-resizer-bar.active {
+  background: rgba(37, 99, 235, 0.12);
+}
+.row-resizer-bar:hover::before,
+.row-resizer-bar.active::before {
+  background: #2563eb;
+  height: 2px;
+}
+.row-resizer-bar:hover span,
+.row-resizer-bar.active span {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+body.is-resizing-col,
+body.is-resizing-col * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+body.is-resizing-row,
+body.is-resizing-row * {
+  cursor: row-resize !important;
+  user-select: none !important;
 }
 
 /* Ô TỔNG HỢP (HÀNG 1 TRÁI) */
@@ -190,8 +302,8 @@ header.app-header {
 
 /* BẢNG ĐỊNH MỨC (HÀNG 3 TRÁI - ĐỒNG BỘ DÒNG VỚI BẢNG NHÂN SỰ PHẢI) */
 .dinhmuc-section {
-  height: 480px;
-  max-height: 480px;
+  height: var(--row3-height);
+  max-height: var(--row3-height);
   display: flex;
   flex-direction: column;
 }
@@ -347,21 +459,23 @@ table.dinhmuc-table td input:focus {
 .hangmuc-col {
   display: flex;
   flex-direction: column;
-  transition: all 0.2s ease;
+  height: var(--row2-height);
+  max-height: var(--row2-height);
 }
 .dashboard-row-grid.hangmuc-expanded-mode {
   grid-template-columns: 1fr !important;
 }
-.dashboard-row-grid.hangmuc-expanded-mode > .heso-section {
+.dashboard-row-grid.hangmuc-expanded-mode > .heso-section,
+.dashboard-row-grid.hangmuc-expanded-mode > .col-resizer-handle {
   display: none !important;
 }
-.dashboard-row-grid.hangmuc-expanded-mode .hangmuc-table-wrap {
+.dashboard-row-grid.hangmuc-expanded-mode .hangmuc-col {
+  height: 75vh;
   max-height: 75vh;
 }
 .hangmuc-table-wrap {
   flex: 1;
   overflow: auto;
-  max-height: 520px;
 }
 table.tree-table {
   width: 100%;
@@ -537,7 +651,8 @@ table.chart-sync-table tr.chart-stat-row td.chart-freeze-axis {
 .heso-section {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  height: var(--row2-height);
+  max-height: var(--row2-height);
 }
 .heso-tabs-bar {
   display: flex;
@@ -570,7 +685,6 @@ table.chart-sync-table tr.chart-stat-row td.chart-freeze-axis {
 .heso-table-wrap {
   flex: 1;
   overflow: auto;
-  max-height: 380px;
 }
 table.sync-matrix-table {
   width: max-content;
@@ -657,8 +771,8 @@ table.sync-matrix-table tr.header-summary-row td {
 
 /* 4. KHỐI GIỮA: BẢNG MA TRẬN NHÂN SỰ ĐẦY ĐỦ (53 CHỨC DANH) */
 .nhansu-section {
-  height: 480px;
-  max-height: 480px;
+  height: var(--row3-height);
+  max-height: var(--row3-height);
   display: flex;
   flex-direction: column;
 }
@@ -887,6 +1001,8 @@ footer.app-footer {
         </table>
       </div>
     </div>
+    <!-- Thanh kéo dọc phân chia 2 nửa màn hình Trái / Phải -->
+    <div class="col-resizer-handle" title="Kéo sang trái / sang phải để điều chỉnh độ rộng 2 nửa màn hình (Nhấp đúp để đặt lại mặc định)"></div>
   </div>
 
   <!-- =========================================================================
@@ -959,14 +1075,20 @@ footer.app-footer {
         <button class="heso-tab-btn" data-tab="kho">Hệ số Kho</button>
         <button class="heso-tab-btn" data-tab="bptc">Hệ số BPTC</button>
       </div>
-      <div class="heso-table-wrap" id="hesoScrollSync" style="max-height:520px;">
+      <div class="heso-table-wrap" id="hesoScrollSync">
         <table class="sync-matrix-table" id="syncHesoTable">
           <thead id="syncHesoHead"></thead>
           <tbody id="syncHesoBody"></tbody>
         </table>
       </div>
     </div>
+    <!-- Thanh kéo dọc phân chia 2 nửa màn hình Trái / Phải -->
+    <div class="col-resizer-handle" title="Kéo sang trái / sang phải để điều chỉnh độ rộng 2 nửa màn hình (Nhấp đúp để đặt lại mặc định)"></div>
+  </div>
 
+  <!-- Thanh kéo ngang phân chia giữa (Hạng mục + Hệ số) và (Định mức + Nhân sự) -->
+  <div class="row-resizer-bar" id="rowResizer23" title="Kéo lên / xuống để thay đổi chiều cao khối (Hạng mục + Hệ số) và (Định mức + Nhân sự) — Nhấp đúp để đặt lại">
+    <span>⇅ Kéo lên / xuống điều chỉnh chiều cao bảng</span>
   </div>
 
   <!-- =========================================================================
@@ -1040,7 +1162,13 @@ footer.app-footer {
         </table>
       </div>
     </div>
+    <!-- Thanh kéo dọc phân chia 2 nửa màn hình Trái / Phải -->
+    <div class="col-resizer-handle" id="colResizerRow3" title="Kéo sang trái / sang phải để điều chỉnh độ rộng 2 nửa màn hình (Nhấp đúp để đặt lại mặc định)"></div>
+  </div>
 
+  <!-- Thanh kéo ngang điều chỉnh chiều cao bảng Định mức + Nhân sự -->
+  <div class="row-resizer-bar" id="rowResizer34" title="Kéo lên / xuống để thay đổi chiều cao bảng Định mức &amp; Nhân sự — Nhấp đúp để đặt lại">
+    <span>⇅ Kéo lên / xuống điều chỉnh chiều cao Định mức &amp; Nhân sự</span>
   </div>
 
   <!-- =========================================================================
@@ -3062,18 +3190,24 @@ function refreshDashboard() {
   const row3Grid = document.getElementById('row3Grid');
   const row4Grid = document.getElementById('row4Grid');
   const dinhmucCard = document.getElementById('dinhmucCard');
+  const rowResizer23 = document.getElementById('rowResizer23');
+  const colResizerRow3 = document.getElementById('colResizerRow3');
 
   if(isAgg) {
     // Chế độ Tổng Vùng (ví dụ khi ấn vào BQL DAMB): Chỉ hiển thị Biểu đồ phân bổ nhân lực Tổng & Nhân sự Tổng (gộp các dự án)
     if(row2Grid) row2Grid.style.display = 'none';
+    if(rowResizer23) rowResizer23.style.display = 'none';
     if(row4Grid) row4Grid.style.display = 'none';
     if(dinhmucCard) dinhmucCard.style.display = 'none';
+    if(colResizerRow3) colResizerRow3.style.display = 'none';
     if(row3Grid) row3Grid.style.gridTemplateColumns = '1fr';
   } else {
     // Chế độ Chi tiết từng BQLXD
     if(row2Grid) row2Grid.style.display = '';
+    if(rowResizer23) rowResizer23.style.display = '';
     if(row4Grid) row4Grid.style.display = '';
     if(dinhmucCard) dinhmucCard.style.display = '';
+    if(colResizerRow3) colResizerRow3.style.display = '';
     if(row3Grid) row3Grid.style.gridTemplateColumns = '';
     renderTreeTable();
     renderSyncHesoTable(calcResultCache);
@@ -4056,6 +4190,122 @@ document.addEventListener('DOMContentLoaded', () => {
         nhansuWrap.scrollTop = dinhmucWrap.scrollTop;
         requestAnimationFrame(() => { if(syncSourceY === 'dinhmuc') syncSourceY = null; });
       }
+    });
+  }
+
+  // =========================================================================
+  // KHỞI TẠO CO KÉO ĐƯỜNG PHÂN CHIA DỌC (TRÁI - PHẢI) VÀ NGANG (TRÊN - DƯỚI)
+  // =========================================================================
+  const savedColPct = localStorage.getItem('db_v2_left_col_pct');
+  const savedRow2H = localStorage.getItem('db_v2_row2_h');
+  const savedRow3H = localStorage.getItem('db_v2_row3_h');
+  if(savedColPct) document.documentElement.style.setProperty('--left-col-pct', savedColPct + '%');
+  if(savedRow2H) document.documentElement.style.setProperty('--row2-height', savedRow2H + 'px');
+  if(savedRow3H) document.documentElement.style.setProperty('--row3-height', savedRow3H + 'px');
+
+  // 1. Kéo thanh dọc phân chia 2 nửa màn hình Trái / Phải
+  document.querySelectorAll('.col-resizer-handle').forEach(handle => {
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const wrapper = document.querySelector('.main-wrapper');
+      if(!wrapper) return;
+      const rect = wrapper.getBoundingClientRect();
+      document.body.classList.add('is-resizing-col');
+
+      const onMove = (ev) => {
+        const relX = ev.clientX - rect.left;
+        let pct = (relX / rect.width) * 100;
+        pct = Math.max(20, Math.min(80, Math.round(pct * 10) / 10));
+        document.documentElement.style.setProperty('--left-col-pct', pct + '%');
+        localStorage.setItem('db_v2_left_col_pct', String(pct));
+      };
+
+      const onUp = () => {
+        document.body.classList.remove('is-resizing-col');
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    // Nhấp đúp để đặt lại tỷ lệ mặc định 42% - 58%
+    handle.addEventListener('dblclick', () => {
+      document.documentElement.style.setProperty('--left-col-pct', '42%');
+      localStorage.removeItem('db_v2_left_col_pct');
+    });
+  });
+
+  // 2. Kéo thanh ngang phân chia giữa (Hạng mục + Hệ số) và (Định mức + Nhân sự)
+  const rowResizer23 = document.getElementById('rowResizer23');
+  if(rowResizer23) {
+    rowResizer23.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const hangmucCard = document.getElementById('hangmucCard');
+      if(!hangmucCard) return;
+      const startY = e.clientY;
+      const startH2 = hangmucCard.getBoundingClientRect().height;
+      document.body.classList.add('is-resizing-row');
+      rowResizer23.classList.add('active');
+
+      const onMove = (ev) => {
+        const deltaY = ev.clientY - startY;
+        const newH2 = Math.max(160, Math.min(850, Math.round(startH2 + deltaY)));
+        document.documentElement.style.setProperty('--row2-height', newH2 + 'px');
+        localStorage.setItem('db_v2_row2_h', String(newH2));
+      };
+
+      const onUp = () => {
+        document.body.classList.remove('is-resizing-row');
+        rowResizer23.classList.remove('active');
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    rowResizer23.addEventListener('dblclick', () => {
+      document.documentElement.style.setProperty('--row2-height', '360px');
+      localStorage.removeItem('db_v2_row2_h');
+    });
+  }
+
+  // 3. Kéo thanh ngang dưới điều chỉnh chiều cao (Định mức + Nhân sự)
+  const rowResizer34 = document.getElementById('rowResizer34');
+  if(rowResizer34) {
+    rowResizer34.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const nhansuCard = document.querySelector('.nhansu-section');
+      if(!nhansuCard) return;
+      const startY = e.clientY;
+      const startH3 = nhansuCard.getBoundingClientRect().height;
+      document.body.classList.add('is-resizing-row');
+      rowResizer34.classList.add('active');
+
+      const onMove = (ev) => {
+        const deltaY = ev.clientY - startY;
+        const newH3 = Math.max(200, Math.min(950, Math.round(startH3 + deltaY)));
+        document.documentElement.style.setProperty('--row3-height', newH3 + 'px');
+        localStorage.setItem('db_v2_row3_h', String(newH3));
+      };
+
+      const onUp = () => {
+        document.body.classList.remove('is-resizing-row');
+        rowResizer34.classList.remove('active');
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    rowResizer34.addEventListener('dblclick', () => {
+      document.documentElement.style.setProperty('--row3-height', '480px');
+      localStorage.removeItem('db_v2_row3_h');
     });
   }
 });
