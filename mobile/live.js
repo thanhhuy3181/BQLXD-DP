@@ -306,10 +306,31 @@
       else notice(e.message);
     }
   }
+  // ---- Thông báo đẩy Mail (iPhone: cần mở từ biểu tượng ở Màn hình chính, iOS 16.4+) ----
+  const pushSupported=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+  const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  async function pushState(){if(!pushSupported())return 'unsupported';if(Notification.permission==='denied')return 'denied';try{const reg=await navigator.serviceWorker.getRegistration('/mobile/');const sub=reg&&await reg.pushManager.getSubscription();return sub&&Notification.permission==='granted'?'on':'off'}catch(_){return 'off'}}
+  function keyBytes(b64){const s=atob(b64.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((b64.length+3)%4));return Uint8Array.from(s,c=>c.charCodeAt(0));}
+  async function enablePush(){
+    if(!pushSupported()){notice(/iPhone|iPad/.test(navigator.userAgent)&&!isStandalone()?'Trên iPhone: bấm Chia sẻ → "Thêm vào MH chính", rồi mở BQLDA từ biểu tượng đó để bật thông báo.':'Trình duyệt này chưa hỗ trợ thông báo đẩy.');return}
+    try{
+      const perm=await Notification.requestPermission();if(perm!=='granted'){notice('Bạn chưa cho phép thông báo. Vào Cài đặt → Thông báo → BQLDA để bật.');return}
+      const reg=await navigator.serviceWorker.register('/mobile/sw.js',{scope:'/mobile/'});await navigator.serviceWorker.ready;
+      const {publicKey}=await rpc('awm_push_key');
+      let sub=await reg.pushManager.getSubscription();
+      if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:keyBytes(publicKey)});
+      await rpc('awm_push_subscribe',[sub.toJSON(),(navigator.userAgent.match(/iPhone|iPad|Android|Windows|Mac/)||['Thiết bị'])[0]]);
+      await rpc('awm_push_test');notice('Đã bật thông báo Mail. Bạn sẽ nhận một thông báo thử.');
+      if($('push-mail'))$('push-mail').hidden=true;
+    }catch(e){notice('Không bật được thông báo: '+e.message)}
+  }
+  if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data?.type==='awm-open'){page='mail';render()}});
+  if(location.hash==='#mail')page='mail';
   function openCompose(kind,message){const go=()=>{clearTimeout(timer);window.MailCompose.open({rpc,kind,message,project,me:message?.account||mailAccount})};if(window.MailCompose)return go();const sc=document.createElement('script');sc.src='/js/mail_compose.js?v=2';sc.onload=go;sc.onerror=()=>notice('Không tải được màn hình soạn thư.');document.head.appendChild(sc);}
   async function mail(run){
-    $('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><div style="display:flex;gap:8px"><button id="refresh-mail" class="primary">Làm mới ↻</button><button id="new-mail">✉️ Thư mới</button></div><div id="mail-list"></div>';
+    $('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><div style="display:flex;gap:8px"><button id="refresh-mail" class="primary">Làm mới ↻</button><button id="new-mail">✉️ Thư mới</button><button id="push-mail" hidden>🔔 Bật thông báo</button></div><div id="mail-list"></div>';
     $('refresh-mail').onclick=()=>render();
+    $('push-mail').onclick=enablePush;pushState().then(st=>{if($('push-mail'))$('push-mail').hidden=st==='on'});
     $('new-mail').onclick=()=>openCompose('new',mailAccount?{account:mailAccount,id:'',subject:'',body:''}:null);
     try{
       let status={online:false,source:'',last_sync:null};

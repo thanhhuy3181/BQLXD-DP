@@ -175,7 +175,7 @@ ${message && kind !== 'new' ? `<div class="quote">Thư gốc từ ${esc(message.
       try {
         const r = await rpc('awm_mail_send', [payload]);
         say('Đã xếp hàng. AD sẽ gửi bằng Outlook trong khoảng 20 giây…', true);
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 40; i++) {
           await new Promise(res => setTimeout(res, 3000));
           const ob = await rpc('awm_mail_outbox', []).catch(() => null);
           const job = ob?.items?.find(j => j.id === r.id);

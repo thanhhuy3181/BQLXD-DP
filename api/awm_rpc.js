@@ -256,6 +256,21 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   const box=await read(sql,`awm:outbox:${user.username}`,[]);
   return ok({items:(Array.isArray(box)?box:[]).slice(-20).reverse().map(j=>({id:j.id,kind:j.kind,to:j.to,subject:j.subject,status:j.status,error:j.error,created_at:j.created_at,updated_at:j.updated_at}))});
  }
+ // ---- Thông báo đẩy (Web Push) cho AwM đã "Thêm vào MH chính" ----
+ if(method==='awm_push_key'){const {getVapid}=require('./_webpush');return ok({publicKey:(await getVapid(sql)).publicKey});}
+ if(method==='awm_push_subscribe'){
+  if(!permission('tab_mail'))return fail('Không có quyền Mail.');
+  const sub=args[0]||{};const endpoint=String(sub.endpoint||'');
+  if(!/^https:\/\/[^\s]+$/.test(endpoint)||endpoint.length>1000||!sub.keys?.p256dh||!sub.keys?.auth)return fail('Đăng ký thông báo không hợp lệ.');
+  const key=`awm:push:${user.username}`;const list=(await read(sql,key,[])).filter(x=>x.endpoint!==endpoint);
+  list.push({endpoint,keys:{p256dh:String(sub.keys.p256dh).slice(0,200),auth:String(sub.keys.auth).slice(0,100)},device:String(args[1]||'').slice(0,120),created_at:new Date().toISOString()});
+  await write(sql,key,list.slice(-5));return ok({devices:list.slice(-5).length});
+ }
+ if(method==='awm_push_unsubscribe'){const key=`awm:push:${user.username}`;const list=(await read(sql,key,[])).filter(x=>x.endpoint!==String(args[0]||''));await write(sql,key,list);return ok({devices:list.length});}
+ if(method==='awm_push_test'){
+  const {notifyUser}=require('./_webpush');
+  return ok(await notifyUser(sql,user.username,{title:'🔔 BQLDA',body:'Thông báo Mail đã bật trên thiết bị này.',url:'/mobile/?view=mobile#mail',tag:'awm-test'}));
+ }
  if(method==='awm_pair_device'){
   if(!permission('tab_mail'))return fail('Không có quyền kết nối Mail.');
   const token=crypto.randomBytes(32).toString('hex');

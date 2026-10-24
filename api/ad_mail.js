@@ -51,6 +51,16 @@ function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POS
   const rawInfo=req.body?.scan_info,scanInfo=rawInfo?{total_inbox:Math.max(0,Number(rawInfo.total_inbox)||0),scan_limit:Math.max(0,Math.min(1000,Number(rawInfo.scan_limit)||0)),body_limit:Math.max(0,Math.min(100000,Number(rawInfo.body_limit)||0))}:previous?.scan_info||null;
   const data={device_name:String(device_name||'AD').slice(0,100),updated_at:now,last_sync_at:items!==undefined?now:previous?.last_sync_at||previous?.updated_at||null,connector_state:connectorState,scan_info:scanInfo,items:cleaned||previous?.items||[]};
   await sql`INSERT INTO bqlda_state(key,value) VALUES(${key},${JSON.stringify(data)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;
+  // Thông báo đẩy khi có thư Inbox mới (bỏ qua lần đồng bộ đầu để không dội hàng loạt)
+  if(cleaned&&Array.isArray(previous?.items)&&previous.items.length){
+   const seenIds=new Set(previous.items.map(r=>r.id));
+   const fresh=cleaned.filter(r=>!seenIds.has(r.id)&&(r.folder||'Inbox')==='Inbox'&&Date.now()-Date.parse(r.date||0)<6*3600000);
+   if(fresh.length){
+    try{const {notifyUser}=require('./_webpush');const first=fresh[0];
+     await notifyUser(sql,username,{title:fresh.length>1?`📧 ${fresh.length} thư mới`:`📧 ${first.sender||'Thư mới'}`,body:fresh.length>1?fresh.slice(0,3).map(r=>`${r.sender}: ${r.subject}`).join('\n'):`${first.subject}\n${String(first.body||'').slice(0,120)}`,url:'/mobile/?view=mobile#mail',tag:'awm-mail',count:fresh.length});
+    }catch(e){console.error('push:',e.message);}
+   }
+  }
   const outbox=await readKey(outKey);const pending=Array.isArray(outbox)?outbox.filter(j=>j.status==='queued').length:0;
   return res.json({ok:true,data:{accepted:data.items.length,outbox_pending:pending}});
  }catch(e){console.error('AD mail bridge:',e.message);return fail(500,'Không thể đồng bộ Mail lúc này');}
