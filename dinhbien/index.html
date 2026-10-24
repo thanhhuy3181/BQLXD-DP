@@ -211,32 +211,246 @@ body.hide-right-mode .dashboard-row-grid > *:first-child {
   width: 100% !important;
 }
 
-/* Chế độ View Mobile: Thu gọn bảng, xếp chồng 1 cột trên điện thoại / màn hình nhỏ */
+/* ==========================================================================
+   CHẾ ĐỘ VIEW MOBILE — Giao diện tối ưu điện thoại & máy tính bảng
+   ========================================================================== */
 body.mobile-view-mode {
-  font-size: 11px;
+  font-size: 12px;
 }
-body.mobile-view-mode .dashboard-row-grid {
-  grid-template-columns: 1fr !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 12px;
-}
-body.mobile-view-mode .global-col-resizer-line {
-  display: none !important;
-}
+
+/* --- Header Mobile --- */
 body.mobile-view-mode .app-header {
-  padding: 6px 8px;
+  padding: 6px 10px;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 body.mobile-view-mode .header-top-row {
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+body.mobile-view-mode .header-top-row h1 {
+  font-size: 13px;
+  width: 100%;
+  text-align: center;
+  margin: 0;
 }
 body.mobile-view-mode .header-right-tools {
   flex-wrap: wrap;
   gap: 4px;
+  width: 100%;
 }
+/* Ẩn nút ẩn trái/phải, hướng dẫn, in PDF và thông tin tài khoản trên mobile */
+body.mobile-view-mode #btnHideRightCol,
+body.mobile-view-mode #btnViewBothCols,
+body.mobile-view-mode #btnHideLeftCol,
+body.mobile-view-mode #btnPrintLandscape,
+body.mobile-view-mode #btnUserGuide,
+body.mobile-view-mode .user-info-badge,
+body.mobile-view-mode #btnUndo,
+body.mobile-view-mode #btnRedo {
+  display: none !important;
+}
+/* Ẩn cả div bọc nút ẩn trái/phải */
+body.mobile-view-mode .header-right-tools > div:first-child {
+  display: none !important;
+}
+/* Nút Mobile / Web đặt gọn */
+body.mobile-view-mode #btnViewModeWeb,
+body.mobile-view-mode #btnViewModeMobile {
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+}
+
+/* --- Org hierarchy: cuộn ngang, không ngắt dòng --- */
+body.mobile-view-mode .org-hierarchy-bar {
+  gap: 3px;
+}
+body.mobile-view-mode .org-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+body.mobile-view-mode .org-row::-webkit-scrollbar { display: none; }
+body.mobile-view-mode .btn-org {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  min-height: 28px;
+}
+
+/* --- Layout 1 cột --- */
+body.mobile-view-mode .dashboard-row-grid {
+  grid-template-columns: 1fr !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px;
+}
+body.mobile-view-mode .global-col-resizer-line,
+body.mobile-view-mode .row-resizer-bar {
+  display: none !important;
+}
+
+/* --- Bỏ sticky row 1 trên mobile (tiết kiệm không gian) --- */
+body.mobile-view-mode #row1StickyGrid {
+  position: static !important;
+  box-shadow: none !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* --- Stats tổng hợp: lưới 2 cột, chữ số nhỏ hơn 1 chút --- */
 body.mobile-view-mode .tonghop-stats-grid {
   grid-template-columns: repeat(2, 1fr) !important;
+  padding: 8px !important;
+  gap: 6px !important;
+}
+body.mobile-view-mode .stat-mini-box .val {
+  font-size: 20px !important;
+}
+body.mobile-view-mode .stat-mini-box .lbl {
+  font-size: 10px !important;
+}
+
+/* --- Thanh thời gian (timeline): cuộn ngang --- */
+body.mobile-view-mode .timeline-bar-wrap {
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  font-size: 10px !important;
+}
+body.mobile-view-mode .timeline-bar-wrap input[type="month"] {
+  width: 100px !important;
+  font-size: 10px !important;
+}
+
+/* --- Card header: co giãn chiều cao --- */
+body.mobile-view-mode .card-header {
+  height: auto !important;
+  min-height: 34px !important;
+  max-height: none !important;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+/* --- Các phần bảng: chiều cao linh hoạt, cuộn ngang/dọc mượt --- */
+body.mobile-view-mode .hangmuc-col,
+body.mobile-view-mode .heso-section,
+body.mobile-view-mode .nhansu-section,
+body.mobile-view-mode .dinhmuc-section {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 260px;
+}
+body.mobile-view-mode .hangmuc-table-wrap,
+body.mobile-view-mode .heso-table-wrap,
+body.mobile-view-mode .nhansu-table-wrap,
+body.mobile-view-mode .dinhmuc-table-wrap {
+  max-height: 55vh;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+body.mobile-view-mode .chart-box-top {
+  min-height: 140px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+/* --- Hệ số tabs: cuộn ngang --- */
+body.mobile-view-mode .heso-tabs-bar {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+body.mobile-view-mode .heso-tabs-bar::-webkit-scrollbar { display: none; }
+body.mobile-view-mode .heso-tab-btn {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  padding: 3px 8px;
+  min-height: 28px;
+}
+
+/* --- Buttons: to hơn cho cảm ứng --- */
+body.mobile-view-mode .btn {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+/* --- Main wrapper: padding nhỏ hơn --- */
+body.mobile-view-mode .main-wrapper {
+  padding: 6px 8px;
+  gap: 8px;
+}
+
+/* --- Xuất Excel: thu gọn text --- */
+body.mobile-view-mode #btnExportExcel {
+  font-size: 10.5px;
+}
+
+/* ==========================================================================
+   AUTO RESPONSIVE CHO MÀN HÌNH NHỎ (≤ 768px) — Tự động, không cần nhấn nút
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+  body { font-size: 12px; }
+
+  .app-header { padding: 6px 10px !important; gap: 4px !important; }
+  .header-top-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .header-top-row h1 { font-size: 13px !important; width: 100%; text-align: center; }
+  .header-right-tools { flex-wrap: wrap; gap: 4px; width: 100%; }
+
+  #btnHideRightCol, #btnViewBothCols, #btnHideLeftCol,
+  #btnPrintLandscape, #btnUserGuide, .user-info-badge,
+  #btnUndo, #btnRedo { display: none !important; }
+
+  .org-row {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 2px;
+  }
+  .org-row::-webkit-scrollbar { display: none; }
+  .btn-org { flex-shrink: 0; font-size: 11px; white-space: nowrap; min-height: 28px; }
+
+  .dashboard-row-grid {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .global-col-resizer-line, .row-resizer-bar { display: none !important; }
+
+  #row1StickyGrid { position: static !important; box-shadow: none !important; padding: 0 !important; }
+
+  .tonghop-stats-grid { grid-template-columns: repeat(2, 1fr) !important; padding: 8px !important; gap: 6px !important; }
+  .stat-mini-box .val { font-size: 20px !important; }
+  .stat-mini-box .lbl { font-size: 10px !important; }
+
+  .card-header { height: auto !important; min-height: 34px !important; max-height: none !important; flex-wrap: wrap; padding: 6px 10px; }
+
+  .hangmuc-col, .heso-section, .nhansu-section, .dinhmuc-section {
+    height: auto !important; max-height: none !important; min-height: 240px;
+  }
+  .hangmuc-table-wrap, .heso-table-wrap, .nhansu-table-wrap, .dinhmuc-table-wrap {
+    max-height: 55vh; overflow: auto; -webkit-overflow-scrolling: touch;
+  }
+  .chart-box-top { min-height: 140px; }
+
+  .heso-tabs-bar { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .heso-tabs-bar::-webkit-scrollbar { display: none; }
+  .heso-tab-btn { flex-shrink: 0; font-size: 10.5px; padding: 3px 8px; min-height: 28px; }
+
+  .main-wrapper { padding: 6px 8px !important; gap: 8px !important; }
+  .timeline-bar-wrap { flex-wrap: wrap !important; gap: 4px !important; font-size: 10px !important; }
+  .btn { min-height: 30px; }
 }
 
 /* =========================================================================
@@ -7131,6 +7345,7 @@ function initViewModeControls() {
       document.body.classList.remove('mobile-view-mode');
       btnWeb.classList.add('active');
       btnMobile.classList.remove('active');
+      localStorage.setItem('viewMode', 'web');
       showUndoToast('💻 Đã chuyển sang chế độ xem Web');
     });
 
@@ -7138,8 +7353,35 @@ function initViewModeControls() {
       document.body.classList.add('mobile-view-mode');
       btnMobile.classList.add('active');
       btnWeb.classList.remove('active');
+      localStorage.setItem('viewMode', 'mobile');
       showUndoToast('📱 Đã chuyển sang chế độ xem Mobile');
     });
+
+    // Tự động nhận diện thiết bị di động và áp chế độ Mobile
+    function autoApplyViewMode() {
+      const savedMode = localStorage.getItem('viewMode');
+      const isMobileScreen = window.innerWidth <= 768 || (window.screen && window.screen.width <= 768);
+      if (savedMode === 'mobile' || (isMobileScreen && savedMode !== 'web')) {
+        document.body.classList.add('mobile-view-mode');
+        btnMobile.classList.add('active');
+        btnWeb.classList.remove('active');
+      } else {
+        document.body.classList.remove('mobile-view-mode');
+        btnWeb.classList.add('active');
+        btnMobile.classList.remove('active');
+      }
+    }
+    autoApplyViewMode();
+
+    // Theo dõi thay đổi kích thước màn hình
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const savedMode = localStorage.getItem('viewMode');
+        if (!savedMode) autoApplyViewMode(); // chỉ auto khi chưa có lựa chọn thủ công
+      }, 200);
+    }, { passive: true });
   }
 }
 initViewModeControls();
