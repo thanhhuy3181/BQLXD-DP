@@ -362,6 +362,34 @@ body.mobile-view-mode .chart-box-top {
   overscroll-behavior-x: contain;
 }
 
+/* --- Mobile: ẩn stats tổng hợp và thanh tháng để tập trung vào biểu đồ & bảng --- */
+body.mobile-view-mode .tonghop-stats-grid,
+body.mobile-view-mode .timeline-bar-wrap {
+  display: none !important;
+}
+
+/* --- Mobile: thu nhỏ cột freeze biểu đồ để hiện cột bars --- */
+body.mobile-view-mode table.chart-sync-table td.chart-freeze-axis {
+  width: 110px !important;
+  min-width: 110px !important;
+  max-width: 110px !important;
+  font-size: 10px !important;
+  padding: 3px 5px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.mobile-view-mode table.chart-sync-table td.chart-bar-col {
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+}
+/* Thu nhỏ tiêu đề biểu đồ trên mobile */
+body.mobile-view-mode .chart-box-top > div:first-child {
+  font-size: 10.5px !important;
+  padding: 4px 6px !important;
+}
+
 /* --- Hệ số tabs: cuộn ngang --- */
 body.mobile-view-mode .heso-tabs-bar {
   overflow-x: auto;
@@ -443,6 +471,20 @@ body.mobile-view-mode #btnExportExcel {
     max-height: 55vh; overflow: auto; -webkit-overflow-scrolling: touch;
   }
   .chart-box-top { min-height: 140px; }
+
+  /* Ẩn stats và thanh tháng trên màn nhỏ — tập trung biểu đồ & bảng */
+  .tonghop-stats-grid,
+  .timeline-bar-wrap { display: none !important; }
+
+  /* Thu nhỏ freeze-axis biểu đồ để bars hiện ra */
+  table.chart-sync-table td.chart-freeze-axis {
+    width: 110px !important; min-width: 110px !important; max-width: 110px !important;
+    font-size: 10px !important; padding: 3px 5px !important;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  table.chart-sync-table td.chart-bar-col {
+    width: 48px !important; min-width: 48px !important; max-width: 48px !important;
+  }
 
   .heso-tabs-bar { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
   .heso-tabs-bar::-webkit-scrollbar { display: none; }
@@ -1583,6 +1625,13 @@ footer.app-footer {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Xuất Excel Chuẩn (11 Sheet)
       </button>
+      <button class="btn" id="btnExportJson" style="background:#f0fdf4; border-color:#86efac; color:#166534; font-weight:600;" title="Xuất toàn bộ dữ liệu ra file JSON để chia sẻ với đồng nghiệp">
+        📤 Xuất JSON
+      </button>
+      <button class="btn" id="btnImportJson" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:600;" title="Nhập dữ liệu từ file JSON do đồng nghiệp chia sẻ">
+        📥 Nhập JSON
+      </button>
+      <input type="file" id="inputImportJson" accept=".json" style="display:none;">
       <div class="user-info-badge" style="display:flex; align-items:center; gap:5px; font-size:11px;">
         <div class="user-avatar">U</div>
         <span>admin@vinhomes.vn</span>
@@ -1758,11 +1807,11 @@ footer.app-footer {
             <option value="2">Mục lục cấp 2</option>
           </select>
           <button class="btn" id="btnThemMucLuc" title="Chèn mục lục cấp 1/2">+ Mục lục</button>
-          <button class="btn" id="btnLenCap" title="Tăng cấp mục lục">‹ Lên cấp</button>
-          <button class="btn" id="btnXuongCap" title="Hạ cấp mục lục">› Xuống cấp</button>
-          <button class="btn" id="btnXoaDongHm" title="Xóa dòng đang chọn (Delete)" style="color:#dc2626;">✕ Xóa dòng</button>
-          <button class="btn" id="btnTogglePhanLoaiCols" style="background:#f0fdf4; border-color:#86efac; color:#166534; font-weight:600;" title="Tắt / Mở 3 cột Phân loại công trình (Cấp 1, Cấp 2, TC bàn giao) để dễ copy-paste trực tiếp Tên + Tiến độ + Khối lượng từ Excel">👁 Phân loại: Bật</button>
-          <button class="btn" id="btnToggleMeSubRows" style="background:#faf5ff; border-color:#d8b4fe; color:#6b21a8; font-weight:600;" title="Tắt / Mở các dòng con M&amp;E (GĐ bê tông cốt thép &amp; GĐ hoàn thiện) để dễ paste danh sách hạng mục liền mạch từ Excel">⚡ Dòng M&amp;E: Bật</button>
+          <button class="btn" id="btnLenCap" title="Tăng cấp mục lục" style="padding:4px 8px; font-size:13px; font-weight:700;">^</button>
+          <button class="btn" id="btnXuongCap" title="Hạ cấp mục lục" style="padding:4px 8px; font-size:13px; font-weight:700;">v</button>
+          <button class="btn" id="btnXoaDongHm" title="Xóa dòng đang chọn (Delete)" style="color:#dc2626; padding:4px 8px;">✕</button>
+          <button class="btn" id="btnTogglePhanLoaiCols" style="background:#f1f5f9; border-color:#cbd5e1; color:#64748b; font-weight:600;" title="Tắt / Mở 3 cột Phân loại công trình (Cấp 1, Cấp 2, TC bàn giao) để dễ copy-paste trực tiếp Tên + Tiến độ + Khối lượng từ Excel">👁 Phân loại</button>
+          <button class="btn" id="btnToggleMeSubRows" style="background:#f1f5f9; border-color:#cbd5e1; color:#64748b; font-weight:600;" title="Tắt / Mở các dòng con M&amp;E (GĐ bê tông cốt thép &amp; GĐ hoàn thiện) để dễ paste danh sách hạng mục liền mạch từ Excel">⚡ M&amp;E</button>
           <button class="btn" id="btnPasteExcel" title="Dán vùng bảng copy từ Excel (hoặc nhấn Ctrl+V trực tiếp trên bảng)">📋 Dán Excel</button>
           <button class="btn btn-primary" id="btnThemHangMuc" title="Chèn thêm hạng mục mới ngay dưới dòng đang chọn">+ Thêm HM</button>
           <button class="btn" id="btnExpandHangMuc" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;" title="Mở rộng toàn màn hình để nhập/copy/paste/chèn như bảng Excel">⤢ Mở rộng bảng</button>
@@ -2125,8 +2174,8 @@ let isHesoExpanded = true;
 let isHesoNhansuExpanded = true;
 
 // Tắt / Mở hiển thị 3 cột Phân loại công trình và 2 dòng con M&E để dễ Paste dữ liệu từ Excel
-let showPhanLoaiCols = true;
-let showMeSubRows = true;
+let showPhanLoaiCols = false;
+let showMeSubRows = false;
 
 // Tab hiện tại của bảng Hạng mục công trình: 'da' (Tiến độ DA) | 'bptc' (Tiến độ BPTC)
 let currentHangMucTab = 'da';
@@ -2684,7 +2733,7 @@ function calculateSingleProject(projData) {
         } else if(isNx) {
           dm_tk = 20000;
         }
-        thu_kho_arr[mIdx] += ((kl / dm_tk) * 0.3) * prKho;
+        thu_kho_arr[mIdx] += (kl / dm_tk) * prKho;
       }
 
       // 4. BPTC - Các chức danh Bộ phận Thi công (Sheet ĐM BPTC: dùng klBptc riêng của tab Tiến độ BPTC)
@@ -2791,6 +2840,12 @@ function calculateSingleProject(projData) {
       let raw = 0;
       const hasActive = rows.some(it => calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate) > 0);
 
+      // Pre-compute hasBptcActive: chỉ tính khi có hoạt động BPTC thực sự
+      const hasBptcActive = (cv_ktht_arr[mIdx] + cv_qc_arr[mIdx] + cv_qs_arr[mIdx] + cv_shop_arr[mIdx] + cv_atld_arr[mIdx] + cv_tracdac_arr[mIdx] + nv_tracdac_arr[mIdx] + cv_noinghiep_tc_arr[mIdx] + cv_kehoach_tc_arr[mIdx]) > 0;
+      // Pre-compute Trưởng nhóm kho count for lead_kho calculation
+      const tnKhoCalc = getQlCalc('tn_kho', 9);
+      const tnKhoCount = thu_kho_arr[mIdx] > 0 ? Math.max(1, Math.ceil(thu_kho_arr[mIdx] / tnKhoCalc)) : 0;
+
       switch(meta.type) {
         case 'cb_xd': raw = cb_xd_arr[mIdx]; break;
         case 'cb_me': raw = cb_me_arr[mIdx]; break;
@@ -2820,7 +2875,11 @@ function calculateSingleProject(projData) {
           raw = thu_kho_arr[mIdx] > 0 ? Math.max(1, Math.ceil(thu_kho_arr[mIdx] / c)) : 0;
           break;
         }
-        case 'lead_kho': raw = thu_kho_arr[mIdx] > 15 ? 1 : (hasActive ? 1 : 0); break;
+        case 'lead_kho': {
+          const cTruongKho = getQlCalc('truong_kho', 6);
+          raw = tnKhoCount > 0 ? Math.max(1, Math.ceil(tnKhoCount / cTruongKho)) : 0;
+          break;
+        }
         case 'lead_kho_vung': raw = 0; break;
 
         case 'cv_ktht': raw = cv_ktht_arr[mIdx]; break;
@@ -2862,14 +2921,14 @@ function calculateSingleProject(projData) {
         case 'tn_tracdac': raw = (cv_tracdac_arr[mIdx] + nv_tracdac_arr[mIdx]) >= 7 ? 1 : 0; break;
 
         case 'tn_mmtb': raw = 0; break;
-        case 'cv_vttb': raw = hasActive ? 1 : 0; break;
-        case 'nv_cokhi': raw = hasActive ? 1 : 0; break;
-        case 'nv_diennuoc': raw = hasActive ? 1 : 0; break;
+        case 'cv_vttb': raw = hasBptcActive ? 1 : 0; break;
+        case 'nv_cokhi': raw = hasBptcActive ? 1 : 0; break;
+        case 'nv_diennuoc': raw = hasBptcActive ? 1 : 0; break;
         case 'cv_hc_tc': raw = 0; break;
-        case 'nv_hc_tc': raw = hasActive ? 1 : 0; break;
-        case 'nv_thinghiem': raw = hasActive ? 1 : 0; break;
+        case 'nv_hc_tc': raw = hasBptcActive ? 1 : 0; break;
+        case 'nv_thinghiem': raw = hasBptcActive ? 1 : 0; break;
         case 'tbp_httc': raw = (cv_qc_arr[mIdx] + cv_qs_arr[mIdx] + cv_shop_arr[mIdx]) > 6 ? 1 : 0; break;
-        case 'lead_bptc': raw = hasActive ? 1 : 0; break;
+        case 'lead_bptc': raw = hasBptcActive ? 1 : 0; break;
       }
 
       const valAfterAdj = raw * userAdj;
@@ -3284,7 +3343,7 @@ function renderTreeTable() {
   if(thBd) thBd.innerHTML = isBptcTab ? 'Bắt đầu<br><span style="color:#c2410c;">BPTC</span>' : 'Bắt đầu<br>thi công';
   if(thKt) thKt.innerHTML = isBptcTab ? 'Kết thúc<br><span style="color:#c2410c;">BPTC</span>' : 'Kết thúc<br>thi công';
   if(thBg) thBg.innerHTML = isBptcTab ? 'Bàn giao<br><span style="color:#c2410c;">BPTC</span>' : 'Kết thúc<br>bàn giao';
-  if(thKl) thKl.innerHTML = isBptcTab ? 'KL riêng<br><span style="color:#c2410c;">BPTC</span>' : 'Khối<br>lượng';
+  if(thKl) thKl.innerHTML = isBptcTab ? 'KL riêng<br><span style="color:#c2410c;">BP</span>' : 'Khối<br>lượng';
 
   // Tính STT tự động cho level 3
   let sttCounter = 0;
@@ -4129,7 +4188,7 @@ function renderChart(res) {
       <td class="chart-freeze-axis">
         <div style="display:flex; flex-direction:column; justify-content:center; height:76px;">
           <div style="font-weight:700; color:#0f172a; font-size:11.5px; margin-bottom:6px;">
-            ${isAgg ? `Phân bổ nhân lực Tổng${tabSuffix} (${res.projectCount} dự án)` : `Phân bổ nhân lực dự án${tabSuffix}`} — Đỉnh: <span style="color:#7e22ce;">${peakVal} người</span>
+            ${isAgg ? `Phân bổ nhân lực Tổng${tabSuffix} (${res.projectCount} dự án)` : `Phân bổ nhân lực dự án${tabSuffix}`} — max: <span style="color:#7e22ce;">${peakVal} người</span>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:11px; color:#334155;">
             <span style="display:inline-flex; align-items:center; gap:5px; opacity:${tab === 'ALL' || tab === 'BQLXD' ? 1 : 0.35};"><i style="width:11px; height:11px; background:#2563eb; display:inline-block; border-radius:2px;"></i><b style="color:#1d4ed8;">BQLXD</b></span>
@@ -4152,13 +4211,13 @@ function renderChart(res) {
     ` : ''}
     ${(tab === 'ALL' || tab === 'BQLXD') ? `
     <tr class="chart-stat-row">
-      <td class="chart-freeze-axis" style="background:#eff6ff; color:#1d4ed8; font-weight:700;">■ I. Khối BQLXD</td>
+      <td class="chart-freeze-axis" style="background:#eff6ff; color:#1d4ed8; font-weight:700;">■ I. BP BQLXD</td>
       ${bqlRowCells}
     </tr>
     ` : ''}
     ${(tab === 'ALL' || tab === 'KHO') ? `
     <tr class="chart-stat-row">
-      <td class="chart-freeze-axis" style="background:#fef3c7; color:#b45309; font-weight:700;">■ II. Khối Kho</td>
+      <td class="chart-freeze-axis" style="background:#fef3c7; color:#b45309; font-weight:700;">■ II. BP Kho</td>
       ${khoRowCells}
     </tr>
     ` : ''}
@@ -5256,10 +5315,10 @@ const btnTogglePhanLoaiCols = document.getElementById('btnTogglePhanLoaiCols');
 if(btnTogglePhanLoaiCols) {
   btnTogglePhanLoaiCols.addEventListener('click', () => {
     showPhanLoaiCols = !showPhanLoaiCols;
-    btnTogglePhanLoaiCols.innerHTML = showPhanLoaiCols ? '👁 Phân loại: Bật' : '👁‍🗨 Phân loại: Tắt';
-    btnTogglePhanLoaiCols.style.background = showPhanLoaiCols ? '#f0fdf4' : '#f1f5f9';
-    btnTogglePhanLoaiCols.style.borderColor = showPhanLoaiCols ? '#86efac' : '#cbd5e1';
-    btnTogglePhanLoaiCols.style.color = showPhanLoaiCols ? '#166534' : '#64748b';
+    btnTogglePhanLoaiCols.innerHTML = '👁 Phân loại';
+    btnTogglePhanLoaiCols.style.background = showPhanLoaiCols ? '#dbeafe' : '#f1f5f9';
+    btnTogglePhanLoaiCols.style.borderColor = showPhanLoaiCols ? '#93c5fd' : '#cbd5e1';
+    btnTogglePhanLoaiCols.style.color = showPhanLoaiCols ? '#1d4ed8' : '#64748b';
     clearExcelRangeSelection();
     renderTreeTable();
     showUndoToast(showPhanLoaiCols
@@ -5273,10 +5332,10 @@ const btnToggleMeSubRows = document.getElementById('btnToggleMeSubRows');
 if(btnToggleMeSubRows) {
   btnToggleMeSubRows.addEventListener('click', () => {
     showMeSubRows = !showMeSubRows;
-    btnToggleMeSubRows.innerHTML = showMeSubRows ? '⚡ Dòng M&amp;E: Bật' : '⚡ Dòng M&amp;E: Tắt';
-    btnToggleMeSubRows.style.background = showMeSubRows ? '#faf5ff' : '#f1f5f9';
-    btnToggleMeSubRows.style.borderColor = showMeSubRows ? '#d8b4fe' : '#cbd5e1';
-    btnToggleMeSubRows.style.color = showMeSubRows ? '#6b21a8' : '#64748b';
+    btnToggleMeSubRows.innerHTML = '⚡ M&amp;E';
+    btnToggleMeSubRows.style.background = showMeSubRows ? '#dbeafe' : '#f1f5f9';
+    btnToggleMeSubRows.style.borderColor = showMeSubRows ? '#93c5fd' : '#cbd5e1';
+    btnToggleMeSubRows.style.color = showMeSubRows ? '#1d4ed8' : '#64748b';
     clearExcelRangeSelection();
     renderTreeTable();
     renderSyncHesoTable();
@@ -7189,6 +7248,59 @@ async function exportExcelStandard() {
 }
 
 document.getElementById('btnExportExcel').addEventListener('click', exportExcelStandard);
+
+// === XUẤT / NHẬP JSON (chia sẻ dữ liệu giữa người dùng) ===
+function exportAllDataAsJson() {
+  const data = {};
+  for(let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if(key && key.startsWith('db_v2_')) {
+      try { data[key] = JSON.parse(localStorage.getItem(key)); }
+      catch(e) { data[key] = localStorage.getItem(key); }
+    }
+  }
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `DinhBien_Data_${ts}.json`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+
+function importDataFromJson(file) {
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if(typeof data !== 'object' || Array.isArray(data)) throw new Error('Định dạng không hợp lệ');
+      const keys = Object.keys(data).filter(k => k.startsWith('db_v2_'));
+      if(keys.length === 0) { alert('File JSON không chứa dữ liệu Định Biên hợp lệ.'); return; }
+      if(!confirm(`Nhập ${keys.length} mục dữ liệu từ file "${file.name}"?\n\nDữ liệu hiện tại sẽ được ghi đè.`)) return;
+      keys.forEach(k => {
+        localStorage.setItem(k, typeof data[k] === 'string' ? data[k] : JSON.stringify(data[k]));
+      });
+      alert(`✅ Đã nhập ${keys.length} mục dữ liệu thành công! Trang sẽ được tải lại.`);
+      location.reload();
+    } catch(err) {
+      alert('❌ Lỗi đọc file JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+const btnExportJson = document.getElementById('btnExportJson');
+if(btnExportJson) btnExportJson.addEventListener('click', exportAllDataAsJson);
+
+const btnImportJson = document.getElementById('btnImportJson');
+const inputImportJson = document.getElementById('inputImportJson');
+if(btnImportJson && inputImportJson) {
+  btnImportJson.addEventListener('click', () => inputImportJson.click());
+  inputImportJson.addEventListener('change', (e) => { importDataFromJson(e.target.files[0]); e.target.value = ''; });
+}
+// === END XUẤT / NHẬP JSON ===
 
   const btnPrintLandscape = document.getElementById('btnPrintLandscape');
   if(btnPrintLandscape) {
