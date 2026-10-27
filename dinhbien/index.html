@@ -6213,8 +6213,8 @@ const MGMT_EXPLAIN = {
   dt_me:        { src: ['cb_me'], key: 'dt_me', def: 10, text: '8–12 CBGS / 1 ĐTGS', srcLabel: 'CBGS ME', unit: 'ĐTGS ME' },
   dt_ht:        { src: ['cb_ht'], key: 'dt_ht', def: 10, text: '8–12 CBGS / 1 ĐTGS', srcLabel: 'CBGS HT', unit: 'ĐTGS HT' },
   lead_bql:     { src: ['dt_xd', 'dt_me', 'dt_ht'], key: 'gd_bql3', def: 6, text: '5–7 ĐTGS / 1 GĐ cấp 3', srcLabel: 'ĐTGS', unit: 'GĐ BQLXD cấp 3' },
-  gd_bql2:      { src: ['lead_bql'], key: 'gd_bql2', def: 6, text: '5–7 GĐ cấp 3 / 1 GĐ cấp 2', srcLabel: 'GĐ cấp 3', unit: 'GĐ BQLXD cấp 2' },
-  gd_bql1:      { src: ['gd_bql2'], key: 'gd_bql1', def: 4.5, text: '4–5 GĐ cấp 2 / 1 GĐ cấp 1', srcLabel: 'GĐ cấp 2', unit: 'GĐ BQLXD cấp 1' },
+  gd_bql2:      { src: ['lead_bql'], key: 'gd_bql2', def: 6, text: '5–7 GĐ cấp 3 / 1 GĐ cấp 2', srcLabel: 'GĐ BQLXD cấp 3', unit: 'GĐ BQLXD cấp 2' },
+  gd_bql1:      { src: ['gd_bql2'], key: 'gd_bql1', def: 4.5, text: '4–5 GĐ cấp 2 / 1 GĐ cấp 1', srcLabel: 'GĐ BQLXD cấp 2', unit: 'GĐ BQLXD cấp 1' },
   group_kho:    { src: ['thu_kho_sum'], key: 'tn_kho', def: 9, text: '7–11 Thủ kho / 1 TN kho', srcLabel: 'Thủ kho', unit: 'TN kho' },
   lead_kho:     { src: ['group_kho'], key: 'truong_kho', def: 6, text: '5–7 TN kho / 1 Trưởng kho', srcLabel: 'TN kho', unit: 'Trưởng kho' },
   dt_tc:        { src: ['cv_ktht'], key: 'dt_tc', def: 5, text: '5 CV KTHT / 1 Đội trưởng', srcLabel: 'CV KTHT', unit: 'Đội trưởng' },
@@ -6273,7 +6273,8 @@ function renderDienGiai(res) {
         const adj = adjF != null ? adjF : 1;
         if(ratio > 0 && klEff > 0 && adj > 0) dm = klEff * ratio / (x / adj);
         if(!(klEff > 0)) return;
-        (contrib[rIdx] = contrib[rIdx] || []).push({ name: it.ten, kl: klEff, x, ratio, adj, dm });
+        const ku = /_ht$/.test(meta.type) ? 'm²' : (it.dv || '');
+        (contrib[rIdx] = contrib[rIdx] || []).push({ name: it.ten, kl: klEff, x, ratio, adj, dm, ku });
       });
     });
   }
@@ -6281,7 +6282,7 @@ function renderDienGiai(res) {
   const fmt = (n, d = 2) => Number(n).toLocaleString('vi-VN', { maximumFractionDigits: d });
   const rowHtml = (meta, rIdx, stt) => {
     const v = res.rowsFinal[rIdx][j] || 0;
-    const unit = /Cán bộ/.test(meta.cd) ? 'CB' : 'người';
+    const unit = meta.pb === 'BQLXD' ? 'CB' : 'người';
     const list = contrib[rIdx];
     let cach;
     const mg = MGMT_EXPLAIN[meta.type];
@@ -6294,20 +6295,20 @@ function renderDienGiai(res) {
       }, 0);
       const xv = span > 0 ? srcSum / span : 0;
       const xTxt = xv >= 1 ? fmt(Math.round(xv), 0) : fmt(xv, 1);
-      cach = `<div class="dg-total">Tổng → làm tròn <b>${v}</b> ${escHtml(mg.unit)}</div>`
-        + `<div>${fmt(srcSum, 0)} ${escHtml(mg.srcLabel)} ~ ${xTxt} ${escHtml(mg.unit)} (${escHtml(mg.text)})</div>`;
+      cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${meta.pb === 'BQLXD' ? 'CB' : escHtml(mg.unit)}</div>`
+        + `<div>${fmt(srcSum, 0)} ${escHtml(mg.srcLabel)} ~ ${xTxt} ${escHtml(mg.unit)} (ĐM ${escHtml(mg.text)})</div>`;
     } else if(list && list.length) {
       const sum = list.reduce((s, c) => s + c.x, 0);
       const bullets = list.map(c => {
         const klTxt = fmt(c.kl || 0, 0);
-        const base = c.dm ? `${klTxt} / ${fmt(c.dm, 0)}` : klTxt;
+        const base = c.dm ? `${klTxt} / ${fmt(c.dm, 0)}${c.ku ? ' ' + c.ku : ''}` : klTxt;
         // Hệ số 100% không cần giải thích; chỉ ghi khi khác 100%
         const rTxt = c.ratio > 0 && Math.abs(c.ratio - 1) > 0.005 ? ` x ${Math.round(c.ratio * 100)}%` : '';
         const aTxt = Math.abs(c.adj - 1) > 0.005 ? ` x ${Math.round(c.adj * 100)}%` : '';
         const xTxt = c.x >= 1 ? fmt(Math.round(c.x), 0) : fmt(c.x, 1);
         return `<li>${escHtml(c.name)}: ${base}${rTxt}${aTxt} ~ ${xTxt} ${unit}</li>`;
       }).join('');
-      cach = `<div class="dg-total">Tổng → làm tròn <b>${v}</b> ${unit}</div><ul class="dg-list">${bullets}</ul>`;
+      cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${unit}</div><ul class="dg-list">${bullets}</ul>`;
     } else {
       // Không có hạng mục tính được: ghi căn cứ và kết quả của tháng (mọi dòng đều có diễn giải)
       cach = v > 0
