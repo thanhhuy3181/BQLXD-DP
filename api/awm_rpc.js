@@ -206,7 +206,8 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   if(method==='awm_mail_status')return ok({online,last_sync:bridge?.last_sync_at||bridge?.updated_at||null,last_heartbeat:bridge?.updated_at||null,connector_state:bridge?.connector_state||'unknown',scan_info:bridge?.scan_info||null,source:bridge?.device_name||'',configured:!!bridge});
   if(!online)return fail('AD chưa kết nối. Mở AD trên máy tính để xem Mail.');
   const query=norm(args[1]);const account=String(args[2]||''),folder=String(args[3]||'');
-  const scoped=(bridge.items||[]).filter(r=>(!r.project||allowedProject(user,r.project))&&(!project||!r.project||r.project===project));
+  // Thư thuộc tài khoản đăng nhập (đồng bộ từ AD), không lọc theo dự án.
+  const scoped=bridge.items||[];
   // Cây Tài khoản → Thư mục giống AD (tính trên toàn bộ thư của dự án, trước khi lọc)
   const tree=new Map();for(const r of scoped){const a=r.account||'Outlook',f=r.folder||'Inbox';if(!tree.has(a))tree.set(a,new Map());const m=tree.get(a);const c=m.get(f)||{name:f,count:0,unread:0};c.count++;if(r.unread)c.unread++;m.set(f,c);}
   const order=f=>({'Inbox':0,'Sent Items':1}[f]??2);
