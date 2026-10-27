@@ -7662,6 +7662,16 @@ function initExcelRangeSelectionOnTables() {
     // 1. Phím Delete hoặc Backspace: Xóa dữ liệu các ô trong vùng chọn
     if(e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
+      // Ô số tùy chỉnh của Nhân sự / Hệ số (chế độ Tùy chỉnh đang bật): xóa cả vùng, tính lại theo định mức
+      const tuyChinhInputs = excelRangeSelection.selectedCells
+        .map(({ cell }) => cell.querySelector(':scope > input'))
+        .filter(i => i && xlIsCell(i) && xlEditable(i));
+      if(tuyChinhInputs.length) {
+        tuyChinhInputs.forEach(i => xlWriteOne(i, ''));
+        xlCommit();
+        showUndoToast(`⌫ Đã xóa ${tuyChinhInputs.length} số tùy chỉnh (Ctrl+Z để hoàn tác)`);
+        return;
+      }
       let changed = false;
       excelRangeSelection.selectedCells.forEach(({ cell }) => {
         if(applyValueToCellDomAndModel(cell, '')) changed = true;
