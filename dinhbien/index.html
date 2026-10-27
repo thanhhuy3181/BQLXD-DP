@@ -1233,7 +1233,9 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 #treeTable td input.input-date-dmy { width: 88px; }
 #treeTable td.dv-fixed { user-select: none; }
 /* Diễn giải: bôi chọn theo ô như Excel, không bôi chọn chữ */
-#diengiaiWrap table { user-select: none; }
+#diengiaiWrap table,
+#matrixTable, #chartSyncTable, #syncHesoTable, #dinhmucTable, #tableHesoNhansu { user-select: none; }
+#matrixTable td, #chartSyncTable td, #syncHesoTable td, #dinhmucTable td, #tableHesoNhansu td { user-select: none; }
 tr.row-sub td { font-style: italic; }
 #treeTable td input[data-f="dienTich"] { width: 70px; }
 /* Hiển thị ô nhập phẳng như ô Excel (không viền vuông bên trong) */
@@ -7472,7 +7474,7 @@ function pasteClipboardIntoTableRange(clipText, targetTable, fallbackTd) {
 }
 
 function initExcelRangeSelectionOnTables() {
-  const tableIds = ['treeTable', 'syncHesoTable', 'dinhmucTable', 'tableHesoNhansu', 'diengiaiWrap'];
+  const tableIds = ['treeTable', 'syncHesoTable', 'dinhmucTable', 'tableHesoNhansu', 'diengiaiWrap', 'matrixTable', 'chartSyncTable'];
   tableIds.forEach(id => {
     const hostEl = document.getElementById(id);
     if(!hostEl) return;
