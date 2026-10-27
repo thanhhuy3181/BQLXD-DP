@@ -3669,6 +3669,19 @@ function calculateAll() {
 let dragSrcIdx = null;
 
 // Danh mục chuẩn Phân loại Công trình cấp 1 -> cấp 2 -> Tiêu chuẩn bàn giao & Đơn vị tính (Khớp 100% Sheet "Phân loại Ctr.Hm" & ĐM KHO)
+// Đọc số khối lượng: "9.000" hoặc "9,000" là chín nghìn (kiểu Việt Nam / Excel); "9,5" là 9,5
+function parseKlText(raw) {
+  const s = String(raw ?? '').trim().replace(/\s/g, '');
+  if(/^-?\d{1,3}([.,]\d{3})+$/.test(s)) return parseFloat(s.replace(/[.,]/g, '')) || 0;
+  const n = parseFloat(s.replace(',', '.'));
+  return isNaN(n) ? 0 : n;
+}
+
+// Hiển thị số khối lượng có dấu chấm phân nghìn (9.000)
+function fmtKlInput(n) {
+  return Number(n || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+}
+
 function getKieuOptionsByLoai(loai) {
   if(loai === 'Ép cọc') return [{ v: '', l: '–' }];
   if(loai === 'Thấp tầng') {
@@ -3917,7 +3930,7 @@ function renderTreeTable() {
         <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curBd)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldBd}" title="Định dạng: dd/mm/yyyy (Ví dụ: 01/07/2025)"></td>
         <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curKt)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldKt}" title="Định dạng: dd/mm/yyyy (Ví dụ: 01/03/2026)"></td>
         <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curBg)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldBg}" title="Định dạng: dd/mm/yyyy (Ví dụ: 30/05/2026)"></td>
-        <td><input type="number" style="text-align:right; font-family:var(--font-mono); font-weight:600; ${bptcInputStyle}" value="${curKl}" data-id="${r.id}" data-f="${fFieldKl}"></td>
+        <td><input type="text" inputmode="decimal" style="text-align:right; font-family:var(--font-mono); font-weight:600; ${bptcInputStyle}" value="${fmtKlInput(curKl)}" data-id="${r.id}" data-f="${fFieldKl}"></td>
         <td class="dv-fixed" style="text-align:center; font-size:10.5px; color:var(--text-muted);" title="Đơn vị theo Phân loại công trình (cố định, không sửa)">${escHtml(dvFixed)}</td>
         <td>${r.loai === 'Đường giao thông, công viên' || r.loai === 'Ép cọc' ? '' : `<input type="number" style="text-align:right; font-family:var(--font-mono);${!(r.dienTich > 0) ? ' background:#fef2f2; border-color:#dc2626;' : ''}" value="${r.dienTich > 0 ? r.dienTich : ''}" placeholder="⚠ Cần nhập" data-id="${r.id}" data-f="dienTich" title="Khối lượng hạ tầng (m²) của công trình. Cần nhập để tính CBGS/NVGS Hạ tầng">`}</td>
       `;
@@ -4062,7 +4075,7 @@ function renderTreeTable() {
       const id = e.target.dataset.id;
       const f = e.target.dataset.f;
       let val = e.target.value;
-      if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl' || f === 'dienTich') val = parseFloat(val) || 0;
+      if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl' || f === 'dienTich') val = parseKlText(val);
       const r = currentProjectData.treeRows.find(x => x.id === id);
       if(r) {
         r[f] = val;
@@ -6994,7 +7007,7 @@ function importRowsFromTsvText(text) {
           datesFound.push(normalizeExcelDate(c));
         } else {
           // Thử parse số
-          const cleaned = c.replace(/,/g, '');
+          const cleaned = String(parseKlText(c));
           if(!isNaN(cleaned) && cleaned !== '' && !isNaN(parseFloat(cleaned))) {
             if(numberFound === null) numberFound = parseFloat(cleaned);
           } else if(['căn', 'm²', 'm2', 'm² sàn', 'm2 sàn', 'ha', 'km', 'md', 'mdài', 'tấn', 'kg'].includes(c.toLowerCase())) {
@@ -7189,8 +7202,7 @@ function applyValueToCellDomAndModel(td, rawValStr) {
     if(!rObj) return false;
 
     if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl') {
-      const num = parseFloat(valStr.replace(/,/g, ''));
-      rObj[f] = isNaN(num) ? 0 : num;
+      rObj[f] = parseKlText(valStr);
       ensureMeStagesForRow(rObj);
     } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'bptc_batDau' || f === 'bptc_ketThuc' || f === 'bptc_banGiao' || f === 'me1_bd' || f === 'me1_kt' || f === 'me2_bd' || f === 'me2_kt') {
       const norm = normalizeExcelDate(valStr);
@@ -7268,7 +7280,7 @@ function applyValueToCellDomAndModel(td, rawValStr) {
   if(ctrl.dataset.dmk) {
     if(!isDinhMucEditable) return false;
     const k = ctrl.dataset.dmk;
-    const num = parseFloat(valStr.replace(/,/g, ''));
+    const num = parseKlText(valStr);
     if(!currentProjectData.dinhMucCustom) currentProjectData.dinhMucCustom = {};
     if(!isNaN(num) && num > 0) currentProjectData.dinhMucCustom[k] = num;
     else delete currentProjectData.dinhMucCustom[k];
