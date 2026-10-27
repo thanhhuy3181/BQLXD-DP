@@ -2907,7 +2907,7 @@ const MATRIX_ROWS_META = [
   {stt:8,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên BPTC- Shopdrawing', cap:'T7', type:'cv_shop', dmKey:'cv_shop', dmThap:150, dmKhac:30000, rule:'KL ÷ Định mức', tt_tho:150, tt_full:105, tt_ht2:113, tt_ht1:120, ct_tho:30000, ct_ht:30000, khac:22500, nx:45000, dgt:45000, hsNote:'BT ĐL×0,65; SL×0,75; TL×0,85'},
   {stt:9,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm An toàn lao động', cap:'T6', type:'tn_atld', dmThap:'', dmKhac:'', rule:'QL 7 Chuyên viên ATLĐ', qlKey:'tn_atld', qlTarget:'Chuyên viên An toàn lao động (T7)', qlMin:7, qlMax:7, qlCalc:7, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 7 CV ATLĐ (T7)'},
   {stt:10, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên An Toàn Lao động', cap:'T7', type:'cv_atld', dmKey:'cv_atld', dmThap:150, dmKhac:30000, rule:'KL ÷ Định mức', tt_tho:150, tt_full:105, tt_ht2:113, tt_ht1:120, ct_tho:30000, ct_ht:30000, khac:22500, nx:45000, dgt:45000, hsNote:'BT ĐL×0,65; SL×0,75; TL×0,85'},
-  {stt:11, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm Trắc đạc', cap:'T6', type:'tn_tracdac', dmKey:'tn_td', dmThap:500, dmKhac:100000, rule:'KL ÷ ĐM (hoặc ≥7 TĐ)', tt_tho:500, tt_full:350, tt_ht2:375, tt_ht1:400, ct_tho:100000, ct_ht:100000, khac:75000, nx:150000, dgt:150000, hsNote:'Mục 8 ĐM BPTC: 500 căn / 100.000m²'},
+  {stt:11, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Trưởng nhóm Trắc đạc', cap:'T6', type:'tn_tracdac', dmKey:'tn_td', dmThap:500, dmKhac:100000, rule:'KL ÷ ĐM', tt_tho:500, tt_full:350, tt_ht2:375, tt_ht1:400, ct_tho:100000, ct_ht:100000, khac:75000, nx:150000, dgt:150000, hsNote:'Mục 8 ĐM BPTC: 500 căn / 100.000m²'},
   {stt:12, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên trắc đạc', cap:'T7', type:'cv_tracdac', dmKey:'cv_td', dmThap:80, dmKhac:16000, rule:'KL ÷ Định mức', tt_tho:80, tt_full:56, tt_ht2:60, tt_ht1:64, ct_tho:16000, ct_ht:16000, khac:12000, nx:24000, dgt:24000, hsNote:'Mục 6 ĐM BPTC: 80 căn / 16.000m²'},
   {stt:13, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Nhân viên trắc đạc', cap:'T8', type:'nv_tracdac', dmKey:'nv_td', dmThap:50, dmKhac:10000, rule:'KL ÷ Định mức', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:10000, ct_ht:10000, khac:7500, nx:15000, dgt:15000, hsNote:'Mục 5 ĐM BPTC: 50 căn / 10.000m²'},
   {stt:14, pb:'BPTC', bp:'Bộ phận thi công', cd:'Trưởng khối', cap:'T4', type:'lead_khoi_tc', dmThap:'', dmKhac:'', rule:'QL 5 Đội trưởng (T5)', qlKey:'tk_tc', qlTarget:'Đội trưởng thi công (T5) + CV nội nghiệp', qlMin:5, qlMax:5, qlCalc:5, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'QL 5 cấp T5 + CV nội nghiệp'},
@@ -3355,12 +3355,8 @@ function calculateSingleProject(projData) {
           raw = cv_atld_arr[mIdx] >= c ? Math.ceil(cv_atld_arr[mIdx] / c) : 0;
           break;
         }
-        case 'tn_tracdac': {
-          // Trưởng nhóm Trắc đạc: KL ÷ ĐM (500 / 100.000), hoặc tối thiểu 1 khi có từ 7 người trắc đạc
-          const tdTeam = (cv_tracdac_arr[mIdx] + nv_tracdac_arr[mIdx]) >= 7 ? 1 : 0;
-          raw = Math.max(tn_td_arr[mIdx], tdTeam);
-          break;
-        }
+        // Trưởng nhóm Trắc đạc (T6): định mức riêng KL ÷ ĐM (500 / 100.000), không thuộc nhóm CBLĐ quản lý
+        case 'tn_tracdac': raw = tn_td_arr[mIdx]; break;
 
         case 'tn_mmtb': {
           // Trưởng nhóm QL MMTB: quản lý 7 Chuyên viên QL VTTB (T7)
