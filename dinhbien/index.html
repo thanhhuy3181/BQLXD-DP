@@ -1233,6 +1233,8 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 #treeTable td input.input-date-dmy { width: 88px; }
 #treeTable td.dv-fixed { user-select: none; }
 /* Diễn giải: bôi chọn theo ô như Excel, không bôi chọn chữ */
+/* Tiêu đề Hạng mục: khi hiện nút "Lấy bằng KL & Tiến độ DA" thì xuống dòng, không đè lên thanh tab */
+#hangmucCard > .card-header > div:first-child { flex-wrap: wrap !important; row-gap: 4px; height: auto !important; max-height: none !important; }
 #diengiaiWrap table, #aggHangMuc table,
 #matrixTable, #chartSyncTable, #syncHesoTable, #dinhmucTable, #tableHesoNhansu { user-select: none; }
 #matrixTable td, #chartSyncTable td, #syncHesoTable td, #dinhmucTable td, #tableHesoNhansu td { user-select: none; }
