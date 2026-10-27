@@ -1234,6 +1234,7 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 #treeTable td.dv-fixed { user-select: none; }
 /* Diễn giải: bôi chọn theo ô như Excel, không bôi chọn chữ */
 #diengiaiWrap table { user-select: none; }
+tr.row-sub td { font-style: italic; }
 #treeTable td input[data-f="dienTich"] { width: 70px; }
 /* Hiển thị ô nhập phẳng như ô Excel (không viền vuông bên trong) */
 /* Ẩn mũi tên tăng giảm (spin button) cho các ô nhập số trên toàn bảng */
@@ -6379,11 +6380,27 @@ function renderDienGiai(res) {
     if(!(tab === 'ALL' || tab === pb)) return;
     body += `<tr class="dg-group"><td></td><td colspan="3">${groupNames[pb]}</td></tr>`;
     let stt = 0;
-    MATRIX_ROWS_META.forEach((meta, rIdx) => { if(meta.pb !== pb) return; stt++; body += rowHtml(meta, rIdx, stt); });
+    MATRIX_ROWS_META.forEach((meta, rIdx) => {
+      if(meta.pb !== pb) return;
+      // Dòng con (4.1 → 4.6) giữ số thứ tự riêng, không đếm tiếp
+      if(meta.sub) { body += rowHtml(meta, rIdx, meta.stt); return; }
+      stt++;
+      body += rowHtml(meta, rIdx, stt);
+    });
   });
   wrap.innerHTML = `<table class="dg-table"><thead><tr><th>STT</th><th class="dg-cd-h">Chức danh</th><th>Cấp</th><th>Cách tính / Căn cứ (tháng ${dgLabel})</th></tr></thead><tbody>${body}</tbody></table>`;
   requestAnimationFrame(syncDienGiaiRows);
   requestAnimationFrame(syncDinhMucHesoRows);
+  markSubRows();
+}
+
+// Dòng con (Thủ kho 4.1 → 4.6): chữ nghiêng ở mọi bảng
+function markSubRows() {
+  const names = new Set(MATRIX_ROWS_META.filter(m => m.sub).map(m => m.cd));
+  document.querySelectorAll('.main-wrapper table tr').forEach(tr => {
+    const hit = Array.from(tr.cells).some(td => names.has(td.textContent.trim()));
+    tr.classList.toggle('row-sub', hit);
+  });
 }
 
 // Thẳng hàng Định mức ↔ Hệ số nhân sự theo chức danh: cùng một chức danh thì cùng chiều cao dòng
@@ -9027,7 +9044,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Đổi tab Tổng / BQLXD / KHO / BPTC làm đổi số dòng: căn lại chiều cao dòng Định mức ↔ Hệ số nhân sự
   document.addEventListener('click', e => {
-    if(e.target.closest && e.target.closest('.heso-tab-btn')) setTimeout(syncDinhMucHesoRows, 50);
+    if(e.target.closest && e.target.closest('.heso-tab-btn')) setTimeout(() => { syncDinhMucHesoRows(); markSubRows(); }, 50);
   });
 
   // =========================================================================
