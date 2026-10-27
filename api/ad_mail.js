@@ -41,16 +41,16 @@ function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POS
    const contacts=req.body.contacts.slice(0,3000).map(c=>({name:String(c?.name||'').slice(0,200),email:String(c?.email||'').slice(0,200)})).filter(c=>/^[^@\s]+@[^@\s]+$/.test(c.email));
    await writeKey(`awm:contacts:${username}`,contacts);
   }
-  if(items!==undefined&&(!Array.isArray(items)||items.length>1000||Buffer.byteLength(JSON.stringify(items),'utf8')>2000000))return fail(400,'Lô đồng bộ quá lớn');
+  if(items!==undefined&&(!Array.isArray(items)||items.length>1000||Buffer.byteLength(JSON.stringify(items),'utf8')>4000000))return fail(400,'Lô đồng bộ quá lớn');
   const connectorState=req.body?.connector_state||'ready';if(!['ready','error','stopped'].includes(connectorState))return fail(400,'Trạng thái connector không hợp lệ');
   const key=`awm:mail:${username}`;const old=await sql`SELECT value FROM bqlda_state WHERE key=${key}`;
   if(items?.some(r=>!r||typeof r.id!=='string'||!r.id||r.id.length>200)||items&&new Set(items.map(r=>r.id)).size!==items.length)return fail(400,'Mã thư thiếu, quá dài hoặc trùng lặp');
   const people=v=>Array.isArray(v)?v.slice(0,50).map(p=>({name:String(p?.name||'').slice(0,200),email:String(p?.email||'').slice(0,200)})):[];
   const cleaned=items?.map(r=>({id:r.id,subject:String(r.subject||'').slice(0,1000),sender:String(r.sender||'').slice(0,500),email:String(r.email||'').slice(0,500),date:String(r.date||'').slice(0,100),body:String(r.body||'').slice(0,100000),project:String(r.project||'').slice(0,200),account:String(r.account||'').slice(0,200),folder:String(r.folder||'').slice(0,200),unread:r.unread===true,attachments:Array.isArray(r.attachments)?r.attachments.slice(0,50).map(x=>String(x).slice(0,180)):[],to:people(r.to),cc:people(r.cc)}));
-  // Danh sách giữ tối đa 200 thư (chỉ tiêu đề, nhẹ). Nội dung chỉ giữ cho 50 thư nhận
+  // Giữ toàn bộ tiêu đề và người gửi (nhẹ). Nội dung chỉ giữ cho 50 thư nhận
   // và 20 thư gửi mới nhất; các thư còn lại để trống nội dung.
-  const HEADER_MAX=200,BODY_KEEP={inbox:50,sent:20};
-  const retainMail=list=>{const counts={inbox:0,sent:0};return [...list].sort((a,b)=>Date.parse(b.date||0)-Date.parse(a.date||0)).slice(0,HEADER_MAX).map(r=>{const k=r.folder==='Sent Items'?'sent':'inbox';const keepBody=counts[k]<BODY_KEEP[k];counts[k]++;return keepBody?r:{...r,body:''};});};
+  const BODY_KEEP={inbox:50,sent:20};
+  const retainMail=list=>{const counts={inbox:0,sent:0};return [...list].sort((a,b)=>Date.parse(b.date||0)-Date.parse(a.date||0)).map(r=>{const k=r.folder==='Sent Items'?'sent':'inbox';const keepBody=counts[k]<BODY_KEEP[k];counts[k]++;return keepBody?r:{...r,body:''};});};
   const kept=cleaned&&retainMail(cleaned);
   const now=new Date().toISOString(),previous=old[0]?.value;
   const rawInfo=req.body?.scan_info,scanInfo=rawInfo?{total_inbox:Math.max(0,Number(rawInfo.total_inbox)||0),scan_limit:Math.max(0,Math.min(1000,Number(rawInfo.scan_limit)||0)),body_limit:Math.max(0,Math.min(100000,Number(rawInfo.body_limit)||0))}:previous?.scan_info||null;
