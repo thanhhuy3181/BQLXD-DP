@@ -753,6 +753,9 @@ body.is-resizing-row * {
   cursor: row-resize !important;
   user-select: none !important;
 }
+/* Đường phân chia dưới khung Nhân sự: kéo lên sát đáy khung (bù khoảng cách gap 10px của main-wrapper) để đường kẻ dính vào bảng */
+#rowResizer34 { margin: -10px 0 0; }
+#rowResizer34::before { top: 0; }
 
 /* Ô TỔNG HỢP (HÀNG 1 TRÁI) */
 .tonghop-stats-grid {
