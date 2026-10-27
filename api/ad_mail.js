@@ -16,6 +16,24 @@ function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POS
   const states=await sql`SELECT value FROM bqlda_state WHERE key='state'`;const state=states[0]?.value||{};
   const actual=crypto.createHash('sha256').update(token).digest('hex');
   if(!active(user)||!can(user,state,'tab_mail')||! /^[0-9a-f]{64}$/.test(row.device?.hash||'')||!crypto.timingSafeEqual(Buffer.from(actual),Buffer.from(row.device.hash)))return fail(403,'Thiết bị không được cấp quyền');
+  // ---- Yêu cầu nội dung thư cũ: AwD/AwM tạo, AD lấy về đọc rồi trả kết quả ----
+  const op=String(req.body?.op||''),reqKey=`awm:mailreq:${username}`;
+  if(op==='mailreq_fetch'){
+   const list=Array.isArray(await readKey(reqKey))?await readKey(reqKey):[];const now=new Date().toISOString();const out=[];
+   for(const r of list){if(r.status==='fetching'&&Date.now()-Date.parse(r.updated_at)>2*60000)r.status='queued';
+    if(r.status==='queued'){r.status='fetching';r.updated_at=now;out.push({id:r.id,type:r.type,mail_id:r.mail_id});}}
+   await writeKey(reqKey,list);return res.json({ok:true,data:{requests:out}});
+  }
+  if(op==='mailreq_result'){
+   const rid=String(req.body?.id||''),good=req.body?.ok===true;
+   const list=Array.isArray(await readKey(reqKey))?await readKey(reqKey):[];const target=list.find(r=>r.id===rid);
+   if(!target)return res.json({ok:true,data:{updated:false}});
+   target.status=good?'done':'error';
+   target.error=good?'':String(req.body?.error||'AD không đọc được thư này.').slice(0,300);
+   target.result=good?{text:String(req.body?.text||'').slice(0,100000)}:null;
+   target.updated_at=new Date().toISOString();
+   await writeKey(reqKey,list);return res.json({ok:true,data:{updated:true}});
+  }
   // ---- Hộp thư đi: AwD/AwM soạn, AD lấy về gửi qua Outlook ----
   const action=String(req.body?.action||''),outKey=`awm:outbox:${username}`;
   const readKey=async k=>(await sql`SELECT value FROM bqlda_state WHERE key=${k}`)[0]?.value;

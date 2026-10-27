@@ -235,6 +235,27 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   await write(sql,`awm:att:${user.username}:${id}`,{name,type,size,data,created_at:new Date().toISOString()});
   return ok({id,name,size});
  }
+ if(method==='awm_mail_request'){
+  if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
+  const bridge=await read(sql,`awm:mail:${user.username}`,null);
+  if(!mailOnline(bridge))return fail('AD chưa kết nối. Mở AD trên máy tính để xem nội dung thư.');
+  const mailId=String(args[0]||'').slice(0,200);if(!mailId)return fail('Yêu cầu không hợp lệ.');
+  const key=`awm:mailreq:${user.username}`;const list=await read(sql,key,[]);const arr=Array.isArray(list)?list:[];
+  const pend=arr.filter(r=>['queued','fetching'].includes(r.status));
+  const dup=pend.find(r=>r.mail_id===mailId);if(dup)return ok({id:dup.id,status:dup.status});
+  if(pend.length>=20)return fail('Đang có quá nhiều yêu cầu chờ AD, thử lại sau.');
+  const now=new Date().toISOString(),id=crypto.randomBytes(12).toString('hex');
+  arr.push({id,type:'body',mail_id:mailId,status:'queued',error:'',result:null,created_at:now,updated_at:now});
+  await write(sql,key,arr.slice(-60));
+  return ok({id,status:'queued'});
+ }
+ if(method==='awm_mail_request_status'){
+  if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
+  const id=String(args[0]||'');const list=await read(sql,`awm:mailreq:${user.username}`,[]);
+  const r=(Array.isArray(list)?list:[]).find(x=>x.id===id);if(!r)return fail('Không tìm thấy yêu cầu.');
+  if(r.status!=='done')return ok({status:r.status,...(r.status==='error'?{error:r.error}:{})});
+  return ok({status:'done',result:r.result});
+ }
  if(method==='awm_mail_send'){
   if(!permission('tab_mail'))return fail('Không có quyền gửi Mail.');
   const bridge=await read(sql,`awm:mail:${user.username}`,null);

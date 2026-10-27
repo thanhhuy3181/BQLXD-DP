@@ -42,9 +42,19 @@ const MailModule=(()=>{
   clear('Đang kiểm tra kết nối AD…');await refresh(true);
   const poll=async()=>{if(run!==epoch)return;await refresh();timer=setTimeout(poll,5000);};if(run===epoch)timer=setTimeout(poll,5000);
  }
+ async function loadBody(message,run){
+  try{const req=await rpc('awm_mail_request',message.id);
+   for(let i=0;i<40;i++){if(run!==epoch||activeId!==message.id)return;
+    const st=await rpc('awm_mail_request_status',req.id);
+    if(st.status==='done'){message.body=st.result?.text||'(Thư không có nội dung văn bản)';renderDetail(message);return;}
+    if(st.status==='error'){message.body='Không tải được nội dung: '+(st.error||'');renderDetail(message);return;}
+    await new Promise(r=>setTimeout(r,1500));}
+   if(run===epoch&&activeId===message.id){message.body='AD chưa trả nội dung. Mở AD trên máy tính rồi thử lại.';renderDetail(message);}}
+  catch(error){if(run===epoch&&activeId===message.id){message.body='Không tải được nội dung: '+error.message;renderDetail(message);}}
+ }
  async function selectMail(id){
   const run=epoch;
-  try{const state=await rpc('awm_mail_status',project);if(run!==epoch)return;if(!state.online){clear();return;}const data=await rpc('awm_mail_list',project,'',account,folder);if(run!==epoch)return;messages=(data.items||[]).map(normalize);const message=messages.find(x=>x.id===id);if(!message){clear('Thư không còn trong nguồn đồng bộ hiện tại.');return;}activeId=id;renderDetail(message);}
+  try{const state=await rpc('awm_mail_status',project);if(run!==epoch)return;if(!state.online){clear();return;}const data=await rpc('awm_mail_list',project,'',account,folder);if(run!==epoch)return;messages=(data.items||[]).map(normalize);const message=messages.find(x=>x.id===id);if(!message){clear('Thư không còn trong nguồn đồng bộ hiện tại.');return;}activeId=id;if(!message.body){message.body='Đang tải nội dung từ AD…';renderDetail(message);loadBody(message,run);return;}renderDetail(message);}
   catch(error){if(run===epoch)clear(error.message);}
  }
  function renderDetail(message){
