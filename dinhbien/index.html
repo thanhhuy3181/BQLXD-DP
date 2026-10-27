@@ -2969,6 +2969,7 @@ function calculateSingleProject(projData) {
   let nv_dn_arr = Array(numM).fill(0);
   let nv_hc_arr = Array(numM).fill(0);
   let nv_tn_arr = Array(numM).fill(0);
+  let tn_td_arr = Array(numM).fill(0);
 
   // Helper lấy hệ số custom (mặc định 1.0 tức 100% nếu trong tiến độ)
   function getCustomHeso(tab, itemId, mk, baseRatio) {
@@ -3138,6 +3139,7 @@ function calculateSingleProject(projData) {
         nv_dn_arr[mIdx] += (klBptc / dmBptc('nv_dn', 50, 10000)) * prBptc;
         nv_hc_arr[mIdx] += (klBptc / dmBptc('nv_hc', 250, 50000)) * prBptc;
         nv_tn_arr[mIdx] += (klBptc / dmBptc('nv_tn', 250, 50000)) * prBptc;
+        tn_td_arr[mIdx] += (klBptc / dmBptc('tn_td', 500, 100000)) * prBptc;
       }
 
       // 5. M&E 2 giai đoạn, tính trên thời gian ME = Bắt đầu → Kết thúc của hạng mục:
@@ -3353,7 +3355,12 @@ function calculateSingleProject(projData) {
           raw = cv_atld_arr[mIdx] >= c ? Math.ceil(cv_atld_arr[mIdx] / c) : 0;
           break;
         }
-        case 'tn_tracdac': raw = (cv_tracdac_arr[mIdx] + nv_tracdac_arr[mIdx]) >= 7 ? 1 : 0; break;
+        case 'tn_tracdac': {
+          // Trưởng nhóm Trắc đạc: KL ÷ ĐM (500 / 100.000), hoặc tối thiểu 1 khi có từ 7 người trắc đạc
+          const tdTeam = (cv_tracdac_arr[mIdx] + nv_tracdac_arr[mIdx]) >= 7 ? 1 : 0;
+          raw = Math.max(tn_td_arr[mIdx], tdTeam);
+          break;
+        }
 
         case 'tn_mmtb': {
           // Trưởng nhóm QL MMTB: quản lý 7 Chuyên viên QL VTTB (T7)
@@ -3372,7 +3379,15 @@ function calculateSingleProject(projData) {
         }
         case 'nv_hc_tc': raw = hasBptcActive ? nv_hc_arr[mIdx] : 0; break;
         case 'nv_thinghiem': raw = hasBptcActive ? nv_tn_arr[mIdx] : 0; break;
-        case 'tbp_httc': raw = (cv_qc_arr[mIdx] + cv_qs_arr[mIdx] + cv_shop_arr[mIdx]) > 6 ? 1 : 0; break;
+        case 'tbp_httc': {
+          // Trưởng BP Hỗ trợ thi công: quản lý 9–10 Trưởng nhóm (T6) toàn dự án
+          const tnCount = (arr, c) => (arr >= c ? Math.ceil(arr / c) : 0);
+          const tnTotal = tnCount(cv_qc_arr[mIdx], 7) + tnCount(cv_qs_arr[mIdx], 7) + tnCount(cv_shop_arr[mIdx], 7)
+            + tnCount(cv_atld_arr[mIdx], 7) + tnCount(cv_vttb_arr[mIdx], 7) + (tn_td_arr[mIdx] > 0 ? Math.ceil(tn_td_arr[mIdx]) : 0);
+          const cTbp = getQlCalc('tbp_httc', 9.5);
+          raw = tnTotal >= 9 ? Math.ceil(tnTotal / cTbp) : 0;
+          break;
+        }
         case 'lead_bptc': raw = hasBptcActive ? 1 : 0; break;
       }
 
@@ -6302,11 +6317,12 @@ const MGMT_EXPLAIN = {
   tn_shop:      { src: ['cv_shop'], key: 'tn_shop', def: 7, text: '7 CV Shop / 1 TN Shop', srcLabel: 'CV Shop', unit: 'TN Shop' },
   tn_atld:      { src: ['cv_atld'], key: 'tn_atld', def: 7, text: '7 CV ATLĐ / 1 TN ATLĐ', srcLabel: 'CV ATLĐ', unit: 'TN ATLĐ' },
   tn_mmtb:      { src: ['cv_vttb'], key: 'tn_mmtb', def: 7, text: '7 CV VTTB / 1 TN QL MMTB', srcLabel: 'CV VTTB', unit: 'TN QL MMTB' },
-  cv_hc_tc:     { src: ['nv_hc_tc'], key: 'cv_hc_tc', def: 7, text: '7 NV hành chính / 1 CV hành chính', srcLabel: 'NV hành chính', unit: 'CV hành chính' }
+  cv_hc_tc:     { src: ['nv_hc_tc'], key: 'cv_hc_tc', def: 7, text: '7 NV hành chính / 1 CV hành chính', srcLabel: 'NV hành chính', unit: 'CV hành chính' },
+  tbp_httc:     { src: ['tn_qc', 'tn_qs', 'tn_shop', 'tn_atld', 'tn_mmtb', 'tn_tracdac'], key: 'tbp_httc', def: 9.5, text: '9–10 TN / 1 TBP', srcLabel: 'TN (T6)', unit: 'TBP HTTC' }
 };
 
 // Chức danh tính trực tiếp theo từng hạng mục (có KL / ĐM)
-const DIRECT_EXPLAIN = ['cb_xd', 'cb_me', 'cb_ht', 'nv_xd', 'nv_me', 'nv_ht', 'thu_kho_sum', 'tk_nlxd', 'tk_nlme', 'tk_htxd', 'tk_htme', 'cv_vttb', 'nv_cokhi', 'nv_diennuoc', 'nv_hc_tc', 'nv_thinghiem',
+const DIRECT_EXPLAIN = ['cb_xd', 'cb_me', 'cb_ht', 'nv_xd', 'nv_me', 'nv_ht', 'thu_kho_sum', 'tk_nlxd', 'tk_nlme', 'tk_htxd', 'tk_htme', 'cv_vttb', 'nv_cokhi', 'nv_diennuoc', 'nv_hc_tc', 'nv_thinghiem', 'tn_tracdac',
   'cv_ktht', 'cv_qc', 'cv_qs', 'cv_shop', 'cv_atld', 'cv_tracdac', 'nv_tracdac', 'cv_noinghiep_tc', 'cv_kehoach_tc'];
 
 function defaultDienGiaiKey() {
