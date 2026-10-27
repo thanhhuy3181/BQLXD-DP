@@ -5642,7 +5642,8 @@ function renderHesoNhansuTable(res) {
 }
 
 // Bắt sự kiện chuyển 4 Tab đồng bộ (Tổng, BQLXD, KHO, BPTC) ở cả 4 bảng: Biểu đồ, Định mức, Nhân sự, Hệ số nhân sự
-document.querySelectorAll('.dept-sync-tabs').forEach(bar => {
+// Gắn sự kiện cho một thanh tab Tổng / BQLXD / KHO / BPTC (dùng chung cho Nhân sự, Hệ số nhân sự và Diễn giải)
+function bindDeptSyncTabs(bar) {
   bar.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-depttab]');
     if(!btn) return;
@@ -5672,10 +5673,12 @@ document.querySelectorAll('.dept-sync-tabs').forEach(bar => {
         renderHesoNhansuTable(calcResultCache);
         renderDinhMucTable();
         renderSyncHesoTable(calcResultCache);
+        renderDienGiai(calcResultCache);
       }
     }
   });
-});
+}
+document.querySelectorAll('.dept-sync-tabs').forEach(bindDeptSyncTabs);
 
 /* ==========================================================================
    7. REFRESH & UPDATE STATS
@@ -6172,7 +6175,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const dien = document.createElement('div');
   dien.className = 'card-box diengiai-section';
   dien.id = 'diengiaiCard';
-  dien.innerHTML = `<div class="card-header"><h2><span>📑 Diễn giải định biên</span></h2></div><div class="diengiai-wrap" id="diengiaiWrap"></div>`;
+  dien.innerHTML = `<div class="card-header"><h2><span>📑 Diễn giải định biên</span></h2><div style="display:flex; align-items:center; gap:8px;"><div class="dept-sync-tabs" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;"><button class="heso-tab-btn active" data-depttab="ALL" style="padding:1px 8px; font-size:11px;">Tổng</button><button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button><button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button><button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button></div></div></div><div class="diengiai-wrap" id="diengiaiWrap"></div>`;
+  dien.querySelectorAll('.dept-sync-tabs').forEach(bindDeptSyncTabs);
   row3.replaceChild(dien, dinhmuc);
   row4.replaceChild(dinhmuc, row4.firstElementChild);
 });
