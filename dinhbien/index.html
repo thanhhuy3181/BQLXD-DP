@@ -528,7 +528,7 @@ body.mobile-view-mode #btnExportExcel {
 
   .card-header { height: auto !important; min-height: 34px !important; max-height: none !important; flex-wrap: wrap; padding: 6px 10px; }
 
-  .hangmuc-col, .heso-section, .nhansu-section, .dinhmuc-section, .diengiai-section {
+  .hangmuc-col, .heso-section, .nhansu-section, .dinhmuc-section, .diengiai-section, .heso-nhansu-section {
     height: auto !important; max-height: none !important; min-height: 240px;
   }
   .hangmuc-table-wrap, .heso-table-wrap, .nhansu-table-wrap, .dinhmuc-table-wrap {
@@ -757,6 +757,8 @@ body.is-resizing-row * {
 /* Đường phân chia dưới khung Nhân sự: kéo lên sát đáy khung (bù khoảng cách gap 10px của main-wrapper) để đường kẻ dính vào bảng */
 #rowResizer34 { margin: -10px 0 0; }
 #rowResizer34::before { top: 0; }
+#rowResizer4 { margin: -10px 0 0; }
+#rowResizer4::before { top: 0; }
 
 /* Ô TỔNG HỢP (HÀNG 1 TRÁI) */
 .tonghop-stats-grid {
@@ -1229,7 +1231,7 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 #treeTable .me-menu[hidden] { display: none; }
 #treeTable .me-menu button { font-size: 9.5px; height: 20px; padding: 0 5px; border: 1px solid #94a3b8; border-radius: 4px; background: #fff; color: #1e293b; cursor: pointer; white-space: nowrap; }
 #treeTable td input.input-date-dmy { width: 88px; }
-#treeTable td input[data-f="dv"] { width: 40px; }
+#treeTable td.dv-fixed { user-select: none; }
 #treeTable td input[data-f="dienTich"] { width: 70px; }
 /* Hiển thị ô nhập phẳng như ô Excel (không viền vuông bên trong) */
 /* Ẩn mũi tên tăng giảm (spin button) cho các ô nhập số trên toàn bảng */
@@ -1682,13 +1684,15 @@ td.editable-cell.adjusted { background: #fef9c3 !important; font-weight: 600; co
 
 /* 5. KHỐI CUỐI: HỆ SỐ NHÂN SỰ (MỞ RỘNG HẾT CỠ TOÀN BỘ DÒNG, KHÔNG CUỘN DỌC) */
 .heso-nhansu-section {
+  height: var(--row4-height);
+  max-height: var(--row4-height);
   display: flex;
   flex-direction: column;
 }
 .heso-nhansu-table-wrap {
-  overflow-x: auto;
-  overflow-y: visible;
-  max-height: none;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   scrollbar-gutter: stable;
 }
 
@@ -2220,6 +2224,9 @@ footer.app-footer {
       </div>
     </div>
   </div>
+
+  <!-- Thanh kéo ngang dưới cùng: đổi chiều cao Định mức + Hệ số nhân sự -->
+  <div class="row-resizer-bar" id="rowResizer4" title="Kéo lên / xuống để điều chỉnh chiều cao bảng Định mức và Hệ số nhân sự (Nhấp đúp để đặt lại)"></div>
 
 </div>
 
@@ -3695,9 +3702,15 @@ function syncSubClassificationWhenLoaiChanged(rowObj) {
     rowObj.tc = tcOpts[0] ? tcOpts[0].v : '';
   }
 
-  if(loai === 'Thấp tầng') rowObj.dv = 'căn';
-  else if(loai === 'Đường giao thông, công viên') rowObj.dv = 'm²';
-  else rowObj.dv = 'm² sàn';
+  rowObj.dv = unitForLoai(loai);
+}
+
+// Đơn vị cố định theo Phân loại công trình (không cho sửa / paste)
+function unitForLoai(loai) {
+  const l = (loai || 'Thấp tầng').trim();
+  if(l === 'Thấp tầng') return 'căn';
+  if(l === 'Đường giao thông, công viên') return 'm²';
+  return 'm² sàn';
 }
 
 function renderTreeTable() {
@@ -3829,14 +3842,7 @@ function renderTreeTable() {
         tcOpts.push({ v: r.tc, l: r.tc });
       }
 
-      // Cảnh báo màu đỏ cam nếu đơn vị bị lệch so với Loại công trình đã chọn
-      const isDvWarn = isUnitMismatched(loaiVal, r.dv);
-      const dvWarnStyle = isDvWarn
-        ? 'background:#fee2e2 !important; color:#b91c1c !important; font-weight:700 !important; border:1px solid #f87171 !important; border-radius:3px;'
-        : '';
-      const dvWarnTip = isDvWarn
-        ? ` title="⚠️ Cảnh báo lệch đơn vị: Loại CT '${loaiVal}' thường dùng đơn vị khác (hiện là '${escHtml(r.dv)}')"`
-        : '';
+      const dvFixed = unitForLoai(r.loai);
 
       const phanLoaiCellsHtml = showPhanLoaiCols ? `
         <td class="toggle-col">
@@ -3876,7 +3882,7 @@ function renderTreeTable() {
         <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curKt)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldKt}" title="Định dạng: dd/mm/yyyy (Ví dụ: 01/03/2026)"></td>
         <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curBg)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldBg}" title="Định dạng: dd/mm/yyyy (Ví dụ: 30/05/2026)"></td>
         <td><input type="number" style="text-align:right; font-family:var(--font-mono); font-weight:600; ${bptcInputStyle}" value="${curKl}" data-id="${r.id}" data-f="${fFieldKl}"></td>
-        <td><input type="text" style="text-align:center; font-size:10.5px; color:var(--text-muted); ${dvWarnStyle}" value="${escHtml(r.dv || '')}" data-id="${r.id}" data-f="dv"${dvWarnTip}></td>
+        <td class="dv-fixed" style="text-align:center; font-size:10.5px; color:var(--text-muted);" title="Đơn vị theo Phân loại công trình (cố định, không sửa)">${escHtml(dvFixed)}</td>
         <td>${r.loai === 'Đường giao thông, công viên' ? '' : `<input type="number" style="text-align:right; font-family:var(--font-mono);${!(r.dienTich > 0) ? ' background:#fef2f2; border-color:#dc2626;' : ''}" value="${r.dienTich > 0 ? r.dienTich : ''}" placeholder="⚠ Cần nhập" data-id="${r.id}" data-f="dienTich" title="Khối lượng hạ tầng (m²) của công trình. Cần nhập để tính CBGS/NVGS Hạ tầng">`}</td>
       `;
       tbody.appendChild(tr);
@@ -3897,7 +3903,7 @@ function renderTreeTable() {
           <td><input type="text" class="input-date-dmy" value="${meStageDates(r).kt1}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me1_kt"></td>
           <td></td>
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me1_kl != null ? r.me1_kl : (r.kl || '')}" data-id="${r.id}" data-f="me1_kl"></td>
-          <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
+          <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${unitForLoai(r.loai)}</td>
         `;
         tbody.appendChild(sub1);
 
@@ -3914,7 +3920,7 @@ function renderTreeTable() {
           <td><input type="text" class="input-date-dmy" value="${meStageDates(r).kt2}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me2_kt"></td>
           <td></td>
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me2_kl != null ? r.me2_kl : (r.kl || '')}" data-id="${r.id}" data-f="me2_kl"></td>
-          <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
+          <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${unitForLoai(r.loai)}</td>
         `;
         tbody.appendChild(sub2);
       }
@@ -4248,7 +4254,7 @@ function renderSyncHesoTable(res) {
         const it = res.itemProgressDetail.find(x => x.id === r.id);
         const ratioArr = getTabRatioArr(it);
         const klDisplay = (r.kl != null && r.kl !== '') ? Number(r.kl).toLocaleString('vi-VN') : '';
-        const dvDisplay = escHtml(r.dv || 'căn');
+        const dvDisplay = escHtml(unitForLoai(r.loai));
 
         let cellsHtml = '';
         months.forEach((m, mIdx) => {
@@ -6319,6 +6325,31 @@ function renderDienGiai(res) {
   });
   wrap.innerHTML = `<table class="dg-table"><thead><tr><th>STT</th><th class="dg-cd-h">Chức danh</th><th>Cấp</th><th>Cách tính / Căn cứ (tháng ${dgLabel})</th></tr></thead><tbody>${body}</tbody></table>`;
   requestAnimationFrame(syncDienGiaiRows);
+  requestAnimationFrame(syncDinhMucHesoRows);
+}
+
+// Thẳng hàng Định mức ↔ Hệ số nhân sự theo chức danh: cùng một chức danh thì cùng chiều cao dòng
+function syncDinhMucHesoRows() {
+  const hesoByName = {};
+  document.querySelectorAll('#bodyHesoNhansu tr').forEach(tr => {
+    const name = (tr.cells[2]?.textContent || '').trim();
+    if(name) (hesoByName[name] ||= []).push(tr);
+  });
+  const pairs = [];
+  document.querySelectorAll('#dinhmucBody tr').forEach(tr => {
+    const name = (tr.cells[1]?.textContent || '').trim();
+    const match = name && hesoByName[name] && hesoByName[name].shift();
+    if(match) pairs.push([tr, match]);
+  });
+  const dmHead = document.querySelector('#dinhmucHead tr');
+  const hsHead = document.querySelector('#headHesoNhansu tr');
+  if(dmHead && hsHead) pairs.push([dmHead, hsHead]);
+  pairs.forEach(([a, b]) => { a.style.height = ''; b.style.height = ''; });
+  pairs.forEach(([a, b]) => {
+    const h = Math.max(a.offsetHeight, b.offsetHeight);
+    a.style.height = h + 'px';
+    b.style.height = h + 'px';
+  });
 }
 
 // Đồng bộ chiều cao từng dòng: dòng Diễn giải và dòng Nhân sự tương ứng luôn bằng nhau
@@ -6348,6 +6379,7 @@ function refreshDashboard() {
   const nhansuCard = document.querySelector('.nhansu-section');
   const rowResizer23 = document.getElementById('rowResizer23');
   const rowResizer34 = document.getElementById('rowResizer34');
+  const rowResizer4 = document.getElementById('rowResizer4');
   const colResizerRow3 = document.getElementById('colResizerRow3');
 
   if(isAgg) {
@@ -6361,6 +6393,7 @@ function refreshDashboard() {
     if(rowResizer23) rowResizer23.style.display = 'none';
     if(rowResizer34) rowResizer34.style.display = 'none';
     if(row4Grid) row4Grid.style.display = 'none';
+    if(rowResizer4) rowResizer4.style.display = 'none';
     if(dinhmucCard) dinhmucCard.style.display = 'none';
     const dgCard = document.getElementById('diengiaiCard');
     if(dgCard) dgCard.style.display = 'none'; // tổng vùng/khối: không có Diễn giải
@@ -6377,6 +6410,7 @@ function refreshDashboard() {
     if(rowResizer23) rowResizer23.style.display = '';
     if(rowResizer34) rowResizer34.style.display = '';
     if(row4Grid) row4Grid.style.display = '';
+    if(rowResizer4) rowResizer4.style.display = '';
     if(dinhmucCard) dinhmucCard.style.display = '';
     const dgCard2 = document.getElementById('diengiaiCard');
     if(dgCard2) dgCard2.style.display = '';
@@ -6636,21 +6670,6 @@ function isDateStringCandidate(str) {
     }
   }
   return false;
-}
-
-// Kiểm tra đơn vị có lệch so với Loại công trình không để cảnh báo bôi màu
-function isUnitMismatched(loai, dv) {
-  if(!loai || !dv) return false;
-  const l = loai.trim();
-  const d = dv.trim().toLowerCase();
-  if(l === 'Thấp tầng') {
-    return d !== 'căn';
-  } else if(l === 'Đường giao thông, công viên') {
-    return d !== 'm²' && d !== 'm2';
-  } else {
-    // Cao tầng, Các công trình khác, Công trình nhà xưởng
-    return d !== 'm² sàn' && d !== 'm2 sàn' && d !== 'm²' && d !== 'm2';
-  }
 }
 
 // Chuẩn hóa ngày tháng khi dán từ Excel (DD/MM/YYYY hoặc YYYY-MM-DD -> YYYY-MM-DD)
@@ -6967,7 +6986,8 @@ function importRowsFromTsvText(text) {
 
       // Đưa khối lượng và đơn vị
       kl = numberFound != null ? numberFound : 0;
-      dv = unitFound || (loai === 'Thấp tầng' ? 'căn' : (loai === 'Đường giao thông, công viên' ? 'm²' : (loai ? 'm² sàn' : '')));
+      // Đơn vị luôn theo Phân loại công trình (cố định), bỏ qua đơn vị dán vào từ Excel (unitFound)
+      dv = loai ? unitForLoai(loai) : '';
 
       const rowItem = {
         id: 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
@@ -6985,7 +7005,6 @@ function importRowsFromTsvText(text) {
       };
       if(loai) {
         syncSubClassificationWhenLoaiChanged(rowItem);
-        if(unitFound) rowItem.dv = unitFound;
         ensureMeStagesForRow(rowItem);
       }
 
@@ -8930,6 +8949,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: true });
   }
 
+  // Đồng bộ cuộn dọc: Diễn giải (hàng 3 trái) ↔ Nhân sự (hàng 3 phải); Định mức (hàng 4 trái) ↔ Hệ số nhân sự (hàng 4 phải)
+  const linkScrollTop = (a, b) => {
+    if(!a || !b) return;
+    const follow = (from, to) => from.addEventListener('scroll', () => {
+      if(to.scrollTop !== from.scrollTop) to.scrollTop = from.scrollTop;
+    }, { passive: true });
+    follow(a, b);
+    follow(b, a);
+  };
+  linkScrollTop(document.getElementById('diengiaiWrap'), nhansuWrap);
+  linkScrollTop(dinhmucWrap, hesoNhansuWrap);
+
+  // Đổi tab Tổng / BQLXD / KHO / BPTC làm đổi số dòng: căn lại chiều cao dòng Định mức ↔ Hệ số nhân sự
+  document.addEventListener('click', e => {
+    if(e.target.closest && e.target.closest('.heso-tab-btn')) setTimeout(syncDinhMucHesoRows, 50);
+  });
+
   // =========================================================================
   // KHỞI TẠO CO KÉO ĐƯỜNG PHÂN CHIA DỌC (TRÁI - PHẢI) VÀ NGANG (TRÊN - DƯỚI)
   // =========================================================================
@@ -9146,6 +9182,52 @@ document.addEventListener('DOMContentLoaded', () => {
       showUndoToast('↕ Đã đặt lại chiều cao tầng 3 mặc định (480px)');
     });
   }});
+
+// Thanh kéo dưới cùng: đổi chiều cao đồng thời Định mức (hàng 4 trái) và Hệ số nhân sự (hàng 4 phải)
+document.addEventListener('DOMContentLoaded', () => {
+  const savedRow4H = localStorage.getItem('db_v2_row4_h');
+  if(savedRow4H) document.documentElement.style.setProperty('--row4-height', savedRow4H + 'px');
+
+  const bar = document.getElementById('rowResizer4');
+  if(!bar) return;
+  let dragging = false, startY = 0, startH = 0;
+  const pointY = e => e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+  const startDrag = e => {
+    e.preventDefault();
+    const card = document.getElementById('dinhmucCard');
+    if(!card) return;
+    dragging = true;
+    startY = pointY(e);
+    startH = card.getBoundingClientRect().height;
+    document.body.classList.add('is-resizing-row');
+    bar.classList.add('active');
+  };
+  const doDrag = e => {
+    if(!dragging) return;
+    const y = pointY(e);
+    if(y == null) return;
+    const h = Math.max(200, Math.min(1200, Math.round(startH + (y - startY))));
+    document.documentElement.style.setProperty('--row4-height', h + 'px');
+    localStorage.setItem('db_v2_row4_h', String(h));
+  };
+  const stopDrag = () => {
+    if(!dragging) return;
+    dragging = false;
+    document.body.classList.remove('is-resizing-row');
+    bar.classList.remove('active');
+  };
+  bar.addEventListener('mousedown', startDrag);
+  bar.addEventListener('touchstart', startDrag, { passive: false });
+  window.addEventListener('mousemove', doDrag);
+  window.addEventListener('touchmove', doDrag, { passive: false });
+  window.addEventListener('mouseup', stopDrag);
+  window.addEventListener('touchend', stopDrag);
+  bar.addEventListener('dblclick', () => {
+    document.documentElement.style.setProperty('--row4-height', '760px');
+    localStorage.removeItem('db_v2_row4_h');
+    showUndoToast('↕ Đã đặt lại chiều cao hàng 4 mặc định (760px)');
+  });
+});
 </script>
 </body>
 </html>
