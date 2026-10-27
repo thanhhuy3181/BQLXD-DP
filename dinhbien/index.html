@@ -2173,6 +2173,8 @@ footer.app-footer {
             <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button>
             <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button>
           </div>
+          <label style="font-size:11px; color:var(--text-muted);" title="Số robot ép cọc của dự án: 1 Thủ kho nhập liệu / 30 robot, 1 Thủ kho hiện trường / 5 robot">Robot ép cọc:</label>
+          <input type="number" id="inpRobotEpCoc" min="0" style="width:60px; padding:2px 4px; font-size:11px;">
           <label style="font-size:11px; color:var(--text-muted);">Làm tròn:</label>
           <select id="selRoundMode" style="padding:2px 6px; font-size:11px;">
             <option value="normal">Chuẩn (0.5 lên)</option>
@@ -2885,6 +2887,12 @@ const MATRIX_ROWS_META = [
   {stt:2,  pb:'KHO', bp:'BP Kho', cd:'Trưởng kho', cap:'T5', type:'lead_kho', dmThap:'', dmKhac:'', rule:'QL 5–7 TN Kho (>15 TK)', qlKey:'truong_kho', qlTarget:'Trưởng nhóm kho (T6) (hoặc >15 Thủ kho)', qlMin:5, qlMax:7, qlCalc:6, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'1 Trưởng kho / BQLXD'},
   {stt:3,  pb:'KHO', bp:'BP Kho', cd:'Trưởng nhóm kho', cap:'T6', type:'group_kho', dmThap:'', dmKhac:'', rule:'QL 7–11 Thủ kho (T7,T8)', qlKey:'tn_kho', qlTarget:'Thủ kho nhập liệu (T7) & Thủ kho hiện trường (T8)', qlMin:7, qlMax:11, qlCalc:9, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Nhiều DA nhỏ tối đa 15 TK'},
   {stt:4,  pb:'KHO', bp:'BP Kho', cd:'Thủ kho (Nhập liệu & Hiện trường)', cap:'T7/T8', type:'thu_kho_sum', dmKey:'thu_kho', dmThap:180, dmKhac:36000, rule:'ĐM Nhập liệu + Hiện trường', tt_tho:180, tt_full:100, tt_ht2:100, tt_ht1:100, ct_tho:36000, ct_ht:20000, khac:'25.000(TTTM)/15.000(KS)', nx:20000, dgt:'75.000(ĐGT)/50.000(CV)', hsNote:'NL XD:470/360; NL ME:930/472; HT ME:250/163'},
+  {stt:'4.1', sub:true, pb:'KHO', bp:'BP Kho', cd:'Thủ kho nhập liệu - XD', cap:'T7', type:'tk_nlxd', dmKey:'tk_nlxd', dmThap:470, dmKhac:95000, rule:'KL ÷ ĐM NL-XD × HS kho', tt_tho:470, tt_full:360, tt_ht2:360, tt_ht1:360, ct_tho:95000, ct_ht:72500, khac:'100.000 (TTTM) / 55.000 (KS) / 50.000 (TH-BV) / 75.000 (NM)', nx:75000, dgt:'300.000 (ĐGT) / 200.000 (CV)', hsNote:'Thủ kho nhập liệu Kho xây dựng; Biệt thự × 0,8'},
+  {stt:'4.2', sub:true, pb:'KHO', bp:'BP Kho', cd:'Thủ kho nhập liệu - ME', cap:'T7', type:'tk_nlme', dmKey:'tk_nlme', dmThap:930, dmKhac:190000, rule:'KL ÷ ĐM NL-ME × HS kho', tt_tho:930, tt_full:472, tt_ht2:472, tt_ht1:472, ct_tho:190000, ct_ht:95000, khac:'100.000 (TTTM) / 75.000 (KS) / 50.000 (TH-BV) / 75.000 (NM)', nx:75000, dgt:'300.000 (ĐGT) / 200.000 (CV)', hsNote:'Thủ kho nhập liệu Kho ME; Biệt thự × 0,8'},
+  {stt:'4.3', sub:true, pb:'KHO', bp:'BP Kho', cd:'Thủ kho hiện trường - XD', cap:'T8', type:'tk_htxd', dmKey:'thu_kho', dmThap:180, dmKhac:36000, rule:'KL ÷ ĐM HT-XD × HS kho', tt_tho:180, tt_full:100, tt_ht2:100, tt_ht1:100, ct_tho:36000, ct_ht:20000, khac:'25.000 (TTTM) / 15.000 (KS) / 12.500 (TH-BV) / 20.000 (NM)', nx:20000, dgt:'75.000 (ĐGT) / 50.000 (CV)', hsNote:'Thủ kho hiện trường XD; Biệt thự × 0,8'},
+  {stt:'4.4', sub:true, pb:'KHO', bp:'BP Kho', cd:'Thủ kho hiện trường - ME', cap:'T8', type:'tk_htme', dmKey:'tk_htme', dmThap:250, dmKhac:50000, rule:'KL ÷ ĐM HT-ME × HS kho', tt_tho:250, tt_full:163, tt_ht2:163, tt_ht1:163, ct_tho:50000, ct_ht:32500, khac:'25.000 (TTTM) / 25.000 (KS) / 12.500 (TH-BV) / 20.000 (NM)', nx:20000, dgt:'75.000 (ĐGT) / 50.000 (CV)', hsNote:'Thủ kho hiện trường ME; Biệt thự × 0,8'},
+  {stt:'4.5', sub:true, pb:'KHO', bp:'BP Kho', cd:'Thủ kho nhập liệu - Kho ép cọc', cap:'T7', type:'tk_epnl', dmThap:'', dmKhac:'', rule:'1 Thủ kho / 30 robot', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Số robot nhập ở ô Robot ép cọc (Nhân sự)'},
+  {stt:'4.6', sub:true, pb:'KHO', bp:'BP Kho', cd:'Thủ kho hiện trường - Kho ép cọc', cap:'T8', type:'tk_epht', dmThap:'', dmKhac:'', rule:'1 Thủ kho / 5 robot', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Số robot nhập ở ô Robot ép cọc (Nhân sự)'},
 
   // III. BỘ PHẬN THI CÔNG (ĐM BPTC)
   {stt:1,  pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Phó Giám đốc thi công', cap:'T3/T4', type:'lead_bptc', dmThap:'', dmKhac:'', rule:'1 người / Dự án', fixedSpan:'Định mức quản lý dùng chung toàn dự án: 1 Phó GĐ thi công / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Quản lý chung BPTC dự án'},
@@ -2914,6 +2922,14 @@ const MATRIX_ROWS_META = [
   {stt:25, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên Kế hoạch thi công', cap:'T7', type:'cv_kehoach_tc', dmKey:'cv_kh', dmThap:2000, dmKhac:400000, rule:'KL ÷ Định mức', tt_tho:2000, tt_full:1400, tt_ht2:1500, tt_ht1:1600, ct_tho:400000, ct_ht:400000, khac:300000, nx:600000, dgt:600000, hsNote:'Mục 10 ĐM BPTC: 2000 căn / 400.000m²'}
 ];
 
+// Định mức 4 loại thủ kho (sheet ĐM KHO): thô/HT theo Thấp tầng và Cao tầng; m² GFA cho công trình khác; m² cho Đường GT / Công viên
+const TK_DM = {
+  nlxd: { thapTho: 470, thapHt: 360, caoTho: 95000, caoHt: 72500, tttm: 100000, ks: 55000, bv: 50000, nm: 75000, dgt: 300000, cv: 200000 },
+  nlme: { thapTho: 930, thapHt: 472, caoTho: 190000, caoHt: 95000, tttm: 100000, ks: 75000, bv: 50000, nm: 75000, dgt: 300000, cv: 200000 },
+  htxd: { thapTho: 180, thapHt: 100, caoTho: 36000, caoHt: 20000, tttm: 25000, ks: 15000, bv: 12500, nm: 20000, dgt: 75000, cv: 50000 },
+  htme: { thapTho: 250, thapHt: 163, caoTho: 50000, caoHt: 32500, tttm: 25000, ks: 25000, bv: 12500, nm: 20000, dgt: 75000, cv: 50000 }
+};
+
 function calculateSingleProject(projData) {
   const rows = (projData.treeRows || []).filter(r => r.level === 3);
   const months = getActiveMonths(projData);
@@ -2935,6 +2951,8 @@ function calculateSingleProject(projData) {
   let nv_ht_arr = Array(numM).fill(0);
 
   let thu_kho_arr = Array(numM).fill(0);
+  // 6 loại thủ kho (sheet ĐM KHO): NL-XD, NL-ME (nhập liệu, T7); HT-XD, HT-ME (hiện trường, T8); ép cọc theo số robot
+  const tkArr = { nlxd: Array(numM).fill(0), nlme: Array(numM).fill(0), htxd: Array(numM).fill(0), htme: Array(numM).fill(0), epnl: Array(numM).fill(0), epht: Array(numM).fill(0) };
   let cv_ktht_arr = Array(numM).fill(0);
   let cv_qc_arr = Array(numM).fill(0);
   let cv_qs_arr = Array(numM).fill(0);
@@ -3048,29 +3066,27 @@ function calculateSingleProject(projData) {
       // Đường giao thông / công viên: KL chính là KL hạ tầng, không nhập riêng
       if(prHt > 0) area_ht_arr[mIdx] += (isDgtCv ? kl : (it.dienTich || 0)) * prHt;
 
-      // 3. KHO - Thủ kho Nhập liệu (T7) + Hiện trường (T8) (Tách riêng Đường giao thông vs Công viên, và từng loại công trình cấp 2 theo Sheet ĐM KHO)
+      // 3. KHO - 4 loại thủ kho theo sheet ĐM KHO (tính riêng từng loại, dòng Thủ kho tổng là tổng các loại)
       if(prKho > 0 && kl > 0) {
-        let dm_tk = 36000;
-        if(isThap) {
-          // Thấp tầng: Xây thô = 180 căn, Hoàn thiện = 100 căn (* Biệt thự × 0,8)
-          const baseTkThap = (tcIdx === 0) ? getDmVal('thu_kho','thap',180) : 100;
-          dm_tk = baseTkThap * hsKieu;
-        } else if(isCao) {
-          // Cao tầng: Xây thô = 36.000 m2, Hoàn thiện = 20.000 m2
-          dm_tk = (tcIdx === 0) ? getDmVal('thu_kho','khac',36000) : 20000;
-        } else if(isDgtCv) {
-          // Đường giao thông, công viên: Công viên = 50.000 m2 (HT) / 200.000 (NL); Đường giao thông = 75.000 m2 (HT) / 300.000 (NL)
-          dm_tk = isCongVien ? 50000 : 75000;
-        } else if(isKhac) {
-          // Các công trình khác: TTTM = 25.000, Khách sạn = 15.000, Trường học/Bệnh viện = 12.500, Nhà máy/Nhà để xe nổi = 20.000
-          if(kieu.includes('Khách sạn')) dm_tk = 15000;
-          else if(kieu.includes('Trường học') || kieu.includes('Bệnh viện')) dm_tk = 12500;
-          else if(kieu.includes('Nhà máy') || kieu.includes('xe nổi')) dm_tk = 20000;
-          else dm_tk = 25000; // TTTM
-        } else if(isNx) {
-          dm_tk = 20000;
-        }
-        thu_kho_arr[mIdx] += (kl / dm_tk) * prKho;
+        const tkDm = (t) => {
+          const d = TK_DM[t];
+          const dk = t === 'htxd' ? 'thu_kho' : `tk_${t}`; // Thủ kho hiện trường XD giữ nguyên khóa định mức cũ
+          if(isThap) return getDmVal(dk, 'thap', tcIdx === 0 ? d.thapTho : d.thapHt) * hsKieu;
+          if(isCao) return getDmVal(dk, 'khac', tcIdx === 0 ? d.caoTho : d.caoHt);
+          if(isDgtCv) return isCongVien ? d.cv : d.dgt;
+          if(isKhac) {
+            if(kieu.includes('Khách sạn')) return d.ks;
+            if(kieu.includes('Trường học') || kieu.includes('Bệnh viện')) return d.bv;
+            if(kieu.includes('Nhà máy') || kieu.includes('xe nổi')) return d.nm;
+            return d.tttm;
+          }
+          if(isNx) return d.nm;
+          return d.tttm;
+        };
+        tkArr.nlxd[mIdx] += (kl / tkDm('nlxd')) * prKho;
+        tkArr.nlme[mIdx] += (kl / tkDm('nlme')) * prKho;
+        tkArr.htxd[mIdx] += (kl / tkDm('htxd')) * prKho;
+        tkArr.htme[mIdx] += (kl / tkDm('htme')) * prKho;
       }
 
       // 4. BPTC - Các chức danh Bộ phận Thi công (Sheet ĐM BPTC: dùng klBptc riêng của tab Tiến độ BPTC)
@@ -3213,6 +3229,15 @@ function calculateSingleProject(projData) {
     gd_bql1_arr[mIdx] = gd_bql2_arr[mIdx] >= cGd1 ? Math.floor(gd_bql2_arr[mIdx] / cGd1) : 0;
   });
 
+  // Thủ kho ép cọc: 1 Thủ kho nhập liệu / 30 robot, 1 Thủ kho hiện trường / 5 robot; tính khi DA có hoạt động
+  const robotEpCoc = parseFloat(projData.robotEpCoc) || 0;
+  months.forEach((mDate, mIdx) => {
+    const active = rows.some(it => calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate) > 0);
+    tkArr.epnl[mIdx] = active && robotEpCoc > 0 ? robotEpCoc / 30 : 0;
+    tkArr.epht[mIdx] = active && robotEpCoc > 0 ? robotEpCoc / 5 : 0;
+    thu_kho_arr[mIdx] = tkArr.nlxd[mIdx] + tkArr.nlme[mIdx] + tkArr.htxd[mIdx] + tkArr.htme[mIdx] + tkArr.epnl[mIdx] + tkArr.epht[mIdx];
+  });
+
   // Vòng 1: Tính các chức danh trừ Trợ lý GĐ BQLXD để nếu người dùng có bật/chỉnh hệ số GĐ cấp 2 thì Trợ lý tự ăn theo
   MATRIX_ROWS_META.forEach((meta, rIdx) => {
     if(meta.type === 'tro_ly_bql') return;
@@ -3255,6 +3280,12 @@ function calculateSingleProject(projData) {
         }
 
         case 'thu_kho_sum': raw = thu_kho_arr[mIdx]; break;
+        case 'tk_nlxd': raw = tkArr.nlxd[mIdx]; break;
+        case 'tk_nlme': raw = tkArr.nlme[mIdx]; break;
+        case 'tk_htxd': raw = tkArr.htxd[mIdx]; break;
+        case 'tk_htme': raw = tkArr.htme[mIdx]; break;
+        case 'tk_epnl': raw = tkArr.epnl[mIdx]; break;
+        case 'tk_epht': raw = tkArr.epht[mIdx]; break;
         case 'group_kho': {
           const c = getQlCalc('tn_kho', 9);
           raw = thu_kho_arr[mIdx] / c;
@@ -3360,6 +3391,7 @@ function calculateSingleProject(projData) {
   const grandTotals = Array(numM).fill(0);
 
   MATRIX_ROWS_META.forEach((meta, rIdx) => {
+    if(meta.sub) return; // dòng con Thủ kho: đã nằm trong dòng Thủ kho tổng
     months.forEach((mDate, mIdx) => {
       const v = rowsFinal[rIdx][mIdx];
       if(meta.pb === 'BQLXD') bqlTotals[mIdx] += v;
@@ -6226,7 +6258,7 @@ const MGMT_EXPLAIN = {
 };
 
 // Chức danh tính trực tiếp theo từng hạng mục (có KL / ĐM)
-const DIRECT_EXPLAIN = ['cb_xd', 'cb_me', 'cb_ht', 'nv_xd', 'nv_me', 'nv_ht', 'thu_kho_sum',
+const DIRECT_EXPLAIN = ['cb_xd', 'cb_me', 'cb_ht', 'nv_xd', 'nv_me', 'nv_ht', 'thu_kho_sum', 'tk_nlxd', 'tk_nlme', 'tk_htxd', 'tk_htme',
   'cv_ktht', 'cv_qc', 'cv_qs', 'cv_shop', 'cv_atld', 'cv_tracdac', 'nv_tracdac', 'cv_noinghiep_tc', 'cv_kehoach_tc'];
 
 function defaultDienGiaiKey() {
@@ -6263,7 +6295,7 @@ function renderDienGiai(res) {
         else if(/^(cb|nv)_ht$/.test(meta.type)) {
           arr = det.htRatio;
           klEff = it.loai === 'Đường giao thông, công viên' ? (it.kl || 0) : (it.dienTich || 0);
-        } else if(meta.type === 'thu_kho_sum') arr = det.khoRatio;
+        } else if(/^tk_/.test(meta.type)) arr = det.khoRatio;
         else {
           arr = det.bptcRatio;
           klEff = (it.bptc_kl != null && it.bptc_kl !== '') ? (parseFloat(it.bptc_kl) || 0) : (it.kl || 0);
@@ -6286,7 +6318,9 @@ function renderDienGiai(res) {
     const list = contrib[rIdx];
     let cach;
     const mg = MGMT_EXPLAIN[meta.type];
-    if(mg) {
+    if(meta.type === 'thu_kho_sum') {
+      cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${unit}</div><div>= tổng các dòng 4.1 → 4.6 (tháng ${dgLabel})</div>`;
+    } else if(mg) {
       const dmC = currentProjectData.dinhMucCustom || {};
       const span = dmC[`ql_${mg.key}_calc`] > 0 ? dmC[`ql_${mg.key}_calc`] : mg.def;
       const srcSum = mg.src.reduce((s, t) => {
@@ -6375,6 +6409,11 @@ function refreshDashboard() {
   calcResultCache = calculateAll();
   renderDienGiai(calcResultCache);
   const isAgg = !!calcResultCache.isAggregate;
+  const inpRobotEl = document.getElementById('inpRobotEpCoc');
+  if(inpRobotEl) {
+    inpRobotEl.value = currentProjectData && currentBqlId && currentProjectData.robotEpCoc ? currentProjectData.robotEpCoc : '';
+    inpRobotEl.disabled = !currentBqlId;
+  }
 
   const row1StickyGrid = document.getElementById('row1StickyGrid');
   const row2Grid = document.getElementById('row2Grid');
@@ -9231,6 +9270,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.style.setProperty('--row4-height', '760px');
     localStorage.removeItem('db_v2_row4_h');
     showUndoToast('↕ Đã đặt lại chiều cao hàng 4 mặc định (760px)');
+  });
+});
+// Ô Robot ép cọc (Nhân sự): dùng để tính Thủ kho ép cọc (4.5, 4.6); để trống cho đến khi có số robot
+document.addEventListener('DOMContentLoaded', () => {
+  const inpRobot = document.getElementById('inpRobotEpCoc');
+  if(!inpRobot) return;
+  inpRobot.addEventListener('change', () => {
+    if(!currentProjectData || !currentBqlId) return;
+    currentProjectData.robotEpCoc = Math.max(0, parseFloat(inpRobot.value) || 0);
+    saveCurrentProject();
+    refreshDashboard();
   });
 });
 </script>
