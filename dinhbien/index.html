@@ -207,6 +207,7 @@ header.app-header {
   --left-col-pct: 54%;
   --row2-height: 360px;
   --row3-height: 760px;
+  --row4-height: 760px;
   --sticky-header-h: 112px;
 }
 
@@ -527,7 +528,7 @@ body.mobile-view-mode #btnExportExcel {
 
   .card-header { height: auto !important; min-height: 34px !important; max-height: none !important; flex-wrap: wrap; padding: 6px 10px; }
 
-  .hangmuc-col, .heso-section, .nhansu-section, .dinhmuc-section {
+  .hangmuc-col, .heso-section, .nhansu-section, .dinhmuc-section, .diengiai-section {
     height: auto !important; max-height: none !important; min-height: 240px;
   }
   .hangmuc-table-wrap, .heso-table-wrap, .nhansu-table-wrap, .dinhmuc-table-wrap {
@@ -807,10 +808,10 @@ body.is-resizing-row * {
   margin-top: 2px;
 }
 
-/* BẢNG ĐỊNH MỨC (HÀNG 3 TRÁI - ĐỒNG BỘ DÒNG VỚI BẢNG NHÂN SỰ PHẢI) */
+/* BẢNG ĐỊNH MỨC (HÀNG 4 TRÁI): chiều cao riêng, không bị kéo theo đường phân chia giữa hàng 3 và hàng 4 */
 .dinhmuc-section {
-  height: var(--row3-height);
-  max-height: var(--row3-height);
+  height: var(--row4-height);
+  max-height: var(--row4-height);
   display: flex;
   flex-direction: column;
 }
@@ -1158,7 +1159,13 @@ table.nhansu-matrix-table thead th.col-freeze-4 { left: calc(var(--chart-axis-w,
 .agg-hm-table td.num { text-align: right; font-family: var(--font-mono); }
 .agg-hm-table tr.agg-hm-proj td { background: #e0f2fe; font-weight: 700; color: #0c4a6e; }
 
-/* Khung Diễn giải định biên */
+/* Khung Diễn giải định biên (hàng 3 trái): cao đúng bằng khung Nhân sự bên phải, cuộn trong khung */
+.diengiai-section {
+  height: var(--row3-height);
+  max-height: var(--row3-height);
+  display: flex;
+  flex-direction: column;
+}
 .diengiai-wrap { overflow: auto; flex: 1; min-height: 0; }
 .dg-table { border-collapse: collapse; font-size: 11px; width: max-content; min-width: 100%; }
 .dg-table th, .dg-table td { border: 1px solid #e2e8f0; padding: 3px 6px; white-space: nowrap; }
