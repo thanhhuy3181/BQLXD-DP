@@ -16,6 +16,10 @@ function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POS
   const states=await sql`SELECT value FROM bqlda_state WHERE key='state'`;const state=states[0]?.value||{};
   const actual=crypto.createHash('sha256').update(token).digest('hex');
   if(!active(user)||!can(user,state,'tab_mail')||! /^[0-9a-f]{64}$/.test(row.device?.hash||'')||!crypto.timingSafeEqual(Buffer.from(actual),Buffer.from(row.device.hash)))return fail(403,'Thiết bị không được cấp quyền');
+  // ---- Hộp thư đi: AwD/AwM soạn, AD lấy về gửi qua Outlook ----
+  const action=String(req.body?.action||''),outKey=`awm:outbox:${username}`;
+  const readKey=async k=>(await sql`SELECT value FROM bqlda_state WHERE key=${k}`)[0]?.value;
+  const writeKey=(k,v)=>sql`INSERT INTO bqlda_state(key,value) VALUES(${k},${JSON.stringify(v)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;
   // ---- Yêu cầu nội dung thư cũ: AwD/AwM tạo, AD lấy về đọc rồi trả kết quả ----
   const op=String(req.body?.op||''),reqKey=`awm:mailreq:${username}`;
   if(op==='mailreq_fetch'){
@@ -34,10 +38,6 @@ function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POS
    target.updated_at=new Date().toISOString();
    await writeKey(reqKey,list);return res.json({ok:true,data:{updated:true}});
   }
-  // ---- Hộp thư đi: AwD/AwM soạn, AD lấy về gửi qua Outlook ----
-  const action=String(req.body?.action||''),outKey=`awm:outbox:${username}`;
-  const readKey=async k=>(await sql`SELECT value FROM bqlda_state WHERE key=${k}`)[0]?.value;
-  const writeKey=(k,v)=>sql`INSERT INTO bqlda_state(key,value) VALUES(${k},${JSON.stringify(v)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;
   if(action==='outbox_fetch'){
    const box=Array.isArray(await readKey(outKey))?await readKey(outKey):[];const now=new Date().toISOString();const jobs=[];
    for(const j of box){if(j.status==='queued'){j.status='sending';j.updated_at=now;jobs.push(j);}else if(j.status==='sending'&&Date.now()-Date.parse(j.updated_at)>10*60000){j.status='error';j.error='AD không phản hồi khi gửi. Kiểm tra Hộp thư đi trong Outlook trước khi gửi lại.';j.updated_at=now;}}
