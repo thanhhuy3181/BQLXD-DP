@@ -69,3 +69,25 @@ const MailModule=(()=>{
  window.addEventListener('bqlda_project_changed',event=>{epoch++;loading=false;clearTimeout(timer);clear();if(!event?.detail?.pending&&$('page-mail')?.classList.contains('active'))init();});
  return {init,setCategory,onSearch,selectMail,connectOutlook,chooseScanFolder,sendToB1Word,sendToHsmt,exportMailText,dispose};
 })();
+
+// Mã ghép cặp để AD (máy tính) nhận thư đúng tài khoản Google đang đăng nhập ở đây.
+// Mỗi lần lấy mã sẽ thay token cũ, nên AD đã ghép trước đó cần dán mã mới.
+window.showAdPairingCode=async function showAdPairingCode(){
+ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ try{
+  const boot=await API.call('awm_bootstrap');
+  const username=boot?.data?.user?.username||'';
+  const pair=await API.call('awm_pair_device');
+  if(pair?.ok!==true||!pair?.data?.device_token)throw new Error(pair?.error||'Máy chủ chưa tạo được mã.');
+  const code=`${username}|${pair.data.device_token}`;
+  let dialog=document.getElementById('ad-pairing-dialog');
+  if(!dialog){dialog=document.createElement('dialog');dialog.id='ad-pairing-dialog';dialog.className='modal';document.body.appendChild(dialog);}
+  dialog.innerHTML=`<div class="modal-box max-w-md"><h3 class="font-bold">🔑 Mã ghép cặp AD</h3><p class="text-xs opacity-70 mt-1">Dán mã này vào ô "Mã ghép cặp" trong AD (Kết nối &amp; Ghép cặp AwD/AwM). Thư sẽ đồng bộ về tài khoản <b>${esc(username)}</b>. Lấy mã mới sẽ làm mã cũ hết hiệu lực.</p><textarea readonly id="ad-pairing-code" class="textarea textarea-bordered w-full font-mono text-xs mt-3" rows="3"></textarea><div class="modal-action"><button type="button" id="ad-pairing-copy" class="btn btn-sm">Sao chép</button><form method="dialog"><button class="btn btn-sm btn-primary">Đóng</button></form></div></div>`;
+  const field=dialog.querySelector('#ad-pairing-code');
+  field.value=code;
+  dialog.querySelector('#ad-pairing-copy').onclick=async()=>{try{await navigator.clipboard.writeText(code);}catch(_){field.select();document.execCommand('copy');}};
+  dialog.showModal();
+ }catch(err){
+  alert('Không tạo được mã ghép cặp: '+(err.message||err));
+ }
+};
