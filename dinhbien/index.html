@@ -6336,7 +6336,7 @@ function renderDienGiai(res) {
   const fmt = (n, d = 2) => Number(n).toLocaleString('vi-VN', { maximumFractionDigits: d });
   const rowHtml = (meta, rIdx, stt) => {
     const v = res.rowsFinal[rIdx][j] || 0;
-    const unit = meta.pb === 'BQLXD' ? 'CB' : 'người';
+    const unit = 'CB'; // mọi khối (BQLXD, KHO, BPTC) đều tính theo CB
     const list = contrib[rIdx];
     let cach;
     const mg = MGMT_EXPLAIN[meta.type];
@@ -6351,8 +6351,9 @@ function renderDienGiai(res) {
       }, 0);
       const xv = span > 0 ? srcSum / span : 0;
       const xTxt = xv >= 1 ? fmt(Math.round(xv), 0) : fmt(xv, 1);
-      cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${meta.pb === 'BQLXD' ? 'CB' : escHtml(mg.unit)}</div>`
-        + `<div>${fmt(srcSum, 0)} ${escHtml(mg.srcLabel)} ~ ${xTxt} ${escHtml(mg.unit)} (ĐM ${escHtml(mg.text)})</div>`;
+      const ratioTxt = mg.text.replace(/\/ 1 .*$/, '/ 1 CB');
+      cach = `<div class="dg-total">Tổng ~ <b>${v}</b> CB</div>`
+        + `<div>${fmt(srcSum, 0)} ${escHtml(mg.srcLabel)} ~ ${xTxt} CB (ĐM ${escHtml(ratioTxt)})</div>`;
     } else if(list && list.length) {
       const sum = list.reduce((s, c) => s + c.x, 0);
       const bullets = list.map(c => {
