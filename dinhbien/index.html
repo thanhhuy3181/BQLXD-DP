@@ -2336,33 +2336,14 @@ const DEFAULT_VUNGS = [
   { id: 'vung_nam', ten: 'BQL DAMN (Miền Nam)' }
 ];
 
-const SEED_TREE_ITEMS = [
-  { id: 'r1', level: 1, stt: '1', ten: 'Khu E' },
-  { id: 'r2', level: 2, stt: '2', ten: 'Khu mới' },
-  {
-    id: 'r3', level: 3, stt: '1', ten: '50 căn hoàn thiện nội thất',
-    loai: 'Thấp tầng', kieu: 'Biệt thự đơn lập', tc: 'Full Nội thất (3 tầng trở lên)',
-    kl: 50, dv: 'căn', batDau: '2025-07-01', ketThuc: '2026-03-01', banGiao: '2026-05-30'
-  },
-  {
-    id: 'r4', level: 3, stt: '2', ten: '30 căn thô',
-    loai: 'Thấp tầng', kieu: 'Liền kề, Shophouse, TMDV', tc: 'Xây thô',
-    kl: 30, dv: 'căn', batDau: '2025-08-01', ketThuc: '2026-02-15', banGiao: '2026-04-30'
-  },
-  {
-    id: 'r5', level: 3, stt: '3', ten: 'TTTM Vincom Plaza',
-    loai: 'Các công trình khác', kieu: 'TTTM', tc: 'Hoàn thiện',
-    kl: 35800, dv: 'm² sàn', batDau: '2025-07-01', ketThuc: '2025-11-01', banGiao: '2026-08-01'
-  },
-  {
-    id: 'r6', level: 3, stt: '4', ten: 'Đường giao thông nội khu',
-    loai: 'Đường giao thông, công viên', kieu: 'Đường giao thông', tc: 'Hoàn thiện',
-    kl: 194000, dv: 'm²', batDau: '2025-05-01', ketThuc: '2026-06-01', banGiao: '2026-07-01'
-  }
-];
+// Dự án mới luôn bắt đầu rỗng (không nạp dữ liệu mẫu)
+function emptyProjectData(vungId, bqlId, ten) {
+  return { id: bqlId, vungId: vungId, ten: ten || 'BQLXD Mới', treeRows: [], adj: {}, hesoCustom: {}, roundMode: 'normal' };
+}
 
+// Mặc định mở BQL DAMB (Miền Bắc) ở chế độ Tổng hợp Vùng: currentBqlId rỗng
 let currentVungId = 'vung_bac';
-let currentBqlId = 'dan_phuong';
+let currentBqlId = '';
 let currentProjectData = null;
 let selectedRowId = null;
 let selectedRowIds = new Set(); // Hỗ trợ chọn nhiều dòng (Click, Ctrl+Click, Shift+Click, hoặc bôi vùng nhiều dòng)
@@ -2431,13 +2412,18 @@ function saveBqlRegistry(vungId, list) {
 }
 
 function loadProject(vungId, bqlId) {
+  // Chế độ Tổng hợp Vùng (không có dự án cụ thể): chỉ dựng dữ liệu rỗng trong bộ nhớ, không lưu
+  if(!bqlId) {
+    currentProjectData = emptyProjectData(vungId, bqlId);
+    return;
+  }
   const key = makeStorageKey(vungId, bqlId);
   try {
     const raw = localStorage.getItem(key);
     if(raw) {
       currentProjectData = JSON.parse(raw);
       if(!currentProjectData.treeRows) {
-        currentProjectData.treeRows = bqlId === 'dan_phuong' ? JSON.parse(JSON.stringify(SEED_TREE_ITEMS)) : [];
+        currentProjectData.treeRows = [];
       } else {
         // Chuẩn hóa dữ liệu cũ nếu có dòng Đường giao thông, công viên mà kieu chưa khớp
         currentProjectData.treeRows.forEach(r => {
@@ -2458,15 +2444,7 @@ function loadProject(vungId, bqlId) {
     }
   } catch(e){}
 
-  currentProjectData = {
-    id: bqlId,
-    vungId: vungId,
-    ten: bqlId === 'dan_phuong' ? 'BQLXD Đan Phượng' : 'BQLXD Mới',
-    treeRows: bqlId === 'dan_phuong' ? JSON.parse(JSON.stringify(SEED_TREE_ITEMS)) : [],
-    adj: {},
-    hesoCustom: {}, // { [tab_itemId_mk]: 0.5 }
-    roundMode: 'normal'
-  };
+  currentProjectData = emptyProjectData(vungId, bqlId);
   saveCurrentProject(true);
   initUndoStateForCurrentProject();
 }
@@ -2839,21 +2817,11 @@ function getProjectDataSnapshot(vungId, bqlId, bqlTen) {
     const raw = localStorage.getItem(key);
     if(raw) {
       const parsed = JSON.parse(raw);
-      if(!parsed.treeRows) {
-        parsed.treeRows = bqlId === 'dan_phuong' ? JSON.parse(JSON.stringify(SEED_TREE_ITEMS)) : [];
-      }
+      if(!parsed.treeRows) parsed.treeRows = [];
       return parsed;
     }
   } catch(e){}
-  return {
-    id: bqlId,
-    vungId: vungId,
-    ten: bqlTen || (bqlId === 'dan_phuong' ? 'BQLXD Đan Phượng' : 'BQLXD Mới'),
-    treeRows: bqlId === 'dan_phuong' ? JSON.parse(JSON.stringify(SEED_TREE_ITEMS)) : [],
-    adj: {},
-    hesoCustom: {},
-    roundMode: 'normal'
-  };
+  return emptyProjectData(vungId, bqlId, bqlTen);
 }
 
 function calcRatio(sDate, eDate, mDate) {
