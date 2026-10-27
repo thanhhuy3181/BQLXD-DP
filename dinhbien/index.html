@@ -2915,8 +2915,8 @@ const MATRIX_ROWS_META = [
   {stt:16, pb:'BPTC', bp:'Bộ phận thi công', cd:'Chuyên viên Kỹ thuật hiện trường', cap:'T7', type:'cv_ktht', dmKey:'cv_ktht', dmThap:20, dmKhac:4000, rule:'KL ÷ Định mức', tt_tho:20, tt_full:14, tt_ht2:15, tt_ht1:16, ct_tho:4000, ct_ht:4000, khac:3000, nx:6000, dgt:6000, hsNote:'Mục 1 ĐM BPTC: 20 căn / 4.000m²'},
   {stt:17, pb:'BPTC', bp:'Bộ phận thi công', cd:'Trưởng nhóm QL Máy móc thiết bị', cap:'T6', type:'tn_mmtb', dmThap:'', dmKhac:'', rule:'QL 7 CV Quản lý VTTB', qlKey:'tn_mmtb', qlTarget:'Chuyên viên Quản lý VTTB (T7)', qlMin:7, qlMax:7, qlCalc:7, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 7 CV QL VTTB'},
   {stt:18, pb:'BPTC', bp:'Bộ phận thi công', cd:'Chuyên viên Quản lý vật tư Thiết bị', cap:'T7', type:'cv_vttb', dmKey:'cv_vttb', dmThap:250, dmKhac:50000, rule:'KL ÷ ĐM (Tối thiểu 1)', tt_tho:250, tt_full:175, tt_ht2:188, tt_ht1:200, ct_tho:50000, ct_ht:50000, khac:37500, nx:75000, dgt:75000, hsNote:'Mục 7 ĐM BPTC: 250 căn / 50.000m²'},
-  {stt:19, pb:'BPTC', bp:'Bộ phận thi công', cd:'Nhân viên cơ khí', cap:'T8', type:'nv_cokhi', dmKey:'nv_ck', dmThap:50, dmKhac:10000, rule:'KL ÷ ĐM (Cố định 1)', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:10000, ct_ht:10000, khac:7500, nx:15000, dgt:15000, hsNote:'Mục 5 ĐM BPTC: 50 căn / 10.000m²'},
-  {stt:20, pb:'BPTC', bp:'Bộ phận thi công', cd:'Nhân viên điện nước tạm', cap:'T8', type:'nv_diennuoc', dmKey:'nv_dn', dmThap:50, dmKhac:10000, rule:'KL ÷ ĐM (Cố định 1)', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:10000, ct_ht:10000, khac:7500, nx:15000, dgt:15000, hsNote:'Mục 5 ĐM BPTC: 50 căn / 10.000m²'},
+  {stt:19, pb:'BPTC', bp:'Bộ phận thi công', cd:'Nhân viên cơ khí', cap:'T8', type:'nv_cokhi', dmKey:'nv_ck', dmThap:50, dmKhac:10000, rule:'KL ÷ ĐM', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:10000, ct_ht:10000, khac:7500, nx:15000, dgt:15000, hsNote:'Mục 5 ĐM BPTC: 50 căn / 10.000m²'},
+  {stt:20, pb:'BPTC', bp:'Bộ phận thi công', cd:'Nhân viên điện nước tạm', cap:'T8', type:'nv_diennuoc', dmKey:'nv_dn', dmThap:50, dmKhac:10000, rule:'KL ÷ ĐM', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:10000, ct_ht:10000, khac:7500, nx:15000, dgt:15000, hsNote:'Mục 5 ĐM BPTC: 50 căn / 10.000m²'},
   {stt:21, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Chuyên viên hành chính', cap:'T7', type:'cv_hc_tc', dmThap:'', dmKhac:'', rule:'QL 7 NV hành chính (T8)', qlKey:'cv_hc_tc', qlTarget:'Nhân viên hành chính (T8)', qlMin:7, qlMax:7, qlCalc:7, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL: 7 NV hành chính'},
   {stt:22, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Nhân viên hành chính', cap:'T8', type:'nv_hc_tc', dmKey:'nv_hc', dmThap:250, dmKhac:50000, rule:'KL ÷ ĐM (Tối thiểu 1)', tt_tho:250, tt_full:175, tt_ht2:188, tt_ht1:200, ct_tho:50000, ct_ht:50000, khac:37500, nx:75000, dgt:75000, hsNote:'Mục 7 ĐM BPTC: 250 căn / 50.000m²'},
   {stt:23, pb:'BPTC', bp:'Hỗ trợ thi công', cd:'Nhân viên lấy mẫu thí nghiệm', cap:'T8', type:'nv_thinghiem', dmKey:'nv_tn', dmThap:250, dmKhac:50000, rule:'KL ÷ ĐM (Tối thiểu 1)', tt_tho:250, tt_full:175, tt_ht2:188, tt_ht1:200, ct_tho:50000, ct_ht:50000, khac:37500, nx:75000, dgt:75000, hsNote:'Mục 7 ĐM BPTC: 250 căn / 50.000m²'},
@@ -2964,6 +2964,11 @@ function calculateSingleProject(projData) {
   let nv_tracdac_arr = Array(numM).fill(0);
   let cv_noinghiep_tc_arr = Array(numM).fill(0);
   let cv_kehoach_tc_arr = Array(numM).fill(0);
+  let cv_vttb_arr = Array(numM).fill(0);
+  let nv_ck_arr = Array(numM).fill(0);
+  let nv_dn_arr = Array(numM).fill(0);
+  let nv_hc_arr = Array(numM).fill(0);
+  let nv_tn_arr = Array(numM).fill(0);
 
   // Helper lấy hệ số custom (mặc định 1.0 tức 100% nếu trong tiến độ)
   function getCustomHeso(tab, itemId, mk, baseRatio) {
@@ -3125,6 +3130,14 @@ function calculateSingleProject(projData) {
         let dm_kh = isThap ? (getDmVal('cv_kh','thap',2000) * hsTcStd * hsTcKieu) : (getDmVal('cv_kh','khac',400000) * hsKhacScale);
         cv_noinghiep_tc_arr[mIdx] += (klBptc / dm_nn) * prBptc;
         cv_kehoach_tc_arr[mIdx] += (klBptc / dm_kh) * prBptc;
+
+        // Nhóm KL ÷ ĐM (CONG-THUC.md mục 4): vật tư TB, cơ khí, điện nước, hành chính, lấy mẫu thí nghiệm
+        const dmBptc = (key, thap, khac) => (isThap ? (getDmVal(key, 'thap', thap) * hsTcStd * hsTcKieu) : (getDmVal(key, 'khac', khac) * hsKhacScale));
+        cv_vttb_arr[mIdx] += (klBptc / dmBptc('cv_vttb', 250, 50000)) * prBptc;
+        nv_ck_arr[mIdx] += (klBptc / dmBptc('nv_ck', 50, 10000)) * prBptc;
+        nv_dn_arr[mIdx] += (klBptc / dmBptc('nv_dn', 50, 10000)) * prBptc;
+        nv_hc_arr[mIdx] += (klBptc / dmBptc('nv_hc', 250, 50000)) * prBptc;
+        nv_tn_arr[mIdx] += (klBptc / dmBptc('nv_tn', 250, 50000)) * prBptc;
       }
 
       // 5. M&E 2 giai đoạn, tính trên thời gian ME = Bắt đầu → Kết thúc của hạng mục:
@@ -3343,12 +3356,12 @@ function calculateSingleProject(projData) {
         case 'tn_tracdac': raw = (cv_tracdac_arr[mIdx] + nv_tracdac_arr[mIdx]) >= 7 ? 1 : 0; break;
 
         case 'tn_mmtb': raw = 0; break;
-        case 'cv_vttb': raw = hasBptcActive ? 1 : 0; break;
-        case 'nv_cokhi': raw = hasBptcActive ? 1 : 0; break;
-        case 'nv_diennuoc': raw = hasBptcActive ? 1 : 0; break;
+        case 'cv_vttb': raw = hasBptcActive ? Math.max(1, cv_vttb_arr[mIdx]) : 0; break;
+        case 'nv_cokhi': raw = nv_ck_arr[mIdx]; break;
+        case 'nv_diennuoc': raw = nv_dn_arr[mIdx]; break;
         case 'cv_hc_tc': raw = 0; break;
-        case 'nv_hc_tc': raw = hasBptcActive ? 1 : 0; break;
-        case 'nv_thinghiem': raw = hasBptcActive ? 1 : 0; break;
+        case 'nv_hc_tc': raw = hasBptcActive ? Math.max(1, nv_hc_arr[mIdx]) : 0; break;
+        case 'nv_thinghiem': raw = hasBptcActive ? Math.max(1, nv_tn_arr[mIdx]) : 0; break;
         case 'tbp_httc': raw = (cv_qc_arr[mIdx] + cv_qs_arr[mIdx] + cv_shop_arr[mIdx]) > 6 ? 1 : 0; break;
         case 'lead_bptc': raw = hasBptcActive ? 1 : 0; break;
       }
@@ -6280,7 +6293,7 @@ const MGMT_EXPLAIN = {
 };
 
 // Chức danh tính trực tiếp theo từng hạng mục (có KL / ĐM)
-const DIRECT_EXPLAIN = ['cb_xd', 'cb_me', 'cb_ht', 'nv_xd', 'nv_me', 'nv_ht', 'thu_kho_sum', 'tk_nlxd', 'tk_nlme', 'tk_htxd', 'tk_htme',
+const DIRECT_EXPLAIN = ['cb_xd', 'cb_me', 'cb_ht', 'nv_xd', 'nv_me', 'nv_ht', 'thu_kho_sum', 'tk_nlxd', 'tk_nlme', 'tk_htxd', 'tk_htme', 'cv_vttb', 'nv_cokhi', 'nv_diennuoc', 'nv_hc_tc', 'nv_thinghiem',
   'cv_ktht', 'cv_qc', 'cv_qs', 'cv_shop', 'cv_atld', 'cv_tracdac', 'nv_tracdac', 'cv_noinghiep_tc', 'cv_kehoach_tc'];
 
 function defaultDienGiaiKey() {
