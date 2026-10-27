@@ -3355,11 +3355,21 @@ function calculateSingleProject(projData) {
         }
         case 'tn_tracdac': raw = (cv_tracdac_arr[mIdx] + nv_tracdac_arr[mIdx]) >= 7 ? 1 : 0; break;
 
-        case 'tn_mmtb': raw = 0; break;
+        case 'tn_mmtb': {
+          // Trưởng nhóm QL MMTB: quản lý 7 Chuyên viên QL VTTB (T7)
+          const c = getQlCalc('tn_mmtb', 7);
+          raw = cv_vttb_arr[mIdx] >= c ? Math.ceil(cv_vttb_arr[mIdx] / c) : 0;
+          break;
+        }
         case 'cv_vttb': raw = hasBptcActive ? cv_vttb_arr[mIdx] : 0; break;
         case 'nv_cokhi': raw = nv_ck_arr[mIdx]; break;
         case 'nv_diennuoc': raw = nv_dn_arr[mIdx]; break;
-        case 'cv_hc_tc': raw = 0; break;
+        case 'cv_hc_tc': {
+          // Chuyên viên hành chính (T7): quản lý 7 Nhân viên hành chính (T8)
+          const c = getQlCalc('cv_hc_tc', 7);
+          raw = nv_hc_arr[mIdx] >= c ? Math.ceil(nv_hc_arr[mIdx] / c) : 0;
+          break;
+        }
         case 'nv_hc_tc': raw = hasBptcActive ? nv_hc_arr[mIdx] : 0; break;
         case 'nv_thinghiem': raw = hasBptcActive ? nv_tn_arr[mIdx] : 0; break;
         case 'tbp_httc': raw = (cv_qc_arr[mIdx] + cv_qs_arr[mIdx] + cv_shop_arr[mIdx]) > 6 ? 1 : 0; break;
@@ -6289,7 +6299,9 @@ const MGMT_EXPLAIN = {
   tn_qc:        { src: ['cv_qc'], key: 'tn_qc', def: 7, text: '7 CV QC / 1 TN QC', srcLabel: 'CV QC', unit: 'TN QC' },
   tn_qs:        { src: ['cv_qs'], key: 'tn_qs', def: 7, text: '7 CV QS / 1 TN QS', srcLabel: 'CV QS', unit: 'TN QS' },
   tn_shop:      { src: ['cv_shop'], key: 'tn_shop', def: 7, text: '7 CV Shop / 1 TN Shop', srcLabel: 'CV Shop', unit: 'TN Shop' },
-  tn_atld:      { src: ['cv_atld'], key: 'tn_atld', def: 7, text: '7 CV ATLĐ / 1 TN ATLĐ', srcLabel: 'CV ATLĐ', unit: 'TN ATLĐ' }
+  tn_atld:      { src: ['cv_atld'], key: 'tn_atld', def: 7, text: '7 CV ATLĐ / 1 TN ATLĐ', srcLabel: 'CV ATLĐ', unit: 'TN ATLĐ' },
+  tn_mmtb:      { src: ['cv_vttb'], key: 'tn_mmtb', def: 7, text: '7 CV VTTB / 1 TN QL MMTB', srcLabel: 'CV VTTB', unit: 'TN QL MMTB' },
+  cv_hc_tc:     { src: ['nv_hc_tc'], key: 'cv_hc_tc', def: 7, text: '7 NV hành chính / 1 CV hành chính', srcLabel: 'NV hành chính', unit: 'CV hành chính' }
 };
 
 // Chức danh tính trực tiếp theo từng hạng mục (có KL / ĐM)
