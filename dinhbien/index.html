@@ -7537,7 +7537,8 @@ function initExcelRangeSelectionOnTables() {
     const isMultiCellClipboard = clipText.includes('\t') || clipText.includes('\n');
 
     // Nếu người dùng đang bôi chọn nhiều ô HOẶC dữ liệu copy từ Excel có nhiều ô (tab/xuống dòng) HOẶC đang không đặt con trỏ gõ chữ bên trong input
-    const isTypingInSingleInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT') && !hasMultiSelection && !isMultiCellClipboard;
+    const isLockedCell = activeEl && (activeEl.readOnly || activeEl.classList.contains('xl-locked'));
+    const isTypingInSingleInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT') && !isLockedCell && !hasMultiSelection && !isMultiCellClipboard;
     if(isTypingInSingleInput) return; // Để trình duyệt paste bình thường vào 1 ô đang gõ
 
     if(pasteClipboardIntoTableRange(clipText, activeTable, activeTd)) {
@@ -9282,6 +9283,70 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem('db_v2_row4_h');
     showUndoToast('↕ Đã đặt lại chiều cao hàng 4 mặc định (760px)');
   });
+});
+// BẢNG KIỂU EXCEL: ô chỉ sửa khi bấm F2 hoặc nhấp đúp; chọn và copy nhiều ô như Excel
+document.addEventListener('DOMContentLoaded', () => {
+  const XL_SCOPE = '.main-wrapper table';
+  const XL_CTRL = `${XL_SCOPE} input:not([type="checkbox"]):not([type="radio"]):not([type="button"]), ${XL_SCOPE} select`;
+  const st = document.createElement('style');
+  st.textContent = 'select.xl-locked { pointer-events: none; }';
+  document.head.appendChild(st);
+
+  // xlLocked: '1' = đang khóa, '0' = đang sửa, không có = chưa khóa lần nào
+  const lock = el => {
+    if(el.tagName === 'SELECT') el.classList.add('xl-locked');
+    else el.readOnly = true;
+    el.dataset.xlLocked = '1';
+  };
+  const unlock = el => {
+    if(el.tagName === 'SELECT') el.classList.remove('xl-locked');
+    else el.readOnly = false;
+    el.dataset.xlLocked = '0';
+    el.focus();
+    if(el.tagName === 'INPUT') el.select();
+  };
+  const lockAll = () => {
+    document.querySelectorAll(XL_CTRL).forEach(el => {
+      const st = el.dataset.xlLocked;
+      if(st === '1') return;
+      if(st === '0' && el === document.activeElement) return; // đang sửa thì giữ nguyên
+      lock(el);
+    });
+  };
+  const mainEl = document.querySelector('.main-wrapper');
+  if(mainEl) new MutationObserver(lockAll).observe(mainEl, { childList: true, subtree: true });
+  lockAll();
+
+  // Nhấp đúp vào ô: mở sửa
+  document.addEventListener('dblclick', e => {
+    const cell = e.target.closest && e.target.closest(`${XL_SCOPE} td`);
+    if(!cell) return;
+    const el = cell.querySelector('input:not([type="checkbox"]), select');
+    if(el && el.dataset.xlLocked === '1') unlock(el);
+  });
+
+  // F2 trên ô đang chọn: mở sửa
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'F2') return;
+    const el = document.activeElement;
+    if(el && el.matches && el.matches(XL_CTRL) && el.dataset.xlLocked === '1') {
+      e.preventDefault();
+      unlock(el);
+    }
+  });
+
+  // Esc: hủy sửa (trả về giá trị cũ); rời ô: khóa lại
+  document.addEventListener('keydown', e => {
+    const el = e.target;
+    if(e.key === 'Escape' && el.tagName === 'INPUT' && el.dataset.xlLocked === '0' && el.closest(XL_SCOPE)) {
+      el.value = el.defaultValue;
+      el.blur();
+    }
+  });
+  document.addEventListener('focusout', e => {
+    const el = e.target;
+    if(el.matches && el.matches(XL_CTRL) && el.dataset.xlLocked === '0') lock(el);
+  }, true);
 });
 </script>
 </body>
