@@ -2172,10 +2172,7 @@ footer.app-footer {
             <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button>
             <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button>
             <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button>
-          </div>
-          <label style="font-size:11px; color:var(--text-muted);" title="Số robot ép cọc của dự án: 1 Thủ kho nhập liệu / 30 robot, 1 Thủ kho hiện trường / 5 robot">Robot ép cọc:</label>
-          <input type="number" id="inpRobotEpCoc" min="0" style="width:60px; padding:2px 4px; font-size:11px;">
-          <label style="font-size:11px; color:var(--text-muted);">Làm tròn:</label>
+          </div>          <label style="font-size:11px; color:var(--text-muted);">Làm tròn:</label>
           <select id="selRoundMode" style="padding:2px 6px; font-size:11px;">
             <option value="normal">Chuẩn (0.5 lên)</option>
             <option value="up">Làm tròn lên (Ceil)</option>
@@ -3064,10 +3061,10 @@ function calculateSingleProject(projData) {
 
       // 2. Hạ tầng: gom KL hạ tầng (m²) của công trình đang thi công, nhân hệ số tiến độ
       // Đường giao thông / công viên: KL chính là KL hạ tầng, không nhập riêng
-      if(prHt > 0) area_ht_arr[mIdx] += (isDgtCv ? kl : (it.dienTich || 0)) * prHt;
+      if(prHt > 0 && it.loai !== 'Ép cọc') area_ht_arr[mIdx] += (isDgtCv ? kl : (it.dienTich || 0)) * prHt;
 
       // 3. KHO - 4 loại thủ kho theo sheet ĐM KHO (tính riêng từng loại, dòng Thủ kho tổng là tổng các loại)
-      if(prKho > 0 && kl > 0) {
+      if(prKho > 0 && kl > 0 && it.loai !== 'Ép cọc') {
         const tkDm = (t) => {
           const d = TK_DM[t];
           const dk = t === 'htxd' ? 'thu_kho' : `tk_${t}`; // Thủ kho hiện trường XD giữ nguyên khóa định mức cũ
@@ -3087,6 +3084,13 @@ function calculateSingleProject(projData) {
         tkArr.nlme[mIdx] += (kl / tkDm('nlme')) * prKho;
         tkArr.htxd[mIdx] += (kl / tkDm('htxd')) * prKho;
         tkArr.htme[mIdx] += (kl / tkDm('htme')) * prKho;
+      }
+
+      // Hạng mục Ép cọc: KL = số robot. 1 Thủ kho nhập liệu / 30 robot, 1 Thủ kho hiện trường / 5 robot, theo tỷ lệ ngày thi công trong tháng
+      if(it.loai === 'Ép cọc' && kl > 0) {
+        const epRatio = calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate);
+        tkArr.epnl[mIdx] += (kl / 30) * epRatio;
+        tkArr.epht[mIdx] += (kl / 5) * epRatio;
       }
 
       // 4. BPTC - Các chức danh Bộ phận Thi công (Sheet ĐM BPTC: dùng klBptc riêng của tab Tiến độ BPTC)
@@ -3229,12 +3233,8 @@ function calculateSingleProject(projData) {
     gd_bql1_arr[mIdx] = gd_bql2_arr[mIdx] >= cGd1 ? Math.floor(gd_bql2_arr[mIdx] / cGd1) : 0;
   });
 
-  // Thủ kho ép cọc: 1 Thủ kho nhập liệu / 30 robot, 1 Thủ kho hiện trường / 5 robot; tính khi DA có hoạt động
-  const robotEpCoc = parseFloat(projData.robotEpCoc) || 0;
+  // Dòng Thủ kho tổng = tổng 6 loại (4 loại theo ĐM + 2 loại ép cọc theo KL robot)
   months.forEach((mDate, mIdx) => {
-    const active = rows.some(it => calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate) > 0);
-    tkArr.epnl[mIdx] = active && robotEpCoc > 0 ? robotEpCoc / 30 : 0;
-    tkArr.epht[mIdx] = active && robotEpCoc > 0 ? robotEpCoc / 5 : 0;
     thu_kho_arr[mIdx] = tkArr.nlxd[mIdx] + tkArr.nlme[mIdx] + tkArr.htxd[mIdx] + tkArr.htme[mIdx] + tkArr.epnl[mIdx] + tkArr.epht[mIdx];
   });
 
@@ -3670,6 +3670,7 @@ let dragSrcIdx = null;
 
 // Danh mục chuẩn Phân loại Công trình cấp 1 -> cấp 2 -> Tiêu chuẩn bàn giao & Đơn vị tính (Khớp 100% Sheet "Phân loại Ctr.Hm" & ĐM KHO)
 function getKieuOptionsByLoai(loai) {
+  if(loai === 'Ép cọc') return [{ v: '', l: '–' }];
   if(loai === 'Thấp tầng') {
     return [
       { v: 'Liền kề, Shophouse, TMDV', l: 'LK, Shop, TMDV' },
@@ -3700,6 +3701,7 @@ function getKieuOptionsByLoai(loai) {
 }
 
 function getTcOptionsByLoai(loai) {
+  if(loai === 'Ép cọc') return [{ v: '', l: '–' }];
   if(loai === 'Thấp tầng') {
     return [
       { v: 'Xây thô', l: 'Xây thô' },
@@ -3742,6 +3744,7 @@ function unitForLoai(loai) {
   const l = (loai || 'Thấp tầng').trim();
   if(l === 'Thấp tầng') return 'căn';
   if(l === 'Đường giao thông, công viên') return 'm²';
+  if(l === 'Ép cọc') return 'robot';
   return 'm² sàn';
 }
 
@@ -3863,7 +3866,8 @@ function renderTreeTable() {
         { v: 'Cao tầng', l: 'Cao tầng' },
         { v: 'Các công trình khác', l: 'CT khác' },
         { v: 'Công trình nhà xưởng', l: 'CT nhà xưởng' },
-        { v: 'Đường giao thông, công viên', l: 'Đường GT/CV' }
+        { v: 'Đường giao thông, công viên', l: 'Đường GT/CV' },
+        { v: 'Ép cọc', l: 'Ép cọc' }
       ];
       const kieuOpts = loaiVal ? getKieuOptionsByLoai(loaiVal) : [{ v: '', l: '–' }];
       if(r.kieu && !kieuOpts.some(o => o.v === r.kieu)) {
@@ -3915,7 +3919,7 @@ function renderTreeTable() {
         <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curBg)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldBg}" title="Định dạng: dd/mm/yyyy (Ví dụ: 30/05/2026)"></td>
         <td><input type="number" style="text-align:right; font-family:var(--font-mono); font-weight:600; ${bptcInputStyle}" value="${curKl}" data-id="${r.id}" data-f="${fFieldKl}"></td>
         <td class="dv-fixed" style="text-align:center; font-size:10.5px; color:var(--text-muted);" title="Đơn vị theo Phân loại công trình (cố định, không sửa)">${escHtml(dvFixed)}</td>
-        <td>${r.loai === 'Đường giao thông, công viên' ? '' : `<input type="number" style="text-align:right; font-family:var(--font-mono);${!(r.dienTich > 0) ? ' background:#fef2f2; border-color:#dc2626;' : ''}" value="${r.dienTich > 0 ? r.dienTich : ''}" placeholder="⚠ Cần nhập" data-id="${r.id}" data-f="dienTich" title="Khối lượng hạ tầng (m²) của công trình. Cần nhập để tính CBGS/NVGS Hạ tầng">`}</td>
+        <td>${r.loai === 'Đường giao thông, công viên' || r.loai === 'Ép cọc' ? '' : `<input type="number" style="text-align:right; font-family:var(--font-mono);${!(r.dienTich > 0) ? ' background:#fef2f2; border-color:#dc2626;' : ''}" value="${r.dienTich > 0 ? r.dienTich : ''}" placeholder="⚠ Cần nhập" data-id="${r.id}" data-f="dienTich" title="Khối lượng hạ tầng (m²) của công trình. Cần nhập để tính CBGS/NVGS Hạ tầng">`}</td>
       `;
       tbody.appendChild(tr);
 
@@ -6409,11 +6413,6 @@ function refreshDashboard() {
   calcResultCache = calculateAll();
   renderDienGiai(calcResultCache);
   const isAgg = !!calcResultCache.isAggregate;
-  const inpRobotEl = document.getElementById('inpRobotEpCoc');
-  if(inpRobotEl) {
-    inpRobotEl.value = currentProjectData && currentBqlId && currentProjectData.robotEpCoc ? currentProjectData.robotEpCoc : '';
-    inpRobotEl.disabled = !currentBqlId;
-  }
 
   const row1StickyGrid = document.getElementById('row1StickyGrid');
   const row2Grid = document.getElementById('row2Grid');
@@ -7007,7 +7006,7 @@ function importRowsFromTsvText(text) {
       });
 
       // Kiểm tra xem có cột phân loại rõ ràng trong textCols không (Loại cấp 1, cấp 2, TC bàn giao)
-      const validLoaiList = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Công trình nhà xưởng', 'Đường giao thông, công viên', 'Đường GT/CV'];
+      const validLoaiList = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Công trình nhà xưởng', 'Đường giao thông, công viên', 'Đường GT/CV', 'Ép cọc'];
       const foundLoaiIdx = textCols.findIndex(t => validLoaiList.some(v => v.toLowerCase() === t.toLowerCase()));
 
       if(foundLoaiIdx >= 0) {
@@ -9270,17 +9269,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.style.setProperty('--row4-height', '760px');
     localStorage.removeItem('db_v2_row4_h');
     showUndoToast('↕ Đã đặt lại chiều cao hàng 4 mặc định (760px)');
-  });
-});
-// Ô Robot ép cọc (Nhân sự): dùng để tính Thủ kho ép cọc (4.5, 4.6); để trống cho đến khi có số robot
-document.addEventListener('DOMContentLoaded', () => {
-  const inpRobot = document.getElementById('inpRobotEpCoc');
-  if(!inpRobot) return;
-  inpRobot.addEventListener('change', () => {
-    if(!currentProjectData || !currentBqlId) return;
-    currentProjectData.robotEpCoc = Math.max(0, parseFloat(inpRobot.value) || 0);
-    saveCurrentProject();
-    refreshDashboard();
   });
 });
 </script>
