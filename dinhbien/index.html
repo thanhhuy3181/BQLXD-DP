@@ -2308,7 +2308,7 @@ footer.app-footer {
               <li><b>Bộ phận Thi công (BPTC):</b> Hệ số tiêu chuẩn bàn giao (Xây thô = <code>1,0</code>; Full NT ≥3T = <code>0,7</code>; HTNT 2T = <code>0,75</code>; HTNT 1T = <code>0,8</code>); Biệt thự đơn lập <code>× 0,65</code>, Song lập <code>× 0,75</code>, Tứ lập <code>× 0,85</code>.</li>
             </ul>
           </li>
-          <li><b>Định mức Tầm quản lý (Dùng chung toàn dự án):</b>
+          <li><b>Định mức Tầm quản lý (cấp trên tính theo tỷ lệ cấp dưới toàn dự án):</b>
             <ul style="padding-left: 18px; margin-top: 4px;">
               <li>Áp dụng chung trên tổng nhân sự cấp dưới của toàn dự án (không chia lẻ theo loại hình công trình). Người dùng có thể sửa trực tiếp ô <b>Min / Max / Dùng để tính</b> trên bảng Định mức.</li>
               <li><b>Quy tắc Trợ lý GĐ BQLXD (T5):</b> Nếu dự án có <b>1 Giám đốc BQLXD Cấp 2 (T3)</b> thì hệ thống tự động bố trí <b>1 Trợ lý GĐ BQLXD (T5)</b> tương ứng.</li>
@@ -5205,7 +5205,7 @@ function renderDinhMucTable() {
       if(r.qlHeader) return `<tr style="background:#f1f5f9; font-weight:700; color:#1e293b;">
         <td class="dm-freeze-1">TT</td>
         <td class="dm-freeze-2" style="width:210px; min-width:210px; max-width:210px;">Chức danh quản lý</td>
-        <td colspan="4" style="text-align:left;">Quản lý chức danh (Dùng chung toàn dự án)</td>
+        <td colspan="4" style="text-align:left;">Quản lý chức danh (cấp trên tính theo tỷ lệ cấp dưới toàn dự án)</td>
         <td colspan="3" style="text-align:center;">Tầm quản lý (Min – Max – Dùng để tính)</td>
         <td colspan="2" style="text-align:left;">Ghi chú</td>
       </tr>`;
@@ -5279,7 +5279,7 @@ function renderDinhMucTable() {
         <td class="dm-freeze-1">TT</td>
         <td class="dm-freeze-2" style="width:220px; min-width:220px; max-width:220px;">Chức danh quản lý</td>
         <td class="dm-freeze-3" style="left:254px;">Cấp</td>
-        <td colspan="4" style="text-align:left;">Quản lý chức danh (Dùng chung toàn dự án)</td>
+        <td colspan="4" style="text-align:left;">Quản lý chức danh (cấp trên tính theo tỷ lệ cấp dưới toàn dự án)</td>
         <td colspan="4" style="text-align:center;">Tầm quản lý (Min – Max – Dùng để tính)</td>
         <td colspan="2" style="text-align:left;">Ghi chú</td>
       </tr>`;
@@ -5353,7 +5353,7 @@ function renderDinhMucTable() {
       if(r.qlHeader) return `<tr style="background:#f1f5f9; font-weight:700; color:#1e293b;">
         <td class="dm-freeze-1">TT</td>
         <td class="dm-freeze-2" style="width:240px; min-width:240px; max-width:240px;">Chức danh quản lý</td>
-        <td colspan="4" style="text-align:left;">Quản lý chức danh (Dùng chung toàn dự án)</td>
+        <td colspan="4" style="text-align:left;">Quản lý chức danh (cấp trên tính theo tỷ lệ cấp dưới toàn dự án)</td>
         <td colspan="3" style="text-align:center;">Tầm quản lý (Min – Max – Dùng để tính)</td>
         <td style="text-align:left;">Ghi chú</td>
       </tr>`;
@@ -5431,7 +5431,7 @@ function renderDinhMucTable() {
           <td style="color:#1e40af; font-weight:600; font-size:10.5px;" title="${meta.rule || ''}">${meta.rule || ''}</td>
           <td colspan="9" style="text-align:left; background:#f8fafc; padding:0 8px;">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-              <span style="color:#334155; font-size:10.5px;"><b>Dùng chung toàn dự án</b> — Quản lý: ${meta.qlTarget}</span>
+              <span style="color:#334155; font-size:10.5px;"><b>Cấp trên tính theo tỷ lệ cấp dưới toàn dự án</b> — Quản lý: ${meta.qlTarget}</span>
               ${renderQlInputs(meta.qlKey, meta.qlMin, meta.qlMax, meta.qlCalc, dmC)}
             </div>
           </td>
