@@ -1233,7 +1233,7 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 #treeTable td input.input-date-dmy { width: 88px; }
 #treeTable td.dv-fixed { user-select: none; }
 /* Diễn giải: bôi chọn theo ô như Excel, không bôi chọn chữ */
-#diengiaiWrap table,
+#diengiaiWrap table, #aggHangMuc table,
 #matrixTable, #chartSyncTable, #syncHesoTable, #dinhmucTable, #tableHesoNhansu { user-select: none; }
 #matrixTable td, #chartSyncTable td, #syncHesoTable td, #dinhmucTable td, #tableHesoNhansu td { user-select: none; }
 tr.row-sub td { font-style: italic; }
@@ -6238,6 +6238,7 @@ function applyAggHangMuc(agg) {
     if(!wrap) { wrap = document.createElement('div'); wrap.id = 'aggHangMuc'; card.appendChild(wrap); }
     wrap.style.display = '';
     renderAggHangMuc(wrap);
+    document.dispatchEvent(new Event('agg-hm-rendered'));
   } else if(wrap) {
     wrap.style.display = 'none';
   }
@@ -7501,11 +7502,13 @@ function pasteClipboardIntoTableRange(clipText, targetTable, fallbackTd) {
 
 function initExcelRangeSelectionOnTables() {
   const tableIds = ['treeTable', 'syncHesoTable', 'dinhmucTable', 'tableHesoNhansu', 'diengiaiWrap', 'matrixTable', 'chartSyncTable'];
-  tableIds.forEach(id => {
+  // Gắn sự kiện chọn ô cho một vùng (chỉ một lần). Bảng Hạng mục Khối/Vùng được tạo khi cần nên gắn lại theo sự kiện
+  const bindRangeHost = (id) => {
     const hostEl = document.getElementById(id);
-    if(!hostEl) return;
+    if(!hostEl || hostEl.dataset.rangeBound) return;
+    hostEl.dataset.rangeBound = '1';
     // Bảng cố định là chính nó; Diễn giải được vẽ lại liên tục nên lấy bảng từ ô được bấm
-    const tableOf = td => (id === 'diengiaiWrap' ? td.closest('table') : hostEl);
+    const tableOf = td => (id === 'diengiaiWrap' || id === 'aggHangMuc' ? td.closest('table') : hostEl);
 
     hostEl.addEventListener('mousedown', (e) => {
       if(e.button !== 0) return;
@@ -7568,7 +7571,10 @@ function initExcelRangeSelectionOnTables() {
         highlightExcelRangeSelection();
       }
     });
-  });
+  };
+  tableIds.forEach(bindRangeHost);
+  bindRangeHost('aggHangMuc');
+  document.addEventListener('agg-hm-rendered', () => bindRangeHost('aggHangMuc'));
 
   window.addEventListener('mouseup', () => {
     excelRangeSelection.isSelecting = false;
