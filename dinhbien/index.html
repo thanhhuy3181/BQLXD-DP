@@ -7,6 +7,68 @@
 <!-- CDN ExcelJS & Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="ds-du-an.js"></script>
+<!-- ============================================================
+     FIREBASE FIRESTORE — ĐỒNG BỘ DỮ LIỆU GIỮA CÁC MÁY
+     Module chỉ khởi tạo kết nối và cung cấp hàm đọc/ghi qua window._cloud;
+     logic đồng bộ nằm ở mục "ĐỒNG BỘ CLOUD" trong script chính.
+     ============================================================ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, getDocs, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBvs1h_NeLW87Ob1ymxJycxv0Hsh2Ulo20",
+  authDomain: "bqlxd-vh.firebaseapp.com",
+  projectId: "bqlxd-vh",
+  storageBucket: "bqlxd-vh.firebasestorage.app",
+  messagingSenderId: "210584060371",
+  appId: "1:210584060371:web:117071fecc5ef268af6f26"
+};
+
+try {
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  window._auth = {
+    loginGoogle: () => signInWithPopup(auth, new GoogleAuthProvider()),
+    logout: () => signOut(auth),
+    onChange: cb => onAuthStateChanged(auth, cb)
+  };
+  window._cloud = {
+    // Trả về { [docId]: { ...fields } } của cả collection
+    async getAll(col) {
+      const snap = await getDocs(collection(db, col));
+      const out = {};
+      snap.forEach(d => { out[d.id] = d.data(); });
+      return out;
+    },
+    async get(col, id) {
+      const s = await getDoc(doc(db, col, id));
+      return s.exists() ? s.data() : null;
+    },
+    del(col, id) {
+      return deleteDoc(doc(db, col, id));
+    },
+    listen(col, cb) {
+      return onSnapshot(collection(db, col), snap => {
+        const docs = {};
+        snap.forEach(d => { docs[d.id] = d.data(); });
+        cb(docs);
+      });
+    },
+    put(col, id, fields) {
+      return setDoc(doc(db, col, id), fields);
+    }
+  };
+} catch(e) {
+  console.warn('[Cloud] Không khởi tạo được Firebase:', e);
+}
+window.dispatchEvent(new Event('cloud-ready'));
+</script>
 <style>
 :root{
   --bg-app: #f4f6f8;
@@ -102,6 +164,7 @@ header.app-header {
   background: #f1f5f9;
   border-color: #94a3b8;
 }
+.btn-org.active-soft { background: #dbeafe; color: #1e3a8a; border-color: #93c5fd; font-weight: 700; }
 .btn-org.active {
   background: #0f172a;
   color: #ffffff;
@@ -143,7 +206,7 @@ header.app-header {
 :root {
   --left-col-pct: 54%;
   --row2-height: 360px;
-  --row3-height: 480px;
+  --row3-height: 760px;
   --sticky-header-h: 112px;
 }
 
@@ -553,7 +616,7 @@ body.mobile-view-mode #btnExportExcel {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: calc(var(--left-col-pct) - 5px);
+  left: var(--divider-x, calc(var(--left-col-pct) - 5px));
   width: 14px;
   cursor: col-resize;
   z-index: 70;
@@ -873,10 +936,12 @@ body.is-editing-dinhmuc table.dinhmuc-table td input:focus {
   overflow: hidden;
 }
 .card-header {
-  padding: 0 10px;
-  height: 36px;
+  padding: 4px 10px;
+  height: auto;
   min-height: 36px;
-  max-height: 36px;
+  flex-wrap: wrap;
+  row-gap: 4px;
+  flex-shrink: 0;
   background: #f8fafc;
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -992,6 +1057,170 @@ tr.tr-level-2 td { border-color: #a9cce3; color: #1b4f72; background-color: #d4e
 tr.tr-level-2 input { background: transparent !important; color: #1b4f72 !important; font-weight: 700 !important; }
 tr.tr-level-4-me { background-color: #fafbfc; font-style: italic; color: #475569; }
 tr.tr-level-4-me td.col-name { padding-left: 16px; }
+
+/* Bảng hạng mục: cột ngày / đơn vị / KL hạ tầng chỉ rộng vừa nội dung; Tên công trình và Khối lượng giãn theo khung */
+#treeTable th#thHmBatDau, #treeTable th#thHmKetThuc, #treeTable th#thHmBanGiao { width: 92px !important; white-space: nowrap; }
+#treeTable th#thHmDv { width: 46px !important; white-space: nowrap; }
+#treeTable th#thHmKlHt { width: 80px !important; white-space: nowrap; }
+/* Mobile: nút mũi tên thu gọn / mở rộng khung (Tổng hợp, Hệ số tiến độ, Hệ số nhân sự) */
+.mob-collapse-btn { display: none; margin-left: auto; border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 4px; font-size: 11px; line-height: 1; padding: 3px 7px; cursor: pointer; }
+body.mobile-view-mode .mob-collapse-btn { display: inline-block; }
+body.mobile-view-mode .card-box.mob-collapsed { height: auto !important; min-height: 0 !important; }
+body.mobile-view-mode .card-box.mob-collapsed > :not(.card-header) { display: none !important; }
+
+/* Mobile: tiêu đề mỗi khung nổi bật, có nút mở/đóng; mặc định đóng */
+/* Chỉ tô dòng ngang tiêu đề (tên khung + nút mở/đóng); các nút, tab, ô nhập bên dưới giữ nguyên */
+body.mobile-view-mode .card-box > .mob-hdr { flex-wrap: wrap; align-items: center; }
+body.mobile-view-mode .card-box > .mob-hdr > h2 {
+  flex: 1 1 auto;
+  background: linear-gradient(90deg, #1e3a8a, #2563eb) !important;
+  color: #fff !important;
+  padding: 6px 10px !important;
+  margin: 0 !important;
+  border-radius: 6px;
+}
+body.mobile-view-mode .card-box > .mob-hdr > h2 * { color: #fff !important; }
+body.mobile-view-mode .card-box > .mob-hdr .mob-collapse-btn {
+  display: inline-flex !important;
+  align-items: center; justify-content: center;
+  width: 32px; height: 32px; margin-left: auto; flex-shrink: 0;
+  background: #fff !important; color: #1e3a8a !important;
+  border: none; border-radius: 6px; font-size: 16px; font-weight: 800; cursor: pointer;
+}
+body.mobile-view-mode .card-box:not(.mob-open) { height: auto !important; min-height: 0 !important; max-height: none !important; }
+body.mobile-view-mode .card-box:not(.mob-open) > :not(.mob-hdr) { display: none !important; }
+
+/* Đóng: chỉ còn một dòng tiêu đề có nền xanh; mở ra mới thấy nút điều khiển và nội dung */
+body.mobile-view-mode .card-box > .mob-hdr {
+  display: flex; flex-wrap: wrap; align-items: center; row-gap: 6px;
+  background: linear-gradient(90deg, #1e3a8a, #2563eb) no-repeat top / 100% 44px, #fff !important;
+  padding: 0 !important; min-height: 0 !important;
+}
+body.mobile-view-mode .card-box > .mob-hdr > h2 {
+  order: -2; flex: 1 1 0; min-width: 0; min-height: 44px;
+  display: flex; align-items: center;
+  background: none !important; color: #fff !important;
+  padding: 0 12px !important; margin: 0 !important; border-radius: 0 !important;
+}
+body.mobile-view-mode .card-box > .mob-hdr > .mob-collapse-btn { order: -1; margin: 6px 8px 6px auto !important; }
+body.mobile-view-mode .card-box > .mob-hdr > :not(h2):not(.mob-collapse-btn) { flex: 0 0 100%; padding: 0 10px; }
+body.mobile-view-mode .card-box:not(.mob-open) > .mob-hdr > :not(h2):not(.mob-collapse-btn):not(:has(h2)) { display: none !important; }
+body.mobile-view-mode .card-box > .mob-hdr > :has(h2) { order: -2; flex: 1 1 0 !important; min-width: 0; display: flex; align-items: center; min-height: 44px; }
+body.mobile-view-mode .card-box.mob-open .tonghop-stats-grid { display: grid !important; }
+
+/* Mobile: bảng Nhân sự ẩn cột Bộ phận để dành chỗ cho tên chức danh */
+body.mobile-view-mode table.nhansu-matrix-table th.col-freeze-2,
+body.mobile-view-mode table.nhansu-matrix-table td.col-freeze-2 { display: none !important; }
+body.mobile-view-mode table.nhansu-matrix-table td.col-freeze-3,
+body.mobile-view-mode table.nhansu-matrix-table thead th.col-freeze-3 { left: 35px !important; }
+body.mobile-view-mode table.nhansu-matrix-table td.col-freeze-4,
+body.mobile-view-mode table.nhansu-matrix-table thead th.col-freeze-4 { left: calc(var(--chart-axis-w, 370px) - 135px) !important; }
+
+/* Bảng Nhân sự - chế độ Tùy chỉnh */
+.ns-toggle-btn { margin-left: auto; border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 4px; font-size: 11px; padding: 2px 8px; cursor: pointer; white-space: nowrap; }
+.ns-toggle-btn.active { background: #fef3c7; border-color: #f59e0b; color: #92400e; font-weight: 700; }
+.ns-input { width: 100%; border: none; background: transparent; text-align: center; font: inherit; color: inherit; padding: 0; }
+.ns-input:focus { background: #fef9c3; outline: 1.5px solid #2563eb; }
+.ns-input.ns-custom { background: #fef3c7; font-weight: 700; color: #b45309; }
+.xl-sel { background: #dbeafe !important; }
+.xl-sel input { background: transparent !important; }
+.ns-reset { margin-left: 4px; font-size: 9.5px; padding: 0 4px; border: 1px solid #cbd5e1; background: #fff; border-radius: 3px; cursor: pointer; }
+
+/* Các cột cố định bên trái của bảng Hệ số và Nhân sự theo độ rộng cột tiêu đề biểu đồ (--chart-axis-w) */
+table.sync-matrix-table th.col-heso-freeze,
+table.sync-matrix-table td.col-heso-freeze {
+  width: calc(var(--chart-axis-w, 370px) - 125px) !important;
+  min-width: calc(var(--chart-axis-w, 370px) - 125px) !important;
+  max-width: calc(var(--chart-axis-w, 370px) - 125px) !important;
+}
+table.sync-matrix-table .col-heso-freeze-kl { left: calc(var(--chart-axis-w, 370px) - 125px) !important; }
+table.sync-matrix-table .col-heso-freeze-dv { left: calc(var(--chart-axis-w, 370px) - 50px) !important; }
+table.nhansu-matrix-table td.col-freeze-3,
+table.nhansu-matrix-table thead th.col-freeze-3 {
+  width: calc(var(--chart-axis-w, 370px) - 170px) !important;
+  min-width: calc(var(--chart-axis-w, 370px) - 170px) !important;
+  max-width: calc(var(--chart-axis-w, 370px) - 170px) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+table.nhansu-matrix-table td.col-freeze-4,
+table.nhansu-matrix-table thead th.col-freeze-4 { left: calc(var(--chart-axis-w, 370px) - 45px) !important; }
+
+/* Bảng Hạng mục tổng vùng/khối (chỉ xem) */
+.agg-hm-scroll { overflow: auto; max-height: 70vh; }
+.agg-hm-table { border-collapse: collapse; width: 100%; font-size: 11px; }
+.agg-hm-table th, .agg-hm-table td { border: 1px solid #e2e8f0; padding: 4px 6px; white-space: nowrap; }
+.agg-hm-table thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 2; text-align: center; }
+.agg-hm-table td.num { text-align: right; font-family: var(--font-mono); }
+.agg-hm-table tr.agg-hm-proj td { background: #e0f2fe; font-weight: 700; color: #0c4a6e; }
+
+/* Khung Diễn giải định biên */
+.diengiai-wrap { overflow: auto; flex: 1; min-height: 0; }
+.dg-table { border-collapse: collapse; font-size: 11px; width: max-content; min-width: 100%; }
+.dg-table th, .dg-table td { border: 1px solid #e2e8f0; padding: 3px 6px; white-space: nowrap; }
+.dg-table thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 2; text-align: center; }
+.dg-table .dg-stt, .dg-table .dg-cap { text-align: center; }
+/* Cột Chức danh: kéo mép phải tiêu đề để đổi độ rộng (được nhớ cho phiên sau) */
+.dg-table .dg-cd-h, .dg-table .dg-cd {
+  width: var(--dg-cd-w, 170px); min-width: var(--dg-cd-w, 170px); max-width: var(--dg-cd-w, 170px);
+  overflow: hidden; text-overflow: ellipsis;
+}
+.dg-table .dg-cd-h { position: sticky; }
+.dg-table .dg-rule { color: #64748b; font-style: italic; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.dg-table .dg-num { text-align: right; font-family: var(--font-mono); }
+.dg-table .dg-group td { background: #e0f2fe; font-weight: 700; color: #0c4a6e; }
+.dg-table .dg-sub td { background: #f8fafc; font-weight: 700; }
+.dg-table .dg-cach { white-space: normal; min-width: 380px; font-size: 10.5px; line-height: 1.35; }
+.dg-table .dg-list { margin: 0; padding-left: 0; list-style: none; }
+.dg-table .dg-list li::before { content: '- '; color: #64748b; }
+.dg-table .dg-total { font-weight: 700; border-top: 1px dashed #cbd5e1; margin-top: 2px; padding-top: 1px; color: #0f172a; }
+.dg-table .dg-rule-txt { color: #64748b; font-style: italic; }
+.dg-table .dg-grand td { background: #fef9c3; font-weight: 700; }
+
+/* Bố cục Mobile: 1 cột theo thứ tự Tổng hợp → Hạng mục → Biểu đồ → Hệ số tiến độ → Nhân sự → Diễn giải → Định mức → Hệ số nhân sự */
+body.mobile-view-mode .dashboard-row-grid { display: contents !important; }
+body.mobile-view-mode .row-resizer-bar, body.mobile-view-mode .global-col-resizer-line { display: none !important; }
+body.mobile-view-mode #row1StickyGrid { position: static !important; }
+body.mobile-view-mode #row1StickyGrid > .card-box:nth-child(1) { order: 1; }
+body.mobile-view-mode #hangmucCard { order: 2; }
+body.mobile-view-mode #row1StickyGrid > .card-box:nth-child(2) { order: 3; }
+body.mobile-view-mode #row2Grid > .heso-section { order: 4; }
+body.mobile-view-mode .nhansu-section { order: 5; }
+body.mobile-view-mode #diengiaiCard { order: 6; }
+body.mobile-view-mode #dinhmucCard { order: 7; }
+body.mobile-view-mode .heso-nhansu-section { order: 8; }
+
+/* Cột Tên công trình: kéo tay nắm ở mép phải tiêu đề để đổi độ rộng (được nhớ lại) */
+#treeTable th#thHmTen { position: relative; }
+#treeTable th#thHmTen .col-resize-grip { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; }
+#treeTable th#thHmTen .col-resize-grip:hover { background: rgba(37, 99, 235, 0.35); }
+/* Cột Khối lượng co theo số trong ô (không kéo rộng khoảng trống); chỉ Tên công trình giãn theo khung */
+#treeTable th#thHmKl { width: 90px !important; white-space: nowrap; }
+/* Khi thu hẹp, chỉ 3 cột Phân loại co theo khung; Tên công trình và Khối lượng giữ kích thước */
+#treeTable th.toggle-col { width: 9% !important; }
+#treeTable td input[data-f="kl"], #treeTable td input[data-f="bptc_kl"], #treeTable td input[data-f="me1_kl"], #treeTable td input[data-f="me2_kl"] { width: 84px; }
+/* Dòng GĐ M&E: nếu cột tên hẹp thì cuộn ngang để thấy nút ↺ Tự tính TG / ↺ KL (không cắt mất) */
+#treeTable tr.tr-level-4-me, #treeTable tr.tr-level-4-me > td { height: 28px; }
+#treeTable tr.tr-level-4-me td.col-name { overflow: hidden !important; text-overflow: clip !important; white-space: nowrap; }
+/* Ô chọn ⋯ Chọn của GĐ M&E: kích thước riêng, không theo kiểu ô nhập của bảng */
+/* Thao tác GĐ M&E: 2 nút hiện đủ khi còn chỗ; cột hẹp thì ẩn 2 nút, chỉ còn mũi tên ▸ mở danh sách */
+#treeTable .me-row { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; min-width: 0; height: 24px; }
+#treeTable .me-row > span { min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#treeTable .me-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex: 1 1 0; min-width: 26px; position: relative; container-type: inline-size; }
+#treeTable .me-acts button { font-size: 9.5px; height: 20px; padding: 0 5px; border: 1px solid #94a3b8; border-radius: 4px; background: #fff; color: #1e293b; cursor: pointer; white-space: nowrap; }
+#treeTable .me-arrow { display: none; padding: 0 6px !important; }
+@container (max-width: 190px) {
+  #treeTable .me-acts .me-btn { display: none; }
+  #treeTable .me-acts .me-arrow { display: inline-block; }
+}
+/* Danh sách thao tác mở ngang ngay trong ô Tên công trình (xuống dòng bên dưới mũi tên), không đè sang cột ngày */
+#treeTable .me-menu { position: static; flex-basis: 100%; display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px; min-width: 0; }
+#treeTable .me-menu[hidden] { display: none; }
+#treeTable .me-menu button { font-size: 9.5px; height: 20px; padding: 0 5px; border: 1px solid #94a3b8; border-radius: 4px; background: #fff; color: #1e293b; cursor: pointer; white-space: nowrap; }
+#treeTable td input.input-date-dmy { width: 88px; }
+#treeTable td input[data-f="dv"] { width: 40px; }
+#treeTable td input[data-f="dienTich"] { width: 70px; }
 /* Hiển thị ô nhập phẳng như ô Excel (không viền vuông bên trong) */
 /* Ẩn mũi tên tăng giảm (spin button) cho các ô nhập số trên toàn bảng */
 input[type="number"]::-webkit-outer-spin-button,
@@ -1125,9 +1354,9 @@ table.chart-sync-table td.chart-freeze-axis {
   position: sticky;
   left: 0;
   z-index: 15;
-  width: 370px;
-  min-width: 370px;
-  max-width: 370px;
+  width: var(--chart-axis-w, 370px);
+  min-width: var(--chart-axis-w, 370px);
+  max-width: var(--chart-axis-w, 370px);
   background: #ffffff;
   border-right: 1px solid var(--border);
   padding: 4px 10px;
@@ -1609,14 +1838,14 @@ footer.app-footer {
 
       <div style="display:inline-flex; gap:3px; align-items:center; background:#f8fafc; padding:2px 4px; border:1px solid var(--border); border-radius:5px;">
         <button class="btn" id="btnUndo" disabled style="padding:2px 8px; font-size:11px; font-weight:700; color:#1e40af; border-color:#bfdbfe; background:#eff6ff;" title="Hoàn tác thao tác nhập liệu trước đó (Phím tắt: Ctrl + Z — Tối đa 100 bước)">
-          ↶ Hoàn tác (Ctrl+Z) <span id="lblUndoCount" style="font-family:var(--font-mono); font-size:10px; background:#dbeafe; color:#1d4ed8; padding:0 4px; border-radius:3px;">0/100</span>
+          ↶ Hoàn tác <span id="lblUndoCount" style="font-family:var(--font-mono); font-size:10px; background:#dbeafe; color:#1d4ed8; padding:0 4px; border-radius:3px;">0/100</span>
         </button>
         <button class="btn" id="btnRedo" disabled style="padding:2px 7px; font-size:11px; font-weight:600; color:#475569;" title="Làm lại thao tác vừa hoàn tác (Phím tắt: Ctrl + Y hoặc Ctrl + Shift + Z)">
           ↷ Làm lại <span id="lblRedoCount" style="font-family:var(--font-mono); font-size:10px; background:#e2e8f0; color:#334155; padding:0 4px; border-radius:3px;">0</span>
         </button>
       </div>
       <button class="btn" id="btnUserGuide" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;">
-        📖 Hướng dẫn sử dụng
+        📖 HDSD
       </button>
             <button class="btn" id="btnPrintLandscape" style="background:#f8fafc; border-color:#cbd5e1; color:#334155; font-weight:600;" title="In / Xuất PDF định dạng trang ngang A3/A4 chuẩn căn lề Excel">
         🖨️ In / PDF
@@ -1625,10 +1854,7 @@ footer.app-footer {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Xuất Excel Chuẩn (11 Sheet)
       </button>
-      <div class="user-info-badge" style="display:flex; align-items:center; gap:5px; font-size:11px;">
-        <div class="user-avatar">U</div>
-        <span>admin@vinhomes.vn</span>
-      </div>
+      <span id="fbStatusBadge" style="font-size:10.5px; font-weight:600; padding:2px 8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; cursor:default; color:#64748b;" title="Trạng thái đồng bộ dữ liệu với Cloud (Firebase)">🟡</span>
     </div>
   </div>
 
@@ -1673,7 +1899,7 @@ footer.app-footer {
         <!-- 1. Tổng nhân sự đỉnh -->
         <div class="stat-mini-box" style="background:linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border:1px solid #d8b4fe; border-radius:6px; padding:6px 10px; display:flex; flex-direction:column; justify-content:space-between;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="lbl" style="color:#6b21a8; font-weight:800; font-size:11.5px;">★ TỔNG NHÂN SỰ ĐỈNH</span>
+            <span class="lbl" style="color:#6b21a8; font-weight:800; font-size:11.5px;">★ TỔNG NHÂN SỰ MAX</span>
             <span style="font-size:9.5px; background:#ede9fe; color:#6b21a8; padding:1px 5px; border-radius:3px; font-weight:700;">TOÀN DỰ ÁN</span>
           </div>
           <div style="display:flex; align-items:baseline; justify-content:space-between; margin:4px 0 2px 0;">
@@ -1688,7 +1914,7 @@ footer.app-footer {
         <!-- 2. BQLXD đỉnh -->
         <div class="stat-mini-box" style="background:linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border:1px solid #93c5fd; border-radius:6px; padding:6px 10px; display:flex; flex-direction:column; justify-content:space-between;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="lbl" style="color:#1d4ed8; font-weight:800; font-size:11.5px;">■ KHỐI BQLXD ĐỈNH</span>
+            <span class="lbl" style="color:#1d4ed8; font-weight:800; font-size:11.5px;">■ BP BQLXD MAX</span>
             <span style="font-size:9.5px; background:#dbeafe; color:#1e40af; padding:1px 5px; border-radius:3px; font-weight:700;">KHỐI XD</span>
           </div>
           <div style="display:flex; align-items:baseline; justify-content:space-between; margin:4px 0 2px 0;">
@@ -1703,7 +1929,7 @@ footer.app-footer {
         <!-- 3. KHO đỉnh -->
         <div class="stat-mini-box" style="background:linear-gradient(135deg, #fefce8 0%, #fef08a 100%); border:1px solid #fde047; border-radius:6px; padding:6px 10px; display:flex; flex-direction:column; justify-content:space-between;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="lbl" style="color:#b45309; font-weight:800; font-size:11.5px;">■ KHỐI KHO ĐỈNH</span>
+            <span class="lbl" style="color:#b45309; font-weight:800; font-size:11.5px;">■ BP KHO MAX</span>
             <span style="font-size:9.5px; background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:3px; font-weight:700;">VẬT TƯ</span>
           </div>
           <div style="display:flex; align-items:baseline; justify-content:space-between; margin:4px 0 2px 0;">
@@ -1718,7 +1944,7 @@ footer.app-footer {
         <!-- 4. BPTC đỉnh -->
         <div class="stat-mini-box" style="background:linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border:1px solid #86efac; border-radius:6px; padding:6px 10px; display:flex; flex-direction:column; justify-content:space-between;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="lbl" style="color:#047857; font-weight:800; font-size:11.5px;">■ BỘ PHẬN THI CÔNG ĐỈNH</span>
+            <span class="lbl" style="color:#047857; font-weight:800; font-size:11.5px;">■ BP THI CÔNG MAX</span>
             <span style="font-size:9.5px; background:#dcfce7; color:#166534; padding:1px 5px; border-radius:3px; font-weight:700;">BPTC</span>
           </div>
           <div style="display:flex; align-items:baseline; justify-content:space-between; margin:4px 0 2px 0;">
@@ -1753,7 +1979,7 @@ footer.app-footer {
     <div class="card-box">
       <div class="card-header" style="flex-wrap:wrap; gap:8px;">
         <div style="display:flex; align-items:center; gap:8px;">
-          <h2><span id="lblChartHeaderTitle">📊 Biểu đồ phân bổ nhân lực</span></h2>
+          <h2><span id="lblChartHeaderTitle">📊 Biểu đồ định biên</span></h2>
           <div class="dept-sync-tabs" style="display:flex; gap:2px; background:#e2e8f0; padding:2px; border-radius:4px;">
             <button class="heso-tab-btn active" data-depttab="ALL" style="padding:1px 8px; font-size:11px;">Tổng</button>
             <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button>
@@ -1825,7 +2051,8 @@ footer.app-footer {
               <th id="thHmKetThuc" style="width:86px;" title="Định dạng: ngày/tháng/năm (dd/mm/yyyy)">Kết thúc<br>(dd/mm/yy)</th>
               <th id="thHmBanGiao" style="width:86px;" title="Định dạng: ngày/tháng/năm (dd/mm/yyyy)">Bàn giao<br>(dd/mm/yy)</th>
               <th id="thHmKl" style="width:65px;">Khối<br>lượng</th>
-              <th style="width:38px;">Đơn<br>vị</th>
+              <th id="thHmDv" style="width:38px;">Đơn<br>vị</th>
+              <th id="thHmKlHt" style="width:74px;" title="Khối lượng hạ tầng (m²) của công trình. Dùng tính CBGS / NVGS Hạ tầng (÷ 15.000 / 10.500 m²)">KL hạ tầng<br>(m²)</th>
             </tr>
           </thead>
           <tbody id="treeTableBody">
@@ -2197,7 +2424,7 @@ function getBqlRegistry(vungId) {
 }
 
 function saveBqlRegistry(vungId, list) {
-  localStorage.setItem(`db_v2_reg_${vungId}`, JSON.stringify(list));
+  persistLocal(`db_v2_reg_${vungId}`, JSON.stringify(list), 'registries', vungId);
 }
 
 function loadProject(vungId, bqlId) {
@@ -2206,8 +2433,8 @@ function loadProject(vungId, bqlId) {
     const raw = localStorage.getItem(key);
     if(raw) {
       currentProjectData = JSON.parse(raw);
-      if(!currentProjectData.treeRows || currentProjectData.treeRows.length === 0) {
-        currentProjectData.treeRows = JSON.parse(JSON.stringify(SEED_TREE_ITEMS));
+      if(!currentProjectData.treeRows) {
+        currentProjectData.treeRows = bqlId === 'dan_phuong' ? JSON.parse(JSON.stringify(SEED_TREE_ITEMS)) : [];
       } else {
         // Chuẩn hóa dữ liệu cũ nếu có dòng Đường giao thông, công viên mà kieu chưa khớp
         currentProjectData.treeRows.forEach(r => {
@@ -2232,7 +2459,7 @@ function loadProject(vungId, bqlId) {
     id: bqlId,
     vungId: vungId,
     ten: bqlId === 'dan_phuong' ? 'BQLXD Đan Phượng' : 'BQLXD Mới',
-    treeRows: JSON.parse(JSON.stringify(SEED_TREE_ITEMS)),
+    treeRows: bqlId === 'dan_phuong' ? JSON.parse(JSON.stringify(SEED_TREE_ITEMS)) : [],
     adj: {},
     hesoCustom: {}, // { [tab_itemId_mk]: 0.5 }
     roundMode: 'normal'
@@ -2323,7 +2550,7 @@ function performUndo() {
     currentProjectData = JSON.parse(prevSnap);
 
     const key = makeStorageKey(currentProjectData.vungId, currentProjectData.id);
-    localStorage.setItem(key, prevSnap);
+    persistLocal(key, prevSnap, 'projects', key);
 
     const selRound = document.getElementById('selRoundMode');
     if(selRound && currentProjectData.roundMode) selRound.value = currentProjectData.roundMode;
@@ -2352,7 +2579,7 @@ function performRedo() {
     currentProjectData = JSON.parse(nextSnap);
 
     const key = makeStorageKey(currentProjectData.vungId, currentProjectData.id);
-    localStorage.setItem(key, nextSnap);
+    persistLocal(key, nextSnap, 'projects', key);
 
     const selRound = document.getElementById('selRoundMode');
     if(selRound && currentProjectData.roundMode) selRound.value = currentProjectData.roundMode;
@@ -2362,6 +2589,140 @@ function performRedo() {
     showUndoToast(`↷ Đã làm lại (Undo: ${bucket.undoStack.length}/${MAX_UNDO_STEPS})`);
   } finally {
     isPerformingUndoRedo = false;
+  }
+}
+
+/* ==========================================================================
+   ĐỒNG BỘ CLOUD (Firestore): localStorage là bản đang dùng trên máy,
+   Cloud là bản dùng chung. Bản nào có updatedAt mới hơn sẽ thắng.
+   ========================================================================== */
+function syncKey(localKey) { return 'db_v2_sync_' + localKey; }
+
+function setCloudStatus(ok, msg) {
+  const el = document.getElementById('fbStatusBadge');
+  if(!el) return;
+  el.textContent = ok ? '🟢' : '🔴'; // chỉ hiện biểu tượng; chi tiết để trong tooltip
+  el.title = msg || (ok ? 'Cloud đã đồng bộ' : 'Chưa kết nối Cloud — chỉ lưu trên máy này');
+  el.style.color = ok ? '#059669' : '#dc2626';
+}
+
+// Ghi local ngay (chạy được khi offline), rồi đẩy lên Cloud
+function persistLocal(localKey, value, col, id) {
+  const ts = Date.now();
+  try {
+    localStorage.setItem(localKey, value);
+    localStorage.setItem(syncKey(localKey), String(ts));
+    localStorage.setItem('db_v2_dirty_' + localKey, '1'); // chưa xác nhận đã lên Cloud
+  } catch(e) {}
+  if(window._cloud) {
+    window._cloud.put(col, id, { value: value, updatedAt: ts })
+      .then(() => {
+        try { localStorage.removeItem('db_v2_dirty_' + localKey); } catch(e) {}
+        setCloudStatus(true);
+      })
+      .catch(err => {
+        console.warn('[Cloud] ghi lỗi:', err);
+        setCloudStatus(false, 'Lỗi ghi Cloud — dữ liệu mới chỉ có trên máy này');
+      });
+  }
+}
+
+// Kéo dữ liệu từ Cloud về nếu bản Cloud mới hơn bản local. Trả về các key đã thay đổi.
+async function pullFromCloud() {
+  const changed = [];
+  const groups = [
+    ['registries', id => `db_v2_reg_${id}`],
+    ['projects', id => id]
+  ];
+  for(const [col, toLocalKey] of groups) {
+    const docs = await window._cloud.getAll(col);
+    Object.keys(docs).forEach(id => {
+      const localKey = toLocalKey(id);
+      const cloudTs = Number(docs[id].updatedAt) || 0;
+      let localTs = 0;
+      try { localTs = Number(localStorage.getItem(syncKey(localKey))) || 0; } catch(e) {}
+      if(cloudTs > localTs && typeof docs[id].value === 'string') {
+        try {
+          localStorage.setItem(localKey, docs[id].value);
+          localStorage.setItem(syncKey(localKey), String(cloudTs));
+          changed.push(localKey);
+        } catch(e) {}
+      }
+    });
+  }
+  return changed;
+}
+
+// Đồng bộ thời gian thực: máy khác lưu thì máy này nhận ngay (không cần tải lại trang)
+function startRealtimeSync() {
+  if(!window._cloud || !window._cloud.listen) return;
+  const groups = [['registries', id => `db_v2_reg_${id}`], ['projects', id => id]];
+  groups.forEach(([col, toLocalKey]) => {
+    window._cloud.listen(col, docs => {
+      Object.keys(docs).forEach(id => {
+        const localKey = toLocalKey(id);
+        const cloudTs = Number(docs[id].updatedAt) || 0;
+        const val = docs[id].value;
+        if(typeof val !== 'string') return;
+        let localTs = 0, dirty = false;
+        try {
+          localTs = Number(localStorage.getItem(syncKey(localKey))) || 0;
+          dirty = localStorage.getItem('db_v2_dirty_' + localKey) === '1';
+        } catch(e) {}
+        if(cloudTs <= localTs) return; // đây chính là bản máy này vừa lưu, hoặc đã có sẵn
+        if(dirty) handleConflict(localKey, val, cloudTs);
+        else applyRemote(localKey, val, cloudTs);
+      });
+    });
+  });
+}
+
+// Áp bản từ Cloud vào máy này và vẽ lại màn hình
+function applyRemote(localKey, val, ts) {
+  try {
+    localStorage.setItem(localKey, val);
+    localStorage.setItem(syncKey(localKey), String(ts));
+  } catch(e) { return; }
+  if(localKey === makeStorageKey(currentVungId, currentBqlId)) {
+    loadProject(currentVungId, currentBqlId);
+    renderOrgHierarchyButtons();
+    refreshDashboard();
+    showUndoToast('☁️ Có cập nhật từ máy khác — đã tải dữ liệu mới');
+  } else if(localKey.startsWith('db_v2_reg_')) {
+    renderOrgHierarchyButtons();
+  }
+}
+
+// Hai máy cùng sửa khi chưa đồng bộ: hỏi người dùng chọn bản nào; bản còn lại được sao lưu
+function handleConflict(localKey, remoteVal, remoteTs) {
+  const local = localStorage.getItem(localKey) || '';
+  try { localStorage.setItem('db_v2_backup_' + localKey, local); } catch(e) {}
+  const useCloud = confirm('Dữ liệu này cũng đã được sửa trên máy khác, trong khi máy này còn thay đổi chưa lưu lên Cloud.\n\nOK = dùng bản trên Cloud (bản của máy này đã được sao lưu)\nHủy = giữ bản của máy này và ghi lên Cloud');
+  if(useCloud) {
+    applyRemote(localKey, remoteVal, remoteTs);
+  } else {
+    const isReg = localKey.startsWith('db_v2_reg_');
+    persistLocal(localKey, local, isReg ? 'registries' : 'projects', isReg ? localKey.slice('db_v2_reg_'.length) : localKey);
+  }
+}
+
+async function bootCloudSync() {
+  if(!window._cloud) { setCloudStatus(false); return; }
+  try {
+    const changed = await pullFromCloud();
+    if(changed.length) {
+      loadProject(currentVungId, currentBqlId);
+      renderOrgHierarchyButtons();
+      refreshDashboard();
+    }
+    // Đẩy dự án đang mở lên Cloud (lần đầu sau khi bật đồng bộ)
+    const key = makeStorageKey(currentVungId, currentBqlId);
+    const raw = localStorage.getItem(key);
+    if(raw) persistLocal(key, raw, 'projects', key);
+    setCloudStatus(true);
+  } catch(e) {
+    console.warn('[Cloud] đồng bộ lỗi:', e);
+    setCloudStatus(false, 'Lỗi đồng bộ Cloud — đang dùng dữ liệu trên máy');
   }
 }
 
@@ -2384,9 +2745,7 @@ function saveCurrentProject(skipHistory = false) {
     updateUndoRedoButtonsUI();
   }
 
-  try {
-    localStorage.setItem(key, newSnap);
-  } catch(e){}
+  persistLocal(key, newSnap, 'projects', key);
 }
 
 /* ==========================================================================
@@ -2439,7 +2798,7 @@ function getFullProjectMonths(projData = currentProjectData) {
     if(sBp && (!min || sBp < min)) min = sBp;
     if(eBp && (!max || eBp > max)) max = eBp;
   });
-  if(!min) { min = new Date(2025, 6, 1); max = addMonths(min, 12); }
+  if(!min) { min = new Date(); max = new Date(); }
   const start = new Date(min.getFullYear(), min.getMonth(), 1);
   const end = new Date(max.getFullYear(), max.getMonth(), 1);
   const months = [];
@@ -2455,7 +2814,7 @@ function getFullProjectMonths(projData = currentProjectData) {
 // Lấy danh sách tháng áp dụng (nếu người dùng chọn Tháng hiển thị Bắt đầu/Kết thúc thì cắt theo phạm vi đó)
 function getActiveMonths(projData = currentProjectData) {
   const fullMonths = getFullProjectMonths(projData);
-  if(fullMonths.length === 0) return [new Date(2025, 6, 1)];
+  if(fullMonths.length === 0) return [new Date()];
 
   if(!filterDisplayStart && !filterDisplayEnd) {
     return fullMonths;
@@ -2477,8 +2836,8 @@ function getProjectDataSnapshot(vungId, bqlId, bqlTen) {
     const raw = localStorage.getItem(key);
     if(raw) {
       const parsed = JSON.parse(raw);
-      if(!parsed.treeRows || parsed.treeRows.length === 0) {
-        parsed.treeRows = JSON.parse(JSON.stringify(SEED_TREE_ITEMS));
+      if(!parsed.treeRows) {
+        parsed.treeRows = bqlId === 'dan_phuong' ? JSON.parse(JSON.stringify(SEED_TREE_ITEMS)) : [];
       }
       return parsed;
     }
@@ -2487,7 +2846,7 @@ function getProjectDataSnapshot(vungId, bqlId, bqlTen) {
     id: bqlId,
     vungId: vungId,
     ten: bqlTen || (bqlId === 'dan_phuong' ? 'BQLXD Đan Phượng' : 'BQLXD Mới'),
-    treeRows: JSON.parse(JSON.stringify(SEED_TREE_ITEMS)),
+    treeRows: bqlId === 'dan_phuong' ? JSON.parse(JSON.stringify(SEED_TREE_ITEMS)) : [],
     adj: {},
     hesoCustom: {},
     roundMode: 'normal'
@@ -2516,25 +2875,25 @@ function roundVal(v, mode) {
 
 const MATRIX_ROWS_META = [
   // I. KHỐI BAN QUẢN LÝ XÂY DỰNG (ĐM BQL)
-  {stt:1,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Giám đốc BQLXD Cấp 1', cap:'T2', type:'gd_bql1', dmThap:'', dmKhac:'', rule:'QL 4–5 GĐ Cấp 2 (T3)', qlKey:'gd_bql1', qlTarget:'Giám đốc BQLXD Cấp 2 (T3)', qlMin:4, qlMax:5, qlCalc:4.5, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Theo quy mô đại dự án'},
-  {stt:2,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Giám đốc BQLXD Cấp 2', cap:'T3', type:'gd_bql2', dmThap:'', dmKhac:'', rule:'QL 5–7 GĐ Cấp 3 (T4)', qlKey:'gd_bql2', qlTarget:'Giám đốc BQLXD Cấp 3 (T4)', qlMin:5, qlMax:7, qlCalc:6, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Nếu có 1 GĐ cấp 2 thì có 1 Trợ lý'},
-  {stt:3,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Giám đốc BQLXD Cấp 3', cap:'T4', type:'lead_bql', dmThap:'', dmKhac:'', rule:'QL 5–7 ĐTGS (T5)', qlKey:'gd_bql3', qlTarget:'Đội trưởng GSXD, GSME, GS Hạ tầng (T5)', qlMin:5, qlMax:7, qlCalc:6, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tối thiểu 1 người khi DA chạy'},
+  {stt:1,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'GĐ BQLXD cấp 1', cap:'T2', type:'gd_bql1', dmThap:'', dmKhac:'', rule:'QL 4–5 GĐ Cấp 2 (T3)', qlKey:'gd_bql1', qlTarget:'Giám đốc BQLXD Cấp 2 (T3)', qlMin:4, qlMax:5, qlCalc:4.5, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Theo quy mô đại dự án'},
+  {stt:2,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'GĐ BQLXD cấp 2', cap:'T3', type:'gd_bql2', dmThap:'', dmKhac:'', rule:'QL 5–7 GĐ Cấp 3 (T4)', qlKey:'gd_bql2', qlTarget:'Giám đốc BQLXD Cấp 3 (T4)', qlMin:5, qlMax:7, qlCalc:6, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Nếu có 1 GĐ cấp 2 thì có 1 Trợ lý'},
+  {stt:3,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'GĐ BQLXD cấp 3', cap:'T4', type:'lead_bql', dmThap:'', dmKhac:'', rule:'QL 5–7 ĐTGS (T5)', qlKey:'gd_bql3', qlTarget:'Đội trưởng GSXD, GSME, GS Hạ tầng (T5)', qlMin:5, qlMax:7, qlCalc:6, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tối thiểu 1 người khi DA chạy'},
   {stt:4,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Trợ lý GĐ BQLXD', cap:'T5', type:'tro_ly_bql', dmThap:'', dmKhac:'', rule:'1 Trợ lý / 1 GĐ Cấp 2', qlKey:'tro_ly_bql', qlTarget:'Giám đốc BQLXD Cấp 2 (T3) — Có 1 GĐ Cấp 2 thì có 1 Trợ lý', qlMin:1, qlMax:1, qlCalc:1, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'1 GĐ Cấp 2 → 1 Trợ lý'},
-  {stt:5,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSXD', cap:'T5', type:'dt_xd', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS XD', qlKey:'dt_xd', qlTarget:'CBGS kỹ thuật XD (T6), NVGS kỹ thuật XD (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
-  {stt:6,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Xây dựng)', cap:'T6', type:'cb_xd', dmKey:'cb_xd', dmThap:50, dmKhac:14000, rule:'KL ÷ Định mức', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:14000, ct_ht:10000, khac:'9.000 / 7.500', nx:'21.000 / 15.000', dgt:'', hsNote:'Biệt thự × 0,8'},
-  {stt:7,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GSME', cap:'T5', type:'dt_me', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS ME', qlKey:'dt_me', qlTarget:'CBGS kỹ thuật M&E (T6), NVGS kỹ thuật M&E (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
-  {stt:8,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (M&E)', cap:'T6', type:'cb_me', dmKey:'cb_me', dmThap:250, dmKhac:22500, rule:'KL ÷ ĐM (BTCT/HT)', tt_tho:250, tt_full:70, tt_ht2:80, tt_ht1:90, ct_tho:'4 tòa (BTCT)', ct_ht:22500, khac:'4 CT / 22.500', nx:'100.000 / 50.000', dgt:'120.000(CV)/200.000(ĐGT)', hsNote:'GĐ BTCT: 500 căn | Biệt thự × 0,8'},
-  {stt:9,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'Đội trưởng GS Hạ tầng', cap:'T5', type:'dt_ht', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS HT', qlKey:'dt_ht', qlTarget:'CBGS kỹ thuật Hạ tầng (T6), NVGS kỹ thuật Hạ tầng (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
-  {stt:10, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Hạ tầng)', cap:'T6', type:'cb_ht', dmKey:'cb_ht', dmThap:'', dmKhac:15000, rule:'1 CB / CT (~15.000m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:15000, ct_ht:15000, khac:15000, nx:15000, dgt:15000, hsNote:'1 CB/Công trình (~15.000 m²)'},
-  {stt:11, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên QLTK tại BQLXD', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
-  {stt:12, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Cán bộ GSKT (Trắc đạc)', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:5,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'ĐTGS Xây dựng', cap:'T5', type:'dt_xd', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS XD', qlKey:'dt_xd', qlTarget:'CBGS kỹ thuật XD (T6), NVGS kỹ thuật XD (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
+  {stt:6,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'CBGS Xây dựng', cap:'T6', type:'cb_xd', dmKey:'cb_xd', dmThap:50, dmKhac:14000, rule:'KL ÷ Định mức', tt_tho:50, tt_full:35, tt_ht2:38, tt_ht1:40, ct_tho:14000, ct_ht:10000, khac:'9.000 / 7.500', nx:'21.000 / 15.000', dgt:'', hsNote:'Biệt thự × 0,8'},
+  {stt:7,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'ĐTGS ME', cap:'T5', type:'dt_me', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS ME', qlKey:'dt_me', qlTarget:'CBGS kỹ thuật M&E (T6), NVGS kỹ thuật M&E (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
+  {stt:8,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'CBGS ME', cap:'T6', type:'cb_me', dmKey:'cb_me', dmThap:250, dmKhac:22500, rule:'KL ÷ ĐM (BTCT/HT)', tt_tho:250, tt_full:70, tt_ht2:80, tt_ht1:90, ct_tho:'4 tòa (BTCT)', ct_ht:22500, khac:'4 CT / 22.500', nx:'100.000 / 50.000', dgt:'120.000(CV)/200.000(ĐGT)', hsNote:'GĐ BTCT: 500 căn | Biệt thự × 0,8'},
+  {stt:9,  pb:'BQLXD', bp:'BP Quản lý XD', cd:'ĐTGS Hạ tầng', cap:'T5', type:'dt_ht', dmThap:'', dmKhac:'', rule:'QL 8–12 CBGS HT', qlKey:'dt_ht', qlTarget:'CBGS kỹ thuật Hạ tầng (T6), NVGS kỹ thuật Hạ tầng (T7)', qlMin:8, qlMax:12, qlCalc:10, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Tầm QL dùng chung mọi loại hình'},
+  {stt:10, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CBGS Hạ tầng', cap:'T6', type:'cb_ht', dmKey:'cb_ht', dmThap:'', dmKhac:15000, rule:'1 CB / CT (~15.000m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:15000, ct_ht:15000, khac:15000, nx:15000, dgt:15000, hsNote:'1 CB/Công trình (~15.000 m²)'},
+  {stt:11, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CV QLTK', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:12, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CBGS Trắc đạc', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
   {stt:13, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CBGS Cây xanh', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
-  {stt:14, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Xây dựng', cap:'T7', type:'nv_xd', dmKey:'nv_xd', dmThap:35, dmKhac:9800, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:35, tt_full:25, tt_ht2:27, tt_ht1:28, ct_tho:9800, ct_ht:7000, khac:'6.300 / 5.250', nx:'14.700 / 10.500', dgt:'', hsNote:'90% CBGS T6 + 10%×1,5 NVGS T7'},
-  {stt:15, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT M&E', cap:'T7', type:'nv_me', dmKey:'nv_me', dmThap:175, dmKhac:15750, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:175, tt_full:49, tt_ht2:56, tt_ht1:63, ct_tho:'3 tòa (BTCT)', ct_ht:15750, khac:'3 CT / 15.750', nx:'70.000 / 35.000', dgt:'84.000(CV)/140.000(ĐGT)', hsNote:'GĐ BTCT: 350 căn | Biệt thự × 0,8'},
-  {stt:16, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Nhân viên GSKT Hạ tầng', cap:'T7', type:'nv_ht', dmKey:'nv_ht', dmThap:'', dmKhac:10500, rule:'1 NV / CT (~10.500m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:10500, ct_ht:10500, khac:10500, nx:10500, dgt:10500, hsNote:'1 CB/Công trình (~10.500 m²)'},
-  {stt:17, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên Nội nghiệp', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
-  {stt:18, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên Hành chính', cap:'T7', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
-  {stt:19, pb:'BQLXD', bp:'BP Quản lý XD', cd:'Chuyên viên ATLĐ và VSMT', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:14, pb:'BQLXD', bp:'BP Quản lý XD', cd:'NVGS Xây dựng', cap:'T7', type:'nv_xd', dmKey:'nv_xd', dmThap:35, dmKhac:9800, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:35, tt_full:25, tt_ht2:27, tt_ht1:28, ct_tho:9800, ct_ht:7000, khac:'6.300 / 5.250', nx:'14.700 / 10.500', dgt:'', hsNote:'90% CBGS T6 + 10%×1,5 NVGS T7'},
+  {stt:15, pb:'BQLXD', bp:'BP Quản lý XD', cd:'NVGS ME', cap:'T7', type:'nv_me', dmKey:'nv_me', dmThap:175, dmKhac:15750, rule:'10% CBGS × 1,5 (ĐM×0,7)', tt_tho:175, tt_full:49, tt_ht2:56, tt_ht1:63, ct_tho:'3 tòa (BTCT)', ct_ht:15750, khac:'3 CT / 15.750', nx:'70.000 / 35.000', dgt:'84.000(CV)/140.000(ĐGT)', hsNote:'GĐ BTCT: 350 căn | Biệt thự × 0,8'},
+  {stt:16, pb:'BQLXD', bp:'BP Quản lý XD', cd:'NVGS Hạ tầng', cap:'T7', type:'nv_ht', dmKey:'nv_ht', dmThap:'', dmKhac:10500, rule:'1 NV / CT (~10.500m²)', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:10500, ct_ht:10500, khac:10500, nx:10500, dgt:10500, hsNote:'1 CB/Công trình (~10.500 m²)'},
+  {stt:17, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CV Nội nghiệp', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:18, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CV Hành chính', cap:'T7', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
+  {stt:19, pb:'BQLXD', bp:'BP Quản lý XD', cd:'CV ATLĐ & VSMT', cap:'T6', type:'fixed_active', val:1, dmThap:'', dmKhac:'', rule:'Cố định: 1 người/DA', fixedSpan:'Định mức cố định chung toàn dự án: 1 người / BQLXD', tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Cố định 1 người/DA'},
 
   // II. KHỐI KHO DỰ ÁN (ĐM KHO)
   {stt:1,  pb:'KHO', bp:'BP Kho', cd:'Tổng quản lý kho (theo vùng)', cap:'T4', type:'lead_kho_vung', dmThap:'', dmKhac:'', rule:'QL 4–6 Trưởng kho (T5)', qlKey:'tql_kho', qlTarget:'Trưởng kho (T5)', qlMin:4, qlMax:6, qlCalc:5, tt_tho:'', tt_full:'', tt_ht2:'', tt_ht1:'', ct_tho:'', ct_ht:'', khac:'', nx:'', dgt:'', hsNote:'Theo vùng (0 tại DA)'},
@@ -2585,6 +2944,10 @@ function calculateSingleProject(projData) {
   let cb_xd_arr = Array(numM).fill(0);
   let cb_me_arr = Array(numM).fill(0);
   let cb_ht_arr = Array(numM).fill(0);
+  let area_ht_arr = Array(numM).fill(0); // tổng diện tích đang thi công (m²) đã nhân hệ số tháng, làm căn cứ CBGS/NVGS Hạ tầng
+  let nv_xd_arr = Array(numM).fill(0);
+  let nv_me_arr = Array(numM).fill(0);
+  let nv_ht_arr = Array(numM).fill(0);
 
   let thu_kho_arr = Array(numM).fill(0);
   let cv_ktht_arr = Array(numM).fill(0);
@@ -2605,7 +2968,7 @@ function calculateSingleProject(projData) {
       return hesoCustom[key];
     }
     // Mặc định là 100% (1.0) đối với tất cả các tháng nằm trong thời gian thi công/bàn giao
-    return 1.0;
+    return baseRatio; // mặc định = số ngày thi công trong tháng / số ngày của tháng
   }
 
   // Tính chi tiết cho từng hạng mục để hiển thị ma trận Hệ số XD, ME, HT ngang hàng
@@ -2659,7 +3022,7 @@ function calculateSingleProject(projData) {
       const prMe = getCustomHeso('me', it.id, mk, basePrMe);
       meRatio.push(prMe);
 
-      const basePrHt = isDgtCv ? basePrXd : 0;
+      const basePrHt = basePrXd; // Hạ tầng áp dụng cho mọi hạng mục
       const prHt = getCustomHeso('ht', it.id, mk, basePrHt);
       htRatio.push(prHt);
 
@@ -2696,13 +3059,9 @@ function calculateSingleProject(projData) {
         if(dm_cb_xd > 0) cb_xd_arr[mIdx] += (kl / dm_cb_xd) * prXd;
       }
 
-      // 2. BQLXD - CBGS Hạ tầng (T6)
-      if(prHt > 0 && kl > 0) {
-        if(isDgtCv || isKhac) {
-          let dm_cb_ht = getDmVal('cb_ht','khac',15000);
-          cb_ht_arr[mIdx] += (kl / dm_cb_ht) * prHt;
-        }
-      }
+      // 2. Hạ tầng: gom KL hạ tầng (m²) của công trình đang thi công, nhân hệ số tiến độ
+      // Đường giao thông / công viên: KL chính là KL hạ tầng, không nhập riêng
+      if(prHt > 0) area_ht_arr[mIdx] += (isDgtCv ? kl : (it.dienTich || 0)) * prHt;
 
       // 3. KHO - Thủ kho Nhập liệu (T7) + Hiện trường (T8) (Tách riêng Đường giao thông vs Công viên, và từng loại công trình cấp 2 theo Sheet ĐM KHO)
       if(prKho > 0 && kl > 0) {
@@ -2726,7 +3085,7 @@ function calculateSingleProject(projData) {
         } else if(isNx) {
           dm_tk = 20000;
         }
-        thu_kho_arr[mIdx] += ((kl / dm_tk) * 0.3) * prKho;
+        thu_kho_arr[mIdx] += (kl / dm_tk) * prKho;
       }
 
       // 4. BPTC - Các chức danh Bộ phận Thi công (Sheet ĐM BPTC: dùng klBptc riêng của tab Tiến độ BPTC)
@@ -2758,23 +3117,62 @@ function calculateSingleProject(projData) {
         cv_kehoach_tc_arr[mIdx] += (klBptc / dm_kh) * prBptc;
       }
 
-      // 5. BQLXD - CBGS M&E (T6) (Tách riêng Công viên = 120.000 m2 và Đường giao thông = 200.000 m2)
+      // 5. M&E 2 giai đoạn, tính trên thời gian ME = Bắt đầu → Kết thúc của hạng mục:
+      //    GĐ bê tông, cốt thép: 0% – 50%;  GĐ hoàn thiện: 40% – 100%.
+      //    Đường giao thông / công viên: chỉ 1 giai đoạn hoàn thiện, chạy suốt thời gian.
+      const meS = parseDateAny(it.batDau), meE = parseDateAny(it.ketThuc);
+      const meDays = (meS && meE) ? (meE - meS) / 86400000 : 0;
+      const shiftDays = (d, p) => { const t = new Date(d.getTime() + Math.round(p * meDays) * 86400000); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
+      // Ngày giai đoạn do người dùng nhập sẽ ghi đè; ô trống thì tự tính theo tiến độ hạng mục
+      const hasStages = (isThap || isNx);
+      const autoBT = (meS && meE) ? [meS, shiftDays(meS, 0.5)] : null;
+      const autoHT = (meS && meE) ? [shiftDays(meS, 0.4), meE] : null;
+      // Dữ liệu cũ từng được điền sẵn bằng đúng ngày hạng mục: coi như chưa sửa
+      const oldAutoBT = it.me1_bd === it.batDau && it.me1_kt === it.ketThuc;
+      const oldAutoHT = it.me2_bd === it.ketThuc && it.me2_kt === (it.banGiao || it.ketThuc);
+      const custBT = !oldAutoBT && parseDateAny(it.me1_bd) && parseDateAny(it.me1_kt) ? [parseDateAny(it.me1_bd), parseDateAny(it.me1_kt)] : null;
+      const custHT = !oldAutoHT && parseDateAny(it.me2_bd) && parseDateAny(it.me2_kt) ? [parseDateAny(it.me2_bd), parseDateAny(it.me2_kt)] : null;
+      const stBT = hasStages ? (custBT || autoBT) : null;
+      const stHT = hasStages ? (custHT || autoHT) : null;
+      const klBT = (it.me1_kl != null ? it.me1_kl : kl);
+      const klHT = (it.me2_kl != null ? it.me2_kl : kl);
+      // Hệ số mỗi GĐ giống hạng mục chính: 100% khi nằm trong giai đoạn, người dùng sửa được từng tháng
+      const rBT = stBT ? getCustomHeso('me1', it.id, mk, calcRatio(stBT[0], stBT[1], mDate)) : 0;
+      const rHT = stHT ? getCustomHeso('me2', it.id, mk, calcRatio(stHT[0], stHT[1], mDate)) : prMe;
       if(prMe > 0 && kl > 0) {
-        let dm_cb_me = 22500;
+        // CBGS M&E (T6)
         if(isThap) {
-          let baseThapMe = getDmVal('cb_me','thap',250);
-          if(tcIdx === 1) baseThapMe = 70;
-          else if(tcIdx === 2) baseThapMe = 80;
-          else if(tcIdx === 3 || tcIdx === 4) baseThapMe = 90;
-          dm_cb_me = baseThapMe * hsKieu;
-        } else if(isDgtCv) {
-          dm_cb_me = isCongVien ? 120000 : 200000;
+          const dmBT = 500 * hsKieu;
+          const dmHT = [250, 70, 80, 90][tcIdx === 4 ? 3 : tcIdx] * hsKieu;
+          cb_me_arr[mIdx] += (klBT / dmBT) * rBT + (klHT / dmHT) * rHT;
         } else if(isNx) {
-          dm_cb_me = 50000;
+          cb_me_arr[mIdx] += (klBT / 100000) * rBT + (klHT / 50000) * rHT;
+        } else if(isDgtCv) {
+          cb_me_arr[mIdx] += (kl / (isCongVien ? 120000 : 200000)) * rHT;
         } else {
-          dm_cb_me = getDmVal('cb_me','khac',22500);
+          cb_me_arr[mIdx] += (klHT / getDmVal('cb_me','khac',22500)) * rHT;
         }
-        cb_me_arr[mIdx] += (kl / dm_cb_me) * prMe;
+
+        // NV GS theo định mức riêng của từng loại (bảng ĐM BQL), không suy từ CBGS
+        // NV XD
+        if(prXd > 0 && kl > 0 && !isDgtCv) {
+          let dm_nv_xd = 9800;
+          if(isThap) dm_nv_xd = [35, 25, 27, 28][tcIdx === 4 ? 3 : tcIdx] * hsKieu;
+          else if(isCao) dm_nv_xd = (tcIdx === 4 || tcIdx === 1) ? 7000 : 9800;
+          else if(isKhac) dm_nv_xd = (tcIdx === 4 || tcIdx === 1) ? 5250 : 6300;
+          else if(isNx) dm_nv_xd = (tcIdx === 4 || tcIdx === 1) ? 10500 : 14700;
+          nv_xd_arr[mIdx] += (kl / dm_nv_xd) * prXd;
+        }
+        // NV ME theo định mức từng giai đoạn (bảng ĐM BQL)
+        if(isDgtCv) {
+          nv_me_arr[mIdx] += (kl / (isCongVien ? 84000 : 140000)) * rHT;
+        } else if(isThap) {
+          nv_me_arr[mIdx] += (klBT / (350 * hsKieu)) * rBT + (klHT / ([175, 49, 56, 63][tcIdx === 4 ? 3 : tcIdx] * hsKieu)) * rHT;
+        } else if(isNx) {
+          nv_me_arr[mIdx] += (klBT / 70000) * rBT + (klHT / 35000) * rHT;
+        } else {
+          nv_me_arr[mIdx] += (klHT / 15750) * rHT;
+        }
       }
     });
 
@@ -2805,6 +3203,9 @@ function calculateSingleProject(projData) {
 
   months.forEach((mDate, mIdx) => {
     const hasActive = rows.some(it => calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate) > 0);
+    // CBGS Hạ tầng: 1 CB / 15.000 m²; NVGS Hạ tầng: 1 NV / 10.500 m² (tính trên tổng diện tích đang thi công)
+    cb_ht_arr[mIdx] = area_ht_arr[mIdx] / (dmC['cb_ht_khac'] > 0 ? dmC['cb_ht_khac'] : 15000);
+    nv_ht_arr[mIdx] = area_ht_arr[mIdx] / (dmC['nv_ht_khac'] > 0 ? dmC['nv_ht_khac'] : 10500);
     const cXd = getQlCalc('dt_xd', 10);
     const cMe = getQlCalc('dt_me', 10);
     const cHt = getQlCalc('dt_ht', 10);
@@ -2813,12 +3214,16 @@ function calculateSingleProject(projData) {
     const cGd1 = getQlCalc('gd_bql1', 4.5);
     const cTroLy = getQlCalc('tro_ly_bql', 1);
 
-    dt_xd_arr[mIdx] = cb_xd_arr[mIdx] > 0 ? Math.max(1, cb_xd_arr[mIdx] / cXd) : 0;
-    dt_me_arr[mIdx] = cb_me_arr[mIdx] > 0 ? (cb_me_arr[mIdx] >= 8 ? Math.ceil(cb_me_arr[mIdx]/cMe) : (cb_me_arr[mIdx] > 3 ? 1 : 0)) : 0;
-    dt_ht_arr[mIdx] = cb_ht_arr[mIdx] > 0 ? Math.max(1, Math.ceil(cb_ht_arr[mIdx] / cHt)) : 0;
+    // Đội trưởng quản lý theo số CBGS T6 (100% nhu cầu)
+    const nCbXd = cb_xd_arr[mIdx];
+    const nCbMe = cb_me_arr[mIdx];
+    const nCbHt = cb_ht_arr[mIdx];
+    dt_xd_arr[mIdx] = nCbXd / cXd;
+    dt_me_arr[mIdx] = nCbMe / cMe;
+    dt_ht_arr[mIdx] = nCbHt / cHt;
 
     const totalDt = dt_xd_arr[mIdx] + dt_me_arr[mIdx] + dt_ht_arr[mIdx];
-    gd_bql3_arr[mIdx] = hasActive ? Math.max(1, Math.floor(totalDt / cGd3) || 1) : 0;
+    gd_bql3_arr[mIdx] = hasActive ? totalDt / cGd3 : 0;
     gd_bql2_arr[mIdx] = totalDt >= (cGd3 * cGd2) ? Math.floor(gd_bql3_arr[mIdx] / cGd2) : 0;
     gd_bql1_arr[mIdx] = gd_bql2_arr[mIdx] >= cGd1 ? Math.floor(gd_bql2_arr[mIdx] / cGd1) : 0;
   });
@@ -2833,13 +3238,21 @@ function calculateSingleProject(projData) {
       let raw = 0;
       const hasActive = rows.some(it => calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate) > 0);
 
+      // Pre-compute hasBptcActive: chỉ tính khi có hoạt động BPTC thực sự
+      const hasBptcActive = (cv_ktht_arr[mIdx] + cv_qc_arr[mIdx] + cv_qs_arr[mIdx] + cv_shop_arr[mIdx] + cv_atld_arr[mIdx] + cv_tracdac_arr[mIdx] + nv_tracdac_arr[mIdx] + cv_noinghiep_tc_arr[mIdx] + cv_kehoach_tc_arr[mIdx]) > 0;
+      // Pre-compute Trưởng nhóm kho count for lead_kho calculation
+      const tnKhoCalc = getQlCalc('tn_kho', 9);
+      const tnKhoCount = thu_kho_arr[mIdx] / tnKhoCalc;
+
       switch(meta.type) {
+        // CBGS (T6): 100% nhu cầu theo định mức
         case 'cb_xd': raw = cb_xd_arr[mIdx]; break;
         case 'cb_me': raw = cb_me_arr[mIdx]; break;
         case 'cb_ht': raw = cb_ht_arr[mIdx]; break;
-        case 'nv_xd': raw = cb_xd_arr[mIdx] * 0.1 * 1.5; break;
-        case 'nv_me': raw = cb_me_arr[mIdx] * 0.1 * 1.5; break;
-        case 'nv_ht': raw = cb_ht_arr[mIdx] * 0.1 * 1.5; break;
+        // NVGS: 15% nhu cầu, quy đổi từ CB đã làm tròn (CB/0,9 × 0,15)
+        case 'nv_xd': raw = nv_xd_arr[mIdx]; break;
+        case 'nv_me': raw = nv_me_arr[mIdx]; break;
+        case 'nv_ht': raw = nv_ht_arr[mIdx]; break;
         case 'fixed_active': raw = hasActive ? meta.val : 0; break;
         case 'fixed': raw = meta.val; break;
         case 'dt_xd': raw = dt_xd_arr[mIdx]; break;
@@ -2859,10 +3272,14 @@ function calculateSingleProject(projData) {
         case 'thu_kho_sum': raw = thu_kho_arr[mIdx]; break;
         case 'group_kho': {
           const c = getQlCalc('tn_kho', 9);
-          raw = thu_kho_arr[mIdx] > 0 ? Math.max(1, Math.ceil(thu_kho_arr[mIdx] / c)) : 0;
+          raw = thu_kho_arr[mIdx] / c;
           break;
         }
-        case 'lead_kho': raw = thu_kho_arr[mIdx] > 15 ? 1 : (hasActive ? 1 : 0); break;
+        case 'lead_kho': {
+          const cTruongKho = getQlCalc('truong_kho', 6);
+          raw = tnKhoCount / cTruongKho;
+          break;
+        }
         case 'lead_kho_vung': raw = 0; break;
 
         case 'cv_ktht': raw = cv_ktht_arr[mIdx]; break;
@@ -2877,10 +3294,11 @@ function calculateSingleProject(projData) {
 
         case 'dt_tc': {
           const c = getQlCalc('dt_tc', 5);
-          raw = cv_ktht_arr[mIdx] > 0 ? Math.max(1, Math.ceil(cv_ktht_arr[mIdx] / c)) : 0;
+          raw = cv_ktht_arr[mIdx] / c;
           break;
         }
-        case 'lead_khoi_tc': raw = cv_ktht_arr[mIdx] > 10 ? 1 : 0; break;
+        // Trưởng khối: quản lý 5 Đội trưởng (ĐM BPTC), tính theo tỷ lệ
+        case 'lead_khoi_tc': raw = (cv_ktht_arr[mIdx] / getQlCalc('dt_tc', 5)) / getQlCalc('tk_tc', 5); break;
         case 'tn_qc': {
           const c = getQlCalc('tn_qc', 7);
           raw = cv_qc_arr[mIdx] >= c ? Math.ceil(cv_qc_arr[mIdx] / c) : 0;
@@ -2904,14 +3322,14 @@ function calculateSingleProject(projData) {
         case 'tn_tracdac': raw = (cv_tracdac_arr[mIdx] + nv_tracdac_arr[mIdx]) >= 7 ? 1 : 0; break;
 
         case 'tn_mmtb': raw = 0; break;
-        case 'cv_vttb': raw = hasActive ? 1 : 0; break;
-        case 'nv_cokhi': raw = hasActive ? 1 : 0; break;
-        case 'nv_diennuoc': raw = hasActive ? 1 : 0; break;
+        case 'cv_vttb': raw = hasBptcActive ? 1 : 0; break;
+        case 'nv_cokhi': raw = hasBptcActive ? 1 : 0; break;
+        case 'nv_diennuoc': raw = hasBptcActive ? 1 : 0; break;
         case 'cv_hc_tc': raw = 0; break;
-        case 'nv_hc_tc': raw = hasActive ? 1 : 0; break;
-        case 'nv_thinghiem': raw = hasActive ? 1 : 0; break;
+        case 'nv_hc_tc': raw = hasBptcActive ? 1 : 0; break;
+        case 'nv_thinghiem': raw = hasBptcActive ? 1 : 0; break;
         case 'tbp_httc': raw = (cv_qc_arr[mIdx] + cv_qs_arr[mIdx] + cv_shop_arr[mIdx]) > 6 ? 1 : 0; break;
-        case 'lead_bptc': raw = hasActive ? 1 : 0; break;
+        case 'lead_bptc': raw = hasBptcActive ? 1 : 0; break;
       }
 
       const valAfterAdj = raw * userAdj;
@@ -2942,6 +3360,15 @@ function calculateSingleProject(projData) {
     });
   }
 
+  // Số nhân sự sửa tay theo tháng (chế độ Tùy chỉnh): ghi đè kết quả tự tính; key = r{chỉ số dòng}_{YYYY-MM}
+  const nsOv = projData.nsOverride || {};
+  MATRIX_ROWS_META.forEach((meta, rIdx) => {
+    months.forEach((mDate, mIdx) => {
+      const ov = nsOv[`r${rIdx}_${monthKey(mDate)}`];
+      if(ov != null) rowsFinal[rIdx][mIdx] = ov;
+    });
+  });
+
   const bqlTotals = Array(numM).fill(0);
   const khoTotals = Array(numM).fill(0);
   const bptcTotals = Array(numM).fill(0);
@@ -2969,6 +3396,11 @@ function calculateSingleProject(projData) {
   };
 }
 
+// Dự án có ít nhất một hạng mục có ngày (bắt đầu / kết thúc / bàn giao)
+function projHasSchedule(pData) {
+  return (pData.treeRows || []).some(r => r.level === 3 && (r.batDau || r.ketThuc || r.banGiao));
+}
+
 function calculateVungAggregate(vungId) {
   const bqlList = getBqlRegistry(vungId);
   if(!bqlList || bqlList.length === 0) {
@@ -2990,12 +3422,13 @@ function calculateVungAggregate(vungId) {
 
   const projResults = bqlList.map(b => {
     const pData = getProjectDataSnapshot(vungId, b.id, b.ten);
-    return { bql: b, res: calculateSingleProject(pData) };
+    return { bql: b, res: calculateSingleProject(pData), sched: projHasSchedule(pData) };
   });
 
   // Tìm khoảng tháng bao phủ tất cả các dự án trong vùng
   let minD = null, maxD = null;
-  projResults.forEach(({ res }) => {
+  projResults.forEach(({ res, sched }) => {
+    if(!sched) return; // dự án chưa có tiến độ không tham gia mốc thời gian chung
     if(res.months && res.months.length > 0) {
       const s = res.months[0];
       const e = res.months[res.months.length - 1];
@@ -3003,7 +3436,7 @@ function calculateVungAggregate(vungId) {
       if(!maxD || e > maxD) maxD = new Date(e);
     }
   });
-  if(!minD) { minD = new Date(2025, 6, 1); maxD = addMonths(minD, 12); }
+  if(!minD) { minD = new Date(); maxD = new Date(); }
 
   let allMonths = [];
   let cur = new Date(minD.getFullYear(), minD.getMonth(), 1);
@@ -3013,16 +3446,7 @@ function calculateVungAggregate(vungId) {
     cur = addMonths(cur, 1);
   }
   if(allMonths.length > 48) allMonths.length = 48;
-  let months = allMonths;
-  if(filterDisplayStart || filterDisplayEnd) {
-    const startKey = filterDisplayStart || monthKey(allMonths[0]);
-    const endKey = filterDisplayEnd || monthKey(allMonths[allMonths.length - 1]);
-    const sub = allMonths.filter(m => {
-      const mk = monthKey(m);
-      return mk >= startKey && mk <= endKey;
-    });
-    if(sub.length > 0) months = sub;
-  }
+  let months = allMonths; // tổng vùng/khối: theo khoảng thời gian thực của các dự án (không lọc)
 
   const numM = months.length;
   const rowsRaw = MATRIX_ROWS_META.map(() => Array(numM).fill(0));
@@ -3102,7 +3526,8 @@ function calculateKhoiAggregate() {
         vungId: v.id,
         vungTen: v.ten,
         bql: b,
-        res: calculateSingleProject(pData)
+        res: calculateSingleProject(pData),
+        sched: projHasSchedule(pData)
       });
     });
   });
@@ -3126,7 +3551,8 @@ function calculateKhoiAggregate() {
   }
 
   let minD = null, maxD = null;
-  allProjEntries.forEach(({ res }) => {
+  allProjEntries.forEach(({ res, sched }) => {
+    if(!sched) return; // dự án chưa có tiến độ không tham gia mốc thời gian chung
     if(res.months && res.months.length > 0) {
       const s = res.months[0];
       const e = res.months[res.months.length - 1];
@@ -3134,7 +3560,7 @@ function calculateKhoiAggregate() {
       if(!maxD || e > maxD) maxD = new Date(e);
     }
   });
-  if(!minD) { minD = new Date(2025, 6, 1); maxD = addMonths(minD, 12); }
+  if(!minD) { minD = new Date(); maxD = new Date(); }
 
   let allMonths = [];
   let cur = new Date(minD.getFullYear(), minD.getMonth(), 1);
@@ -3144,16 +3570,7 @@ function calculateKhoiAggregate() {
     cur = addMonths(cur, 1);
   }
   if(allMonths.length > 48) allMonths.length = 48;
-  let months = allMonths;
-  if(filterDisplayStart || filterDisplayEnd) {
-    const startKey = filterDisplayStart || monthKey(allMonths[0]);
-    const endKey = filterDisplayEnd || monthKey(allMonths[allMonths.length - 1]);
-    const sub = allMonths.filter(m => {
-      const mk = monthKey(m);
-      return mk >= startKey && mk <= endKey;
-    });
-    if(sub.length > 0) months = sub;
-  }
+  let months = allMonths; // tổng vùng/khối: theo khoảng thời gian thực của các dự án (không lọc)
 
   const numM = months.length;
   const rowsRaw = MATRIX_ROWS_META.map(() => Array(numM).fill(0));
@@ -3482,6 +3899,7 @@ function renderTreeTable() {
         <td><input type="text" class="input-date-dmy" style="${bptcInputStyle}" value="${formatToDdMmYyyy(curBg)}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="${fFieldBg}" title="Định dạng: dd/mm/yyyy (Ví dụ: 30/05/2026)"></td>
         <td><input type="number" style="text-align:right; font-family:var(--font-mono); font-weight:600; ${bptcInputStyle}" value="${curKl}" data-id="${r.id}" data-f="${fFieldKl}"></td>
         <td><input type="text" style="text-align:center; font-size:10.5px; color:var(--text-muted); ${dvWarnStyle}" value="${escHtml(r.dv || '')}" data-id="${r.id}" data-f="dv"${dvWarnTip}></td>
+        <td>${r.loai === 'Đường giao thông, công viên' ? '' : `<input type="number" style="text-align:right; font-family:var(--font-mono);${!(r.dienTich > 0) ? ' background:#fef2f2; border-color:#dc2626;' : ''}" value="${r.dienTich > 0 ? r.dienTich : ''}" placeholder="⚠ Cần nhập" data-id="${r.id}" data-f="dienTich" title="Khối lượng hạ tầng (m²) của công trình. Cần nhập để tính CBGS/NVGS Hạ tầng">`}</td>
       `;
       tbody.appendChild(tr);
 
@@ -3496,9 +3914,9 @@ function renderTreeTable() {
           <td></td>
           <td style="text-align:center; color:#64748b;">4</td>
           <td></td>
-          <td class="col-name" colspan="${spanMeSubName}" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ bê tông, cốt thép</td>
-          <td><input type="text" class="input-date-dmy" value="${formatToDdMmYyyy(r.me1_bd || r.batDau || '')}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me1_bd"></td>
-          <td><input type="text" class="input-date-dmy" value="${formatToDdMmYyyy(r.me1_kt || r.ketThuc || '')}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me1_kt"></td>
+          <td class="col-name" colspan="${spanMeSubName}" style="padding-left:16px; color:#475569;"><div class="me-row"><span>↳ M&amp;E — GĐ bê tông, cốt thép</span>${meActsHtml(r, 1)}</div></td>
+          <td><input type="text" class="input-date-dmy" value="${meStageDates(r).bd1}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me1_bd"></td>
+          <td><input type="text" class="input-date-dmy" value="${meStageDates(r).kt1}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me1_kt"></td>
           <td></td>
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me1_kl != null ? r.me1_kl : (r.kl || '')}" data-id="${r.id}" data-f="me1_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
@@ -3513,9 +3931,9 @@ function renderTreeTable() {
           <td></td>
           <td style="text-align:center; color:#64748b;">4</td>
           <td></td>
-          <td class="col-name" colspan="${spanMeSubName}" style="padding-left:16px; color:#475569;">↳ M&amp;E — GĐ hoàn thiện</td>
-          <td><input type="text" class="input-date-dmy" value="${formatToDdMmYyyy(r.me2_bd || r.ketThuc || '')}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me2_bd"></td>
-          <td><input type="text" class="input-date-dmy" value="${formatToDdMmYyyy(r.me2_kt || r.banGiao || '')}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me2_kt"></td>
+          <td class="col-name" colspan="${spanMeSubName}" style="padding-left:16px; color:#475569;"><div class="me-row"><span>↳ M&amp;E — GĐ hoàn thiện</span>${meActsHtml(r, 2)}</div></td>
+          <td><input type="text" class="input-date-dmy" value="${meStageDates(r).bd2}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me2_bd"></td>
+          <td><input type="text" class="input-date-dmy" value="${meStageDates(r).kt2}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me2_kt"></td>
           <td></td>
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me2_kl != null ? r.me2_kl : (r.kl || '')}" data-id="${r.id}" data-f="me2_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${r.dv || 'căn'}</td>
@@ -3624,7 +4042,7 @@ function renderTreeTable() {
       const id = e.target.dataset.id;
       const f = e.target.dataset.f;
       let val = e.target.value;
-      if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl') val = parseFloat(val) || 0;
+      if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl' || f === 'dienTich') val = parseFloat(val) || 0;
       const r = currentProjectData.treeRows.find(x => x.id === id);
       if(r) {
         r[f] = val;
@@ -3868,7 +4286,7 @@ function renderSyncHesoTable(res) {
             // Mặc định hiển thị 100% nếu trong tiến độ/thi công/bàn giao và chưa tùy chỉnh
             const displayPct = isCustom
               ? (Math.round(currentProjectData.hesoCustom[key] * 100) + '%')
-              : (pr > 0 || bgStyle ? '100%' : '');
+              : (pr > 0 ? Math.round(pr * 100) + '%' : '');
             cellsHtml += `
               <td class="col-month-fixed heso-input-cell ${isCustom ? 'customized' : ''}" style="height:28px; ${bgStyle}">
                 <input type="text" 
@@ -3904,10 +4322,9 @@ function renderSyncHesoTable(res) {
           const me1KlDisp = (me1Kl != null && me1Kl !== '') ? Number(me1Kl).toLocaleString('vi-VN') : '';
           const me2KlDisp = (me2Kl != null && me2Kl !== '') ? Number(me2Kl).toLocaleString('vi-VN') : '';
 
-          const me1Bd = r.me1_bd || r.batDau || '';
-          const me1Kt = r.me1_kt || r.ketThuc || '';
-          const me2Bd = r.me2_bd || r.ketThuc || '';
-          const me2Kt = r.me2_kt || r.banGiao || '';
+          // Cùng ngày với phần tính M&E (ô nhập thì dùng ngày nhập, ô trống thì tự tính)
+          const msd = meStageDates(r);
+          const me1Bd = msd.bd1, me1Kt = msd.kt1, me2Bd = msd.bd2, me2Kt = msd.kt2;
 
           html += `
             <tr class="tr-level-4-me" style="height:28px;">
@@ -3917,7 +4334,7 @@ function renderSyncHesoTable(res) {
               ${months.map((m) => {
                 const bg1 = getHesoCellPhaseBgStyle(me1Bd, me1Kt, '', m);
                 const tip1 = getHesoCellPhaseTooltip(me1Bd, me1Kt, '', m);
-                return `<td class="col-month-fixed" style="color:#94a3b8; text-align:center; height:28px; ${bg1}" title="${escHtml(tip1)}">·</td>`;
+                return `<td class="col-month-fixed" style="color:#94a3b8; text-align:center; height:28px; ${bg1}" title="${escHtml(tip1)}">${stageCellInner(r, 'me1', me1Bd, me1Kt, m)}</td>`;
               }).join('')}
             </tr>
             <tr class="tr-level-4-me" style="height:28px;">
@@ -3927,7 +4344,7 @@ function renderSyncHesoTable(res) {
               ${months.map((m) => {
                 const bg2 = getHesoCellPhaseBgStyle(me2Bd, me2Kt, '', m);
                 const tip2 = getHesoCellPhaseTooltip(me2Bd, me2Kt, '', m);
-                return `<td class="col-month-fixed" style="color:#94a3b8; text-align:center; height:28px; ${bg2}" title="${escHtml(tip2)}">·</td>`;
+                return `<td class="col-month-fixed" style="color:#94a3b8; text-align:center; height:28px; ${bg2}" title="${escHtml(tip2)}">${stageCellInner(r, 'me2', me2Bd, me2Kt, m)}</td>`;
               }).join('')}
             </tr>
           `;
@@ -4115,11 +4532,11 @@ function renderChart(res) {
   const lblChartTitle = document.getElementById('lblChartHeaderTitle');
   const scopeLabel = res.aggScope === 'KHOI'
     ? 'Khối XD (Toàn bộ Vùng & Dự án)'
-    : (document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng');
+    : (document.querySelector(`[data-vung="${currentVungId}"]`)?.textContent || 'Vùng').replace(/\s*\(.*\)\s*$/, '').trim();
   if(lblChartTitle) {
     lblChartTitle.textContent = isAgg
-      ? `📊 Biểu đồ phân bổ nhân lực Tổng${tabSuffix} — ${scopeLabel} (Gộp ${res.projectCount} dự án)`
-      : `📊 Biểu đồ phân bổ nhân lực${tabSuffix} — ${currentProjectData?.ten || ''}`;
+      ? `📊 Biểu đồ định biên${tabSuffix} — ${scopeLabel} (${res.projectCount} DA)`
+      : `📊 Biểu đồ định biên${tabSuffix} — ${currentProjectData?.ten || ''}`;
   }
 
   const barsCells = months.map((m, i) => {
@@ -4329,19 +4746,301 @@ function renderRow(meta, rIdx, res) {
 
   months.forEach((mDate, mIdx) => {
     const finalVal = res.rowsFinal[rIdx][mIdx];
-    cellsHtml += `<td class="num-cell col-month-fixed">${finalVal > 0 ? finalVal : ''}</td>`;
+    if(!res.isAggregate && nsEditMode) {
+      const key = `r${rIdx}_${monthKey(mDate)}`;
+      const ov = currentProjectData.nsOverride && currentProjectData.nsOverride[key] != null;
+      cellsHtml += `<td class="num-cell col-month-fixed"><input type="number" min="0" step="0.5" class="ns-input${ov ? ' ns-custom' : ''}" data-key="${key}" value="${finalVal > 0 ? finalVal : ''}" title="Gõ số để sửa tay; xóa ô để tính lại theo định mức"></td>`;
+    } else {
+      cellsHtml += `<td class="num-cell col-month-fixed">${finalVal > 0 ? finalVal : ''}</td>`;
+    }
   });
 
   return `
     <tr>
       <td class="col-freeze-1">${meta.stt}</td>
       <td class="col-freeze-2">${meta.bp}</td>
-      <td class="col-freeze-3">${meta.cd}</td>
+      <td class="col-freeze-3">${meta.cd}${(nsEditMode && !res.isAggregate && currentProjectData.nsOverride && Object.keys(currentProjectData.nsOverride).some(k => k.startsWith(`r${rIdx}_`))) ? ` <button type="button" class="ns-reset" data-r="${rIdx}" title="Xóa số sửa tay của dòng này, tính lại theo định mức">↺ Tự tính</button>` : ''}</td>
       <td class="col-freeze-4">${meta.cap || ''}</td>
       ${cellsHtml}
     </tr>
   `;
 }
+
+// ===== Chế độ Tùy chỉnh bảng Nhân sự: sửa tay số người từng tháng (có Hoàn tác / Ctrl+Z) =====
+let nsEditMode = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const header = document.querySelector('.nhansu-section > .card-header');
+  if(!header) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ns-toggle-btn';
+  btn.textContent = '✎ Tùy chỉnh';
+  btn.title = 'Bật để sửa trực tiếp số nhân sự từng tháng';
+  btn.addEventListener('click', () => {
+    nsEditMode = !nsEditMode;
+    btn.classList.toggle('active', nsEditMode);
+    refreshDashboard();
+  });
+  header.appendChild(btn);
+});
+
+// Sửa tay một ô: để trống = quay về tự tính
+document.addEventListener('change', e => {
+  const inp = e.target;
+  if(!inp.matches || !inp.matches('input.ns-input') || !currentProjectData) return;
+  if(!currentProjectData.nsOverride) currentProjectData.nsOverride = {};
+  const k = inp.dataset.key;
+  const v = parseFloat(String(inp.value).replace(',', '.'));
+  if(inp.value.trim() === '' || isNaN(v) || v < 0) delete currentProjectData.nsOverride[k];
+  else currentProjectData.nsOverride[k] = v;
+  saveCurrentProject();
+  refreshDashboard();
+});
+
+// Nút ↺ Tự tính: xóa mọi số sửa tay của một dòng
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.ns-reset');
+  if(!btn || !currentProjectData || !currentProjectData.nsOverride) return;
+  const pre = `r${btn.dataset.r}_`;
+  Object.keys(currentProjectData.nsOverride).forEach(k => { if(k.startsWith(pre)) delete currentProjectData.nsOverride[k]; });
+  saveCurrentProject();
+  refreshDashboard();
+});
+
+// ===== Lưới kiểu Excel cho bảng Nhân sự và Bảng Hệ số tiến độ / nhân sự =====
+// Chọn ô: click, kéo, Shift+click, mũi tên · Delete: xóa các ô đã chọn · Gõ: thay nội dung ô · Đúp: sửa ô
+// Ctrl+C / Ctrl+V: copy và paste nhiều ô (tương thích Excel) · Hoàn tác (Ctrl+Z) vẫn hoạt động
+let hsEditMode = false;
+const xl = { sel: new Set(), anchor: null, anchorKey: null, dragging: false, editing: null, clip: '' };
+
+function xlIsCell(el) { return !!(el && el.matches && el.matches('input[data-tab][data-mk], input.ns-input')); }
+function xlKey(inp) {
+  return inp.classList.contains('ns-input') ? 'n|' + inp.dataset.key : `h|${inp.dataset.tab}|${inp.dataset.id}|${inp.dataset.mk}`;
+}
+function xlEditable(inp) { return inp.classList.contains('ns-input') ? nsEditMode : hsEditMode; }
+function xlAllInputs() { return Array.from(document.querySelectorAll('input[data-tab][data-mk], input.ns-input')); }
+function xlPos(inp) {
+  const td = inp.closest('td'), tr = td.closest('tr');
+  return { r: Array.from(tr.parentElement.children).indexOf(tr), c: td.cellIndex, tb: tr.parentElement };
+}
+function xlCellAt(tb, r, c) {
+  const tr = tb.children[r];
+  const td = tr && tr.children[c];
+  const inp = td && td.querySelector(':scope > input');
+  return inp && xlIsCell(inp) ? inp : null;
+}
+function xlAnchor() {
+  if(xl.anchor && xl.anchor.isConnected) return xl.anchor;
+  if(!xl.anchorKey) return null;
+  xl.anchor = xlAllInputs().find(i => xlKey(i) === xl.anchorKey) || null;
+  return xl.anchor;
+}
+function xlApplyClasses() {
+  xlAllInputs().forEach(i => {
+    const td = i.closest('td');
+    if(td) td.classList.toggle('xl-sel', xl.sel.has(xlKey(i)));
+  });
+}
+function xlSetAnchor(inp) { xl.anchor = inp; xl.anchorKey = xlKey(inp); }
+function xlRectInputs(a, b) {
+  const pa = xlPos(a), pb = xlPos(b);
+  const r1 = Math.min(pa.r, pb.r), r2 = Math.max(pa.r, pb.r), c1 = Math.min(pa.c, pb.c), c2 = Math.max(pa.c, pb.c);
+  const out = [];
+  for(let r = r1; r <= r2; r++) for(let c = c1; c <= c2; c++) {
+    const inp = xlCellAt(pa.tb, r, c);
+    if(inp) out.push(inp);
+  }
+  return out;
+}
+function xlSelectRect(a, b) {
+  xl.sel = new Set(xlRectInputs(a, b).map(xlKey));
+  xlApplyClasses();
+}
+function xlClearSelection() {
+  xl.sel = new Set();
+  xlApplyClasses();
+}
+
+// Ghi một ô (có kiểm tra chế độ Tùy chỉnh của bảng đó)
+function xlWriteOne(inp, text) {
+  if(!xlEditable(inp) || !currentProjectData) return;
+  const t = String(text).trim();
+  if(inp.classList.contains('ns-input')) {
+    if(!currentProjectData.nsOverride) currentProjectData.nsOverride = {};
+    const v = parseFloat(t.replace(',', '.'));
+    if(t === '' || isNaN(v) || v < 0) delete currentProjectData.nsOverride[inp.dataset.key];
+    else currentProjectData.nsOverride[inp.dataset.key] = v;
+  } else {
+    if(!currentProjectData.hesoCustom) currentProjectData.hesoCustom = {};
+    const key = `${inp.dataset.tab}_${inp.dataset.id}_${inp.dataset.mk}`;
+    const num = parseFloat(t.replace('%', '').replace(',', '.'));
+    if(t === '' || isNaN(num) || num < 0) delete currentProjectData.hesoCustom[key];
+    else currentProjectData.hesoCustom[key] = num > 1 ? num / 100 : num; // "50" hoặc "50%" = 50%
+  }
+}
+function xlCommit() {
+  xl.editing = null;
+  saveCurrentProject();
+  refreshDashboard();
+  requestAnimationFrame(xlApplyClasses);
+}
+
+function xlStartEdit(inp, firstChar) {
+  if(!xlEditable(inp)) return;
+  xl.editing = inp;
+  inp.readOnly = false;
+  if(firstChar != null) {
+    inp.value = firstChar;
+    inp.focus();
+    inp.setSelectionRange(inp.value.length, inp.value.length);
+  } else {
+    inp.focus();
+    inp.select();
+  }
+}
+
+function xlCopy() {
+  const a = xlAnchor();
+  if(!a) return;
+  const sel = xlAllInputs().filter(i => xl.sel.has(xlKey(i)));
+  if(!sel.length) return;
+  const ps = sel.map(xlPos);
+  const r1 = Math.min(...ps.map(p => p.r)), r2 = Math.max(...ps.map(p => p.r));
+  const c1 = Math.min(...ps.map(p => p.c)), c2 = Math.max(...ps.map(p => p.c));
+  const tb = ps[0].tb;
+  const lines = [];
+  for(let r = r1; r <= r2; r++) {
+    const cols = [];
+    for(let c = c1; c <= c2; c++) {
+      const inp = xlCellAt(tb, r, c);
+      cols.push(inp && xl.sel.has(xlKey(inp)) ? inp.value : '');
+    }
+    lines.push(cols.join('\t'));
+  }
+  xl.clip = lines.join('\n');
+  try { navigator.clipboard.writeText(xl.clip); } catch(e) {}
+}
+
+async function xlPaste() {
+  const a = xlAnchor();
+  if(!a) return;
+  let text = xl.clip;
+  try { const t = await navigator.clipboard.readText(); if(t) text = t; } catch(e) {}
+  if(!text) return;
+  const rows = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map(l => l.split('\t'));
+  const selInputs = xlAllInputs().filter(i => xl.sel.has(xlKey(i)));
+  const targets = [];
+  if(rows.length === 1 && rows[0].length === 1 && selInputs.length > 1) {
+    selInputs.forEach(i => targets.push([i, rows[0][0]])); // 1 ô copy → điền cả vùng chọn
+  } else {
+    const pa = xlPos(a);
+    rows.forEach((cols, ri) => cols.forEach((val, ci) => {
+      const inp = xlCellAt(pa.tb, pa.r + ri, pa.c + ci);
+      if(inp) targets.push([inp, val]);
+    }));
+  }
+  let n = 0;
+  targets.forEach(([i, v]) => { if(xlEditable(i)) { xlWriteOne(i, v); n++; } });
+  if(n) xlCommit();
+}
+
+// Chuột: click chọn, kéo chọn vùng, Shift+click mở rộng vùng, đúp để sửa
+document.addEventListener('mousedown', e => {
+  const inp = e.target.closest && e.target.closest('input');
+  if(!xlIsCell(inp)) { if(xl.sel.size) xlClearSelection(); return; }
+  if(xl.editing === inp) return; // đang sửa: để con trỏ hoạt động bình thường
+  e.preventDefault();
+  if(e.shiftKey && xlAnchor()) {
+    xlSelectRect(xlAnchor(), inp);
+  } else {
+    xlSetAnchor(inp);
+    xl.sel = new Set([xlKey(inp)]);
+    xl.dragging = true;
+    xlApplyClasses();
+  }
+});
+document.addEventListener('mouseover', e => {
+  if(!xl.dragging || !xlAnchor()) return;
+  const inp = e.target.closest && e.target.closest('input');
+  if(xlIsCell(inp)) xlSelectRect(xlAnchor(), inp);
+});
+document.addEventListener('mouseup', () => { xl.dragging = false; });
+document.addEventListener('dblclick', e => {
+  const inp = e.target.closest && e.target.closest('input');
+  if(xlIsCell(inp)) { xlSetAnchor(inp); xlStartEdit(inp, null); }
+});
+
+// Ô đang được sửa: đổi giá trị xong thì ghi (change) và trả lại chế độ chỉ đọc cho bảng Hệ số
+document.addEventListener('change', e => {
+  const inp = e.target;
+  if(!xlIsCell(inp) || inp.classList.contains('ns-input')) return; // ô Nhân sự do listener riêng xử lý
+  if(!hsEditMode || !currentProjectData) return;
+  xlWriteOne(inp, inp.value);
+  xlCommit();
+});
+document.addEventListener('focusout', e => {
+  const inp = e.target;
+  if(xlIsCell(inp) && !inp.classList.contains('ns-input')) inp.readOnly = true;
+  if(xl.editing === inp) xl.editing = null;
+});
+
+// Bàn phím
+document.addEventListener('keydown', e => {
+  if(xl.editing) {
+    if(e.key === 'Enter') { e.preventDefault(); xl.editing.blur(); }
+    else if(e.key === 'Escape') { e.preventDefault(); xl.editing.value = xl.editing.defaultValue; xl.editing.blur(); }
+    return;
+  }
+  const a = xlAnchor();
+  if(!a) return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  const mod = e.ctrlKey || e.metaKey;
+  if(mod) {
+    if(e.key === 'c' || e.key === 'C') { e.preventDefault(); xlCopy(); }
+    else if(e.key === 'v' || e.key === 'V') { e.preventDefault(); xlPaste(); }
+    return; // Ctrl+Z / Ctrl+Y để hệ thống Hoàn tác xử lý
+  }
+  if(e.key === 'Delete' || e.key === 'Backspace') {
+    if(!xlEditable(a)) return;
+    e.preventDefault();
+    const sel = xlAllInputs().filter(i => xl.sel.has(xlKey(i)));
+    sel.forEach(i => xlWriteOne(i, ''));
+    if(sel.length) xlCommit();
+    return;
+  }
+  const dir = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowRight: [0, 1], ArrowLeft: [0, -1] }[e.key];
+  if(dir) {
+    e.preventDefault();
+    const p = xlPos(a);
+    const nxt = xlCellAt(p.tb, p.r + dir[0], p.c + dir[1]);
+    if(nxt) { xlSetAnchor(nxt); xl.sel = new Set([xlKey(nxt)]); xlApplyClasses(); }
+    return;
+  }
+  if(e.key.length === 1) { // gõ số / chữ: thay nội dung ô đang chọn
+    if(!xlEditable(a)) return;
+    e.preventDefault();
+    xlStartEdit(a, e.key);
+  }
+});
+
+// Nút ✎ Tùy chỉnh cho bảng Hệ số tiến độ (bảng Nhân sự đã có nút riêng)
+document.addEventListener('DOMContentLoaded', () => {
+  const header = document.querySelector('.heso-section > .card-header');
+  if(!header) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ns-toggle-btn';
+  btn.textContent = '✎ Tùy chỉnh';
+  btn.title = 'Bật để sửa trực tiếp hệ số tiến độ từng tháng';
+  btn.addEventListener('click', () => {
+    hsEditMode = !hsEditMode;
+    btn.classList.toggle('active', hsEditMode);
+    refreshDashboard();
+  });
+  header.appendChild(btn);
+});
 
 let currentDinhMucView = 'sync'; // 'sync' | 'bql' | 'kho' | 'bptc'
 
@@ -4400,7 +5099,8 @@ function bindDmInputs(tbody) {
         return;
       }
       const k = e.target.dataset.dmk;
-      const v = parseFloat(e.target.value);
+      // Ô định mức dạng text có dấu chấm phân nghìn (14.000): bỏ dấu chấm trước khi đọc số
+      const v = e.target.type === 'text' ? parseFloat(e.target.value.replace(/\./g, '')) : parseFloat(e.target.value);
       if(!currentProjectData.dinhMucCustom) currentProjectData.dinhMucCustom = {};
       if(!isNaN(v) && v > 0) {
         currentProjectData.dinhMucCustom[k] = v;
@@ -4727,11 +5427,11 @@ function renderDinhMucTable() {
     const vKhac = (kKhac && dmC[kKhac] != null) ? dmC[kKhac] : meta.ct_tho;
 
     const cellTtTho = (hasThap && kThap)
-      ? `<input type="number" class="dm-input" data-dmk="${kThap}" value="${vThap}" title="Sửa ĐM Thấp tầng Xây thô">`
+      ? `<input type="text" inputmode="numeric" class="dm-input" data-dmk="${kThap}" value="${Number(vThap).toLocaleString('vi-VN')}" title="Sửa ĐM Thấp tầng Xây thô">`
       : fmtNumCell(meta.tt_tho);
 
     const cellCtTho = (hasKhac && kKhac && typeof meta.ct_tho === 'number')
-      ? `<input type="number" class="dm-input" data-dmk="${kKhac}" value="${vKhac}" title="Sửa ĐM Cao tầng / Khác">`
+      ? `<input type="text" inputmode="numeric" class="dm-input" data-dmk="${kKhac}" value="${Number(vKhac).toLocaleString('vi-VN')}" title="Sửa ĐM Cao tầng / Khác">`
       : fmtNumCell(meta.ct_tho);
 
     return `
@@ -5073,8 +5773,593 @@ function updateStats(res) {
   }
 }
 
+/* ==========================================================================
+   ĐĂNG NHẬP: Google (phải được admin duyệt phân quyền) hoặc tài khoản quản trị
+   ========================================================================== */
+const ADMIN_LOGIN = { name: 'admin', pass: '55555' };
+let authUser = null; // { role: 'admin'|'khoi'|'vung'|'bql', email, name, vungId, bqlId }
+
+function hideGate() {
+  const g = document.getElementById('authGate');
+  if(g) g.style.display = 'none';
+  refreshAuthUI();
+}
+
+function renderGate(msg, showLogout) {
+  let g = document.getElementById('authGate');
+  if(!g) {
+    g = document.createElement('div');
+    g.id = 'authGate';
+    g.style.cssText = 'position:fixed;inset:0;z-index:20000;background:rgba(15,23,42,.92);display:flex;align-items:center;justify-content:center;padding:16px;';
+    document.body.appendChild(g);
+  }
+  g.style.display = 'flex';
+  g.innerHTML = `
+    <div style="background:#fff;border-radius:10px;padding:22px;width:340px;max-width:100%;color:#0f172a;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Quản lý Định biên</div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:14px;">${msg || 'Đăng nhập bằng tài khoản Google công ty.'}</div>
+      <button id="gateGoogle" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-weight:600;cursor:pointer;">Đăng nhập bằng Google</button>
+      <div style="font-size:11px;color:#94a3b8;margin:14px 0 6px;text-align:center;">— Quản trị viên —</div>
+      <input id="gateAdmName" placeholder="Tên đăng nhập" style="width:100%;padding:7px;border:1px solid #cbd5e1;border-radius:6px;margin-bottom:6px;box-sizing:border-box;">
+      <input id="gateAdmPass" type="password" placeholder="Mật khẩu" style="width:100%;padding:7px;border:1px solid #cbd5e1;border-radius:6px;margin-bottom:8px;box-sizing:border-box;">
+      <button id="gateAdmin" style="width:100%;padding:9px;border:none;border-radius:6px;background:#1e40af;color:#fff;font-weight:600;cursor:pointer;">Đăng nhập quản trị</button>
+      ${showLogout ? '<div style="text-align:center;margin-top:12px;"><a href="#" id="gateLogout" style="font-size:12px;color:#64748b;">Đăng xuất tài khoản Google</a></div>' : ''}
+    </div>`;
+  g.querySelector('#gateGoogle').onclick = () => {
+    if(!window._auth) return renderGate('Chưa kết nối được Google. Kiểm tra mạng rồi tải lại trang.');
+    window._auth.loginGoogle().catch(err => renderGate('Đăng nhập lỗi: ' + err.message));
+  };
+  g.querySelector('#gateAdmin').onclick = () => {
+    const n = g.querySelector('#gateAdmName').value.trim();
+    const p = g.querySelector('#gateAdmPass').value;
+    if(n === ADMIN_LOGIN.name && p === ADMIN_LOGIN.pass) {
+      authUser = { role: 'admin', name: 'admin', email: '' };
+      try { sessionStorage.setItem('db_v2_admin', '1'); } catch(e) {}
+      hideGate();
+    } else {
+      renderGate('Sai tên đăng nhập hoặc mật khẩu quản trị.', showLogout);
+    }
+  };
+  const lo = g.querySelector('#gateLogout');
+  if(lo) lo.onclick = e => { e.preventDefault(); if(window._auth) window._auth.logout(); };
+}
+
+// Tài khoản Google mới: tạo hồ sơ "chờ duyệt". Chỉ vào được khi admin đã duyệt.
+async function checkGoogleUser(email, name) {
+  const key = email.toLowerCase();
+  let rec;
+  try { rec = await window._cloud.get('users', key); }
+  catch(e) { renderGate('Không đọc được dữ liệu người dùng. Thử lại sau.', true); return; }
+  if(!rec) {
+    rec = { email: key, name: name || key, status: 'pending', role: 'bql', vungId: '', bqlId: '' };
+    try { await window._cloud.put('users', key, rec); } catch(e) {}
+  }
+  if(rec.status !== 'approved') {
+    renderGate(`Tài khoản ${key} đã gửi yêu cầu, đang chờ admin duyệt phân quyền.`, true);
+    return;
+  }
+  authUser = { ...rec };
+  hideGate();
+}
+
+function startAuth() {
+  let adminSession = false;
+  try { adminSession = sessionStorage.getItem('db_v2_admin') === '1'; } catch(e) {}
+  if(adminSession) { authUser = { role: 'admin', name: 'admin', email: '' }; hideGate(); }
+  if(!window._auth) {
+    if(!authUser) renderGate('Chưa kết nối được Google. Vẫn có thể đăng nhập quản trị.');
+    return;
+  }
+  window._auth.onChange(user => {
+    if(!user) { if(!authUser) renderGate(); return; }
+    if(authUser && authUser.role === 'admin' && !authUser.email) return; // đang là admin nội bộ
+    checkGoogleUser(user.email || '', user.displayName || '');
+  });
+}
+
+function refreshAuthUI() {
+  const btn = document.getElementById('btnAdminSettings');
+  if(btn) btn.style.display = (authUser && authUser.role === 'admin') ? 'inline-block' : 'none';
+  const out = document.getElementById('btnSignOut');
+  if(out) out.style.display = authUser ? 'inline-block' : 'none';
+}
+
+// Đăng xuất: tài khoản Google thì đăng xuất Firebase; tài khoản quản trị thì xóa phiên
+function signOutApp() {
+  const wasGoogle = authUser && authUser.email;
+  authUser = null;
+  try { sessionStorage.removeItem('db_v2_admin'); } catch(e) {}
+  if(wasGoogle && window._auth) {
+    window._auth.logout().catch(() => {});
+  } else {
+    renderGate();
+  }
+  refreshAuthUI();
+}
+
+// Bảng quản trị: duyệt tài khoản và phân quyền theo Khối / Vùng / BQLXD
+function openAdminPanel() {
+  let m = document.getElementById('adminPanel');
+  if(!m) {
+    m = document.createElement('div');
+    m.id = 'adminPanel';
+    m.style.cssText = 'position:fixed;inset:0;z-index:19000;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:16px;';
+    m.addEventListener('click', e => { if(e.target === m) m.style.display = 'none'; });
+    document.body.appendChild(m);
+  }
+  m.style.display = 'flex';
+  m.innerHTML = `<div style="background:#fff;border-radius:10px;padding:18px;width:860px;max-width:100%;max-height:85vh;overflow:auto;color:#0f172a;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b>⚙ Quản trị tài khoản</b>
+      <button id="apClose" style="border:none;background:none;font-size:18px;cursor:pointer;">✕</button></div>
+    <div id="apBody" style="font-size:12px;">Đang tải...</div>
+    <div id="apProjects" style="font-size:12px;margin-top:18px;border-top:2px solid #e2e8f0;padding-top:10px;"></div></div>`;
+  m.querySelector('#apClose').onclick = () => { m.style.display = 'none'; };
+  loadAdminUsers(m.querySelector('#apBody'));
+  renderAdminProjects(m.querySelector('#apProjects'));
+}
+
+// Tất cả BQLXD đang có trong phần mềm (theo các Vùng) để chọn cho tài khoản
+function allBqlOptions() {
+  const out = [];
+  DEFAULT_VUNGS.forEach(v => (getBqlRegistry(v.id) || []).forEach(b => out.push(b)));
+  return out;
+}
+
+// Danh sách dự án (BQLXD) đã tạo, để admin xóa
+function renderAdminProjects(el) {
+  const rows = [];
+  DEFAULT_VUNGS.forEach(v => (getBqlRegistry(v.id) || []).forEach(b => rows.push({ vungId: v.id, vungTen: v.ten, id: b.id, ten: b.ten })));
+  el.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Dự án / BQLXD đã tạo</div>`
+    + (rows.length
+      ? `<table style="width:100%;border-collapse:collapse;">${rows.map(r => `<tr style="border-top:1px solid #e2e8f0;">
+          <td style="padding:6px;">${escHtml(r.ten)}</td>
+          <td style="color:#64748b;">${escHtml(r.vungTen)}</td>
+          <td style="text-align:center;"><button type="button" data-del-vung="${escHtml(r.vungId)}" data-del-id="${escHtml(r.id)}" style="padding:2px 10px;color:#b91c1c;">Xóa</button></td>
+        </tr>`).join('')}</table>`
+      : '<div>Chưa có dự án nào.</div>');
+  el.querySelectorAll('button[data-del-id]').forEach(btn => {
+    btn.onclick = () => deleteBql(btn.dataset.delVung, btn.dataset.delId, btn.closest('tr'));
+  });
+}
+
+// Xóa dự án: gỡ khỏi danh sách, xóa dữ liệu trên máy này và trên Cloud
+async function deleteBql(vungId, bqlId, rowEl) {
+  const list = getBqlRegistry(vungId) || [];
+  const b = list.find(x => x.id === bqlId);
+  if(!b) return;
+  if(!confirm(`Xóa dự án "${b.ten}"?\n\nToàn bộ hạng mục, tiến độ và định mức của dự án này sẽ bị xóa khỏi máy này và Cloud. Không thể hoàn tác.`)) return;
+  const key = makeStorageKey(vungId, bqlId);
+  saveBqlRegistry(vungId, list.filter(x => x.id !== bqlId));
+  try {
+    localStorage.removeItem(key);
+    localStorage.removeItem(syncKey(key));
+    localStorage.removeItem('db_v2_dirty_' + key);
+  } catch(e) {}
+  delete projectHistoryMap[key];
+  if(window._cloud && window._cloud.del) {
+    try { await window._cloud.del('projects', key); } catch(e) { console.warn('[Cloud] xóa lỗi:', e); }
+  }
+  if(currentVungId === vungId && currentBqlId === bqlId) {
+    const rest = getBqlRegistry(vungId) || [];
+    currentBqlId = rest.length ? rest[0].id : null;
+    if(currentBqlId) loadProject(vungId, currentBqlId);
+    else currentProjectData = null;
+  }
+  if(rowEl) rowEl.remove();
+  renderOrgHierarchyButtons();
+  refreshDashboard();
+  showUndoToast(`🗑️ Đã xóa dự án "${b.ten}"`);
+}
+
+async function loadAdminUsers(body) {
+  let users = {};
+  try { users = await window._cloud.getAll('users'); }
+  catch(e) { body.textContent = 'Không tải được danh sách tài khoản.'; return; }
+  const ids = Object.keys(users).sort();
+  if(!ids.length) { body.textContent = 'Chưa có tài khoản Google nào đăng nhập.'; return; }
+  const roles = [['bql', 'BQLXD'], ['vung', 'Vùng'], ['khoi', 'Khối'], ['admin', 'Admin']];
+  body.innerHTML = `<table style="width:100%; border-collapse:collapse;">
+    <thead><tr style="background:#f1f5f9;"><th style="text-align:left;padding:6px;">Email</th><th>Trạng thái</th><th>Vai trò</th><th>Vùng</th><th>Mã BQLXD</th><th></th></tr></thead>
+    <tbody>${ids.map(id => {
+      const u = users[id];
+      return `<tr data-id="${escHtml(id)}" style="border-top:1px solid #e2e8f0;">
+        <td style="padding:6px;">${escHtml(id)}<div style="color:#64748b;">${escHtml(u.name || '')}</div></td>
+        <td style="text-align:center;"><select data-f="status"><option value="pending"${u.status !== 'approved' ? ' selected' : ''}>Chờ duyệt</option><option value="approved"${u.status === 'approved' ? ' selected' : ''}>Đã duyệt</option></select></td>
+        <td style="text-align:center;"><select data-f="role">${roles.map(([v, t]) => `<option value="${v}"${u.role === v ? ' selected' : ''}>${t}</option>`).join('')}</select></td>
+        <td style="text-align:center;"><select data-f="vungId"><option value="">—</option>${DEFAULT_VUNGS.map(v => `<option value="${v.id}"${u.vungId === v.id ? ' selected' : ''}>${escHtml(v.ten)}</option>`).join('')}</select></td>
+        <td style="text-align:center;"><select data-f="bqlId" style="max-width:200px;"><option value="">—</option>${allBqlOptions().map(b => `<option value="${escHtml(b.id)}"${u.bqlId === b.id ? ' selected' : ''}>${escHtml(b.ten)}</option>`).join('')}</select></td>
+        <td style="text-align:center;"><button type="button" data-save="1" style="padding:2px 10px;">Lưu</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  body.querySelectorAll('button[data-save]').forEach(btn => {
+    btn.onclick = async () => {
+      const tr = btn.closest('tr');
+      const id = tr.dataset.id;
+      const g = f => tr.querySelector(`[data-f="${f}"]`).value;
+      const rec = { ...users[id], email: id, status: g('status'), role: g('role'), vungId: g('vungId'), bqlId: g('bqlId') };
+      try { await window._cloud.put('users', id, rec); btn.textContent = 'Đã lưu'; }
+      catch(e) { btn.textContent = 'Lỗi'; }
+    };
+  });
+}
+
+// Nút ⚙ Quản trị (chỉ admin thấy) cạnh trạng thái Cloud; khởi động đăng nhập
+document.addEventListener('DOMContentLoaded', () => {
+  const badge = document.getElementById('fbStatusBadge');
+  if(badge) {
+    const b = document.createElement('button');
+    b.id = 'btnAdminSettings';
+    b.type = 'button';
+    b.textContent = '⚙ Quản trị';
+    b.title = 'Quản trị tài khoản (chỉ admin)';
+    b.style.cssText = 'display:none;margin-left:6px;font-size:10.5px;padding:2px 8px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;cursor:pointer;';
+    b.addEventListener('click', openAdminPanel);
+    badge.parentNode.insertBefore(b, badge.nextSibling);
+    const out = document.createElement('button');
+    out.id = 'btnSignOut';
+    out.type = 'button';
+    out.textContent = '⎋ Đăng xuất';
+    out.title = 'Đăng xuất khỏi phần mềm';
+    out.style.cssText = 'display:none;margin-left:6px;font-size:10.5px;padding:2px 8px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;cursor:pointer;';
+    out.addEventListener('click', signOutApp);
+    b.parentNode.insertBefore(out, b.nextSibling);
+  }
+  startAuth();
+  refreshAuthUI();
+});
+
+// Tiêu đề hai khung cùng hàng luôn cao bằng nhau; tự tính lại khi khung co giãn (kéo cột, kéo thanh chia...)
+document.addEventListener('DOMContentLoaded', () => {
+  const grids = Array.from(document.querySelectorAll('.dashboard-row-grid'));
+  const sync = () => {
+    grids.forEach(grid => {
+      const hs = Array.from(grid.children)
+        .map(c => c.querySelector(':scope > .card-header') || c.querySelector('.card-header'))
+        .filter(Boolean);
+      if(hs.length < 2) return;
+      hs.forEach(h => { h.style.height = 'auto'; });
+      const maxH = Math.max(...hs.map(h => h.offsetHeight));
+      hs.forEach(h => { h.style.height = maxH + 'px'; });
+    });
+  };
+  if(typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => sync());
+    document.querySelectorAll('.dashboard-row-grid > * > .card-header').forEach(h => ro.observe(h));
+  }
+  sync();
+});
+
+// Chuyển nhóm nút Ẩn trái / 2 Nửa / Ẩn phải và Web / Mobile xuống hàng Khối XD · BQLXD
+document.addEventListener('DOMContentLoaded', () => {
+  // Ẩn phải / 2 Nửa / Ẩn trái: cùng hàng với Khối XD; Web / Mobile: cùng hàng với BQL DAMB
+  const rowKhoi = document.querySelector('.org-hierarchy-bar .org-row');
+  const rowVungEl = document.getElementById('rowVung');
+  const viewBtn = document.getElementById('btnHideRightCol');
+  const modeBtn = document.getElementById('btnViewModeWeb');
+  if(viewBtn && rowKhoi) { const g = viewBtn.parentElement; g.style.marginLeft = 'auto'; rowKhoi.appendChild(g); }
+  if(modeBtn && rowVungEl) { const g = modeBtn.parentElement; g.style.marginLeft = 'auto'; rowVungEl.appendChild(g); }
+});
+
+// Tab trong bảng Hạng mục: lưu ô đang gõ rồi chuyển sang ô kế tiếp (Shift+Tab: ô trước)
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Tab' || !e.target.closest || !e.target.closest('#treeTable')) return;
+  const inputs = Array.from(document.querySelectorAll('#treeTable input'));
+  const i = inputs.indexOf(e.target);
+  if(i < 0) return;
+  const next = inputs[e.shiftKey ? i - 1 : i + 1];
+  if(!next) return;
+  e.preventDefault();
+  const target = { id: next.dataset.id, f: next.dataset.f };
+  e.target.blur(); // ghi giá trị (change) và vẽ lại bảng
+  requestAnimationFrame(() => {
+    const el = document.querySelector(`#treeTable input[data-id="${target.id}"][data-f="${target.f}"]`);
+    if(el) { el.focus(); if(el.select) el.select(); }
+  });
+});
+
+// Gợi ý tên dự án khi nhập tên BQLXD / dự án mới (gõ vài chữ là hiện danh sách)
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('newBqlName');
+  if(!inp || typeof DS_DU_AN === 'undefined') return;
+  const dl = document.createElement('datalist');
+  dl.id = 'dlDuAn';
+  dl.innerHTML = DS_DU_AN.map(s => `<option value="${escHtml(s)}">`).join('');
+  document.body.appendChild(dl);
+  inp.setAttribute('list', 'dlDuAn');
+});
+
+// Kéo mép phải tiêu đề cột Chức danh của khung Diễn giải để đổi độ rộng (nhớ cho phiên sau)
+(function initDgCdResize() {
+  const KEY = 'db_v2_dg_cd_w';
+  const root = document.documentElement;
+  try {
+    const w = parseInt(localStorage.getItem(KEY), 10);
+    if(w >= 80) root.style.setProperty('--dg-cd-w', w + 'px');
+  } catch(e) {}
+  let drag = null;
+  document.addEventListener('mousedown', e => {
+    const th = e.target.closest && e.target.closest('#diengiaiWrap th.dg-cd-h');
+    if(!th || e.button !== 0) return;
+    const r = th.getBoundingClientRect();
+    if(e.clientX < r.right - 6) return;
+    e.preventDefault();
+    drag = { startX: e.clientX, startW: r.width };
+    document.body.style.cursor = 'col-resize';
+  });
+  document.addEventListener('mousemove', e => {
+    if(!drag) return;
+    root.style.setProperty('--dg-cd-w', Math.max(80, Math.min(500, drag.startW + e.clientX - drag.startX)) + 'px');
+  });
+  document.addEventListener('mouseup', () => {
+    if(!drag) return;
+    drag = null;
+    document.body.style.cursor = '';
+    try {
+      const w = parseInt(getComputedStyle(root).getPropertyValue('--dg-cd-w'), 10);
+      if(w >= 80) localStorage.setItem(KEY, String(w));
+    } catch(e) {}
+  });
+})();
+
+// Kéo mép phải cột tiêu đề của biểu đồ để đổi độ rộng; độ rộng được nhớ cho phiên sau
+(function initChartAxisResize() {
+  const KEY = 'db_v2_chart_axis_w';
+  const root = document.documentElement;
+  try {
+    const w = parseInt(localStorage.getItem(KEY), 10);
+    if(w >= 260) root.style.setProperty('--chart-axis-w', w + 'px');
+  } catch(e) {}
+  let drag = null;
+  document.addEventListener('mousedown', e => {
+    const td = e.target.closest && e.target.closest('table.chart-sync-table td.chart-freeze-axis');
+    if(!td || e.button !== 0) return;
+    const rect = td.getBoundingClientRect();
+    if(e.clientX < rect.right - 6) return; // chỉ bắt khi di chuột sát mép phải
+    e.preventDefault();
+    drag = { startX: e.clientX, startW: rect.width };
+    document.body.style.cursor = 'col-resize';
+  });
+  document.addEventListener('mousemove', e => {
+    if(!drag) return;
+    const w = Math.max(260, Math.min(600, drag.startW + e.clientX - drag.startX));
+    root.style.setProperty('--chart-axis-w', w + 'px');
+  });
+  document.addEventListener('mouseup', () => {
+    if(!drag) return;
+    drag = null;
+    document.body.style.cursor = '';
+    try {
+      const w = parseInt(getComputedStyle(root).getPropertyValue('--chart-axis-w'), 10);
+      if(w >= 260) localStorage.setItem(KEY, String(w));
+    } catch(e) {}
+  });
+})();
+
+// Tổng vùng/khối: khung Hạng mục công trình chỉ xem, nhóm theo từng dự án; ẩn Hệ số tiến độ
+function renderAggHangMuc(wrap) {
+  const vungIds = currentVungId ? [currentVungId] : DEFAULT_VUNGS.map(v => v.id);
+  const fmt = n => Number(n || 0).toLocaleString('vi-VN');
+  let html = '<div class="agg-hm-scroll"><table class="agg-hm-table"><thead><tr><th>Hạng mục / Dự án</th><th>Bắt đầu thi công</th><th>Kết thúc thi công</th><th>Kết thúc bàn giao</th><th>Khối lượng</th><th>Đơn vị</th></tr></thead><tbody>';
+  vungIds.forEach(vid => (getBqlRegistry(vid) || []).forEach(b => {
+    const pd = getProjectDataSnapshot(vid, b.id, b.ten);
+    const items = (pd.treeRows || []).filter(r => r.level === 3);
+    html += '<tr class="agg-hm-proj"><td colspan="6">' + escHtml(b.ten) + (items.length ? '' : ' — chưa có hạng mục') + '</td></tr>';
+    items.forEach(r => {
+      html += '<tr><td>' + escHtml(r.ten || '') + '</td><td>' + formatToDdMmYyyy(r.batDau || '') + '</td><td>' + formatToDdMmYyyy(r.ketThuc || '') + '</td><td>' + formatToDdMmYyyy(r.banGiao || '') + '</td><td class="num">' + fmt(r.kl) + '</td><td>' + escHtml(r.dv || '') + '</td></tr>';
+    });
+  }));
+  wrap.innerHTML = html + '</tbody></table></div>';
+}
+
+function applyAggHangMuc(agg) {
+  const card = document.getElementById('hangmucCard');
+  const row2 = document.getElementById('row2Grid');
+  const hs = row2 ? row2.querySelector('.heso-section') : null;
+  if(hs) hs.style.display = agg ? 'none' : '';
+  if(row2) row2.style.gridTemplateColumns = agg ? '1fr' : '';
+  if(!card) return;
+  card.style.height = agg ? 'auto' : '';
+  card.style.maxHeight = agg ? 'none' : '';
+  const hdr = card.querySelector(':scope > .card-header');
+  Array.from(card.children).forEach(ch => {
+    if(ch === hdr || ch.id === 'aggHangMuc') return;
+    ch.style.display = agg ? 'none' : '';
+  });
+  if(hdr) Array.from(hdr.children).forEach(ch => {
+    if(ch.tagName === 'H2' || ch.classList.contains('mob-collapse-btn')) return;
+    ch.style.display = agg ? 'none' : '';
+  });
+  let wrap = document.getElementById('aggHangMuc');
+  if(agg) {
+    if(!wrap) { wrap = document.createElement('div'); wrap.id = 'aggHangMuc'; card.appendChild(wrap); }
+    wrap.style.display = '';
+    renderAggHangMuc(wrap);
+  } else if(wrap) {
+    wrap.style.display = 'none';
+  }
+}
+
+// Bố cục Desktop: Hàng 3 = Diễn giải | Nhân sự; Hàng 4 = Định mức | Hệ số nhân sự
+document.addEventListener('DOMContentLoaded', () => {
+  const row3 = document.getElementById('row3Grid');
+  const row4 = document.getElementById('row4Grid');
+  const dinhmuc = document.getElementById('dinhmucCard');
+  if(!row3 || !row4 || !dinhmuc || document.getElementById('diengiaiCard')) return;
+  const dien = document.createElement('div');
+  dien.className = 'card-box diengiai-section';
+  dien.id = 'diengiaiCard';
+  dien.innerHTML = `<div class="card-header"><h2><span>📑 Diễn giải định biên</span></h2></div><div class="diengiai-wrap" id="diengiaiWrap"></div>`;
+  row3.replaceChild(dien, dinhmuc);
+  row4.replaceChild(dinhmuc, row4.firstElementChild);
+});
+
+// Mobile: mọi khung có nút ▸/▾ ngay trên dòng tên; mặc định đóng, bấm để mở
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.main-wrapper .card-box').forEach(card => {
+    if(card.parentElement && card.parentElement.classList.contains('card-box')) return;
+    const header = card.querySelector(':scope > .card-header') || card.firstElementChild;
+    if(!header || header.querySelector('.mob-collapse-btn')) return;
+    // Đưa tiêu đề ra ngoài khối chứa nút điều khiển để khi đóng chỉ còn tiêu đề
+    const h2 = header.querySelector('h2');
+    if(h2 && h2.parentElement !== header) header.insertBefore(h2, header.firstChild);
+    header.classList.add('mob-hdr');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mob-collapse-btn';
+    btn.title = 'Mở / đóng';
+    btn.textContent = '▸';
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = card.classList.toggle('mob-open');
+      btn.textContent = open ? '▾' : '▸';
+    });
+    header.appendChild(btn);
+  });
+});
+
+// Diễn giải định biên: mỗi dòng khớp một dòng bảng Nhân sự (cùng thứ tự, cùng chiều cao).
+// Cách tính = từng hạng mục đang thi công trong tháng diễn giải: KL → ~ số người đóng góp.
+// Chức danh quản lý: số cấp dưới của tháng ÷ tầm quản lý (dùng để giải thích trong Diễn giải)
+const MGMT_EXPLAIN = {
+  dt_xd:        { src: ['cb_xd'], key: 'dt_xd', def: 10, text: '8–12 CBGS / 1 ĐTGS', srcLabel: 'CBGS XD', unit: 'ĐTGS XD' },
+  dt_me:        { src: ['cb_me'], key: 'dt_me', def: 10, text: '8–12 CBGS / 1 ĐTGS', srcLabel: 'CBGS ME', unit: 'ĐTGS ME' },
+  dt_ht:        { src: ['cb_ht'], key: 'dt_ht', def: 10, text: '8–12 CBGS / 1 ĐTGS', srcLabel: 'CBGS HT', unit: 'ĐTGS HT' },
+  lead_bql:     { src: ['dt_xd', 'dt_me', 'dt_ht'], key: 'gd_bql3', def: 6, text: '5–7 ĐTGS / 1 GĐ cấp 3', srcLabel: 'ĐTGS', unit: 'GĐ BQLXD cấp 3' },
+  gd_bql2:      { src: ['lead_bql'], key: 'gd_bql2', def: 6, text: '5–7 GĐ cấp 3 / 1 GĐ cấp 2', srcLabel: 'GĐ cấp 3', unit: 'GĐ BQLXD cấp 2' },
+  gd_bql1:      { src: ['gd_bql2'], key: 'gd_bql1', def: 4.5, text: '4–5 GĐ cấp 2 / 1 GĐ cấp 1', srcLabel: 'GĐ cấp 2', unit: 'GĐ BQLXD cấp 1' },
+  group_kho:    { src: ['thu_kho_sum'], key: 'tn_kho', def: 9, text: '7–11 Thủ kho / 1 TN kho', srcLabel: 'Thủ kho', unit: 'TN kho' },
+  lead_kho:     { src: ['group_kho'], key: 'truong_kho', def: 6, text: '5–7 TN kho / 1 Trưởng kho', srcLabel: 'TN kho', unit: 'Trưởng kho' },
+  dt_tc:        { src: ['cv_ktht'], key: 'dt_tc', def: 5, text: '5 CV KTHT / 1 Đội trưởng', srcLabel: 'CV KTHT', unit: 'Đội trưởng' },
+  lead_khoi_tc: { src: ['dt_tc'], key: 'tk_tc', def: 5, text: '5 Đội trưởng / 1 Trưởng khối', srcLabel: 'Đội trưởng', unit: 'Trưởng khối' },
+  tn_qc:        { src: ['cv_qc'], key: 'tn_qc', def: 7, text: '7 CV QC / 1 TN QC', srcLabel: 'CV QC', unit: 'TN QC' },
+  tn_qs:        { src: ['cv_qs'], key: 'tn_qs', def: 7, text: '7 CV QS / 1 TN QS', srcLabel: 'CV QS', unit: 'TN QS' },
+  tn_shop:      { src: ['cv_shop'], key: 'tn_shop', def: 7, text: '7 CV Shop / 1 TN Shop', srcLabel: 'CV Shop', unit: 'TN Shop' },
+  tn_atld:      { src: ['cv_atld'], key: 'tn_atld', def: 7, text: '7 CV ATLĐ / 1 TN ATLĐ', srcLabel: 'CV ATLĐ', unit: 'TN ATLĐ' }
+};
+
+// Chức danh tính trực tiếp theo từng hạng mục (có KL / ĐM)
+const DIRECT_EXPLAIN = ['cb_xd', 'cb_me', 'cb_ht', 'nv_xd', 'nv_me', 'nv_ht', 'thu_kho_sum',
+  'cv_ktht', 'cv_qc', 'cv_qs', 'cv_shop', 'cv_atld', 'cv_tracdac', 'nv_tracdac', 'cv_noinghiep_tc', 'cv_kehoach_tc'];
+
+function defaultDienGiaiKey() {
+  const d = new Date();
+  return monthKey(new Date(d.getFullYear(), d.getMonth() + 1, 1)); // tháng hiện tại + 1
+}
+
+function renderDienGiai(res) {
+  const wrap = document.getElementById('diengiaiWrap');
+  if(!wrap || !res || !res.months) return;
+  const months = res.months;
+  const dgKey = filterDienGiai || defaultDienGiaiKey();
+  let j = months.findIndex(m => monthKey(m) === dgKey);
+  if(j < 0) j = 0;
+  const dgLabel = monthLabel(months[j]);
+  const tab = currentDeptSyncTab;
+
+  // Đóng góp của từng hạng mục (tính riêng từng hạng mục, cùng tháng diễn giải)
+  const contrib = {};
+  if(!res.isAggregate && currentProjectData) {
+    (currentProjectData.treeRows || []).filter(r => r.level === 3).forEach(it => {
+      const one = { ...currentProjectData, treeRows: [it], nsOverride: {} };
+      const r1 = calculateSingleProject(one);
+      const jj = r1.months.findIndex(m => monthKey(m) === monthKey(months[j]));
+      if(jj < 0) return;
+      const det = r1.itemProgressDetail[0];
+      MATRIX_ROWS_META.forEach((meta, rIdx) => {
+        const x = r1.rowsRaw[rIdx][jj];
+        if(!(x > 0) || !det || !DIRECT_EXPLAIN.includes(meta.type)) return;
+        // ĐM = KL × tỷ lệ tháng ÷ số người đóng góp
+        let klEff = it.kl || 0, ratio = 0, dm = 0, arr;
+        if(/^(cb|nv)_xd$/.test(meta.type)) arr = det.xdRatio;
+        else if(/^(cb|nv)_me$/.test(meta.type)) arr = det.meRatio;
+        else if(/^(cb|nv)_ht$/.test(meta.type)) {
+          arr = det.htRatio;
+          klEff = it.loai === 'Đường giao thông, công viên' ? (it.kl || 0) : (it.dienTich || 0);
+        } else if(meta.type === 'thu_kho_sum') arr = det.khoRatio;
+        else {
+          arr = det.bptcRatio;
+          klEff = (it.bptc_kl != null && it.bptc_kl !== '') ? (parseFloat(it.bptc_kl) || 0) : (it.kl || 0);
+        }
+        ratio = arr ? (arr[jj] || 0) : 0;
+        const adjF = (currentProjectData.adj || {})[`${rIdx}_${monthKey(months[j])}`];
+        const adj = adjF != null ? adjF : 1;
+        if(ratio > 0 && klEff > 0 && adj > 0) dm = klEff * ratio / (x / adj);
+        if(!(klEff > 0)) return;
+        (contrib[rIdx] = contrib[rIdx] || []).push({ name: it.ten, kl: klEff, x, ratio, adj, dm });
+      });
+    });
+  }
+
+  const fmt = (n, d = 2) => Number(n).toLocaleString('vi-VN', { maximumFractionDigits: d });
+  const rowHtml = (meta, rIdx, stt) => {
+    const v = res.rowsFinal[rIdx][j] || 0;
+    const unit = /Cán bộ/.test(meta.cd) ? 'CB' : 'người';
+    const list = contrib[rIdx];
+    let cach;
+    const mg = MGMT_EXPLAIN[meta.type];
+    if(mg) {
+      const dmC = currentProjectData.dinhMucCustom || {};
+      const span = dmC[`ql_${mg.key}_calc`] > 0 ? dmC[`ql_${mg.key}_calc`] : mg.def;
+      const srcSum = mg.src.reduce((s, t) => {
+        const k = MATRIX_ROWS_META.findIndex(m => m.type === t);
+        return s + (k >= 0 ? (res.rowsFinal[k][j] || 0) : 0);
+      }, 0);
+      const xv = span > 0 ? srcSum / span : 0;
+      const xTxt = xv >= 1 ? fmt(Math.round(xv), 0) : fmt(xv, 1);
+      cach = `<div class="dg-total">Tổng → làm tròn <b>${v}</b> ${escHtml(mg.unit)}</div>`
+        + `<div>${fmt(srcSum, 0)} ${escHtml(mg.srcLabel)} ~ ${xTxt} ${escHtml(mg.unit)} (${escHtml(mg.text)})</div>`;
+    } else if(list && list.length) {
+      const sum = list.reduce((s, c) => s + c.x, 0);
+      const bullets = list.map(c => {
+        const klTxt = fmt(c.kl || 0, 0);
+        const base = c.dm ? `${klTxt} / ${fmt(c.dm, 0)}` : klTxt;
+        // Hệ số 100% không cần giải thích; chỉ ghi khi khác 100%
+        const rTxt = c.ratio > 0 && Math.abs(c.ratio - 1) > 0.005 ? ` x ${Math.round(c.ratio * 100)}%` : '';
+        const aTxt = Math.abs(c.adj - 1) > 0.005 ? ` x ${Math.round(c.adj * 100)}%` : '';
+        const xTxt = c.x >= 1 ? fmt(Math.round(c.x), 0) : fmt(c.x, 1);
+        return `<li>${escHtml(c.name)}: ${base}${rTxt}${aTxt} ~ ${xTxt} ${unit}</li>`;
+      }).join('');
+      cach = `<div class="dg-total">Tổng → làm tròn <b>${v}</b> ${unit}</div><ul class="dg-list">${bullets}</ul>`;
+    } else {
+      // Không có hạng mục tính được: ghi căn cứ và kết quả của tháng (mọi dòng đều có diễn giải)
+      cach = v > 0
+        ? `<span class="dg-rule-txt">${escHtml(meta.rule || '')} → <b>${v}</b> ${unit} tại ${dgLabel}</span>`
+        : `<span class="dg-rule-txt">Không phát sinh tại ${dgLabel} (${escHtml(meta.rule || '')})</span>`;
+    }
+    return `<tr><td class="dg-stt">${stt}</td><td class="dg-cd">${escHtml(meta.cd)}</td><td class="dg-cap">${escHtml(meta.cap || '')}</td><td class="dg-cach">${cach}</td></tr>`;
+  };
+
+  // Cấu trúc hàng y hệt bảng Nhân sự (theo tab đang chọn)
+  let body = '';
+  if(tab === 'ALL') body += `<tr class="dg-grand"><td>★</td><td>TỔNG NHÂN SỰ</td><td></td><td class="dg-cach">Tổng các bộ phận tháng ${dgLabel}</td></tr>`;
+  const groupNames = { BQLXD: 'I. BQLXD', KHO: 'II. KHO', BPTC: 'III. BỘ PHẬN THI CÔNG' };
+  ['BQLXD', 'KHO', 'BPTC'].forEach(pb => {
+    if(!(tab === 'ALL' || tab === pb)) return;
+    body += `<tr class="dg-group"><td></td><td colspan="3">${groupNames[pb]}</td></tr>`;
+    let stt = 0;
+    MATRIX_ROWS_META.forEach((meta, rIdx) => { if(meta.pb !== pb) return; stt++; body += rowHtml(meta, rIdx, stt); });
+  });
+  wrap.innerHTML = `<table class="dg-table"><thead><tr><th>STT</th><th class="dg-cd-h">Chức danh</th><th>Cấp</th><th>Cách tính / Căn cứ (tháng ${dgLabel})</th></tr></thead><tbody>${body}</tbody></table>`;
+  requestAnimationFrame(syncDienGiaiRows);
+}
+
+// Đồng bộ chiều cao từng dòng: dòng Diễn giải và dòng Nhân sự tương ứng luôn bằng nhau
+function syncDienGiaiRows() {
+  const a = Array.from(document.querySelectorAll('#diengiaiWrap thead tr, #diengiaiWrap tbody tr'));
+  const b = Array.from(document.querySelectorAll('#matrixHead tr, #matrixBody tr'));
+  const n = Math.min(a.length, b.length);
+  for(let i = 0; i < n; i++) { a[i].style.height = ''; b[i].style.height = ''; }
+  for(let i = 0; i < n; i++) {
+    const h = Math.max(a[i].offsetHeight, b[i].offsetHeight);
+    a[i].style.height = h + 'px';
+    b[i].style.height = h + 'px';
+  }
+}
+
+
 function refreshDashboard() {
   calcResultCache = calculateAll();
+  renderDienGiai(calcResultCache);
   const isAgg = !!calcResultCache.isAggregate;
 
   const row1StickyGrid = document.getElementById('row1StickyGrid');
@@ -5093,11 +6378,16 @@ function refreshDashboard() {
     // Nhờ đó Biểu đồ và Nhân sự Tổng cùng rộng 100% và thẳng hàng cột tháng (370px + 68px × tháng) tuyệt đối!
     if(row1StickyGrid) row1StickyGrid.classList.add('agg-vertical-mode');
     if(nhansuCard) nhansuCard.classList.add('agg-expanded-mode');
-    if(row2Grid) row2Grid.style.display = 'none';
+    if(row2Grid) row2Grid.style.display = '';
+    applyAggHangMuc(true);
     if(rowResizer23) rowResizer23.style.display = 'none';
     if(rowResizer34) rowResizer34.style.display = 'none';
     if(row4Grid) row4Grid.style.display = 'none';
     if(dinhmucCard) dinhmucCard.style.display = 'none';
+    const dgCard = document.getElementById('diengiaiCard');
+    if(dgCard) dgCard.style.display = 'none'; // tổng vùng/khối: không có Diễn giải
+    const dgMonthWrap = document.getElementById('filterMonthDienGiai')?.parentElement;
+    if(dgMonthWrap) dgMonthWrap.style.display = 'none'; // tổng vùng/khối: không có Tháng diễn giải
     if(colResizerRow3) colResizerRow3.style.display = 'none';
     if(row3Grid) row3Grid.style.gridTemplateColumns = '1fr';
   } else {
@@ -5105,10 +6395,15 @@ function refreshDashboard() {
     if(row1StickyGrid) row1StickyGrid.classList.remove('agg-vertical-mode');
     if(nhansuCard) nhansuCard.classList.remove('agg-expanded-mode');
     if(row2Grid) row2Grid.style.display = '';
+    applyAggHangMuc(false);
     if(rowResizer23) rowResizer23.style.display = '';
     if(rowResizer34) rowResizer34.style.display = '';
     if(row4Grid) row4Grid.style.display = '';
     if(dinhmucCard) dinhmucCard.style.display = '';
+    const dgCard2 = document.getElementById('diengiaiCard');
+    if(dgCard2) dgCard2.style.display = '';
+    const dgMonthWrap2 = document.getElementById('filterMonthDienGiai')?.parentElement;
+    if(dgMonthWrap2) dgMonthWrap2.style.display = '';
     if(colResizerRow3) colResizerRow3.style.display = '';
     if(row3Grid) row3Grid.style.gridTemplateColumns = '';
     renderTreeTable();
@@ -5321,7 +6616,7 @@ if(btnToggleMeSubRows) {
     btnToggleMeSubRows.style.color = showMeSubRows ? '#1d4ed8' : '#64748b';
     clearExcelRangeSelection();
     renderTreeTable();
-    renderSyncHesoTable();
+    renderSyncHesoTable(calcResultCache);
     showUndoToast(showMeSubRows
       ? '⚡ Đã hiện các dòng con M&E theo giai đoạn thô & hoàn thiện'
       : '⚡ Đã ẩn dòng con M&E — dễ dàng Paste danh sách hạng mục liền mạch từ Excel');
@@ -5458,14 +6753,119 @@ function inferClassificationFromName(tenStr) {
 }
 
 // Khởi tạo tự động các trường M&E chia theo 2 giai đoạn (GĐ bê tông cốt thép & GĐ hoàn thiện) cho hạng mục có M&E
+// Ngày 2 giai đoạn M&E để hiển thị và tính: ô nhập thì dùng ngày đã nhập; ô trống thì tự tính
+// theo Bắt đầu / Kết thúc thi công của hạng mục (GĐ bê tông 0–50%, GĐ hoàn thiện 40–100%)
+function meStageDates(it) {
+  const s = parseDateAny(it.batDau), e = parseDateAny(it.ketThuc);
+  const days = (s && e) ? (e - s) / 86400000 : 0;
+  const at = p => { const t = new Date(s.getTime() + Math.round(p * days) * 86400000); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
+  const oldBT = it.me1_bd === it.batDau && it.me1_kt === it.ketThuc;
+  const oldHT = it.me2_bd === it.ketThuc && it.me2_kt === (it.banGiao || it.ketThuc);
+  const auto = (s && e);
+  const bt = (!oldBT && it.me1_bd && it.me1_kt) ? [it.me1_bd, it.me1_kt] : (auto ? [s, at(0.5)] : ['', '']);
+  const ht = (!oldHT && it.me2_bd && it.me2_kt) ? [it.me2_bd, it.me2_kt] : (auto ? [at(0.4), e] : ['', '']);
+  return { bd1: formatToDdMmYyyy(bt[0]), kt1: formatToDdMmYyyy(bt[1]), bd2: formatToDdMmYyyy(ht[0]), kt2: formatToDdMmYyyy(ht[1]) };
+}
+
+// Nút "↺ Tự tính": xóa ngày tùy chỉnh của một GĐ M&E để quay về tự tính theo tiến độ hạng mục.
+// Không bấm thì ngày đã nhập được giữ nguyên.
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.btn-auto-me');
+  if(!btn || !currentProjectData) return;
+  const row = currentProjectData.treeRows.find(r => r.id === btn.dataset.id);
+  if(!row) return;
+  if(btn.dataset.stage === '1') { row.me1_bd = ''; row.me1_kt = ''; }
+  else { row.me2_bd = ''; row.me2_kt = ''; }
+  saveCurrentProject();
+  renderTreeTable();
+  refreshDashboard();
+});
+
+// Nút "↺ Tự tính": xóa ngày tùy chỉnh của một GĐ M&E để quay về tự tính theo tiến độ hạng mục.
+// Không bấm thì ngày đã nhập được giữ nguyên.
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.btn-auto-me');
+  if(!btn || !currentProjectData) return;
+  const row = currentProjectData.treeRows.find(r => r.id === btn.dataset.id);
+  if(!row) return;
+  if(btn.dataset.stage === '1') { row.me1_bd = ''; row.me1_kt = ''; }
+  else { row.me2_bd = ''; row.me2_kt = ''; }
+  saveCurrentProject();
+  renderTreeTable();
+  refreshDashboard();
+});
+
+// Thao tác của GĐ M&E: 2 nút (↺ Tự tính TG, ↺ KL); khi cột hẹp, mũi tên ▸ mở danh sách 2 lựa chọn này
+function meActsHtml(r, stage) {
+  const tgTitle = stage === 1 ? 'GĐ thô = 50% tg thi công, tính từ khi bắt đầu' : 'GĐ hoàn thiện = 60% tg thi công, tính đến khi kết thúc';
+  return `<div class="me-acts">
+    <button type="button" class="me-btn btn-auto-me" data-id="${r.id}" data-stage="${stage}" title="${tgTitle}">↺ Tự tính TG</button>
+    <button type="button" class="me-btn btn-auto-kl" data-id="${r.id}" data-stage="${stage}" title="Lấy = KL chính">↺ KL</button>
+    <button type="button" class="me-arrow" title="Thao tác">▸</button>
+    <div class="me-menu" hidden>
+      <button type="button" class="btn-auto-me" data-id="${r.id}" data-stage="${stage}" title="${tgTitle}">↺ Tự tính TG</button>
+      <button type="button" class="btn-auto-kl" data-id="${r.id}" data-stage="${stage}" title="Lấy = KL chính">↺ KL</button>
+    </div>
+  </div>`;
+}
+
+// Mở / đóng danh sách thao tác khi bấm mũi tên ▸; bấm chỗ khác thì đóng
+document.addEventListener('click', e => {
+  const arrow = e.target.closest('.me-arrow');
+  document.querySelectorAll('.me-menu').forEach(m => {
+    if(!arrow || m !== arrow.parentElement.querySelector('.me-menu')) m.hidden = true;
+  });
+  if(arrow) { const m = arrow.parentElement.querySelector('.me-menu'); m.hidden = !m.hidden; }
+});
+
+// (Thao tác cũ bằng ô chọn — đã thay bằng nút ở trên)
+document.addEventListener('change', e => {
+  if(!e.target.matches('select.me-act') || !currentProjectData) return;
+  const sel = e.target;
+  const act = sel.value;
+  sel.value = '';
+  const row = currentProjectData.treeRows.find(r => r.id === sel.dataset.id);
+  if(!row || !act) return;
+  const s1 = sel.dataset.stage === '1';
+  if(act === 'tg') {
+    if(s1) { row.me1_bd = ''; row.me1_kt = ''; } else { row.me2_bd = ''; row.me2_kt = ''; }
+  } else if(act === 'kl') {
+    if(s1) { row.me1_kl = row.kl; row.me1_custom_kl = false; } else { row.me2_kl = row.kl; row.me2_custom_kl = false; }
+  }
+  saveCurrentProject();
+  renderTreeTable();
+  refreshDashboard();
+});
+
+// Nút "↺ = KL": đưa khối lượng GĐ M&E về bằng khối lượng hạng mục (hết tùy chỉnh)
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.btn-auto-kl');
+  if(!btn || !currentProjectData) return;
+  const row = currentProjectData.treeRows.find(r => r.id === btn.dataset.id);
+  if(!row) return;
+  if(btn.dataset.stage === '1') { row.me1_kl = row.kl; row.me1_custom_kl = false; }
+  else { row.me2_kl = row.kl; row.me2_custom_kl = false; }
+  saveCurrentProject();
+  renderTreeTable();
+  refreshDashboard();
+});
+
+// Ô hệ số của một GĐ M&E trong tháng: giống ô hạng mục chính (100% khi thi công, sửa được từng tháng)
+function stageCellInner(r, tab, bd, kt, mDate) {
+  const mk = monthKey(mDate);
+  const key = `${tab}_${r.id}_${mk}`;
+  const custom = currentProjectData.hesoCustom && currentProjectData.hesoCustom[key] != null;
+  const active = calcRatio(bd, kt, mDate) > 0;
+  if(!custom && !active) return `<span style="color:#cbd5e1;">–</span>`;
+  const shown = custom ? (Math.round(currentProjectData.hesoCustom[key] * 100) + '%') : (Math.round(calcRatio(bd, kt, mDate) * 100) + '%');
+  return `<input type="text" class="${custom ? 'customized' : ''}" style="color:#94a3b8; font-style:italic; text-align:center; background:transparent; border:none; width:100%; font-size:10.5px; font-family:inherit;" value="${shown}" data-tab="${tab}" data-id="${r.id}" data-mk="${mk}" title="Gõ ví dụ 50 rồi Enter để đặt 50%, gõ 100 để đặt lại 100%" readonly>`;
+}
+
 function ensureMeStagesForRow(rObj, fromKlChange = false) {
   if(!rObj || rObj.level !== 3) return;
   const hasMe = ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(rObj.loai);
   if(hasMe) {
-    if(!rObj.me1_bd && rObj.batDau) rObj.me1_bd = rObj.batDau;
-    if(!rObj.me1_kt && rObj.ketThuc) rObj.me1_kt = rObj.ketThuc;
-    if(!rObj.me2_bd && rObj.ketThuc) rObj.me2_bd = rObj.ketThuc;
-    if(!rObj.me2_kt && (rObj.banGiao || rObj.ketThuc)) rObj.me2_kt = rObj.banGiao || rObj.ketThuc;
+    // Ngày giai đoạn M&E để trống = tự tính theo tiến độ hạng mục (không điền sẵn)
 
     // Tự nhảy khối lượng theo dòng hạng mục chính trừ khi người dùng đã sửa riêng (me1_custom_kl / me2_custom_kl)
     if(fromKlChange) {
@@ -6222,7 +7622,8 @@ function renderOrgHierarchyButtons() {
     btnKhoiXd.classList.toggle('active', !currentVungId);
   }
   document.querySelectorAll('#rowVung [data-vung]').forEach(b => {
-    b.classList.toggle('active', b.dataset.vung === currentVungId);
+    b.classList.toggle('active', b.dataset.vung === currentVungId && !currentBqlId);
+    b.classList.toggle('active-soft', b.dataset.vung === currentVungId && !!currentBqlId);
   });
 
   // Render BQLXD theo Vùng hiện tại
@@ -6337,7 +7738,7 @@ document.getElementById('btnConfirmAddBql').addEventListener('click', () => {
     id: newId,
     vungId: currentVungId,
     ten: name,
-    treeRows: JSON.parse(JSON.stringify(SEED_TREE_ITEMS)),
+    treeRows: [], // dự án mới: trắng, không có hạng mục mẫu
     adj: {},
     hesoCustom: {},
     roundMode: 'normal'
@@ -7232,6 +8633,7 @@ async function exportExcelStandard() {
 
 document.getElementById('btnExportExcel').addEventListener('click', exportExcelStandard);
 
+
   const btnPrintLandscape = document.getElementById('btnPrintLandscape');
   if(btnPrintLandscape) {
     btnPrintLandscape.addEventListener('click', () => {
@@ -7266,7 +8668,7 @@ function updateTimelineInputsUI() {
     inpEnd.value = filterDisplayEnd || defEndStr;
   }
   if(document.activeElement !== inpDg) {
-    inpDg.value = filterDienGiai || (filterDisplayStart || defStartStr);
+    inpDg.value = filterDienGiai || defaultDienGiaiKey();
   }
 }
 
@@ -7284,8 +8686,8 @@ function initTimelineControls() {
       filterDisplayEnd = filterDisplayStart;
       if(inpEnd) inpEnd.value = filterDisplayEnd;
     }
-    // Tự động đồng bộ Tháng diễn giải bằng Tháng bắt đầu nếu chưa chọn riêng
-    if(!filterDienGiai || filterDienGiai < filterDisplayStart || (filterDisplayEnd && filterDienGiai > filterDisplayEnd)) {
+    // Tháng diễn giải: chưa chọn riêng thì giữ mặc định (tháng hiện tại + 1); đã chọn mà nằm ngoài khoảng hiển thị thì kẹp lại
+    if(filterDienGiai && (filterDienGiai < filterDisplayStart || (filterDisplayEnd && filterDienGiai > filterDisplayEnd))) {
       filterDienGiai = filterDisplayStart;
       if(inpDg) inpDg.value = filterDienGiai;
     }
@@ -7310,6 +8712,7 @@ function initTimelineControls() {
 
   const onDgChange = () => {
     filterDienGiai = inpDg.value;
+    refreshDashboard(); // vẽ lại Diễn giải theo tháng mới
     showUndoToast(`📋 Đã chọn Tháng diễn giải cho Excel: ${filterDienGiai}`);
   };
 
@@ -7443,6 +8846,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initExcelRangeSelectionOnTables();
   updateStickyHeaderOffset();
   window.addEventListener('resize', updateStickyHeaderOffset);
+  bootCloudSync();
+  startRealtimeSync();
 
   // Nút Hoàn tác (Ctrl+Z) & Làm lại (Ctrl+Y) trên thanh công cụ
   const btnUndo = document.getElementById('btnUndo');
@@ -7558,6 +8963,61 @@ document.addEventListener('DOMContentLoaded', () => {
   if(savedRow2H) document.documentElement.style.setProperty('--row2-height', savedRow2H + 'px');
   if(savedRow3H) document.documentElement.style.setProperty('--row3-height', savedRow3H + 'px');
 
+  // Kéo đổi độ rộng cột Tên công trình / Hạng mục (lưu lại cho lần mở sau)
+  (function initNameColResize() {
+    const th = document.getElementById('thHmTen');
+    if(!th) return;
+    const grip = document.createElement('div');
+    grip.className = 'col-resize-grip';
+    grip.title = 'Kéo để đổi độ rộng cột Tên công trình';
+    th.appendChild(grip);
+    let savedW = 0;
+    try { savedW = parseInt(localStorage.getItem('db_v2_name_col_w'), 10) || 0; } catch(e) {}
+    th.style.width = (savedW > 0 ? savedW : 240) + 'px';
+    grip.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startW = th.offsetWidth;
+      const move = ev => { th.style.width = Math.max(120, startW + ev.clientX - startX) + 'px'; };
+      const up = () => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        try { localStorage.setItem('db_v2_name_col_w', String(th.offsetWidth)); } catch(e) {}
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  })();
+
+  // Vạch chia đôi nằm đúng giữa khoảng trắng (gap 12px) giữa cột Trái và cột Phải
+  function updateDividerX() {
+    const grid = document.querySelector('.dashboard-row-grid');
+    const wrap = document.querySelector('.main-wrapper');
+    if(!grid || !wrap) return;
+    const g = grid.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+    const pct = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--left-col-pct')) || 54;
+    const centerX = (g.left - w.left) + g.width * pct / 100 + 6; // 6 = nửa gap 12px
+    document.documentElement.style.setProperty('--divider-x', (centerX - 7) + 'px'); // 7 = nửa độ rộng vạch 14px
+  }
+  updateDividerX();
+  window.addEventListener('resize', updateDividerX);
+
+  // Hai tiêu đề ở cùng một hàng (trái và phải) luôn cao bằng nhau, theo tiêu đề cao hơn
+  function syncCardHeaderHeights() {
+    document.querySelectorAll('.dashboard-row-grid').forEach(grid => {
+      const hs = Array.from(grid.children)
+        .map(c => c.querySelector(':scope > .card-header') || c.querySelector('.card-header'))
+        .filter(Boolean);
+      if(hs.length < 2) return;
+      hs.forEach(h => { h.style.height = 'auto'; });
+      const maxH = Math.max(...hs.map(h => h.offsetHeight));
+      hs.forEach(h => { h.style.height = maxH + 'px'; });
+    });
+  }
+  syncCardHeaderHeights();
+  window.addEventListener('resize', syncCardHeaderHeights);
+
   // 1. Kéo thanh dọc phân chia 2 nửa màn hình Trái / Phải - Bắt sự kiện Window chống trượt 100%
   const globalColResizer = document.getElementById('globalColResizer');
   if (globalColResizer) {
@@ -7582,6 +9042,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let pct = (relX / wrapperRect.width) * 100;
       pct = Math.max(20, Math.min(80, Math.round(pct * 10) / 10));
       document.documentElement.style.setProperty('--left-col-pct', pct + '%');
+      updateDividerX();
       localStorage.setItem('db_v2_left_col_pct', String(pct));
     };
 
@@ -7602,6 +9063,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     globalColResizer.addEventListener('dblclick', () => {
       document.documentElement.style.setProperty('--left-col-pct', '54%');
+      updateDividerX();
       localStorage.removeItem('db_v2_left_col_pct');
       showUndoToast('↔ Đã đặt lại tỷ lệ 2 cột mặc định (54%)');
     });
