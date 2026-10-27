@@ -1232,6 +1232,8 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 #treeTable .me-menu button { font-size: 9.5px; height: 20px; padding: 0 5px; border: 1px solid #94a3b8; border-radius: 4px; background: #fff; color: #1e293b; cursor: pointer; white-space: nowrap; }
 #treeTable td input.input-date-dmy { width: 88px; }
 #treeTable td.dv-fixed { user-select: none; }
+/* Diễn giải: bôi chọn theo ô như Excel, không bôi chọn chữ */
+#diengiaiWrap table { user-select: none; }
 #treeTable td input[data-f="dienTich"] { width: 70px; }
 /* Hiển thị ô nhập phẳng như ô Excel (không viền vuông bên trong) */
 /* Ẩn mũi tên tăng giảm (spin button) cho các ô nhập số trên toàn bảng */
@@ -7453,15 +7455,19 @@ function pasteClipboardIntoTableRange(clipText, targetTable, fallbackTd) {
 }
 
 function initExcelRangeSelectionOnTables() {
-  const tableIds = ['treeTable', 'syncHesoTable', 'dinhmucTable', 'tableHesoNhansu'];
+  const tableIds = ['treeTable', 'syncHesoTable', 'dinhmucTable', 'tableHesoNhansu', 'diengiaiWrap'];
   tableIds.forEach(id => {
-    const tableEl = document.getElementById(id);
-    if(!tableEl) return;
+    const hostEl = document.getElementById(id);
+    if(!hostEl) return;
+    // Bảng cố định là chính nó; Diễn giải được vẽ lại liên tục nên lấy bảng từ ô được bấm
+    const tableOf = td => (id === 'diengiaiWrap' ? td.closest('table') : hostEl);
 
-    tableEl.addEventListener('mousedown', (e) => {
+    hostEl.addEventListener('mousedown', (e) => {
       if(e.button !== 0) return;
       const td = e.target.closest('td');
       if(!td || td.classList.contains('col-drag-handle')) return;
+      const tableEl = tableOf(td);
+      if(!tableEl) return;
       const info = getRowAndColOfCell(td, tableEl);
       if(!info) return;
 
@@ -7499,10 +7505,12 @@ function initExcelRangeSelectionOnTables() {
       highlightExcelRangeSelection();
     });
 
-    tableEl.addEventListener('mouseover', (e) => {
-      if(!excelRangeSelection.isSelecting || excelRangeSelection.tableEl !== tableEl) return;
+    hostEl.addEventListener('mouseover', (e) => {
+      if(!excelRangeSelection.isSelecting) return;
       const td = e.target.closest('td');
       if(!td || td.classList.contains('col-drag-handle')) return;
+      const tableEl = tableOf(td);
+      if(!tableEl || excelRangeSelection.tableEl !== tableEl) return;
       const info = getRowAndColOfCell(td, tableEl);
       if(!info) return;
       if(excelRangeSelection.focusCoords.r !== info.r || excelRangeSelection.focusCoords.c !== info.c) {
