@@ -6466,10 +6466,10 @@ const MGMT_EXPLAIN = {
 
 // Chức danh tính trực tiếp theo từng hạng mục (có KL / ĐM)
 // Hệ số của chế độ NVGS theo % CBGS: CBGS giữ 90%, NVGS = 15% CBGS gốc (10% × 1,5)
-// Số Trưởng nhóm từ số Chuyên viên: làm tròn số CV trước (như hiển thị), rồi ⌈CV ÷ tầm QL⌉ khi đủ tầm QL
+// Số Trưởng nhóm từ số Chuyên viên: làm tròn số CV trước (như hiển thị), rồi ⌈CV ÷ tầm QL⌉; có CV thì ít nhất 1 Trưởng nhóm
 function tnFromCv(cv, c) {
   const r = Math.round(cv || 0);
-  return r >= c ? Math.ceil(r / c) : 0;
+  return r > 0 ? Math.ceil(r / c) : 0;
 }
 
 function pctNvFactor(type, proj, off, mk) {
