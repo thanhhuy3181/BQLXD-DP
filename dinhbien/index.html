@@ -7894,23 +7894,16 @@ function initExcelRangeSelectionOnTables() {
       // Chỉ kích hoạt khi bảng đang chọn là Hạng mục hoặc Hệ số
       const tableId = excelRangeSelection.tableEl.id;
       if(['treeTable', 'syncHesoTable', 'dinhmucTable', 'tableHesoNhansu'].includes(tableId)) {
-        e.preventDefault();
-        const firstKey = e.key;
-        const promptMsg = excelRangeSelection.selectedCells.length > 1
-          ? `Nhập giá trị mới để sửa đồng loạt cho ${excelRangeSelection.selectedCells.length} ô đang chọn:`
-          : `Nhập giá trị mới cho ô đang chọn:`;
-        const val = prompt(promptMsg, firstKey);
-        if(val !== null) {
-          let changed = false;
-          excelRangeSelection.selectedCells.forEach(({ cell }) => {
-            if(applyValueToCellDomAndModel(cell, val)) changed = true;
-          });
-          if(changed) {
-            saveCurrentProject();
-            refreshDashboard();
-            highlightExcelRangeSelection();
-            showUndoToast(`✏️ Đã sửa đồng loạt ${excelRangeSelection.selectedCells.length} ô (Ctrl+Z để hoàn tác)`);
-          }
+        // Gõ thẳng vào ô đang chọn (như Excel): ô đó vào chế độ sửa với ký tự vừa gõ, không hiện hộp thoại
+        const ac = excelRangeSelection.anchorCoords;
+        const ctrl = ac ? getCellAtVisualCoords(excelRangeSelection.tableEl, ac.r, ac.c)?.querySelector('input:not([type="checkbox"])') : null;
+        if(ctrl && ctrl.dataset.xlLocked === '1') {
+          e.preventDefault();
+          ctrl.readOnly = false;
+          ctrl.dataset.xlLocked = '0';
+          ctrl.value = e.key;
+          ctrl.focus();
+          ctrl.setSelectionRange(ctrl.value.length, ctrl.value.length);
         }
       }
     }
