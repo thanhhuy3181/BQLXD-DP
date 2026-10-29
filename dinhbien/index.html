@@ -6490,8 +6490,9 @@ function renderDienGiai(res) {
       // Dòng tổng ghi hệ số % CBGS: ví dụ "Tổng ~ 16 CB (18 CB x 90%)"
       const pfAll = list[0].pf || 1;
       const rawAll = list.reduce((s, c) => s + c.x / (c.pf || 1), 0);
-      const pfNote = pfAll === 0.9 ? ` (${Math.round(rawAll)} ${unit} x 90%)`
-        : (pfAll === 0.15 ? ` (${Math.round(rawAll)} ${unit} x 10% × 1,5)` : '');
+      const rawTxt = Number(rawAll || 0).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const pfNote = pfAll === 0.9 ? ` (${rawTxt} ${unit} x 90%)`
+        : (pfAll === 0.15 ? ` (${rawTxt} ${unit} x 10% × 1,5)` : '');
       cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${unit}${pfNote}</div><ul class="dg-list">${bullets}</ul>`;
     } else {
       // Không có hạng mục tính được: ghi căn cứ và kết quả của tháng (mọi dòng đều có diễn giải)
