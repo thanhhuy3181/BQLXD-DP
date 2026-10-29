@@ -7,7 +7,7 @@
 <!-- CDN ExcelJS & Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="ds-du-an.js"></script>
+<script src="dinhbien/ds-du-an.js"></script>
 <!-- ============================================================
      FIREBASE FIRESTORE — ĐỒNG BỘ DỮ LIỆU GIỮA CÁC MÁY
      Module chỉ khởi tạo kết nối và cung cấp hàm đọc/ghi qua window._cloud;
@@ -7997,6 +7997,10 @@ if(modalUserGuide) {
 document.getElementById('btnConfirmAddBql').addEventListener('click', () => {
   const name = document.getElementById('newBqlName').value.trim();
   if(!name) { alert('Vui lòng nhập tên BQLXD mới!'); return; }
+  // Chỉ tạo dự án có trong danh sách DS DA
+  if(typeof DS_DU_AN === 'undefined' || !DS_DU_AN.length) { alert('Chưa tải được danh sách dự án (DS DA), không thể tạo dự án.'); return; }
+  const inList = DS_DU_AN.some(s => s.trim().toLowerCase() === name.toLowerCase());
+  if(!inList) { alert(`"${name}" không có trong danh sách dự án (DS DA). Chỉ được tạo dự án có trong danh sách; chọn tên gợi ý.`); return; }
   const newId = 'bql_' + Date.now();
   const list = getBqlRegistry(currentVungId);
   list.push({ id: newId, ten: name });
