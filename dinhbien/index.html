@@ -5114,6 +5114,16 @@ document.addEventListener('paste', e => {
   xlPaste(text);
 }, true);
 
+// Copy vùng ô đang chọn trong lưới Nhân sự / Hệ số (không đang gõ): đưa đúng giá trị các ô đã chọn vào clipboard
+document.addEventListener('copy', e => {
+  const el = document.activeElement;
+  const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && !xlIsCell(el);
+  if(typing || xl.editing || !xl.sel.size || !xlAnchor()) return;
+  xlCopy();
+  e.clipboardData.setData('text/plain', xl.clip);
+  e.preventDefault();
+}, true);
+
 // Chuột: click chọn, kéo chọn vùng, Shift+click mở rộng vùng, đúp để sửa
 document.addEventListener('mousedown', e => {
   const inp = e.target.closest && e.target.closest('input');
