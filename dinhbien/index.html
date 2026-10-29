@@ -3275,6 +3275,11 @@ function calculateSingleProject(projData) {
     // CBGS Hạ tầng: 1 CB / 15.000 m²; NVGS Hạ tầng: 1 NV / 10.500 m² (tính trên tổng diện tích đang thi công)
     cb_ht_arr[mIdx] = area_ht_arr[mIdx] / (dmC['cb_ht_khac'] > 0 ? dmC['cb_ht_khac'] : 15000);
     nv_ht_arr[mIdx] = area_ht_arr[mIdx] / (dmC['nv_ht_khac'] > 0 ? dmC['nv_ht_khac'] : 10500);
+    // Chế độ NVGS theo % CBGS: CBGS Hạ tầng giữ 90%; NVGS Hạ tầng = 10% CBGS × 1,5 (15% CBGS gốc)
+    if(projData.nvgsMode === 'pct') {
+      nv_ht_arr[mIdx] = cb_ht_arr[mIdx] * 0.15;
+      cb_ht_arr[mIdx] = cb_ht_arr[mIdx] * 0.9;
+    }
     const cXd = getQlCalc('dt_xd', 10);
     const cMe = getQlCalc('dt_me', 10);
     const cHt = getQlCalc('dt_ht', 10);
@@ -6446,8 +6451,8 @@ function renderDienGiai(res) {
     const mg = MGMT_EXPLAIN[meta.type];
     // Chế độ NVGS theo % CBGS: diễn giải CBGS (90%) và NVGS (10% × 1,5 = 15%) theo CBGS gốc
     const pctNv = !res.isAggregate && currentProjectData && currentProjectData.nvgsMode === 'pct';
-    if(pctNv && ['nv_xd', 'nv_me', 'cb_xd', 'cb_me'].includes(meta.type)) {
-      const cbIdx = MATRIX_ROWS_META.findIndex(m => m.type === (meta.type.endsWith('xd') ? 'cb_xd' : 'cb_me'));
+    if(pctNv && ['nv_xd', 'nv_me', 'nv_ht', 'cb_xd', 'cb_me', 'cb_ht'].includes(meta.type)) {
+      const cbIdx = MATRIX_ROWS_META.findIndex(m => m.type === 'cb_' + meta.type.slice(3));
       const cbGoc = (res.rowsRaw[cbIdx][j] || 0) / 0.9;
       const own = res.rowsRaw[rIdx][j] || 0;
       cach = meta.type.startsWith('nv')
