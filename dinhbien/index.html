@@ -2085,6 +2085,7 @@ footer.app-footer {
               <th id="thHmKl" style="width:65px;">Khối<br>lượng</th>
               <th id="thHmDv" style="width:38px;">Đơn<br>vị</th>
               <th id="thHmKlHt" style="width:74px;" title="Khối lượng hạ tầng (m²) của công trình. Dùng tính CBGS / NVGS Hạ tầng (÷ 15.000 / 10.500 m²)">KL hạ tầng<br>(m²)</th>
+              <th id="thHmHsCt" style="width:62px;" title="Hệ số công trình: nhân vào kết quả định biên của công trình (100% = xây mới; cải tạo thì nhỏ hơn)">Hệ số<br>CT</th>
             </tr>
           </thead>
           <tbody id="treeTableBody">
@@ -2969,7 +2970,7 @@ const TK_DM = {
 };
 
 function calculateSingleProject(projData) {
-  const rows = (projData.treeRows || []).filter(r => r.level === 3);
+  const rows = (projData.treeRows || []).filter(r => r.level === 3).map(scaleItemByCt);
   const months = getActiveMonths(projData);
   const roundMode = projData.roundMode || 'normal';
   const adj = projData.adj || {};
@@ -3785,6 +3786,13 @@ function parseKlText(raw) {
   return isNaN(n) ? 0 : n;
 }
 
+// Hệ số (%): "20" hoặc "20%" là 20%; "0,5" là 50%
+function parsePctRatio(raw) {
+  const n = parseFloat(String(raw ?? '').replace('%', '').trim().replace(',', '.'));
+  if(isNaN(n) || n < 0) return 1;
+  return n > 1 ? n / 100 : n;
+}
+
 // Hiển thị số khối lượng có dấu chấm phân nghìn (9.000)
 function fmtKlInput(n) {
   return Number(n || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
@@ -4041,6 +4049,7 @@ function renderTreeTable() {
         <td><input type="text" inputmode="decimal" style="text-align:right; font-family:var(--font-mono); font-weight:600; ${bptcInputStyle}${Number(curKl) === 0 ? ' color:#dc2626;' : ''}" value="${fmtKlInput(curKl)}" data-id="${r.id}" data-f="${fFieldKl}"></td>
         <td class="dv-fixed" style="text-align:center; font-size:10.5px; color:var(--text-muted);" title="Đơn vị theo Phân loại công trình (cố định, không sửa)">${escHtml(dvFixed)}</td>
         <td>${r.loai === 'Đường giao thông, công viên' || r.loai === 'Ép cọc' ? '' : `<input type="number" style="text-align:right; font-family:var(--font-mono);${!(r.dienTich > 0) ? ' background:#fef2f2; border-color:#dc2626;' : ''}" value="${r.dienTich > 0 ? r.dienTich : ''}" placeholder="⚠ Cần nhập" data-id="${r.id}" data-f="dienTich" title="Khối lượng hạ tầng (m²) của công trình. Cần nhập để tính CBGS/NVGS Hạ tầng">`}</td>
+        <td><input type="text" inputmode="decimal" style="text-align:right; font-family:var(--font-mono);" value="${Math.round((r.hsCt != null ? r.hsCt : 1) * 100)}%" data-id="${r.id}" data-f="hsCt" title="Hệ số công trình (100% = xây mới). Kết quả định biên của công trình được nhân với hệ số này"></td>
       `;
       tbody.appendChild(tr);
 
@@ -4061,6 +4070,7 @@ function renderTreeTable() {
           <td></td>
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me1_custom_kl && r.me1_kl != null ? r.me1_kl : (r.kl || '')}" data-id="${r.id}" data-f="me1_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${unitForLoai(r.loai)}</td>
+          <td></td>
         `;
         tbody.appendChild(sub1);
 
@@ -4078,6 +4088,7 @@ function renderTreeTable() {
           <td></td>
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me2_custom_kl && r.me2_kl != null ? r.me2_kl : (r.kl || '')}" data-id="${r.id}" data-f="me2_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${unitForLoai(r.loai)}</td>
+          <td></td>
         `;
         tbody.appendChild(sub2);
       }
@@ -4184,6 +4195,7 @@ function renderTreeTable() {
       const f = e.target.dataset.f;
       let val = e.target.value;
       if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl' || f === 'dienTich') val = parseKlText(val);
+      if(f === 'hsCt') val = parsePctRatio(val);
       const r = currentProjectData.treeRows.find(x => x.id === id);
       if(r) {
         r[f] = val;
@@ -6517,6 +6529,14 @@ function tnFromCv(cv, c) {
   return r > 0 ? Math.ceil(r / c) : 0;
 }
 
+// Hệ số công trình: nhân kết quả định biên của công trình (KL, diện tích, KL BPTC, KL M&E đều nhân cùng hệ số)
+function scaleItemByCt(r) {
+  const f = r.hsCt != null ? r.hsCt : 1;
+  if(f === 1) return r;
+  const sc = v => (v != null && v !== '' ? v * f : v);
+  return { ...r, kl: sc(r.kl), dienTich: sc(r.dienTich), bptc_kl: sc(r.bptc_kl), me1_kl: sc(r.me1_kl), me2_kl: sc(r.me2_kl) };
+}
+
 function pctNvFactor(type, proj, off, mk) {
   if(!proj || proj.nvgsMode !== 'pct') return 1;
   if(type === 'cb_xd' || type === 'cb_me' || type === 'cb_ht') {
@@ -6575,6 +6595,7 @@ function renderDienGiai(res) {
         const adj = adjF != null ? adjF : 1;
         // Chế độ % CBGS: x đã nhân 90% (CBGS) hoặc 15% (NVGS); đưa về CBGS gốc để hiện đúng ĐM
         const pf = pctNvFactor(meta.type, currentProjectData, res.pctOff, monthKey(months[j]));
+        klEff *= (it.hsCt != null ? it.hsCt : 1); // hệ số công trình
         if(ratio > 0 && klEff > 0 && adj > 0) dm = klEff * ratio / ((x / pf) / adj);
         if(!(klEff > 0)) return;
         const ku = /_ht$/.test(meta.type) ? 'm²' : (it.dv || '');
@@ -7495,6 +7516,7 @@ function applyValueToCellDomAndModel(td, rawValStr) {
     const rObj = (currentProjectData.treeRows || []).find(x => x.id === id);
     if(!rObj) return false;
 
+    if(f === 'hsCt') { rObj.hsCt = parsePctRatio(valStr); return true; }
     if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl') {
       rObj[f] = parseKlText(valStr);
       // Dán KL hạng mục chính: dòng M&E con nhảy theo (trừ khi đã sửa riêng)
