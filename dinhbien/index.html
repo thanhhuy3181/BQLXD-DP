@@ -6482,11 +6482,17 @@ function renderDienGiai(res) {
         const rTxt = c.ratio > 0 && Math.abs(c.ratio - 1) > 0.005 ? ` x ${Math.round(c.ratio * 100)}%` : '';
         const aTxt = Math.abs(c.adj - 1) > 0.005 ? ` x ${Math.round(c.adj * 100)}%` : '';
         // Số của từng hạng mục hiện đến 2 chữ số thập phân (0,00); tổng ở dòng trên vẫn làm tròn
-        const xTxt = Number(c.x || 0).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const pfTxt = c.pf === 0.9 ? ' x 90%' : (c.pf === 0.15 ? ' x 10% × 1,5' : '');
-        return `<li>${escHtml(c.name)}: ${base}${rTxt}${aTxt}${pfTxt} ~ ${xTxt} ${unit}</li>`;
+        // Chế độ % CBGS: hệ số 90% / 15% ghi ở dòng tổng, dòng hạng mục giữ số CBGS gốc
+        const xRaw = c.x / (c.pf || 1);
+        const xTxt = Number(xRaw || 0).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return `<li>${escHtml(c.name)}: ${base}${rTxt}${aTxt} ~ ${xTxt} ${unit}</li>`;
       }).join('');
-      cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${unit}</div><ul class="dg-list">${bullets}</ul>`;
+      // Dòng tổng ghi hệ số % CBGS: ví dụ "Tổng ~ 16 CB (18 CB x 90%)"
+      const pfAll = list[0].pf || 1;
+      const rawAll = list.reduce((s, c) => s + c.x / (c.pf || 1), 0);
+      const pfNote = pfAll === 0.9 ? ` (${Math.round(rawAll)} ${unit} x 90%)`
+        : (pfAll === 0.15 ? ` (${Math.round(rawAll)} ${unit} x 10% × 1,5)` : '');
+      cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${unit}${pfNote}</div><ul class="dg-list">${bullets}</ul>`;
     } else {
       // Không có hạng mục tính được: ghi căn cứ và kết quả của tháng (mọi dòng đều có diễn giải)
       cach = v > 0
