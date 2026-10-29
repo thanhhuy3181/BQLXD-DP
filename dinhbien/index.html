@@ -3399,22 +3399,22 @@ function calculateSingleProject(projData) {
         case 'lead_khoi_tc': raw = (cv_ktht_arr[mIdx] / getQlCalc('dt_tc', 5)) / getQlCalc('tk_tc', 5); break;
         case 'tn_qc': {
           const c = getQlCalc('tn_qc', 7);
-          raw = cv_qc_arr[mIdx] >= c ? Math.ceil(cv_qc_arr[mIdx] / c) : 0;
+          raw = tnFromCv(cv_qc_arr[mIdx], c);
           break;
         }
         case 'tn_qs': {
           const c = getQlCalc('tn_qs', 7);
-          raw = cv_qs_arr[mIdx] >= c ? Math.ceil(cv_qs_arr[mIdx] / c) : 0;
+          raw = tnFromCv(cv_qs_arr[mIdx], c);
           break;
         }
         case 'tn_shop': {
           const c = getQlCalc('tn_shop', 7);
-          raw = cv_shop_arr[mIdx] >= c ? Math.ceil(cv_shop_arr[mIdx] / c) : 0;
+          raw = tnFromCv(cv_shop_arr[mIdx], c);
           break;
         }
         case 'tn_atld': {
           const c = getQlCalc('tn_atld', 7);
-          raw = cv_atld_arr[mIdx] >= c ? Math.ceil(cv_atld_arr[mIdx] / c) : 0;
+          raw = tnFromCv(cv_atld_arr[mIdx], c);
           break;
         }
         // Trưởng nhóm Trắc đạc (T6): định mức riêng KL ÷ ĐM (500 / 100.000), không thuộc nhóm CBLĐ quản lý
@@ -3423,7 +3423,7 @@ function calculateSingleProject(projData) {
         case 'tn_mmtb': {
           // Trưởng nhóm QL MMTB: quản lý 7 Chuyên viên QL VTTB (T7)
           const c = getQlCalc('tn_mmtb', 7);
-          raw = cv_vttb_arr[mIdx] >= c ? Math.ceil(cv_vttb_arr[mIdx] / c) : 0;
+          raw = tnFromCv(cv_vttb_arr[mIdx], c);
           break;
         }
         case 'cv_vttb': raw = hasBptcActive ? cv_vttb_arr[mIdx] : 0; break;
@@ -3432,14 +3432,14 @@ function calculateSingleProject(projData) {
         case 'cv_hc_tc': {
           // Chuyên viên hành chính (T7): quản lý 7 Nhân viên hành chính (T8)
           const c = getQlCalc('cv_hc_tc', 7);
-          raw = nv_hc_arr[mIdx] >= c ? Math.ceil(nv_hc_arr[mIdx] / c) : 0;
+          raw = tnFromCv(nv_hc_arr[mIdx], c);
           break;
         }
         case 'nv_hc_tc': raw = hasBptcActive ? nv_hc_arr[mIdx] : 0; break;
         case 'nv_thinghiem': raw = hasBptcActive ? nv_tn_arr[mIdx] : 0; break;
         case 'tbp_httc': {
           // Trưởng BP Hỗ trợ thi công: quản lý 9–10 Trưởng nhóm (T6) toàn dự án
-          const tnCount = (arr, c) => (arr >= c ? Math.ceil(arr / c) : 0);
+          const tnCount = tnFromCv;
           const tnTotal = tnCount(cv_qc_arr[mIdx], 7) + tnCount(cv_qs_arr[mIdx], 7) + tnCount(cv_shop_arr[mIdx], 7)
             + tnCount(cv_atld_arr[mIdx], 7) + tnCount(cv_vttb_arr[mIdx], 7) + (tn_td_arr[mIdx] > 0 ? Math.ceil(tn_td_arr[mIdx]) : 0);
           const cTbp = getQlCalc('tbp_httc', 9.5);
@@ -6466,6 +6466,12 @@ const MGMT_EXPLAIN = {
 
 // Chức danh tính trực tiếp theo từng hạng mục (có KL / ĐM)
 // Hệ số của chế độ NVGS theo % CBGS: CBGS giữ 90%, NVGS = 15% CBGS gốc (10% × 1,5)
+// Số Trưởng nhóm từ số Chuyên viên: làm tròn số CV trước (như hiển thị), rồi ⌈CV ÷ tầm QL⌉ khi đủ tầm QL
+function tnFromCv(cv, c) {
+  const r = Math.round(cv || 0);
+  return r >= c ? Math.ceil(r / c) : 0;
+}
+
 function pctNvFactor(type, proj, off, mk) {
   if(!proj || proj.nvgsMode !== 'pct') return 1;
   if(type === 'cb_xd' || type === 'cb_me' || type === 'cb_ht') {
