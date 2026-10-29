@@ -5825,12 +5825,15 @@ function renderHesoNhansuTable(res) {
   tbody.innerHTML = html;
 
   tbody.querySelectorAll('input.cell-adj-input').forEach(input => {
+    // Chỉ khi đã mở sửa (F2 / nhấp đúp) mới bỏ dấu % và chọn chữ; chọn ô bằng chuột thì không sửa gì
     input.addEventListener('focus', (e) => {
+      if(e.target.readOnly) return;
       let v = e.target.value.replace('%', '').trim();
       e.target.value = v;
       e.target.select();
     });
     input.addEventListener('blur', (e) => {
+      if(e.target.readOnly) return; // không mở sửa thì không ghi gì
       const rIdx = e.target.dataset.ridx;
       const mk = e.target.dataset.mk;
       let rawVal = e.target.value.replace('%', '').trim();
