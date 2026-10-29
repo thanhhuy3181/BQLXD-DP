@@ -2089,12 +2089,12 @@ footer.app-footer {
               <th id="thHmDv" style="width:38px;">Đơn<br>vị</th>
               <th id="thHmKlHt" style="width:74px;" title="Khối lượng hạ tầng (m²) của công trình. Dùng tính CBGS / NVGS Hạ tầng (÷ 15.000 / 10.500 m²)">KL hạ tầng<br>(m²)</th>
               <th id="thHmHsCt" style="width:62px;" title="Hệ số công trình: nhân vào kết quả định biên của công trình (100% = xây mới; cải tạo thì nhỏ hơn)">Hệ số<br>CT</th>
-              <th class="hm-ct-col" style="width:70px;" title="Số cán bộ theo tháng diễn giải, theo hệ số công trình hiện tại">Đội trưởng<br>GS XD</th>
-              <th class="hm-ct-col" style="width:70px;" title="Cán bộ giám sát xây dựng (CBGS XD) của công trình">CB GS<br>XD</th>
-              <th class="hm-ct-col" style="width:70px;" title="Đội trưởng giám sát ME">Đội trưởng<br>GS ME</th>
-              <th class="hm-ct-col" style="width:70px;" title="Cán bộ giám sát ME (CBGS ME) của công trình">CB GS<br>ME</th>
-              <th class="hm-ct-col" style="width:70px;" title="Đội trưởng giám sát hạ tầng">Đội trưởng<br>GS HT</th>
-              <th class="hm-ct-col" style="width:70px;" title="Cán bộ giám sát hạ tầng (CBGS HT) của công trình">CB GS<br>HT</th>
+              <th class="hm-ct-col" style="width:70px;" title="Số cán bộ theo tháng diễn giải, theo hệ số công trình hiện tại">DTGS<br>XD</th>
+              <th class="hm-ct-col" style="width:70px;" title="Cán bộ giám sát xây dựng (CBGS XD) của công trình">CBGS<br>XD</th>
+              <th class="hm-ct-col" style="width:70px;" title="Đội trưởng giám sát ME">DTGS<br>ME</th>
+              <th class="hm-ct-col" style="width:70px;" title="Cán bộ giám sát ME (CBGS ME) của công trình">CBGS<br>ME</th>
+              <th class="hm-ct-col" style="width:70px;" title="Đội trưởng giám sát hạ tầng">DTGS<br>HT</th>
+              <th class="hm-ct-col" style="width:70px;" title="Cán bộ giám sát hạ tầng (CBGS HT) của công trình">CBGS<br>HT</th>
             </tr>
           </thead>
           <tbody id="treeTableBody">
@@ -3275,7 +3275,7 @@ function calculateSingleProject(projData) {
   // Chế độ NVGS theo tỷ lệ % CBGS: CBGS giữ 90% nhu cầu; NVGS = 10% CBGS × 1,5 (= 15% CBGS gốc). Áp cho NVGS XD và ME
   // Nếu NVGS của tháng đó làm tròn ra 0 (< 0,5) thì CBGS của tháng đó không nhân 90% nữa (ghi vào pctOff)
   const pctOff = {};
-  if(projData.nvgsMode === 'pct') {
+  if((projData.nvgsMode || 'pct') === 'pct') {
     months.forEach((mDate, mIdx) => {
       const mk = monthKey(mDate);
       ['xd', 'me'].forEach(g => {
@@ -3297,7 +3297,7 @@ function calculateSingleProject(projData) {
     cb_ht_arr[mIdx] = area_ht_arr[mIdx] / (dmC['cb_ht_khac'] > 0 ? dmC['cb_ht_khac'] : 15000);
     nv_ht_arr[mIdx] = area_ht_arr[mIdx] / (dmC['nv_ht_khac'] > 0 ? dmC['nv_ht_khac'] : 10500);
     // Chế độ NVGS theo % CBGS: CBGS Hạ tầng giữ 90%; NVGS Hạ tầng = 10% CBGS × 1,5 (15% CBGS gốc)
-    if(projData.nvgsMode === 'pct') {
+    if((projData.nvgsMode || 'pct') === 'pct') {
       const mkHt = monthKey(mDate);
       const rawHt = cb_ht_arr[mIdx];
       const nvHt = rawHt * 0.15;
@@ -6577,7 +6577,7 @@ function scaleItemByCt(r) {
 }
 
 function pctNvFactor(type, proj, off, mk) {
-  if(!proj || proj.nvgsMode !== 'pct') return 1;
+  if(!proj || (proj.nvgsMode || 'pct') !== 'pct') return 1;
   if(type === 'cb_xd' || type === 'cb_me' || type === 'cb_ht') {
     const g = type.slice(3);
     if(off && off[`${g}_${mk}`]) return 1; // NVGS tháng này = 0: CBGS không nhân 90%
@@ -6777,7 +6777,7 @@ function refreshDashboard() {
   const isAgg = !!calcResultCache.isAggregate;
   const selNvgsEl = document.getElementById('selNvgsMode');
   if(selNvgsEl) {
-    selNvgsEl.value = (currentProjectData && currentProjectData.nvgsMode) || 'dm';
+    selNvgsEl.value = (currentProjectData && currentProjectData.nvgsMode) || 'pct';
     selNvgsEl.disabled = !currentBqlId;
   }
 
