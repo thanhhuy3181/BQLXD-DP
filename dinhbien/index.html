@@ -6389,6 +6389,14 @@ const MGMT_EXPLAIN = {
 };
 
 // Chức danh tính trực tiếp theo từng hạng mục (có KL / ĐM)
+// Hệ số của chế độ NVGS theo % CBGS: CBGS giữ 90%, NVGS = 15% CBGS gốc (10% × 1,5)
+function pctNvFactor(type, proj) {
+  if(!proj || proj.nvgsMode !== 'pct') return 1;
+  if(type === 'cb_xd' || type === 'cb_me' || type === 'cb_ht') return 0.9;
+  if(type === 'nv_xd' || type === 'nv_me' || type === 'nv_ht') return 0.15;
+  return 1;
+}
+
 const DIRECT_EXPLAIN = ['cb_xd', 'cb_me', 'cb_ht', 'nv_xd', 'nv_me', 'nv_ht', 'thu_kho_sum', 'tk_nlxd', 'tk_nlme', 'tk_htxd', 'tk_htme', 'cv_vttb', 'nv_cokhi', 'nv_diennuoc', 'nv_hc_tc', 'nv_thinghiem', 'tn_tracdac',
   'cv_ktht', 'cv_qc', 'cv_qs', 'cv_shop', 'cv_atld', 'cv_tracdac', 'nv_tracdac', 'cv_noinghiep_tc', 'cv_kehoach_tc'];
 
@@ -6434,10 +6442,12 @@ function renderDienGiai(res) {
         ratio = arr ? (arr[jj] || 0) : 0;
         const adjF = (currentProjectData.adj || {})[`${rIdx}_${monthKey(months[j])}`];
         const adj = adjF != null ? adjF : 1;
-        if(ratio > 0 && klEff > 0 && adj > 0) dm = klEff * ratio / (x / adj);
+        // Chế độ % CBGS: x đã nhân 90% (CBGS) hoặc 15% (NVGS); đưa về CBGS gốc để hiện đúng ĐM
+        const pf = pctNvFactor(meta.type, currentProjectData);
+        if(ratio > 0 && klEff > 0 && adj > 0) dm = klEff * ratio / ((x / pf) / adj);
         if(!(klEff > 0)) return;
         const ku = /_ht$/.test(meta.type) ? 'm²' : (it.dv || '');
-        (contrib[rIdx] = contrib[rIdx] || []).push({ name: it.ten, kl: klEff, x, ratio, adj, dm, ku });
+        (contrib[rIdx] = contrib[rIdx] || []).push({ name: it.ten, kl: klEff, x, ratio, adj, dm, ku, pf });
       });
     });
   }
@@ -6449,16 +6459,7 @@ function renderDienGiai(res) {
     const list = contrib[rIdx];
     let cach;
     const mg = MGMT_EXPLAIN[meta.type];
-    // Chế độ NVGS theo % CBGS: diễn giải CBGS (90%) và NVGS (10% × 1,5 = 15%) theo CBGS gốc
-    const pctNv = !res.isAggregate && currentProjectData && currentProjectData.nvgsMode === 'pct';
-    if(pctNv && ['nv_xd', 'nv_me', 'nv_ht', 'cb_xd', 'cb_me', 'cb_ht'].includes(meta.type)) {
-      const cbIdx = MATRIX_ROWS_META.findIndex(m => m.type === 'cb_' + meta.type.slice(3));
-      const cbGoc = (res.rowsRaw[cbIdx][j] || 0) / 0.9;
-      const own = res.rowsRaw[rIdx][j] || 0;
-      cach = meta.type.startsWith('nv')
-        ? `<div class="dg-total">Tổng ~ <b>${v}</b> CB</div><div>= 10% × 1,5 × CBGS (T6) gốc ${fmt(cbGoc, 1)} CB ~ ${fmt(own, 1)} CB</div>`
-        : `<div class="dg-total">Tổng ~ <b>${v}</b> CB</div><div>= 90% × CBGS (T6) gốc ${fmt(cbGoc, 1)} CB ~ ${fmt(own, 1)} CB</div>`;
-    } else if(meta.type === 'thu_kho_sum') {
+    if(meta.type === 'thu_kho_sum') {
       cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${unit}</div><div>= tổng các dòng 4.1 → 4.6 (tháng ${dgLabel})</div>`;
     } else if(mg) {
       const dmC = currentProjectData.dinhMucCustom || {};
@@ -6481,7 +6482,8 @@ function renderDienGiai(res) {
         const rTxt = c.ratio > 0 && Math.abs(c.ratio - 1) > 0.005 ? ` x ${Math.round(c.ratio * 100)}%` : '';
         const aTxt = Math.abs(c.adj - 1) > 0.005 ? ` x ${Math.round(c.adj * 100)}%` : '';
         const xTxt = c.x >= 1 ? fmt(Math.round(c.x), 0) : fmt(c.x, 1);
-        return `<li>${escHtml(c.name)}: ${base}${rTxt}${aTxt} ~ ${xTxt} ${unit}</li>`;
+        const pfTxt = c.pf === 0.9 ? ' x 90%' : (c.pf === 0.15 ? ' x 10% × 1,5' : '');
+        return `<li>${escHtml(c.name)}: ${base}${rTxt}${aTxt}${pfTxt} ~ ${xTxt} ${unit}</li>`;
       }).join('');
       cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${unit}</div><ul class="dg-list">${bullets}</ul>`;
     } else {
