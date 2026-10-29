@@ -1243,6 +1243,9 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 #matrixTable, #chartSyncTable, #syncHesoTable, #dinhmucTable, #tableHesoNhansu { user-select: none; }
 #matrixTable td, #chartSyncTable td, #syncHesoTable td, #dinhmucTable td, #tableHesoNhansu td { user-select: none; }
 tr.row-sub td { font-style: italic; }
+/* Diễn giải: phần cách tính in nghiêng, màu nhạt; dòng 0 CB dùng màu đậm hơn để dễ đọc */
+#diengiaiWrap .dg-cach > div:not(.dg-total), #diengiaiWrap .dg-cach .dg-list, #diengiaiWrap .dg-cach .dg-rule-txt { font-style: italic; color: #64748b; }
+#diengiaiWrap tr.dg-zero .dg-cach > div:not(.dg-total), #diengiaiWrap tr.dg-zero .dg-cach .dg-list, #diengiaiWrap tr.dg-zero .dg-cach .dg-rule-txt { color: #1e293b; }
 #treeTable td input[data-f="dienTich"] { width: 70px; }
 /* Hiển thị ô nhập phẳng như ô Excel (không viền vuông bên trong) */
 /* Ẩn mũi tên tăng giảm (spin button) cho các ô nhập số trên toàn bảng */
@@ -6423,7 +6426,14 @@ function renderDienGiai(res) {
         ? `<span class="dg-rule-txt">${escHtml(meta.rule || '')} → <b>${v}</b> ${unit} tại ${dgLabel}</span>`
         : `<span class="dg-rule-txt">Không phát sinh tại ${dgLabel} (${escHtml(meta.rule || '')})</span>`;
     }
-    return `<tr><td class="dg-stt">${stt}</td><td class="dg-cd">${escHtml(meta.cd)}</td><td class="dg-cap">${escHtml(meta.cap || '')}</td><td class="dg-cach">${cach}</td></tr>`;
+    // Ô đã sửa tay / đã xóa ở Nhân sự: ghi "Điều chỉnh" lên đầu, phần cách tính tự tính nằm bên dưới
+    const ovVal = res.nsAuto && currentProjectData && currentProjectData.nsOverride
+      ? currentProjectData.nsOverride[`r${rIdx}_${monthKey(months[j])}`] : undefined;
+    if(ovVal != null) {
+      cach = `<div class="dg-total">Điều chỉnh: <b>${ovVal < 0 ? 0 : ovVal}</b> ${unit}${ovVal < 0 ? ' (đã xóa)' : ''}</div>` + cach;
+    }
+    const rowCls = v > 0 ? '' : ' class="dg-zero"';
+    return `<tr${rowCls}><td class="dg-stt">${stt}</td><td class="dg-cd">${escHtml(meta.cd)}</td><td class="dg-cap">${escHtml(meta.cap || '')}</td><td class="dg-cach">${cach}</td></tr>`;
   };
 
   // Cấu trúc hàng y hệt bảng Nhân sự (theo tab đang chọn)
