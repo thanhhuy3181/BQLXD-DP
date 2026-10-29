@@ -5250,6 +5250,32 @@ document.addEventListener('DOMContentLoaded', () => {
       refreshDashboard();
     });
     header.appendChild(btn);
+
+    // Nút ↺ Mặc định: xóa các số đã chỉnh của bảng này, đưa về định mức / tiến độ chuẩn
+    const isNs = sel.includes('heso-nhansu');
+    const rst = document.createElement('button');
+    rst.type = 'button';
+    rst.className = 'btn';
+    rst.textContent = '↺ Mặc định';
+    rst.style.cssText = 'font-size:10.5px; padding:2px 6px; margin-left:4px;';
+    rst.title = isNs ? 'Xóa các hệ số nhân sự đã chỉnh (khối đang xem), về 100%' : 'Xóa các hệ số tiến độ đã chỉnh của tab đang xem, về chuẩn';
+    rst.addEventListener('click', () => {
+      if(!currentProjectData || !currentBqlId) return;
+      if(!confirm(isNs ? 'Đưa hệ số nhân sự của khối đang xem về 100%?' : 'Đưa hệ số tiến độ của tab đang xem về chuẩn?')) return;
+      if(isNs) {
+        const dept = currentDeptSyncTab;
+        Object.keys(currentProjectData.adj || {}).forEach(k => {
+          const meta = MATRIX_ROWS_META[Number(k.split('_')[0])];
+          if(dept === 'ALL' || (meta && meta.pb === dept)) delete currentProjectData.adj[k];
+        });
+      } else {
+        const pre = `${currentHesoTab}_`;
+        Object.keys(currentProjectData.hesoCustom || {}).forEach(k => { if(k.startsWith(pre)) delete currentProjectData.hesoCustom[k]; });
+      }
+      saveCurrentProject();
+      refreshDashboard();
+    });
+    header.appendChild(rst);
   });
 });
 
