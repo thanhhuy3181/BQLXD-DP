@@ -9621,6 +9621,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Đang sửa một ô: Enter xuống ô dưới, Tab sang phải (Shift+Tab sang trái), như Excel. Giá trị được lưu khi rời ô
+  const xlNextCtrl = (el, dr, dc) => {
+    const td = el.closest('td');
+    const tr = td && td.closest('tr');
+    if(!td || !tr) return null;
+    const ctrlIn = cell => cell && cell.querySelector('input:not([type="checkbox"]), select');
+    if(dr === 0) {
+      let cell = td;
+      for(;;) {
+        cell = dc > 0 ? cell.nextElementSibling : cell.previousElementSibling;
+        if(!cell) return null;
+        const c = ctrlIn(cell);
+        if(c) return c;
+      }
+    }
+    const rowEl = dr > 0 ? tr.nextElementSibling : tr.previousElementSibling;
+    return rowEl && rowEl.cells[td.cellIndex] ? ctrlIn(rowEl.cells[td.cellIndex]) : null;
+  };
+  const xlSelectCtrl = target => {
+    const table = target.closest('table');
+    const td = target.closest('td');
+    const info = table && td ? getRowAndColOfCell(td, table) : null;
+    if(!info) return;
+    excelRangeSelection.tableEl = table;
+    excelRangeSelection.disjointCells = [];
+    excelRangeSelection.anchorCoords = { r: info.r, c: info.c };
+    excelRangeSelection.focusCoords = { r: info.r, c: info.c };
+    highlightExcelRangeSelection();
+  };
+  document.addEventListener('keydown', e => {
+    const el = document.activeElement;
+    if(!el || !el.matches || !el.matches(XL_CTRL) || el.dataset.xlLocked !== '0') return;
+    if(xlIsCell(el)) return; // lưới Nhân sự / Hệ số có bộ điều hướng riêng
+    let dr = 0, dc = 0;
+    if(e.key === 'Enter') dr = 1;
+    else if(e.key === 'Tab') dc = e.shiftKey ? -1 : 1;
+    else return;
+    const target = xlNextCtrl(el, dr, dc);
+    e.preventDefault();
+    e.stopPropagation();
+    el.blur(); // lưu giá trị (change) rồi khóa ô
+    if(target) {
+      target.focus();
+      xlSelectCtrl(target);
+    }
+  }, true);
+
   // Mũi tên khi đang chọn một ô (chưa sửa): chuyển sang ô bên cạnh để nhập liệu, không chọn cả dòng
   document.addEventListener('keydown', e => {
     const dirMap = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] };
