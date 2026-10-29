@@ -5100,6 +5100,8 @@ async function xlPaste(pasted) {
   let n = 0;
   targets.forEach(([i, v]) => { if(xlEditable(i)) { xlWriteOne(i, v); n++; } });
   if(n) xlCommit();
+  if(!n) showUndoToast(targets.length ? '🔒 Bật "✎ Tùy chỉnh" của bảng này để dán' : 'Không có ô nào để dán');
+  else showUndoToast(`📋 Đã dán ${n} ô${n < targets.length ? ` (bỏ qua ${targets.length - n} ô không sửa được)` : ''}`);
 }
 
 // Dán vào lưới Nhân sự / Hệ số (đang chọn vùng ô, không đang gõ): dán theo vùng, 1 ô copy thì điền cả vùng
