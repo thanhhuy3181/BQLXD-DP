@@ -3260,13 +3260,21 @@ function calculateSingleProject(projData) {
   let tro_ly_bql_arr = Array(numM).fill(0);
 
   // Chế độ NVGS theo tỷ lệ % CBGS: CBGS giữ 90% nhu cầu; NVGS = 10% CBGS × 1,5 (= 15% CBGS gốc). Áp cho NVGS XD và ME
+  // Nếu NVGS của tháng đó làm tròn ra 0 (< 0,5) thì CBGS của tháng đó không nhân 90% nữa (ghi vào pctOff)
+  const pctOff = {};
   if(projData.nvgsMode === 'pct') {
     months.forEach((mDate, mIdx) => {
-      const cbXdRaw = cb_xd_arr[mIdx], cbMeRaw = cb_me_arr[mIdx];
-      nv_xd_arr[mIdx] = cbXdRaw * 0.15;
-      nv_me_arr[mIdx] = cbMeRaw * 0.15;
-      cb_xd_arr[mIdx] = cbXdRaw * 0.9;
-      cb_me_arr[mIdx] = cbMeRaw * 0.9;
+      const mk = monthKey(mDate);
+      ['xd', 'me'].forEach(g => {
+        const cbArr = g === 'xd' ? cb_xd_arr : cb_me_arr;
+        const nvArr = g === 'xd' ? nv_xd_arr : nv_me_arr;
+        const raw = cbArr[mIdx];
+        const nvV = raw * 0.15;
+        const off = projData.pctOff ? !!projData.pctOff[`${g}_${mk}`] : nvV < 0.5;
+        if(off) pctOff[`${g}_${mk}`] = true;
+        nvArr[mIdx] = nvV;
+        cbArr[mIdx] = off ? raw : raw * 0.9;
+      });
     });
   }
 
@@ -3277,8 +3285,13 @@ function calculateSingleProject(projData) {
     nv_ht_arr[mIdx] = area_ht_arr[mIdx] / (dmC['nv_ht_khac'] > 0 ? dmC['nv_ht_khac'] : 10500);
     // Chế độ NVGS theo % CBGS: CBGS Hạ tầng giữ 90%; NVGS Hạ tầng = 10% CBGS × 1,5 (15% CBGS gốc)
     if(projData.nvgsMode === 'pct') {
-      nv_ht_arr[mIdx] = cb_ht_arr[mIdx] * 0.15;
-      cb_ht_arr[mIdx] = cb_ht_arr[mIdx] * 0.9;
+      const mkHt = monthKey(mDate);
+      const rawHt = cb_ht_arr[mIdx];
+      const nvHt = rawHt * 0.15;
+      const offHt = projData.pctOff ? !!projData.pctOff[`ht_${mkHt}`] : nvHt < 0.5;
+      if(offHt) pctOff[`ht_${mkHt}`] = true;
+      nv_ht_arr[mIdx] = nvHt;
+      cb_ht_arr[mIdx] = offHt ? rawHt : rawHt * 0.9;
     }
     const cXd = getQlCalc('dt_xd', 10);
     const cMe = getQlCalc('dt_me', 10);
@@ -3496,6 +3509,7 @@ function calculateSingleProject(projData) {
     rowsRaw,
     rowsFinal,
     nsAuto,
+    pctOff,
     bqlTotals,
     khoTotals,
     bptcTotals,
@@ -6390,9 +6404,13 @@ const MGMT_EXPLAIN = {
 
 // Chức danh tính trực tiếp theo từng hạng mục (có KL / ĐM)
 // Hệ số của chế độ NVGS theo % CBGS: CBGS giữ 90%, NVGS = 15% CBGS gốc (10% × 1,5)
-function pctNvFactor(type, proj) {
+function pctNvFactor(type, proj, off, mk) {
   if(!proj || proj.nvgsMode !== 'pct') return 1;
-  if(type === 'cb_xd' || type === 'cb_me' || type === 'cb_ht') return 0.9;
+  if(type === 'cb_xd' || type === 'cb_me' || type === 'cb_ht') {
+    const g = type.slice(3);
+    if(off && off[`${g}_${mk}`]) return 1; // NVGS tháng này = 0: CBGS không nhân 90%
+    return 0.9;
+  }
   if(type === 'nv_xd' || type === 'nv_me' || type === 'nv_ht') return 0.15;
   return 1;
 }
@@ -6419,7 +6437,7 @@ function renderDienGiai(res) {
   const contrib = {};
   if(!res.isAggregate && currentProjectData) {
     (currentProjectData.treeRows || []).filter(r => r.level === 3).forEach(it => {
-      const one = { ...currentProjectData, treeRows: [it], nsOverride: {} };
+      const one = { ...currentProjectData, treeRows: [it], nsOverride: {}, pctOff: res.pctOff || {} };
       const r1 = calculateSingleProject(one);
       const jj = r1.months.findIndex(m => monthKey(m) === monthKey(months[j]));
       if(jj < 0) return;
@@ -6443,7 +6461,7 @@ function renderDienGiai(res) {
         const adjF = (currentProjectData.adj || {})[`${rIdx}_${monthKey(months[j])}`];
         const adj = adjF != null ? adjF : 1;
         // Chế độ % CBGS: x đã nhân 90% (CBGS) hoặc 15% (NVGS); đưa về CBGS gốc để hiện đúng ĐM
-        const pf = pctNvFactor(meta.type, currentProjectData);
+        const pf = pctNvFactor(meta.type, currentProjectData, res.pctOff, monthKey(months[j]));
         if(ratio > 0 && klEff > 0 && adj > 0) dm = klEff * ratio / ((x / pf) / adj);
         if(!(klEff > 0)) return;
         const ku = /_ht$/.test(meta.type) ? 'm²' : (it.dv || '');
