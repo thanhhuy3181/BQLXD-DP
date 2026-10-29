@@ -1245,7 +1245,8 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 tr.row-sub td { font-style: italic; }
 /* Diễn giải: phần cách tính in nghiêng, màu nhạt; dòng 0 CB dùng màu đậm hơn để dễ đọc */
 #diengiaiWrap .dg-cach > div:not(.dg-total), #diengiaiWrap .dg-cach .dg-list, #diengiaiWrap .dg-cach .dg-rule-txt { font-style: italic; color: #64748b; }
-#diengiaiWrap tr.dg-zero .dg-cach > div:not(.dg-total), #diengiaiWrap tr.dg-zero .dg-cach .dg-list, #diengiaiWrap tr.dg-zero .dg-cach .dg-rule-txt { color: #1e293b; }
+/* Chức danh có kết quả = 0 CB: cả dòng chữ xám để không nổi bật */
+#diengiaiWrap tr.dg-zero td, #diengiaiWrap tr.dg-zero .dg-cach > div { color: #94a3b8 !important; }
 #treeTable td input[data-f="dienTich"] { width: 70px; }
 /* Hiển thị ô nhập phẳng như ô Excel (không viền vuông bên trong) */
 /* Ẩn mũi tên tăng giảm (spin button) cho các ô nhập số trên toàn bảng */
