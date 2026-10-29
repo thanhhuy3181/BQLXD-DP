@@ -6427,7 +6427,7 @@ function renderDienGiai(res) {
         : `<span class="dg-rule-txt">Không phát sinh tại ${dgLabel} (${escHtml(meta.rule || '')})</span>`;
     }
     // Ô đã sửa tay / đã xóa ở Nhân sự: ghi "Điều chỉnh" lên đầu, phần cách tính tự tính nằm bên dưới
-    const ovVal = res.nsAuto && currentProjectData && currentProjectData.nsOverride
+    const ovVal = !res.isAggregate && currentProjectData && currentProjectData.nsOverride
       ? currentProjectData.nsOverride[`r${rIdx}_${monthKey(months[j])}`] : undefined;
     if(ovVal != null) {
       cach = `<div class="dg-total">Điều chỉnh: <b>${ovVal < 0 ? 0 : ovVal}</b> ${unit}${ovVal < 0 ? ' (đã xóa)' : ''}</div>` + cach;
