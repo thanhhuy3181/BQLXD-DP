@@ -1131,7 +1131,7 @@ body.mobile-view-mode table.nhansu-matrix-table thead th.col-freeze-4 { left: ca
 /* Chế độ Tùy chỉnh: ô sửa được được tô màu nhạt; số tự tính hiện nhỏ ở góc ô đã sửa */
 .ns-input.ns-editable { background: #ecfdf5; }
 td.ns-cell { position: relative; }
-.ns-auto { position: absolute; top: 0; right: 2px; font-size: 8.5px; color: #64748b; font-weight: 400; pointer-events: none; }
+.ns-auto { position: absolute; top: 0; right: 2px; font-size: 8.5px; color: #d97706; font-weight: 600; pointer-events: none; }
 .xl-sel { background: #dbeafe !important; }
 .xl-sel input { background: transparent !important; }
 .ns-reset { margin-left: 4px; font-size: 9.5px; padding: 0 4px; border: 1px solid #cbd5e1; background: #fff; border-radius: 3px; cursor: pointer; }
@@ -4858,7 +4858,12 @@ function renderRow(meta, rIdx, res) {
       const autoTxt = hasOv && autoVal > 0 ? `<span class="ns-auto" title="Số tự tính theo định mức">${autoVal}</span>` : '';
       cellsHtml += `<td class="num-cell col-month-fixed ns-cell"><input type="number" min="0" step="0.5" class="ns-input ns-editable${hasOv ? ' ns-custom' : ''}" data-key="${key}" value="${shown}" placeholder="-" title="Sửa tay được; xóa ô để bỏ trống (-); số nhỏ góc ô là số tự tính">${autoTxt}</td>`;
     } else {
-      cellsHtml += `<td class="num-cell col-month-fixed">${finalVal > 0 ? finalVal : ''}</td>`;
+      // Ô đã sửa tay (kể cả đã xóa) vẫn hiện số tự tính nhỏ ở góc, khi tắt Tùy chỉnh
+      const roKey = `r${rIdx}_${monthKey(mDate)}`;
+      const roOv = !res.isAggregate && currentProjectData && currentProjectData.nsOverride ? currentProjectData.nsOverride[roKey] : undefined;
+      const roAuto = roOv != null && res.nsAuto ? res.nsAuto[rIdx][mIdx] : 0;
+      const roCorner = roAuto > 0 ? `<span class="ns-auto">${roAuto}</span>` : '';
+      cellsHtml += `<td class="num-cell col-month-fixed ns-cell">${finalVal > 0 ? finalVal : ''}${roCorner}</td>`;
     }
   });
 
