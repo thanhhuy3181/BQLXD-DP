@@ -1244,7 +1244,7 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 #matrixTable td, #chartSyncTable td, #syncHesoTable td, #dinhmucTable td, #tableHesoNhansu td { user-select: none; }
 tr.row-sub td { font-style: italic; }
 /* Diễn giải: phần cách tính in nghiêng, màu nhạt; dòng 0 CB dùng màu đậm hơn để dễ đọc */
-#diengiaiWrap .dg-cach > div:not(.dg-total), #diengiaiWrap .dg-cach .dg-list, #diengiaiWrap .dg-cach .dg-rule-txt { font-style: italic; color: #64748b; }
+#diengiaiWrap .dg-cach > div:not(.dg-total), #diengiaiWrap .dg-cach .dg-list, #diengiaiWrap .dg-cach .dg-rule-txt, #diengiaiWrap .dg-cach .dg-pct { font-style: italic; color: #64748b; font-weight: 400; }
 /* Chức danh có kết quả = 0 CB: cả dòng chữ xám để không nổi bật */
 #diengiaiWrap tr.dg-zero td, #diengiaiWrap tr.dg-zero .dg-cach > div { color: #94a3b8 !important; }
 #treeTable td input[data-f="dienTich"] { width: 70px; }
@@ -6491,8 +6491,9 @@ function renderDienGiai(res) {
       const pfAll = list[0].pf || 1;
       const rawAll = list.reduce((s, c) => s + c.x / (c.pf || 1), 0);
       const rawTxt = Number(rawAll || 0).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const pfNote = pfAll === 0.9 ? ` (${rawTxt} ${unit} x 90%)`
+      const pfText = pfAll === 0.9 ? ` (${rawTxt} ${unit} x 90%)`
         : (pfAll === 0.15 ? ` (${rawTxt} ${unit} x 10% × 1,5)` : '');
+      const pfNote = pfText ? `<span class="dg-pct">${pfText}</span>` : '';
       cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${unit}${pfNote}</div><ul class="dg-list">${bullets}</ul>`;
     } else {
       // Không có hạng mục tính được: ghi căn cứ và kết quả của tháng (mọi dòng đều có diễn giải)
