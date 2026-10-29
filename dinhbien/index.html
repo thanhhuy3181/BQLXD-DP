@@ -3195,8 +3195,8 @@ function calculateSingleProject(projData) {
       const custHT = !oldAutoHT && parseDateAny(it.me2_bd) && parseDateAny(it.me2_kt) ? [parseDateAny(it.me2_bd), parseDateAny(it.me2_kt)] : null;
       const stBT = hasStages ? (custBT || autoBT) : null;
       const stHT = hasStages ? (custHT || autoHT) : null;
-      const klBT = (it.me1_kl != null ? it.me1_kl : kl);
-      const klHT = (it.me2_kl != null ? it.me2_kl : kl);
+      const klBT = (it.me1_custom_kl && it.me1_kl != null ? it.me1_kl : kl);
+      const klHT = (it.me2_custom_kl && it.me2_kl != null ? it.me2_kl : kl);
       // Hệ số mỗi GĐ giống hạng mục chính: 100% khi nằm trong giai đoạn, người dùng sửa được từng tháng
       const rBT = stBT ? getCustomHeso('me1', it.id, mk, calcRatio(stBT[0], stBT[1], mDate)) : 0;
       const rHT = stHT ? getCustomHeso('me2', it.id, mk, calcRatio(stHT[0], stHT[1], mDate)) : prMe;
@@ -4059,7 +4059,7 @@ function renderTreeTable() {
           <td><input type="text" class="input-date-dmy" value="${meStageDates(r).bd1}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me1_bd"></td>
           <td><input type="text" class="input-date-dmy" value="${meStageDates(r).kt1}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me1_kt"></td>
           <td></td>
-          <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me1_kl != null ? r.me1_kl : (r.kl || '')}" data-id="${r.id}" data-f="me1_kl"></td>
+          <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me1_custom_kl && r.me1_kl != null ? r.me1_kl : (r.kl || '')}" data-id="${r.id}" data-f="me1_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${unitForLoai(r.loai)}</td>
         `;
         tbody.appendChild(sub1);
@@ -4076,7 +4076,7 @@ function renderTreeTable() {
           <td><input type="text" class="input-date-dmy" value="${meStageDates(r).bd2}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me2_bd"></td>
           <td><input type="text" class="input-date-dmy" value="${meStageDates(r).kt2}" placeholder="dd/mm/yyyy" data-id="${r.id}" data-f="me2_kt"></td>
           <td></td>
-          <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me2_kl != null ? r.me2_kl : (r.kl || '')}" data-id="${r.id}" data-f="me2_kl"></td>
+          <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me2_custom_kl && r.me2_kl != null ? r.me2_kl : (r.kl || '')}" data-id="${r.id}" data-f="me2_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${unitForLoai(r.loai)}</td>
         `;
         tbody.appendChild(sub2);
@@ -4458,8 +4458,8 @@ function renderSyncHesoTable(res) {
         // Đồng bộ 2 dòng in nghiêng M&E cấp 4 nếu hạng mục có M&E và đang bật hiển thị dòng M&E
         const hasMeSub = showMeSubRows && ['Thấp tầng', 'Cao tầng', 'Các công trình khác', 'Nhà xưởng', 'Công trình nhà xưởng'].includes(r.loai);
         if(hasMeSub) {
-          const me1Kl = r.me1_kl != null ? r.me1_kl : r.kl;
-          const me2Kl = r.me2_kl != null ? r.me2_kl : r.kl;
+          const me1Kl = r.me1_custom_kl && r.me1_kl != null ? r.me1_kl : r.kl;
+          const me2Kl = r.me2_custom_kl && r.me2_kl != null ? r.me2_kl : r.kl;
           const me1KlDisp = (me1Kl != null && me1Kl !== '') ? Number(me1Kl).toLocaleString('vi-VN') : '';
           const me2KlDisp = (me2Kl != null && me2Kl !== '') ? Number(me2Kl).toLocaleString('vi-VN') : '';
 
@@ -7275,11 +7275,11 @@ function importRowsFromTsvText(text) {
       if(meStage === 1) {
         if(datesFound[0]) lastLevel3Row.me1_bd = datesFound[0];
         if(datesFound[1]) lastLevel3Row.me1_kt = datesFound[1];
-        if(numFound != null) lastLevel3Row.me1_kl = numFound;
+        if(numFound != null) { lastLevel3Row.me1_kl = numFound; lastLevel3Row.me1_custom_kl = true; }
       } else {
         if(datesFound[0]) lastLevel3Row.me2_bd = datesFound[0];
         if(datesFound[1]) lastLevel3Row.me2_kt = datesFound[1];
-        if(numFound != null) lastLevel3Row.me2_kl = numFound;
+        if(numFound != null) { lastLevel3Row.me2_kl = numFound; lastLevel3Row.me2_custom_kl = true; }
       }
       return;
     }
@@ -7498,6 +7498,8 @@ function applyValueToCellDomAndModel(td, rawValStr) {
     if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl') {
       rObj[f] = parseKlText(valStr);
       // Dán KL hạng mục chính: dòng M&E con nhảy theo (trừ khi đã sửa riêng)
+      if(f === 'me1_kl') rObj.me1_custom_kl = true;
+      if(f === 'me2_kl') rObj.me2_custom_kl = true;
       ensureMeStagesForRow(rObj, f === 'kl');
     } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'bptc_batDau' || f === 'bptc_ketThuc' || f === 'bptc_banGiao' || f === 'me1_bd' || f === 'me1_kt' || f === 'me2_bd' || f === 'me2_kt') {
       const norm = normalizeExcelDate(valStr);
