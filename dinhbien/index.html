@@ -5222,21 +5222,23 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Nút ✎ Tùy chỉnh cho bảng Hệ số tiến độ (bảng Nhân sự đã có nút riêng)
+// Nút ✎ Tùy chỉnh cho Hệ số tiến độ và Hệ số nhân sự (bảng Nhân sự đã có nút riêng). Hai nút dùng chung một chế độ sửa
 document.addEventListener('DOMContentLoaded', () => {
-  const header = document.querySelector('.heso-section > .card-header');
-  if(!header) return;
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'ns-toggle-btn';
-  btn.textContent = '✎ Tùy chỉnh';
-  btn.title = 'Bật để sửa trực tiếp hệ số tiến độ từng tháng';
-  btn.addEventListener('click', () => {
-    hsEditMode = !hsEditMode;
-    btn.classList.toggle('active', hsEditMode);
-    refreshDashboard();
+  ['.heso-section > .card-header', '.heso-nhansu-section > .card-header'].forEach(sel => {
+    const header = document.querySelector(sel);
+    if(!header) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ns-toggle-btn hs-tc-btn';
+    btn.textContent = '✎ Tùy chỉnh';
+    btn.title = 'Bật để sửa trực tiếp hệ số tiến độ / hệ số nhân sự từng tháng';
+    btn.addEventListener('click', () => {
+      hsEditMode = !hsEditMode;
+      document.querySelectorAll('.hs-tc-btn').forEach(b => b.classList.toggle('active', hsEditMode));
+      refreshDashboard();
+    });
+    header.appendChild(btn);
   });
-  header.appendChild(btn);
 });
 
 let currentDinhMucView = 'sync'; // 'sync' | 'bql' | 'kho' | 'bptc'
