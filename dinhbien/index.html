@@ -1239,6 +1239,8 @@ body.mobile-view-mode .heso-nhansu-section { order: 8; }
 #treeTable .me-menu button { font-size: 9.5px; height: 20px; padding: 0 5px; border: 1px solid #94a3b8; border-radius: 4px; background: #fff; color: #1e293b; cursor: pointer; white-space: nowrap; }
 #treeTable td input.input-date-dmy { width: 88px; }
 #treeTable td.dv-fixed { user-select: none; }
+#treeTable .hm-ct-col { display: none; }
+#treeTable.hm-ct-on .hm-ct-col { display: table-cell; }
 /* Diễn giải: bôi chọn theo ô như Excel, không bôi chọn chữ */
 /* Tiêu đề Hạng mục: khi hiện nút "Lấy bằng KL & Tiến độ DA" thì xuống dòng, không đè lên thanh tab */
 #hangmucCard > .card-header > div:first-child { flex-wrap: wrap !important; row-gap: 4px; height: auto !important; max-height: none !important; }
@@ -2063,6 +2065,7 @@ footer.app-footer {
           <button class="btn" id="btnXoaDongHm" title="Xóa dòng đang chọn (Delete)" style="color:#dc2626; padding:4px 8px;">✕</button>
           <button class="btn" id="btnTogglePhanLoaiCols" style="background:#f1f5f9; border-color:#cbd5e1; color:#64748b; font-weight:600;" title="Tắt / Mở 3 cột Phân loại công trình (Cấp 1, Cấp 2, TC bàn giao) để dễ copy-paste trực tiếp Tên + Tiến độ + Khối lượng từ Excel">👁 Phân loại</button>
           <button class="btn" id="btnToggleMeSubRows" style="background:#f1f5f9; border-color:#cbd5e1; color:#64748b; font-weight:600;" title="Tắt / Mở các dòng con M&amp;E (GĐ bê tông cốt thép &amp; GĐ hoàn thiện) để dễ paste danh sách hạng mục liền mạch từ Excel">⚡ M&amp;E</button>
+          <button class="btn" id="btnToggleHmCt" style="background:#f1f5f9; border-color:#cbd5e1; color:#64748b; font-weight:600;" title="Hiện / ẩn 6 cột số cán bộ (ĐT GS và CB GS XD / ME / HT) của từng hạng mục, theo hệ số công trình">👥 Nhân sự HM</button>
           <button class="btn" id="btnPasteExcel" title="Dán vùng bảng copy từ Excel (hoặc nhấn Ctrl+V trực tiếp trên bảng)">📋 Dán Excel</button>
           <button class="btn btn-primary" id="btnThemHangMuc" title="Chèn thêm hạng mục mới ngay dưới dòng đang chọn">+ Thêm HM</button>
           <button class="btn" id="btnExpandHangMuc" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;" title="Mở rộng toàn màn hình để nhập/copy/paste/chèn như bảng Excel">⤢ Mở rộng bảng</button>
@@ -2086,6 +2089,12 @@ footer.app-footer {
               <th id="thHmDv" style="width:38px;">Đơn<br>vị</th>
               <th id="thHmKlHt" style="width:74px;" title="Khối lượng hạ tầng (m²) của công trình. Dùng tính CBGS / NVGS Hạ tầng (÷ 15.000 / 10.500 m²)">KL hạ tầng<br>(m²)</th>
               <th id="thHmHsCt" style="width:62px;" title="Hệ số công trình: nhân vào kết quả định biên của công trình (100% = xây mới; cải tạo thì nhỏ hơn)">Hệ số<br>CT</th>
+              <th class="hm-ct-col" style="width:70px;" title="Số cán bộ theo tháng diễn giải, theo hệ số công trình hiện tại">Đội trưởng<br>GS XD</th>
+              <th class="hm-ct-col" style="width:70px;" title="Cán bộ giám sát xây dựng (CBGS XD) của công trình">CB GS<br>XD</th>
+              <th class="hm-ct-col" style="width:70px;" title="Đội trưởng giám sát ME">Đội trưởng<br>GS ME</th>
+              <th class="hm-ct-col" style="width:70px;" title="Cán bộ giám sát ME (CBGS ME) của công trình">CB GS<br>ME</th>
+              <th class="hm-ct-col" style="width:70px;" title="Đội trưởng giám sát hạ tầng">Đội trưởng<br>GS HT</th>
+              <th class="hm-ct-col" style="width:70px;" title="Cán bộ giám sát hạ tầng (CBGS HT) của công trình">CB GS<br>HT</th>
             </tr>
           </thead>
           <tbody id="treeTableBody">
@@ -3879,6 +3888,7 @@ function unitForLoai(loai) {
 
 function renderTreeTable() {
   const tbody = document.getElementById('treeTableBody');
+  const hmCtMap = itemHeadcountMap();
   tbody.innerHTML = '';
   const rows = currentProjectData.treeRows || [];
 
@@ -4050,6 +4060,7 @@ function renderTreeTable() {
         <td class="dv-fixed" style="text-align:center; font-size:10.5px; color:var(--text-muted);" title="Đơn vị theo Phân loại công trình (cố định, không sửa)">${escHtml(dvFixed)}</td>
         <td>${r.loai === 'Đường giao thông, công viên' || r.loai === 'Ép cọc' ? '' : `<input type="number" style="text-align:right; font-family:var(--font-mono);${!(r.dienTich > 0) ? ' background:#fef2f2; border-color:#dc2626;' : ''}" value="${r.dienTich > 0 ? r.dienTich : ''}" placeholder="⚠ Cần nhập" data-id="${r.id}" data-f="dienTich" title="Khối lượng hạ tầng (m²) của công trình. Cần nhập để tính CBGS/NVGS Hạ tầng">`}</td>
         <td><input type="text" inputmode="decimal" style="text-align:right; font-family:var(--font-mono);" value="${Math.round((r.hsCt != null ? r.hsCt : 1) * 100)}%" data-id="${r.id}" data-f="hsCt" title="Hệ số công trình (100% = xây mới). Kết quả định biên của công trình được nhân với hệ số này"></td>
+        ${hmCells(hmCtMap[r.id])}
       `;
       tbody.appendChild(tr);
 
@@ -4071,6 +4082,7 @@ function renderTreeTable() {
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me1_custom_kl && r.me1_kl != null ? r.me1_kl : (r.kl || '')}" data-id="${r.id}" data-f="me1_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${unitForLoai(r.loai)}</td>
           <td></td>
+          ${hmBlankCells()}
         `;
         tbody.appendChild(sub1);
 
@@ -4089,6 +4101,7 @@ function renderTreeTable() {
           <td><input type="number" style="text-align:right; font-style:italic; font-family:var(--font-mono);" value="${r.me2_custom_kl && r.me2_kl != null ? r.me2_kl : (r.kl || '')}" data-id="${r.id}" data-f="me2_kl"></td>
           <td style="font-size:10.5px; color:var(--text-muted); text-align:center;">${unitForLoai(r.loai)}</td>
           <td></td>
+          ${hmBlankCells()}
         `;
         tbody.appendChild(sub2);
       }
@@ -9851,6 +9864,51 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshDashboard();
   });
 });
+
+// Số cán bộ từng hạng mục theo tháng diễn giải (sau hệ số công trình). Đội trưởng = CBGS ÷ tầm QL (mặc định 10)
+function itemHeadcountMap() {
+  const out = {};
+  if(!currentProjectData || !currentBqlId) return out;
+  const mk = filterDienGiai || defaultDienGiaiKey();
+  const dmC = currentProjectData.dinhMucCustom || {};
+  const qX = dmC['ql_dt_xd_calc'] > 0 ? dmC['ql_dt_xd_calc'] : 10;
+  const qM = dmC['ql_dt_me_calc'] > 0 ? dmC['ql_dt_me_calc'] : 10;
+  const qH = dmC['ql_dt_ht_calc'] > 0 ? dmC['ql_dt_ht_calc'] : 10;
+  const pctOff = (typeof calcResultCache !== 'undefined' && calcResultCache && calcResultCache.pctOff) || {};
+  (currentProjectData.treeRows || []).filter(r => r.level === 3).forEach(it => {
+    const r1 = calculateSingleProject({ ...currentProjectData, treeRows: [it], nsOverride: {}, pctOff });
+    const j = r1.months.findIndex(m => monthKey(m) === mk);
+    const at = t => {
+      const idx = MATRIX_ROWS_META.findIndex(m => m.type === t);
+      return j < 0 || idx < 0 ? 0 : (r1.rowsRaw[idx][j] || 0);
+    };
+    const cbXd = at('cb_xd'), cbMe = at('cb_me'), cbHt = at('cb_ht');
+    out[it.id] = { dtXd: cbXd / qX, cbXd, dtMe: cbMe / qM, cbMe, dtHt: cbHt / qH, cbHt };
+  });
+  return out;
+}
+function fmtHc(v) {
+  if(!v) return '<span style="color:#cbd5e1;">–</span>';
+  return Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+}
+function hmCells(m) {
+  const v = m || {};
+  return ['dtXd', 'cbXd', 'dtMe', 'cbMe', 'dtHt', 'cbHt']
+    .map(k => `<td class="hm-ct-col" style="text-align:center; font-size:10.5px;">${fmtHc(v[k])}</td>`).join('');
+}
+function hmBlankCells() { return '<td class="hm-ct-col"></td>'.repeat(6); }
+
+const btnToggleHmCt = document.getElementById('btnToggleHmCt');
+if(btnToggleHmCt) {
+  btnToggleHmCt.addEventListener('click', () => {
+    const tb = document.getElementById('treeTable');
+    if(!tb) return;
+    const on = !tb.classList.contains('hm-ct-on');
+    tb.classList.toggle('hm-ct-on', on);
+    btnToggleHmCt.style.background = on ? '#dbeafe' : '#f1f5f9';
+    btnToggleHmCt.style.color = on ? '#1d4ed8' : '#64748b';
+  });
+}
 </script>
 </body>
 </html>
