@@ -7497,7 +7497,8 @@ function applyValueToCellDomAndModel(td, rawValStr) {
 
     if(f === 'kl' || f === 'bptc_kl' || f === 'me1_kl' || f === 'me2_kl') {
       rObj[f] = parseKlText(valStr);
-      ensureMeStagesForRow(rObj);
+      // Dán KL hạng mục chính: dòng M&E con nhảy theo (trừ khi đã sửa riêng)
+      ensureMeStagesForRow(rObj, f === 'kl');
     } else if(f === 'batDau' || f === 'ketThuc' || f === 'banGiao' || f === 'bptc_batDau' || f === 'bptc_ketThuc' || f === 'bptc_banGiao' || f === 'me1_bd' || f === 'me1_kt' || f === 'me2_bd' || f === 'me2_kt') {
       const norm = normalizeExcelDate(valStr);
       if(norm || valStr === '') rObj[f] = norm;
