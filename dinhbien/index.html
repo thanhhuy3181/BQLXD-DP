@@ -7669,9 +7669,18 @@ function initExcelRangeSelectionOnTables() {
         .map(({ cell }) => cell.querySelector(':scope > input'))
         .filter(i => i && xlIsCell(i) && xlEditable(i));
       if(tuyChinhInputs.length) {
-        tuyChinhInputs.forEach(i => xlWriteOne(i, ''));
+        // Chỉ xóa các ô đang có số tùy chỉnh; ô đang tính theo định mức thì không có gì để xóa
+        const hasOverride = i => i.classList.contains('ns-input')
+          ? !!(currentProjectData.nsOverride && currentProjectData.nsOverride[i.dataset.key] != null)
+          : !!(currentProjectData.hesoCustom && currentProjectData.hesoCustom[`${i.dataset.tab}_${i.dataset.id}_${i.dataset.mk}`] != null);
+        const toDelete = tuyChinhInputs.filter(hasOverride);
+        if(!toDelete.length) {
+          showUndoToast('Các ô đã chọn đang tính theo định mức, không có số tùy chỉnh để xóa');
+          return;
+        }
+        toDelete.forEach(i => xlWriteOne(i, ''));
         xlCommit();
-        showUndoToast(`⌫ Đã xóa ${tuyChinhInputs.length} số tùy chỉnh (Ctrl+Z để hoàn tác)`);
+        showUndoToast(`⌫ Đã xóa ${toDelete.length} số tùy chỉnh (Ctrl+Z để hoàn tác)`);
         return;
       }
       let changed = false;
