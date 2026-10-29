@@ -2417,6 +2417,21 @@ let filterDisplayStart = ''; // định dạng 'YYYY-MM'
 let filterDisplayEnd = '';   // định dạng 'YYYY-MM'
 let filterDienGiai = '';     // định dạng 'YYYY-MM'
 
+// Thời gian hiển thị và Tháng diễn giải được nhớ riêng cho từng dự án (lưu trong dữ liệu dự án, đồng bộ Cloud)
+function saveViewPrefs() {
+  if(!currentProjectData || !currentBqlId) return;
+  const prefs = { start: filterDisplayStart, end: filterDisplayEnd, dg: filterDienGiai };
+  if(JSON.stringify(currentProjectData.viewPrefs || {}) === JSON.stringify(prefs)) return;
+  currentProjectData.viewPrefs = prefs;
+  saveCurrentProject(true);
+}
+function applyViewPrefs() {
+  const p = (currentProjectData && currentProjectData.viewPrefs) || {};
+  filterDisplayStart = p.start || '';
+  filterDisplayEnd = p.end || '';
+  filterDienGiai = p.dg || '';
+}
+
 function makeStorageKey(vungId, bqlId) {
   return `db_v2_${vungId}_${bqlId}`;
 }
@@ -2443,6 +2458,7 @@ function loadProject(vungId, bqlId) {
   // Chế độ Tổng hợp Vùng (không có dự án cụ thể): chỉ dựng dữ liệu rỗng trong bộ nhớ, không lưu
   if(!bqlId) {
     currentProjectData = emptyProjectData(vungId, bqlId);
+    applyViewPrefs();
     return;
   }
   const key = makeStorageKey(vungId, bqlId);
@@ -2468,6 +2484,7 @@ function loadProject(vungId, bqlId) {
         });
       }
       initUndoStateForCurrentProject();
+      applyViewPrefs();
       return;
     }
   } catch(e){}
@@ -2475,6 +2492,7 @@ function loadProject(vungId, bqlId) {
   currentProjectData = emptyProjectData(vungId, bqlId);
   saveCurrentProject(true);
   initUndoStateForCurrentProject();
+  applyViewPrefs();
 }
 
 /* ==========================================================================
@@ -8858,6 +8876,7 @@ function initTimelineControls() {
       filterDienGiai = filterDisplayStart;
       if(inpDg) inpDg.value = filterDienGiai;
     }
+    saveViewPrefs();
     refreshDashboard();
     showUndoToast(`📅 Đã lọc hiển thị từ: ${filterDisplayStart} đến ${filterDisplayEnd || 'cuối'}`);
   };
@@ -8873,12 +8892,14 @@ function initTimelineControls() {
       filterDienGiai = filterDisplayEnd;
       if(inpDg) inpDg.value = filterDienGiai;
     }
+    saveViewPrefs();
     refreshDashboard();
     showUndoToast(`📅 Đã lọc hiển thị đến tháng: ${filterDisplayEnd}`);
   };
 
   const onDgChange = () => {
     filterDienGiai = inpDg.value;
+    saveViewPrefs();
     refreshDashboard(); // vẽ lại Diễn giải theo tháng mới
     showUndoToast(`📋 Đã chọn Tháng diễn giải cho Excel: ${filterDienGiai}`);
   };
@@ -8903,6 +8924,7 @@ function initTimelineControls() {
       filterDisplayStart = '';
       filterDisplayEnd = '';
       filterDienGiai = '';
+      saveViewPrefs();
       refreshDashboard();
       showUndoToast('🔄 Đã hiển thị toàn bộ thời gian của Toàn dự án!');
     });
