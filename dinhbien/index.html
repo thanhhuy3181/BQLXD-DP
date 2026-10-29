@@ -1133,6 +1133,9 @@ body.mobile-view-mode table.nhansu-matrix-table thead th.col-freeze-4 { left: ca
 table.nhansu-matrix-table td.ns-cell { position: relative; text-align: center !important; }
 .ns-auto { position: absolute; top: 0; right: 2px; font-size: 8.5px; color: #d97706; font-weight: 600; pointer-events: none; }
 .xl-sel { background: #dbeafe !important; }
+/* Nhắc bấm ✎ Tùy chỉnh khi sửa ô chưa mở chế độ sửa */
+@keyframes tcPulse { 0%, 100% { box-shadow: none; } 50% { box-shadow: 0 0 0 3px #fbbf24; background: #fef3c7; } }
+button.tc-pulse { animation: tcPulse 0.5s ease 4; }
 .xl-sel input { background: transparent !important; }
 .ns-reset { margin-left: 4px; font-size: 9.5px; padding: 0 4px; border: 1px solid #cbd5e1; background: #fff; border-radius: 3px; cursor: pointer; }
 
@@ -4972,6 +4975,19 @@ let hsEditMode = false;
 const xl = { sel: new Set(), anchor: null, anchorKey: null, dragging: false, editing: null, clip: '' };
 
 function xlIsCell(el) { return !!(el && el.matches && el.matches('input[data-tab][data-mk], input.ns-input')); }
+
+// Ô chưa cho sửa (chưa bấm ✎ Tùy chỉnh): nhắc người dùng và làm nổi nút Tùy chỉnh của bảng đó
+function xlNotifyNeedEdit(el) {
+  const card = el && el.closest('.card-box');
+  const btn = card && [...card.querySelectorAll('button')].find(b => b.textContent.includes('Tùy chỉnh'));
+  if(btn) {
+    btn.classList.remove('tc-pulse');
+    void btn.offsetWidth;
+    btn.classList.add('tc-pulse');
+    setTimeout(() => btn.classList.remove('tc-pulse'), 2000);
+  }
+  showUndoToast('✎ Bấm "Tùy chỉnh" ở tiêu đề bảng để sửa');
+}
 function xlKey(inp) {
   return inp.classList.contains('ns-input') ? 'n|' + inp.dataset.key : `h|${inp.dataset.tab}|${inp.dataset.id}|${inp.dataset.mk}`;
 }
@@ -5044,7 +5060,7 @@ function xlCommit() {
 }
 
 function xlStartEdit(inp, firstChar) {
-  if(!xlEditable(inp)) return;
+  if(!xlEditable(inp)) { xlNotifyNeedEdit(inp); return; }
   xl.editing = inp;
   inp.readOnly = false;
   if(firstChar != null) {
@@ -7931,6 +7947,11 @@ function initExcelRangeSelectionOnTables() {
         const ac = excelRangeSelection.anchorCoords;
         const anchorCtrl = ac ? getCellAtVisualCoords(excelRangeSelection.tableEl, ac.r, ac.c)?.querySelector('input:not([type="checkbox"])') : null;
         const ctrl = focusedCtrl || anchorCtrl;
+        if(ctrl && xlIsCell(ctrl) && !xlEditable(ctrl)) {
+          e.preventDefault();
+          xlNotifyNeedEdit(ctrl);
+          return;
+        }
         if(ctrl && ctrl.dataset.xlLocked === '1') {
           e.preventDefault();
           ctrl.readOnly = false;
@@ -9620,6 +9641,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.dataset.xlLocked = '1';
   };
   const unlock = el => {
+    if(xlIsCell(el) && !xlEditable(el)) { xlNotifyNeedEdit(el); return; }
     if(el.tagName === 'SELECT') el.classList.remove('xl-locked');
     else el.readOnly = false;
     el.dataset.xlLocked = '0';
