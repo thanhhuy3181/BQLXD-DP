@@ -6444,7 +6444,16 @@ function renderDienGiai(res) {
     const list = contrib[rIdx];
     let cach;
     const mg = MGMT_EXPLAIN[meta.type];
-    if(meta.type === 'thu_kho_sum') {
+    // Chế độ NVGS theo % CBGS: diễn giải CBGS (90%) và NVGS (10% × 1,5 = 15%) theo CBGS gốc
+    const pctNv = !res.isAggregate && currentProjectData && currentProjectData.nvgsMode === 'pct';
+    if(pctNv && ['nv_xd', 'nv_me', 'cb_xd', 'cb_me'].includes(meta.type)) {
+      const cbIdx = MATRIX_ROWS_META.findIndex(m => m.type === (meta.type.endsWith('xd') ? 'cb_xd' : 'cb_me'));
+      const cbGoc = (res.rowsRaw[cbIdx][j] || 0) / 0.9;
+      const own = res.rowsRaw[rIdx][j] || 0;
+      cach = meta.type.startsWith('nv')
+        ? `<div class="dg-total">Tổng ~ <b>${v}</b> CB</div><div>= 10% × 1,5 × CBGS (T6) gốc ${fmt(cbGoc, 1)} CB ~ ${fmt(own, 1)} CB</div>`
+        : `<div class="dg-total">Tổng ~ <b>${v}</b> CB</div><div>= 90% × CBGS (T6) gốc ${fmt(cbGoc, 1)} CB ~ ${fmt(own, 1)} CB</div>`;
+    } else if(meta.type === 'thu_kho_sum') {
       cach = `<div class="dg-total">Tổng ~ <b>${v}</b> ${unit}</div><div>= tổng các dòng 4.1 → 4.6 (tháng ${dgLabel})</div>`;
     } else if(mg) {
       const dmC = currentProjectData.dinhMucCustom || {};
