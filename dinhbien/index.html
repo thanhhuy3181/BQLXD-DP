@@ -7739,7 +7739,12 @@ function initExcelRangeSelectionOnTables() {
               const item = cells.find(x => x.r === r && x.c === c);
               if(item) {
                 const inp = item.cell.querySelector('input, select');
-                rowVals.push(inp ? (inp.value || '') : item.cell.textContent.trim());
+                // Ô có nhiều dòng (Diễn giải): giữ xuống dòng và bọc trong dấu ngoặc kép để Excel hiểu là một ô
+                if(inp) rowVals.push(inp.value || '');
+                else {
+                  const txt = (item.cell.innerText || '').replace(/\n+$/, '').trim();
+                  rowVals.push(/[\n\t"]/.test(txt) ? `"${txt.replace(/"/g, '""')}"` : txt);
+                }
               } else {
                 rowVals.push('');
               }
