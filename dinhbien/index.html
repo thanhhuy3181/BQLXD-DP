@@ -1128,6 +1128,10 @@ body.mobile-view-mode table.nhansu-matrix-table thead th.col-freeze-4 { left: ca
 .ns-input { width: 100%; border: none; background: transparent; text-align: center; font: inherit; color: inherit; padding: 0; }
 .ns-input:focus { background: #fef9c3; outline: 1.5px solid #2563eb; }
 .ns-input.ns-custom { background: #fef3c7; font-weight: 700; color: #b45309; }
+/* Chế độ Tùy chỉnh: ô sửa được được tô màu nhạt; số tự tính hiện nhỏ ở góc ô đã sửa */
+.ns-input.ns-editable { background: #ecfdf5; }
+td.ns-cell { position: relative; }
+.ns-auto { position: absolute; top: 0; right: 2px; font-size: 8.5px; color: #64748b; font-weight: 400; pointer-events: none; }
 .xl-sel { background: #dbeafe !important; }
 .xl-sel input { background: transparent !important; }
 .ns-reset { margin-left: 4px; font-size: 9.5px; padding: 0 4px; border: 1px solid #cbd5e1; background: #fff; border-radius: 3px; cursor: pointer; }
@@ -3418,11 +3422,13 @@ function calculateSingleProject(projData) {
   }
 
   // Số nhân sự sửa tay theo tháng (chế độ Tùy chỉnh): ghi đè kết quả tự tính; key = r{chỉ số dòng}_{YYYY-MM}
+  // Giữ kết quả tự tính trước khi sửa tay (hiện nhỏ ở góc ô đã sửa). Giá trị -1 = ô đã xóa, tính là 0
+  const nsAuto = rowsFinal.map(r => r.slice());
   const nsOv = projData.nsOverride || {};
   MATRIX_ROWS_META.forEach((meta, rIdx) => {
     months.forEach((mDate, mIdx) => {
       const ov = nsOv[`r${rIdx}_${monthKey(mDate)}`];
-      if(ov != null) rowsFinal[rIdx][mIdx] = ov;
+      if(ov != null) rowsFinal[rIdx][mIdx] = ov < 0 ? 0 : ov;
     });
   });
 
@@ -3446,6 +3452,7 @@ function calculateSingleProject(projData) {
     months,
     rowsRaw,
     rowsFinal,
+    nsAuto,
     bqlTotals,
     khoTotals,
     bptcTotals,
@@ -4822,8 +4829,12 @@ function renderRow(meta, rIdx, res) {
     const finalVal = res.rowsFinal[rIdx][mIdx];
     if(!res.isAggregate && nsEditMode) {
       const key = `r${rIdx}_${monthKey(mDate)}`;
-      const ov = currentProjectData.nsOverride && currentProjectData.nsOverride[key] != null;
-      cellsHtml += `<td class="num-cell col-month-fixed"><input type="number" min="0" step="0.5" class="ns-input${ov ? ' ns-custom' : ''}" data-key="${key}" value="${finalVal > 0 ? finalVal : ''}" title="Gõ số để sửa tay; xóa ô để tính lại theo định mức"></td>`;
+      const ovRaw = currentProjectData.nsOverride ? currentProjectData.nsOverride[key] : undefined;
+      const hasOv = ovRaw != null;
+      const shown = hasOv && ovRaw < 0 ? '' : (finalVal > 0 ? finalVal : '');
+      const autoVal = res.nsAuto ? res.nsAuto[rIdx][mIdx] : 0;
+      const autoTxt = hasOv && autoVal > 0 ? `<span class="ns-auto" title="Số tự tính theo định mức">${autoVal}</span>` : '';
+      cellsHtml += `<td class="num-cell col-month-fixed ns-cell"><input type="number" min="0" step="0.5" class="ns-input ns-editable${hasOv ? ' ns-custom' : ''}" data-key="${key}" value="${shown}" placeholder="-" title="Sửa tay được; xóa ô để bỏ trống (-); số nhỏ góc ô là số tự tính">${autoTxt}</td>`;
     } else {
       cellsHtml += `<td class="num-cell col-month-fixed">${finalVal > 0 ? finalVal : ''}</td>`;
     }
@@ -4866,7 +4877,7 @@ document.addEventListener('change', e => {
   if(!currentProjectData.nsOverride) currentProjectData.nsOverride = {};
   const k = inp.dataset.key;
   const v = parseFloat(String(inp.value).replace(',', '.'));
-  if(inp.value.trim() === '' || isNaN(v) || v < 0) delete currentProjectData.nsOverride[k];
+  if(inp.value.trim() === '' || isNaN(v) || v < 0) currentProjectData.nsOverride[k] = -1; // ô đã xóa: để trống (-)
   else currentProjectData.nsOverride[k] = v;
   saveCurrentProject();
   refreshDashboard();
@@ -4943,7 +4954,7 @@ function xlWriteOne(inp, text) {
   if(inp.classList.contains('ns-input')) {
     if(!currentProjectData.nsOverride) currentProjectData.nsOverride = {};
     const v = parseFloat(t.replace(',', '.'));
-    if(t === '' || isNaN(v) || v < 0) delete currentProjectData.nsOverride[inp.dataset.key];
+    if(t === '' || isNaN(v) || v < 0) currentProjectData.nsOverride[inp.dataset.key] = -1; // ô đã xóa: để trống (-)
     else currentProjectData.nsOverride[inp.dataset.key] = v;
   } else {
     if(!currentProjectData.hesoCustom) currentProjectData.hesoCustom = {};
@@ -7671,7 +7682,7 @@ function initExcelRangeSelectionOnTables() {
       if(tuyChinhInputs.length) {
         // Chỉ xóa các ô đang có số tùy chỉnh; ô đang tính theo định mức thì không có gì để xóa
         const hasOverride = i => i.classList.contains('ns-input')
-          ? !!(currentProjectData.nsOverride && currentProjectData.nsOverride[i.dataset.key] != null)
+          ? !!(currentProjectData.nsOverride && currentProjectData.nsOverride[i.dataset.key] >= 0)
           : !!(currentProjectData.hesoCustom && currentProjectData.hesoCustom[`${i.dataset.tab}_${i.dataset.id}_${i.dataset.mk}`] != null);
         const toDelete = tuyChinhInputs.filter(hasOverride);
         if(!toDelete.length) {
