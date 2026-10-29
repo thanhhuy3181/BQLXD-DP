@@ -9628,6 +9628,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Mũi tên khi đang chọn một ô (chưa sửa): chuyển sang ô bên cạnh để nhập liệu, không chọn cả dòng
+  document.addEventListener('keydown', e => {
+    const dirMap = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] };
+    const d = dirMap[e.key];
+    if(!d) return;
+    const el = document.activeElement;
+    if(!el || !el.matches || !el.matches(XL_CTRL) || el.dataset.xlLocked !== '1') return;
+    if(xlIsCell(el)) return; // lưới Nhân sự / Hệ số có bộ điều hướng riêng
+    const td = el.closest('td');
+    const tr = td && td.closest('tr');
+    const table = td && td.closest('table');
+    if(!table) return;
+    const ctrlIn = cell => cell && cell.querySelector('input:not([type="checkbox"]), select');
+    let target = null;
+    if(d[0] === 0) {
+      let cell = td;
+      while(!target) {
+        cell = d[1] > 0 ? cell.nextElementSibling : cell.previousElementSibling;
+        if(!cell) break;
+        target = ctrlIn(cell);
+      }
+    } else {
+      const rowEl = d[0] > 0 ? tr.nextElementSibling : tr.previousElementSibling;
+      if(rowEl && rowEl.cells[td.cellIndex]) target = ctrlIn(rowEl.cells[td.cellIndex]);
+    }
+    if(!target) return;
+    e.preventDefault();
+    target.focus();
+    const info = getRowAndColOfCell(target.closest('td'), table);
+    if(info) {
+      excelRangeSelection.tableEl = table;
+      excelRangeSelection.disjointCells = [];
+      excelRangeSelection.anchorCoords = { r: info.r, c: info.c };
+      excelRangeSelection.focusCoords = { r: info.r, c: info.c };
+      highlightExcelRangeSelection();
+    }
+  }, true);
+
   // Esc: hủy sửa (trả về giá trị cũ); rời ô: khóa lại
   document.addEventListener('keydown', e => {
     const el = e.target;
