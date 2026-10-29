@@ -7935,6 +7935,7 @@ function initExcelRangeSelectionOnTables() {
           e.preventDefault();
           ctrl.readOnly = false;
           ctrl.dataset.xlLocked = '0';
+          if(xlIsCell(ctrl)) xl.editing = ctrl;
           ctrl.value = e.key;
           ctrl.focus();
           ctrl.setSelectionRange(ctrl.value.length, ctrl.value.length);
@@ -9686,8 +9687,10 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   document.addEventListener('keydown', e => {
     const el = document.activeElement;
-    if(!el || !el.matches || !el.matches(XL_CTRL) || el.dataset.xlLocked !== '0') return;
-    if(xlIsCell(el)) return; // lưới Nhân sự / Hệ số có bộ điều hướng riêng
+    if(!el || !el.matches || !el.matches(XL_CTRL)) return;
+    const isXl = xlIsCell(el); // lưới Nhân sự / Hệ số: đang sửa theo xl.editing
+    const editing = isXl ? xl.editing === el : el.dataset.xlLocked === '0';
+    if(!editing) return;
     let dr = 0, dc = 0;
     if(e.key === 'Enter') dr = 1;
     else if(e.key === 'Tab') dc = e.shiftKey ? -1 : 1;
@@ -9698,7 +9701,13 @@ document.addEventListener('DOMContentLoaded', () => {
     el.blur(); // lưu giá trị (change) rồi khóa ô
     if(target) {
       target.focus();
-      xlSelectCtrl(target);
+      if(isXl) {
+        xlSetAnchor(target);
+        xl.sel = new Set([xlKey(target)]);
+        xlApplyClasses();
+      } else {
+        xlSelectCtrl(target);
+      }
     }
   }, true);
 
