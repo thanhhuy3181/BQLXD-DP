@@ -2187,7 +2187,12 @@ footer.app-footer {
             <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button>
             <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button>
             <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button>
-          </div>          <label style="font-size:11px; color:var(--text-muted);">Làm tròn:</label>
+          </div>          <label style="font-size:11px; color:var(--text-muted);" title="Theo định mức: KL ÷ ĐM NVGS. Theo % CBGS: CBGS giữ 90%, NVGS = 10% CBGS × 1,5">NVGS:</label>
+          <select id="selNvgsMode" style="padding:2px 6px; font-size:11px;">
+            <option value="dm">Theo định mức</option>
+            <option value="pct">Theo % CBGS</option>
+          </select>
+          <label style="font-size:11px; color:var(--text-muted);">Làm tròn:</label>
           <select id="selRoundMode" style="padding:2px 6px; font-size:11px;">
             <option value="normal">Chuẩn (0.5 lên)</option>
             <option value="up">Làm tròn lên (Ceil)</option>
@@ -3253,6 +3258,17 @@ function calculateSingleProject(projData) {
   let gd_bql2_arr = Array(numM).fill(0);
   let gd_bql1_arr = Array(numM).fill(0);
   let tro_ly_bql_arr = Array(numM).fill(0);
+
+  // Chế độ NVGS theo tỷ lệ % CBGS: CBGS giữ 90% nhu cầu; NVGS = 10% CBGS × 1,5 (= 15% CBGS gốc). Áp cho NVGS XD và ME
+  if(projData.nvgsMode === 'pct') {
+    months.forEach((mDate, mIdx) => {
+      const cbXdRaw = cb_xd_arr[mIdx], cbMeRaw = cb_me_arr[mIdx];
+      nv_xd_arr[mIdx] = cbXdRaw * 0.15;
+      nv_me_arr[mIdx] = cbMeRaw * 0.15;
+      cb_xd_arr[mIdx] = cbXdRaw * 0.9;
+      cb_me_arr[mIdx] = cbMeRaw * 0.9;
+    });
+  }
 
   months.forEach((mDate, mIdx) => {
     const hasActive = rows.some(it => calcRatio(it.batDau, it.banGiao || it.ketThuc, mDate) > 0);
@@ -6533,6 +6549,11 @@ function refreshDashboard() {
   calcResultCache = calculateAll();
   renderDienGiai(calcResultCache);
   const isAgg = !!calcResultCache.isAggregate;
+  const selNvgsEl = document.getElementById('selNvgsMode');
+  if(selNvgsEl) {
+    selNvgsEl.value = (currentProjectData && currentProjectData.nvgsMode) || 'dm';
+    selNvgsEl.disabled = !currentBqlId;
+  }
 
   const row1StickyGrid = document.getElementById('row1StickyGrid');
   const row2Grid = document.getElementById('row2Grid');
@@ -9488,6 +9509,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = e.target;
     if(el.matches && el.matches(XL_CTRL) && el.dataset.xlLocked === '0') lock(el);
   }, true);
+});
+// Cách tính NVGS (theo định mức / theo % CBGS): lưu theo từng dự án
+document.addEventListener('DOMContentLoaded', () => {
+  const selNvgs = document.getElementById('selNvgsMode');
+  if(!selNvgs) return;
+  selNvgs.addEventListener('change', () => {
+    if(!currentProjectData || !currentBqlId) return;
+    currentProjectData.nvgsMode = selNvgs.value;
+    saveCurrentProject();
+    refreshDashboard();
+  });
 });
 </script>
 </body>
