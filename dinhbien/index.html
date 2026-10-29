@@ -1130,7 +1130,7 @@ body.mobile-view-mode table.nhansu-matrix-table thead th.col-freeze-4 { left: ca
 .ns-input.ns-custom { background: #fef3c7; font-weight: 700; color: #b45309; }
 /* Chế độ Tùy chỉnh: ô sửa được được tô màu nhạt; số tự tính hiện nhỏ ở góc ô đã sửa */
 .ns-input.ns-editable { background: #ecfdf5; }
-td.ns-cell { position: relative; }
+td.ns-cell { position: relative; text-align: center; }
 .ns-auto { position: absolute; top: 0; right: 2px; font-size: 8.5px; color: #d97706; font-weight: 600; pointer-events: none; }
 .xl-sel { background: #dbeafe !important; }
 .xl-sel input { background: transparent !important; }
@@ -4924,6 +4924,16 @@ document.addEventListener('change', e => {
   else currentProjectData.nsOverride[k] = v;
   saveCurrentProject();
   refreshDashboard();
+});
+
+// Gõ số vào ô Nhân sự (chế độ Tùy chỉnh): lưu ngay theo từng phím để không mất số khi bấm tắt Tùy chỉnh
+document.addEventListener('input', e => {
+  const inp = e.target;
+  if(!inp.matches || !inp.matches('input.ns-input') || !currentProjectData) return;
+  if(!currentProjectData.nsOverride) currentProjectData.nsOverride = {};
+  const v = parseFloat(String(inp.value).replace(',', '.'));
+  currentProjectData.nsOverride[inp.dataset.key] = (inp.value.trim() === '' || isNaN(v) || v < 0) ? -1 : v;
+  saveCurrentProject(true);
 });
 
 // Nút ↺ Tự tính: xóa mọi số sửa tay của một dòng
