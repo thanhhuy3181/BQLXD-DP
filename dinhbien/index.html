@@ -2148,6 +2148,11 @@ footer.app-footer {
             <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;" title="Chỉ xem và đồng bộ Khối Bộ phận Thi công (BPTC)">BPTC</button>
           </div>
           <button class="btn" id="btnToggleEditDinhMuc" style="font-size:11px; padding:2px 9px; font-weight:700; background:#f1f5f9; border-color:#cbd5e1; color:#334155;" title="Chỉ khi bật nút này mới cho phép sửa các số trong bảng Định mức">🔒 Sửa định mức</button>
+          <label style="font-size:11px; color:var(--text-muted);" title="Theo định mức: KL ÷ ĐM NVGS. Theo % CBGS: CBGS giữ 90%, NVGS = 10% CBGS × 1,5">NVGS:</label>
+          <select id="selNvgsMode" style="padding:2px 6px; font-size:11px;">
+            <option value="dm">Theo định mức</option>
+            <option value="pct">Theo % CBGS</option>
+          </select>
           <button class="btn" id="btnResetDinhMuc" style="font-size:10.5px; padding:2px 6px;" title="Khôi phục định mức chuẩn mặc định">↺ Mặc định</button>
         </div>
       </div>
@@ -2190,12 +2195,7 @@ footer.app-footer {
             <button class="heso-tab-btn" data-depttab="BQLXD" style="padding:1px 8px; font-size:11px; color:#1d4ed8;">BQLXD</button>
             <button class="heso-tab-btn" data-depttab="KHO" style="padding:1px 8px; font-size:11px; color:#b45309;">KHO</button>
             <button class="heso-tab-btn" data-depttab="BPTC" style="padding:1px 8px; font-size:11px; color:#047857;">BPTC</button>
-          </div>          <label style="font-size:11px; color:var(--text-muted);" title="Theo định mức: KL ÷ ĐM NVGS. Theo % CBGS: CBGS giữ 90%, NVGS = 10% CBGS × 1,5">NVGS:</label>
-          <select id="selNvgsMode" style="padding:2px 6px; font-size:11px;">
-            <option value="dm">Theo định mức</option>
-            <option value="pct">Theo % CBGS</option>
-          </select>
-          <label style="font-size:11px; color:var(--text-muted);">Làm tròn:</label>
+          </div>          <label style="font-size:11px; color:var(--text-muted);">Làm tròn:</label>
           <select id="selRoundMode" style="padding:2px 6px; font-size:11px;">
             <option value="normal">Chuẩn (0.5 lên)</option>
             <option value="up">Làm tròn lên (Ceil)</option>
