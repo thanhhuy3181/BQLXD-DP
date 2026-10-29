@@ -7895,8 +7895,12 @@ function initExcelRangeSelectionOnTables() {
       const tableId = excelRangeSelection.tableEl.id;
       if(['treeTable', 'syncHesoTable', 'dinhmucTable', 'tableHesoNhansu'].includes(tableId)) {
         // Gõ thẳng vào ô đang chọn (như Excel): ô đó vào chế độ sửa với ký tự vừa gõ, không hiện hộp thoại
+        // Ưu tiên ô đang có tiêu điểm (vừa chuyển bằng Tab / mũi tên); không có thì lấy ô neo của vùng chọn
+        const act = document.activeElement;
+        const focusedCtrl = act && act.matches && act.matches('input:not([type="checkbox"])') && act.dataset.xlLocked === '1' && act.closest('table') ? act : null;
         const ac = excelRangeSelection.anchorCoords;
-        const ctrl = ac ? getCellAtVisualCoords(excelRangeSelection.tableEl, ac.r, ac.c)?.querySelector('input:not([type="checkbox"])') : null;
+        const anchorCtrl = ac ? getCellAtVisualCoords(excelRangeSelection.tableEl, ac.r, ac.c)?.querySelector('input:not([type="checkbox"])') : null;
+        const ctrl = focusedCtrl || anchorCtrl;
         if(ctrl && ctrl.dataset.xlLocked === '1') {
           e.preventDefault();
           ctrl.readOnly = false;
