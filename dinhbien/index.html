@@ -7544,7 +7544,7 @@ function pasteClipboardIntoTableRange(clipText, targetTable, fallbackTd) {
   if(!clipText || !targetTable) return false;
   const rawLines = clipText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   if(rawLines.length > 1 && rawLines[rawLines.length - 1] === '') rawLines.pop();
-  const matrix = rawLines.map(line => line.split('\t'));
+  let matrix = rawLines.map(line => line.split('\t'));
   if(matrix.length === 0) return false;
 
   let startR = 0, startC = 0, endR = 0, endC = 0;
@@ -7560,6 +7560,12 @@ function pasteClipboardIntoTableRange(clipText, targetTable, fallbackTd) {
     startC = endC = info.c;
   } else {
     return false;
+  }
+
+  // Một giá trị (copy 1 ô) dán vào vùng nhiều ô đang chọn: điền giá trị đó vào tất cả ô trong vùng, như Excel
+  if(matrix.length === 1 && matrix[0].length === 1 && (endR > startR || endC > startC)) {
+    const v = matrix[0][0];
+    matrix = Array.from({ length: endR - startR + 1 }, () => Array.from({ length: endC - startC + 1 }, () => v));
   }
 
   // Nếu trên bảng Hạng mục công trình mà người dùng dán nhiều dòng vượt quá số dòng hiện có, tự động chèn thêm dòng mới để nhận đủ dữ liệu Excel
