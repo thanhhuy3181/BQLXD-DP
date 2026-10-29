@@ -6052,10 +6052,12 @@ function openAdminPanel() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b>⚙ Quản trị tài khoản</b>
       <button id="apClose" style="border:none;background:none;font-size:18px;cursor:pointer;">✕</button></div>
     <div id="apBody" style="font-size:12px;">Đang tải...</div>
-    <div id="apProjects" style="font-size:12px;margin-top:18px;border-top:2px solid #e2e8f0;padding-top:10px;"></div></div>`;
+    <div id="apProjects" style="font-size:12px;margin-top:18px;border-top:2px solid #e2e8f0;padding-top:10px;"></div>
+    <div id="apDs" style="font-size:12px;margin-top:18px;border-top:2px solid #e2e8f0;padding-top:10px;"></div></div>`;
   m.querySelector('#apClose').onclick = () => { m.style.display = 'none'; };
   loadAdminUsers(m.querySelector('#apBody'));
   renderAdminProjects(m.querySelector('#apProjects'));
+  renderAdminDs(m.querySelector('#apDs'));
 }
 
 // Tất cả BQLXD đang có trong phần mềm (theo các Vùng) để chọn cho tài khoản
@@ -6080,6 +6082,52 @@ function renderAdminProjects(el) {
   el.querySelectorAll('button[data-del-id]').forEach(btn => {
     btn.onclick = () => deleteBql(btn.dataset.delVung, btn.dataset.delId, btn.closest('tr'));
   });
+}
+
+// Danh sách dự án (DS DA): sửa tên, xóa, thêm. Lưu lên Cloud để mọi máy dùng chung
+function renderAdminDs(el) {
+  const list = getDsDuAn();
+  el.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Danh sách dự án (DS DA) — ${list.length} dự án</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <input id="apDsNew" placeholder="Thêm dự án mới..." style="flex:1;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;">
+      <button type="button" id="apDsAdd" style="padding:2px 10px;">+ Thêm</button>
+    </div>
+    <div style="max-height:360px;overflow:auto;border:1px solid #e2e8f0;">
+      <table style="width:100%;border-collapse:collapse;">${list.map((s, i) => `<tr style="border-top:1px solid #e2e8f0;">
+        <td style="padding:3px 6px;color:#64748b;width:40px;">${i + 1}</td>
+        <td style="padding:3px 6px;"><input data-ds-idx="${i}" value="${escHtml(s)}" style="width:100%;border:1px solid transparent;padding:2px 4px;"></td>
+        <td style="text-align:center;width:70px;"><button type="button" data-ds-del="${i}" style="padding:1px 8px;color:#b91c1c;">Xóa</button></td>
+      </tr>`).join('')}</table>
+    </div>`;
+  el.querySelectorAll('input[data-ds-idx]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const l = getDsDuAn();
+      const v = inp.value.trim();
+      if(!v) { alert('Tên dự án không được để trống.'); renderAdminDs(el); return; }
+      l[Number(inp.dataset.dsIdx)] = v;
+      saveDsDuAn(l);
+    });
+  });
+  el.querySelectorAll('button[data-ds-del]').forEach(btn => {
+    btn.onclick = () => {
+      const l = getDsDuAn();
+      const name = l[Number(btn.dataset.dsDel)];
+      if(!confirm(`Xóa "${name}" khỏi danh sách dự án?`)) return;
+      l.splice(Number(btn.dataset.dsDel), 1);
+      saveDsDuAn(l);
+      renderAdminDs(el);
+    };
+  });
+  el.querySelector('#apDsAdd').onclick = () => {
+    const inp = el.querySelector('#apDsNew');
+    const v = inp.value.trim();
+    if(!v) return;
+    const l = getDsDuAn();
+    if(l.some(s => s.toLowerCase() === v.toLowerCase())) { alert('Dự án này đã có trong danh sách.'); return; }
+    l.push(v);
+    saveDsDuAn(l);
+    renderAdminDs(el);
+  };
 }
 
 // Xóa dự án: gỡ khỏi danh sách, xóa dữ liệu trên máy này và trên Cloud
@@ -6217,14 +6265,28 @@ document.addEventListener('keydown', e => {
   });
 });
 
+// Danh sách dự án (DS DA): lấy từ bản đã lưu (Cloud/máy) nếu có, không thì dùng ds-du-an.js. Có thể sửa trong Quản trị.
+function getDsDuAn() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('db_v2_reg_ds_du_an') || 'null'); } catch(e) {}
+  const base = Array.isArray(saved) ? saved : (typeof DS_DU_AN !== 'undefined' ? DS_DU_AN : []);
+  return [...new Set(base.map(s => String(s).trim()).filter(Boolean))];
+}
+function saveDsDuAn(list) {
+  const clean = [...new Set(list.map(s => String(s).trim()).filter(Boolean))];
+  persistLocal('db_v2_reg_ds_du_an', JSON.stringify(clean), 'registries', 'ds_du_an');
+  refreshDsDatalist();
+}
 // Gợi ý tên dự án khi nhập tên BQLXD / dự án mới (gõ vài chữ là hiện danh sách)
+function refreshDsDatalist() {
+  let dl = document.getElementById('dlDuAn');
+  if(!dl) { dl = document.createElement('datalist'); dl.id = 'dlDuAn'; document.body.appendChild(dl); }
+  dl.innerHTML = getDsDuAn().map(s => `<option value="${escHtml(s)}">`).join('');
+}
 document.addEventListener('DOMContentLoaded', () => {
   const inp = document.getElementById('newBqlName');
-  if(!inp || typeof DS_DU_AN === 'undefined') return;
-  const dl = document.createElement('datalist');
-  dl.id = 'dlDuAn';
-  dl.innerHTML = DS_DU_AN.map(s => `<option value="${escHtml(s)}">`).join('');
-  document.body.appendChild(dl);
+  if(!inp) return;
+  refreshDsDatalist();
   inp.setAttribute('list', 'dlDuAn');
 });
 
@@ -7998,8 +8060,9 @@ document.getElementById('btnConfirmAddBql').addEventListener('click', () => {
   const name = document.getElementById('newBqlName').value.trim();
   if(!name) { alert('Vui lòng nhập tên BQLXD mới!'); return; }
   // Chỉ tạo dự án có trong danh sách DS DA
-  if(typeof DS_DU_AN === 'undefined' || !DS_DU_AN.length) { alert('Chưa tải được danh sách dự án (DS DA), không thể tạo dự án.'); return; }
-  const inList = DS_DU_AN.some(s => s.trim().toLowerCase() === name.toLowerCase());
+  const dsList = getDsDuAn();
+  if(!dsList.length) { alert('Danh sách dự án (DS DA) đang trống. Thêm dự án trong Quản trị trước khi tạo BQLXD.'); return; }
+  const inList = dsList.some(s => s.toLowerCase() === name.toLowerCase());
   if(!inList) { alert(`"${name}" không có trong danh sách dự án (DS DA). Chỉ được tạo dự án có trong danh sách; chọn tên gợi ý.`); return; }
   const newId = 'bql_' + Date.now();
   const list = getBqlRegistry(currentVungId);
