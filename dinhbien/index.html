@@ -9107,7 +9107,7 @@ async function exportExcelStandard() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Báo cáo Định biên ${curProj.ten.replace(/[\\/:*?"<>|]/g, '_')} 2026.xlsx`;
+  a.download = `Báo cáo Định biên 3BP - ${curProj.ten.replace(/[\\/:*?"<>|]/g, '_')}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
