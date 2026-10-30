@@ -9072,6 +9072,30 @@ async function exportExcelStandard() {
   styleSheetGrid(wsDmBptc, bptcDmRows.length + 2, 9, 2);
   wsDmBptc.getColumn(2).width = 52;
 
+  // Tiêu đề trang: căn giữa theo kiểu Center Across Selection (không gộp ô, không xuống dòng)
+  const centerAcross = (ws, row, fromCol) => {
+    const last = Math.max(ws.columnCount || 1, fromCol);
+    for(let c = fromCol; c <= last; c++) {
+      const cell = ws.getCell(row, c);
+      cell.alignment = { horizontal: 'centerContinuous', vertical: 'middle', wrapText: false };
+    }
+  };
+  centerAcross(wsHesoCB, 1, 1);
+  centerAcross(wsDienGiai, 2, 2);
+  centerAcross(wsDmBql, 1, 1);
+  // Ô chữ dài: tự xuống dòng (giữ căn ngang đang có)
+  [wsTongHop, wsDienGiai, wsHesoCB, wsDmBql].forEach(ws => {
+    ws.eachRow((row, rowNumber) => {
+      if(rowNumber <= 2) return; // bỏ qua tiêu đề
+      row.eachCell(cell => {
+        if(typeof cell.value === 'string' && cell.value.length > 25) {
+          const al = cell.alignment || {};
+          cell.alignment = { ...al, wrapText: true, vertical: al.vertical || 'middle' };
+        }
+      });
+    });
+  });
+
   // Xuất file Excel hoàn tất
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
