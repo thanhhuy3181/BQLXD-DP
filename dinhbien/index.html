@@ -9083,8 +9083,13 @@ async function exportExcelStandard() {
   centerAcross(wsHesoCB, 1, 1);
   centerAcross(wsDienGiai, 2, 2);
   centerAcross(wsDmBql, 1, 1);
+  centerAcross(wsDmKho, 1, 1);
+  centerAcross(wsDmBptc, 1, 1);
+  centerAcross(wsDinhMuc, 1, 1);
+  centerAcross(wsTienDo, 1, 1);
+  centerAcross(wsCtrHmDA, 1, 1);
   // Ô chữ dài: tự xuống dòng (giữ căn ngang đang có)
-  [wsTongHop, wsDienGiai, wsHesoCB, wsDmBql].forEach(ws => {
+  [wsTongHop, wsDienGiai, wsHesoCB, wsDmBql, wsDmKho, wsDmBptc, wsDinhMuc, wsTienDo, wsCtrHmDA, wsPhanLoaiCtr, wsPhanLoaiCD].forEach(ws => {
     ws.eachRow((row, rowNumber) => {
       if(rowNumber <= 2) return; // bỏ qua tiêu đề
       row.eachCell(cell => {
