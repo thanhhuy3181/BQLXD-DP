@@ -8292,9 +8292,6 @@ async function exportExcelStandard() {
   // =========================================================================
   const wsTongHop = workbook.addWorksheet('Tổng hợp', {
     views: [{ showGridLines: true }],
-    properties: {
-      outlineProperties: { summaryBelow: true }
-    },
     pageSetup: {
       orientation: 'landscape',
       paperSize: 8, // A3 chuẩn theo file mẫu gốc
@@ -8413,9 +8410,6 @@ async function exportExcelStandard() {
   // =========================================================================
   const wsDienGiai = workbook.addWorksheet('Diễn giải', {
     views: [{ showGridLines: true, state: 'frozen', xSplit: 8, ySplit: 10, topLeftCell: 'I11' }],
-    properties: {
-      outlineProperties: { summaryBelow: false }
-    },
     pageSetup: {
       orientation: 'portrait', // Dọc chuẩn theo file mẫu gốc
       paperSize: 8,
