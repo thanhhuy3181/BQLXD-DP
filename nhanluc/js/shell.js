@@ -134,7 +134,7 @@
       <div class="sp"></div>
       <div class="seg" id="sh-kg">${KG.map(([k, n]) => `<button data-sh="kg" data-id="${k}" class="${t.kieuTg === k ? 'on' : ''}">${n}</button>`).join('')}</div>
       ${mobile || !App.tkHtml ? '' : App.tkHtml()}
-      ${mobile ? '' : `<select data-sh="nd" title="Vai trò (thử phân quyền)">${S.nguoiDung.map((u) => `<option value="${u.id}" ${u.id === S.dangNhap ? 'selected' : ''}>${esc(u.ten)}</option>`).join('')}</select>`}
+      ${mobile || (App.tk && App.tk.email) ? '' : `<select data-sh="nd" title="Vai trò (thử phân quyền)">${S.nguoiDung.map((u) => `<option value="${u.id}" ${u.id === S.dangNhap ? 'selected' : ''}>${esc(u.ten)}</option>`).join('')}</select>`}
     </div>
     ${mobile ? `<div class="mobtop">${picker}</div>` : ''}
     <div class="body">${mobile ? '' : `<aside class="side">${tree}<h4>${t.tab === 'kh' ? 'Kế hoạch' : 'Thực tế'}</h4><nav class="menu">${menu}</nav></aside>`}<main class="main"></main></div>

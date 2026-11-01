@@ -126,9 +126,24 @@
     /** Gộp danh sách BQLXD từ Định biên: [{vungId, id, ten}] → số dự án thêm mới */
     gopDuAnDinhBien(ds) {
       let them = 0;
+      const S = this.state;
+      // tên khớp: mọi chữ của tên ngắn đều có trong tên dài (VD "Vinhomes Đan Phượng" ↔ "Vinhomes Wonder City Đan Phượng")
+      const chu = (s) => String(s || '').toLowerCase().split(/[\s\-–,()]+/).filter(Boolean);
+      const khop = (a, b) => { const x = chu(a), y = chu(b); if (!x.length || !y.length) return false; const [n, d] = x.length <= y.length ? [x, new Set(y)] : [y, new Set(x)]; return n.every((w) => d.has(w)); };
+      const rong = (id) => { const d = S.duAn[id]; return !d || (!(d.rows || []).length && !(d.thucTe || []).length); };
       ds.forEach((b) => {
-        const dbId = b.vungId + '/' + b.id, co = this.state.org.duAn.find((x) => x.dbId === dbId || (x.vungId === b.vungId && x.bql === b.ten));
-        if (co) { co.dbId = dbId; return; }
+        const dbId = b.vungId + '/' + b.id;
+        // dự án tự tạo / dữ liệu mẫu chưa nối Định biên mà trùng tên → nối vào, bỏ bản trống đã sinh trước đó
+        const tuTao = S.org.duAn.find((x) => !x.dbId && x.vungId === b.vungId && (x.bql === b.ten || khop(x.ten, b.ten) || khop(x.bql, b.ten)));
+        if (tuTao) {
+          S.org.duAn.filter((x) => x.dbId === dbId && x.id !== tuTao.id && rong(x.id)).forEach((x) => {
+            S.org.duAn = S.org.duAn.filter((y) => y !== x); delete S.duAn[x.id];
+            S.nguoiDung.forEach((u) => { ['duAnIds', 'duAnXem'].forEach((k) => { if (u[k] && u[k].includes(x.id)) u[k] = [...new Set(u[k].map((i) => (i === x.id ? tuTao.id : i)))]; }); });
+          });
+          tuTao.dbId = dbId; return;
+        }
+        const co = S.org.duAn.find((x) => x.dbId === dbId);
+        if (co) return;
         const id = 'da_' + b.vungId.replace('vung_', '') + '_' + b.id;
         this.state.org.duAn.push({ id, vungId: b.vungId, bql: b.ten, ten: b.ten, nguon: 'dinhbien', dbId });
         this.state.duAn[id] = duAnTrong(); them++;

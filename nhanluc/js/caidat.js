@@ -26,8 +26,8 @@
     el.innerHTML = `<div class="card cd-ht">
       <div class="row"><b>Tài khoản Google</b>${App.tkHtml ? App.tkHtml() : ''}
         <span class="m">Dùng chung tài khoản với phần mềm Định biên. Người mới đăng nhập sẽ chờ Quản trị Khối duyệt và gán dự án.</span></div>
-      <div class="row"><b>Vai trò (thử phân quyền)</b><select class="sel" data-cd="nd">${S.nguoiDung.map((u) => `<option value="${u.id}"${u.id === S.dangNhap ? ' selected' : ''}>${App.ui.esc(u.ten)}</option>`).join('')}</select>
-        <span class="m">Bản chạy thử trên máy: chọn vai trò để xem mỗi người thấy và sửa được gì. Khi đưa lên mạng sẽ thay bằng đăng nhập thật.</span></div>
+      ${App.tk && App.tk.email ? '' : `<div class="row"><b>Vai trò (thử phân quyền)</b><select class="sel" data-cd="nd">${S.nguoiDung.map((u) => `<option value="${u.id}"${u.id === S.dangNhap ? ' selected' : ''}>${App.ui.esc(u.ten)}</option>`).join('')}</select>
+        <span class="m">Bản chạy thử trên máy: chọn vai trò để xem mỗi người thấy và sửa được gì. Khi đưa lên mạng sẽ thay bằng đăng nhập thật.</span></div>`}
       <div class="row"><b>Bố cục</b><span data-cd="bc"></span>
         <span class="m">Tự động: cửa sổ rộng ≥ 760px hiện bản Máy tính (AWD, có cây dự án và menu bên trái), hẹp hơn hiện bản Điện thoại (AWM, thanh tab dưới đáy).</span></div>
       <div class="row"><b>Màu nền</b><span data-cd="th"></span></div>
@@ -36,7 +36,7 @@
     </div>`;
     el.querySelector('[data-cd=bc]').appendChild(App.ui.seg([['auto', 'Tự động'], ['desk', 'Máy tính (AWD)'], ['mob', 'Điện thoại (AWM)']], G.boCuc(), (v) => G.boCuc(v)));
     el.querySelector('[data-cd=th]').appendChild(App.ui.seg([['auto', 'Theo máy'], ['light', 'Sáng'], ['dark', 'Tối']], G.theme(), (v) => G.theme(v)));
-    el.querySelector('[data-cd=nd]').onchange = (e) => Store.dangNhap(e.target.value);
+    const nd = el.querySelector('[data-cd=nd]'); if (nd) nd.onchange = (e) => Store.dangNhap(e.target.value);
     el.querySelector('[data-cd=reset]').onclick = () => { if (confirm('Đặt lại toàn bộ dữ liệu về dữ liệu mẫu? Mọi thay đổi sẽ mất.')) { Store.reset(); App.thongBao('Đã đặt lại dữ liệu mẫu'); } };
   }
 

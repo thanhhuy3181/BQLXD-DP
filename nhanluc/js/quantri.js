@@ -32,14 +32,18 @@
   }
   async function khiDangNhap(user) {
     const C = cloud();
-    if (!user) { TK.email = null; TK.cho = false; App.ve(); return; }
+    if (!user) {
+      // đăng xuất: về chế độ thử trên máy (dữ liệu chỉ trên máy này, không ghi Firebase)
+      if (TK.email && Store.state.dangNhap === TK.email) { const thu = Store.state.nguoiDung.find((u) => !u.google); if (thu) Store.state.dangNhap = thu.id; Store.save(); }
+      TK.email = null; TK.cho = false; App.ve(); return;
+    }
     const email = (user.email || '').toLowerCase();
     TK.email = email; TK.ten = user.displayName || email; TK.dangTai = true; App.ve();
     try {
       await layDuAnDinhBien(false); // để gán dự án theo BQLXD bên Định biên
       const u = tuHoSo(email, await C.hoSo(email, TK.ten));
       ganVaoStore(u); TK.cho = u.trangThai !== 'duyet';
-      if (!TK.cho) Store.state.dangNhap = email;
+      Store.state.dangNhap = email; // đã đăng nhập Google: khóa vào đúng tài khoản (chờ duyệt thì chưa thấy dự án nào)
       Store.save(); Store.emit('doi');
       App.thongBao(TK.cho ? `Tài khoản ${email} đang chờ Quản trị Khối duyệt.` : `Đã đăng nhập: ${u.ten}`, TK.cho ? 'loi' : undefined);
     } catch (e) { TK.loi = e.message; App.thongBao('Lỗi đọc tài khoản: ' + e.message, 'loi'); }
@@ -61,7 +65,9 @@
 
   /** Lưu phần BĐNL của tài khoản Google lên Firebase (khi Quản trị đang đăng nhập Google) */
   function dayLen(u) {
-    const C = cloud(); if (!C || !u.google || !TK.email) return;
+    const C = cloud(), toi = Store.nguoi();
+    // chỉ ghi khi người đang đăng nhập Google chính là Quản trị Khối đã duyệt
+    if (!C || !u || !u.google || !TK.email || !toi || toi.id !== TK.email || toi.vaiTro !== 'quanTriKhoi' || toi.trangThai === 'cho') return;
     C.luuBdnl(u.id, { trangThai: u.trangThai, vaiTro: u.vaiTro, vungId: u.vungId || '', duAnIds: u.duAnIds || [], duAnXem: u.duAnXem || [], nhaThau: u.nhaThau || '' })
       .catch((e) => App.thongBao('Không lưu được lên Firebase: ' + e.message, 'loi'));
   }
