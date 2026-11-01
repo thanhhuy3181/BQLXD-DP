@@ -6,7 +6,7 @@
  *   registries/{vungId}  — {value: JSON [{id, ten}]} danh sách BQLXD/dự án của từng Vùng (Định biên quản lý)
  */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot, query, where, deleteField, increment } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 
 const firebaseConfig = {
@@ -38,6 +38,17 @@ try {
     async dsHoSo() { const out = {}; (await getDocs(collection(db, 'users'))).forEach((d) => { out[d.id] = d.data(); }); return out; },
     /** Ghi phần BĐNL của 1 tài khoản (gộp, giữ nguyên trường Định biên) */
     luuBdnl(email, bdnl) { return setDoc(doc(db, 'users', email), { email, bdnl }, { merge: true }); },
+    // ---- dùng cho đồng bộ dữ liệu BĐNL (js/dongbo.js) ----
+    async lay(col, id) { const s = await getDoc(doc(db, col, id)); return s.exists() ? s.data() : null; },
+    ghi(col, id, data, merge) { return setDoc(doc(db, col, id), data, merge ? { merge: true } : undefined); },
+    /** Nghe 1 tài liệu: cb(data|null, tuMayNay) */
+    nghe(col, id, cb, loi) { return onSnapshot(doc(db, col, id), (s) => cb(s.exists() ? s.data() : null, s.metadata.hasPendingWrites), loi); },
+    /** Nghe các tài liệu có field == val: cb([{id, data}], soDocDoi) */
+    ngheLoc(col, field, val, cb, loi) {
+      return onSnapshot(query(collection(db, col), where(field, '==', val)), (q) => cb(q.docs.map((d) => ({ id: d.id, data: d.data() })), q.docChanges().length, q.metadata.hasPendingWrites), loi);
+    },
+    xoaTruong: () => deleteField(),
+    tang: (n) => increment(n),
     /** Danh sách BQLXD/dự án của Định biên: [{vungId, id, ten}] */
     async dsDuAn() {
       const out = [];

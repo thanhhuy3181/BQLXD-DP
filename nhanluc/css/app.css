@@ -17,6 +17,8 @@ button{cursor:pointer}
 .top .sp{flex:1}
 .top select,.top .btn{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:5px 9px}
 .top select option{color:#14263d}
+.db-chip{font-size:12px;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.12);white-space:nowrap}
+.db-chip.loi{background:#c62828;color:#fff}.db-chip.luu,.db-chip.tai{opacity:.8}
 .top .btn:hover{background:rgba(255,255,255,.2)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
 .seg button{border:0;background:transparent;padding:5px 12px;color:var(--mut)}

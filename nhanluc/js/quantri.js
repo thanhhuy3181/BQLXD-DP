@@ -34,6 +34,7 @@
     const C = cloud();
     if (!user) {
       // đăng xuất: về chế độ thử trên máy (dữ liệu chỉ trên máy này, không ghi Firebase)
+      if (App.dongBo) App.dongBo.dung(); // gửi nốt thay đổi trước khi đổi tài khoản
       if (TK.email && Store.state.dangNhap === TK.email) { const thu = Store.state.nguoiDung.find((u) => !u.google); if (thu) Store.state.dangNhap = thu.id; Store.save(); }
       TK.email = null; TK.cho = false; App.ve(); return;
     }
@@ -45,6 +46,7 @@
       ganVaoStore(u); TK.cho = u.trangThai !== 'duyet';
       Store.state.dangNhap = email; // đã đăng nhập Google: khóa vào đúng tài khoản (chờ duyệt thì chưa thấy dự án nào)
       Store.save(); Store.emit('doi');
+      if (!TK.cho && App.dongBo) await App.dongBo.batDau(); // dùng chung dữ liệu dự án qua Firebase
       App.thongBao(TK.cho ? `Tài khoản ${email} đang chờ Quản trị Khối duyệt.` : `Đã đăng nhập: ${u.ten}`, TK.cho ? 'loi' : undefined);
     } catch (e) { TK.loi = e.message; App.thongBao('Lỗi đọc tài khoản: ' + e.message, 'loi'); }
     TK.dangTai = false; App.ve();

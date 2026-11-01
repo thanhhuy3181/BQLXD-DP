@@ -106,6 +106,7 @@
       return u.vaiTro === 'canBo' ? 'sua' : u.vaiTro === 'xem' ? 'xem' : 'nhap';
     },
     duAnThay() { return this.state.org.duAn.filter((d) => this.quyen(d.id)); },
+    duAnTrong,
     laQuanTri() { const u = this.nguoi(); return !!u && u.vaiTro === 'quanTriKhoi'; },
 
     // ---- quản trị: dự án ----
