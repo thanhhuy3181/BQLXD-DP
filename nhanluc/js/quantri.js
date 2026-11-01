@@ -1,10 +1,12 @@
-/* Cài đặt › Quản trị (chỉ Quản trị Khối): dự án (thêm / sửa / xóa, lấy từ Định biên) và tài khoản (duyệt, vai trò, gán dự án).
+/* Cài đặt › Tài khoản (mọi người: đăng nhập Google, quyền của mình; Quản trị Khối: duyệt + phân quyền mọi tài khoản Google như Định biên)
+ * và Cài đặt › Dự án (chỉ Quản trị Khối: thêm / sửa / xóa, lấy từ Định biên).
  * Kèm phiên đăng nhập Google dùng chung với Định biên (js/dangnhap.js → window.BDNL_CLOUD). */
 (function () {
   'use strict';
   const VAI_TRO = [['quanTriKhoi', 'Quản trị Khối'], ['qlVung', 'QL Vùng'], ['canBo', 'Cán bộ dự án'], ['giamSat', 'Giám sát'], ['nhaThau', 'Nhà thầu'], ['xem', 'Chỉ xem']];
   const DB_VAI_TRO = { admin: 'quanTriKhoi', khoi: 'quanTriKhoi', vung: 'qlVung' }; // vai trò bên Định biên → BĐNL
-  const Q = { tab: 'da', q: '' };
+  const DB_TEN = { admin: 'Admin', khoi: 'Khối', vung: 'Vùng', bql: 'BQLXD' };
+  const Q = { q: '', daTaiTk: false };
   const esc = (s) => App.ui.esc(s);
 
   // ---------------- phiên đăng nhập Google ----------------
@@ -19,7 +21,8 @@
     let duAnIds = b.duAnIds;
     if (!duAnIds) duAnIds = rec.bqlId ? Store.state.org.duAn.filter((d) => d.dbId === rec.vungId + '/' + rec.bqlId).map((d) => d.id) : [];
     const trangThai = b.trangThai || (rec.status === 'approved' ? 'duyet' : 'cho');
-    return { id: email, email, ten: rec.name || email, vaiTro, vungId, duAnIds, duAnXem: b.duAnXem || [], nhaThau: b.nhaThau || '', trangThai, google: true };
+    const db = { role: rec.role || '', status: rec.status || '', vungId: rec.vungId || '', bqlId: rec.bqlId || '' }; // hồ sơ bên Định biên (chỉ để xem)
+    return { id: email, email, ten: rec.name || email, vaiTro, vungId, duAnIds, duAnXem: b.duAnXem || [], nhaThau: b.nhaThau || '', trangThai, google: true, db };
   }
   function ganVaoStore(u) {
     const co = Store.state.nguoiDung.find((x) => x.id === u.id);
@@ -73,10 +76,11 @@
     C.luuBdnl(u.id, { trangThai: u.trangThai, vaiTro: u.vaiTro, vungId: u.vungId || '', duAnIds: u.duAnIds || [], duAnXem: u.duAnXem || [], nhaThau: u.nhaThau || '' })
       .catch((e) => App.thongBao('Không lưu được lên Firebase: ' + e.message, 'loi'));
   }
-  async function taiDsTaiKhoan() {
-    const C = cloud(); if (!C || !TK.email) return App.thongBao('Đăng nhập Google để tải tài khoản dùng chung với Định biên.', 'loi');
-    try { const ds = await C.dsHoSo(); let n = 0; for (const em in ds) { ganVaoStore(tuHoSo(em.toLowerCase(), ds[em])); n++; } Store.save(); Store.emit('doi'); App.thongBao(`Đã tải ${n} tài khoản Google.`); }
-    catch (e) { App.thongBao('Không tải được danh sách tài khoản: ' + e.message, 'loi'); }
+  async function taiDsTaiKhoan(baoTin) {
+    const C = cloud(); if (!C || !TK.email) return baoTin && App.thongBao('Đăng nhập Google để tải tài khoản dùng chung với Định biên.', 'loi');
+    Q.daTaiTk = true;
+    try { const ds = await C.dsHoSo(); let n = 0; for (const em in ds) { ganVaoStore(tuHoSo(em.toLowerCase(), ds[em])); n++; } Store.save(); Store.emit('doi'); if (baoTin) App.thongBao(`Đã tải ${n} tài khoản Google.`); }
+    catch (e) { App.thongBao('Không tải được danh sách tài khoản: ' + (e.code === 'permission-denied' ? 'Firebase chỉ cho Quản trị (Admin/Khối) xem danh sách.' : e.message), 'loi'); }
   }
 
   // ---------------- giao diện ----------------
@@ -98,6 +102,7 @@
 .qt .dd b{display:block;font-size:11px;color:var(--mut);margin:6px 0 2px;text-transform:uppercase}
 .qt .dd label{display:flex;gap:6px;align-items:center;padding:3px 0;white-space:nowrap}
 .qt .m{color:var(--mut);font-size:12px}
+.qt table.kv td:first-child{color:var(--mut);width:150px;position:static}
 
 .qt .bang{overflow:auto;border:1px solid var(--line);border-radius:10px}
 .tk-chip{font-size:12px;opacity:.9;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis}
@@ -140,46 +145,82 @@
     }).join('')}</div></details>`;
   }
 
-  function veTaiKhoan(el) {
+  const tenVaiTro = (k) => (VAI_TRO.find((x) => x[0] === k) || [k, k])[1];
+  const tenDuAn = (id) => { const d = Store.state.org.duAn.find((x) => x.id === id); return d ? d.ten : id; };
+  const dbHtml = (u) => (u.db && (u.db.role || u.db.status) ? `${esc(DB_TEN[u.db.role] || u.db.role || '—')}${u.db.status === 'approved' ? '' : ' · chờ duyệt'}` : '<span class="m">chưa có</span>');
+
+  /** Thẻ "Tài khoản của tôi" — ai cũng thấy */
+  function veCuaToi() {
+    const C = cloud(), u = Store.nguoi();
+    if (!TK.email) return `<div class="card"><h3>Đăng nhập Google <small>dùng chung tài khoản với Định biên</small></h3>
+      <div class="bar">${App.tkHtml()}</div>
+      <div class="m">${C ? 'Đăng nhập bằng email Google. Tài khoản đã có bên Định biên tự nhận quyền theo Định biên; tài khoản mới ở trạng thái <b>Chờ duyệt</b> tới khi Quản trị duyệt.<br>Chưa đăng nhập thì phần mềm chạy thử trên máy này, không dùng chung dữ liệu.' : esc(window.BDNL_CLOUD_LOI || 'Chưa kết nối được Google (cần mạng).')}</div></div>`;
+    const ql = u && u.vaiTro === 'quanTriKhoi', vung = u && Store.state.org.vung.find((v) => v.id === u.vungId);
+    const da = !u ? '' : ql ? 'Tất cả dự án' : u.vaiTro === 'qlVung' ? 'Mọi dự án của ' + esc(vung ? vung.ten : 'vùng') : (u.duAnIds || []).map((x) => esc(tenDuAn(x))).join(', ') || '<span class="m">Chưa được gán</span>';
+    return `<div class="card"><h3>Tài khoản của tôi</h3>
+      <div class="bar">${App.tkHtml()}</div>
+      <table class="t kv"><tbody>
+        <tr><td>Email</td><td>${esc(TK.email)}</td></tr>
+        <tr><td>Trạng thái</td><td>${TK.cho ? '<span class="chip w">⏳ Chờ duyệt</span>' : '<span class="chip">✔ Đã duyệt</span>'}</td></tr>
+        <tr><td>Vai trò</td><td>${u ? esc(tenVaiTro(u.vaiTro)) : '—'}</td></tr>
+        <tr><td>Dự án phụ trách</td><td style="white-space:normal">${da}</td></tr>
+        ${u && (u.duAnXem || []).length ? `<tr><td>Xem thêm</td><td style="white-space:normal">${u.duAnXem.map((x) => esc(tenDuAn(x))).join(', ')}</td></tr>` : ''}
+        ${u && u.nhaThau ? `<tr><td>Nhà thầu</td><td>${esc(u.nhaThau)}</td></tr>` : ''}
+        <tr><td>Bên Định biên</td><td>${u ? dbHtml(u) : '—'}</td></tr>
+      </tbody></table>
+      ${TK.cho ? '<div class="m" style="margin-top:6px">Đang chờ Quản trị Khối duyệt. Khi được duyệt, tải lại trang là thấy dự án.</div>'
+        : ql ? '' : '<div class="m" style="margin-top:6px">Duyệt và phân quyền tài khoản do Quản trị Khối làm (tài khoản Admin/Khối bên Định biên, hoặc được cấp Quản trị Khối ở đây).</div>'}</div>`;
+  }
+
+  /** Bảng quản lý mọi tài khoản — chỉ Quản trị Khối */
+  function veQuanLyTk() {
     const S = Store.state, q = Q.q.trim().toLowerCase(), toi = S.dangNhap;
-    const ds = S.nguoiDung.filter((u) => !q || ((u.ten || '') + ' ' + (u.email || '')).toLowerCase().includes(q))
-      .sort((a, b) => (a.trangThai === 'cho' ? 0 : 1) - (b.trangThai === 'cho' ? 0 : 1));
+    const ds = S.nguoiDung.filter((u) => (!TK.email || u.google) && (!q || ((u.ten || '') + ' ' + (u.email || '')).toLowerCase().includes(q)))
+      .sort((a, b) => (a.trangThai === 'cho' ? 0 : 1) - (b.trangThai === 'cho' ? 0 : 1) || String(a.id).localeCompare(String(b.id)));
     const nt = S.danhMuc.nhaThau.map((x) => x.ten).sort((a, b) => a.localeCompare(b, 'vi'));
-    const cho = S.nguoiDung.filter((u) => u.trangThai === 'cho').length;
-    const C = cloud();
-    return `<div class="card"><h3>Đăng nhập Google <small>dùng chung tài khoản với Định biên</small></h3>
-      <div class="bar">${App.tkHtml()}${TK.email ? '<button class="btn2" data-q="taiTk">⟳ Tải tài khoản Google</button>' : ''}</div>
-      <div class="m">${C ? 'Người mới bấm "Đăng nhập Google" → tài khoản hiện ở đây trạng thái <b>Chờ duyệt</b> → Quản trị duyệt, chọn vai trò và gán dự án. Tài khoản đã có bên Định biên tự nhận vai trò theo Định biên (Admin/Khối → Quản trị Khối, Vùng → QL Vùng, BQLXD → Cán bộ dự án của BQLXD đó).' : esc(window.BDNL_CLOUD_LOI || 'Chưa kết nối được Google (cần mạng) — vẫn thêm tài khoản thử trên máy được.')}</div></div>
-    <div class="card"><h3>Thêm tài khoản</h3>
+    const cho = ds.filter((u) => u.trangThai === 'cho').length;
+    return `<div class="card"><h3>Thêm tài khoản</h3>
       <div class="them" style="grid-template-columns:1.4fr 1.2fr 1fr auto">
         <label>Email Google<input id="qt-email" type="email" placeholder="ten@vinhomes.vn"></label>
         <label>Họ tên<input id="qt-hoten"></label>
         <label>Vai trò<select id="qt-vt">${VAI_TRO.map(([k, n]) => `<option value="${k}"${k === 'canBo' ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
         <button class="btn2 p" data-q="themTk">+ Thêm</button></div>
       <div class="m" style="margin-top:6px">Thêm trước email để người đó đăng nhập Google là vào được ngay, không phải chờ duyệt.</div></div>
-    <div class="card"><div class="bar"><input data-q="tim" placeholder="Tìm tên, email…" value="${esc(Q.q)}" style="flex:1 1 200px;max-width:320px"><span class="m">${ds.length} tài khoản${cho ? ` · <b style="color:var(--warn)">${cho} chờ duyệt</b>` : ''}</span></div>
-      <div class="bang"><table class="t"><thead><tr><th>Tài khoản</th><th>Trạng thái</th><th>Vai trò</th><th>Vùng</th><th>Dự án phụ trách</th><th>Xem thêm</th><th>Nhà thầu</th><th></th></tr></thead><tbody>
-      ${ds.map((u) => { const k = esc(u.id); return `<tr><td><input data-tk-id="${k}" data-f="ten" value="${esc(u.ten)}"><div class="m">${u.email ? esc(u.email) : 'Tài khoản thử trên máy'}${u.google ? ' · Google' : ''}${u.id === toi ? ' · <b>đang dùng</b>' : ''}</div></td>
+    <div class="card"><h3>Quản lý tài khoản Google <small>duyệt · vai trò · gán dự án — lưu ngay khi đổi</small></h3>
+      <div class="bar"><input data-q="tim" placeholder="Tìm tên, email…" value="${esc(Q.q)}" style="flex:1 1 200px;max-width:320px"><span class="m">${ds.length} tài khoản${cho ? ` · <b style="color:var(--warn)">${cho} chờ duyệt</b>` : ''}</span><span class="sp"></span>
+        ${TK.email ? '<button class="btn2" data-q="taiTk">⟳ Tải lại từ Firebase</button>' : ''}</div>
+      <div class="bang"><table class="t"><thead><tr><th>Tài khoản</th><th>Trạng thái</th><th>Vai trò</th><th>Vùng</th><th>Dự án phụ trách</th><th>Xem thêm</th><th>Nhà thầu</th><th>Định biên</th><th></th></tr></thead><tbody>
+      ${ds.map((u) => { const k = esc(u.id); return `<tr><td><input data-tk-id="${k}" data-f="ten" value="${esc(u.ten)}"><div class="m">${u.email ? esc(u.email) : 'Tài khoản thử trên máy'}${u.id === toi ? ' · <b>đang dùng</b>' : ''}</div></td>
         <td><select data-tk-id="${k}" data-f="trangThai"><option value="duyet"${u.trangThai !== 'cho' ? ' selected' : ''}>✔ Đã duyệt</option><option value="cho"${u.trangThai === 'cho' ? ' selected' : ''}>⏳ Chờ duyệt</option></select></td>
         <td><select data-tk-id="${k}" data-f="vaiTro">${VAI_TRO.map(([v, n]) => `<option value="${v}"${v === u.vaiTro ? ' selected' : ''}>${n}</option>`).join('')}</select></td>
         <td>${u.vaiTro === 'qlVung' ? `<select data-tk-id="${k}" data-f="vungId"><option value="">—</option>${S.org.vung.map((v) => `<option value="${v.id}"${v.id === u.vungId ? ' selected' : ''}>${esc(v.ten)}</option>`).join('')}</select>` : '<span class="m">—</span>'}</td>
         <td>${u.vaiTro === 'quanTriKhoi' ? '<span class="m">Tất cả dự án</span>' : u.vaiTro === 'qlVung' ? '<span class="m">Cả vùng</span>' : chonDuAn(u, 'duAnIds', 'Chưa gán')}</td>
         <td>${u.vaiTro === 'quanTriKhoi' ? '' : chonDuAn(u, 'duAnXem', 'Không')}</td>
         <td>${u.vaiTro === 'nhaThau' ? `<select data-tk-id="${k}" data-f="nhaThau"><option value="">—</option>${nt.map((t) => `<option${t === u.nhaThau ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>` : '<span class="m">—</span>'}</td>
-        <td>${u.id === toi ? '' : `<button class="btn2" data-q="xoaTk" data-id="${k}" style="color:var(--warn)">Xóa</button>`}</td></tr>`; }).join('')}
+        <td>${u.google ? dbHtml(u) : '<span class="m">—</span>'}</td>
+        <td>${u.id === toi ? '' : `<button class="btn2" data-q="xoaTk" data-id="${k}" style="color:var(--warn)">Xóa</button>`}</td></tr>`; }).join('') || '<tr><td colspan="9" class="trong">Chưa có tài khoản.</td></tr>'}
       </tbody></table></div>
-      <div class="m" style="margin-top:6px">Quản trị Khối: mọi dự án · QL Vùng: mọi dự án trong vùng · Cán bộ: sửa dự án được gán · Giám sát / Nhà thầu: nhập thực tế · "Xem thêm": cho xem dự án khác ngoài phần phụ trách.</div></div>`;
+      <div class="m" style="margin-top:6px">Quản trị Khối: mọi dự án · QL Vùng: mọi dự án trong vùng · Cán bộ: sửa dự án được gán · Giám sát / Nhà thầu: nhập thực tế · "Xem thêm": cho xem dự án khác ngoài phần phụ trách.<br>
+        Chỉ lưu quyền của Biểu đồ nhân lực; quyền bên Định biên (cột Định biên) giữ nguyên.</div></div>`;
   }
 
-  function ve(el) {
+  function veTaiKhoan(el) {
+    const ql = Store.laQuanTri() && !TK.cho;
+    if (ql && TK.email && !Q.daTaiTk) taiDsTaiKhoan(false); // như Định biên: mở là tải danh sách tài khoản Google
+    el.innerHTML = `<div class="qt">${veCuaToi()}${ql ? veQuanLyTk() : ''}</div>`;
+    ganSuKien(el, () => veTaiKhoan(el));
+  }
+  function veDuAnMh(el) {
     if (!Store.laQuanTri()) { el.innerHTML = '<p class="trong">Chỉ Quản trị Khối dùng được mục này.</p>'; return; }
-    el.innerHTML = `<div class="qt"><div class="pills"><button data-q="tab" data-id="da"${Q.tab === 'da' ? ' class="on"' : ''}>🏢 Dự án</button><button data-q="tab" data-id="tk"${Q.tab === 'tk' ? ' class="on"' : ''}>👥 Tài khoản</button></div>${Q.tab === 'da' ? veDuAn(el) : veTaiKhoan(el)}</div>`;
+    el.innerHTML = `<div class="qt">${veDuAn(el)}</div>`;
+    ganSuKien(el, () => veDuAnMh(el));
+  }
 
+  function ganSuKien(el, veLai) {
     el.onclick = (e) => {
       const b = e.target.closest('[data-q]'); if (!b || b.tagName === 'INPUT') return;
       const a = b.dataset.q, id = b.dataset.id, S = Store.state;
-      if (a === 'tab') { Q.tab = id; Q.q = ''; ve(el); }
-      else if (a === 'themDa') {
+      if (a === 'themDa') {
         const ten = el.querySelector('#qt-ten').value.trim(); if (!ten) return App.thongBao('Nhập tên dự án.', 'loi');
         if (S.org.duAn.some((d) => d.ten === ten)) return App.thongBao('Dự án đã có.', 'loi');
         Store.themDuAn({ ten, vungId: el.querySelector('#qt-vung').value, bql: el.querySelector('#qt-bql').value.trim() });
@@ -189,7 +230,7 @@
         if (confirm(`Xóa dự án "${d.ten}"?\n\nToàn bộ tiến độ, hệ số, số liệu thực tế của dự án trên máy này sẽ bị xóa. Không thể hoàn tác.`)) Store.xoaDuAn(id);
       } else if (a === 'moDa') App.chon({ duAnId: id, manHinh: 'tongquan' });
       else if (a === 'layDb') layDuAnDinhBien(true);
-      else if (a === 'taiTk') taiDsTaiKhoan();
+      else if (a === 'taiTk') taiDsTaiKhoan(true);
       else if (a === 'themTk') {
         const email = el.querySelector('#qt-email').value.trim().toLowerCase();
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return App.thongBao('Email không hợp lệ.', 'loi');
@@ -207,12 +248,12 @@
     };
     el.oninput = (e) => {
       const t = e.target; if (t.dataset.q !== 'tim') return;
-      Q.q = t.value; const p = t.selectionStart; ve(el); const n = el.querySelector('[data-q=tim]'); n.focus(); n.setSelectionRange(p, p);
+      Q.q = t.value; const p = t.selectionStart; veLai(); const n = el.querySelector('[data-q=tim]'); n.focus(); n.setSelectionRange(p, p);
     };
     el.onchange = (e) => {
       const t = e.target;
       if (t.dataset.da) {
-        const v = t.value.trim(); if (t.dataset.f === 'ten' && !v) return ve(el);
+        const v = t.value.trim(); if (t.dataset.f === 'ten' && !v) return veLai();
         Store.suaThongTinDuAn(t.dataset.da, { [t.dataset.f]: v });
       } else if (t.dataset.tkId) {
         const u = Store.suaNguoi(t.dataset.tkId, { [t.dataset.f]: t.value }); dayLen(u);
@@ -226,5 +267,6 @@
     if (Q.mo != null) { const d = el.querySelectorAll('details')[Q.mo]; if (d) d.open = true; Q.mo = null; }
   }
 
-  App.dangKy({ id: 'quan-tri', tab: 'kh', nhom: 'caidat', chiQuanTri: true, ten: 'Quản trị', icon: '👥', thuTu: 1, ve });
+  App.dangKy({ id: 'tai-khoan', tab: 'kh', nhom: 'caidat', ten: 'Tài khoản', icon: '👤', thuTu: 0, ve: veTaiKhoan });
+  App.dangKy({ id: 'quan-tri', tab: 'kh', nhom: 'caidat', chiQuanTri: true, ten: 'Dự án', icon: '🏢', thuTu: 1, ve: veDuAnMh });
 })();

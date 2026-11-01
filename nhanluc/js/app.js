@@ -13,7 +13,7 @@
   const App = {
     manHinh: [],
     trangThai: { tab: 'kh', manHinh: null, duAnId: null, kieuTg: 'thang' },
-    dangKy(m) { this.manHinh.push(m); this.manHinh.sort((a, b) => (a.thuTu || 99) - (b.thuTu || 99)); },
+    dangKy(m) { this.manHinh.push(m); this.manHinh.sort((a, b) => (a.thuTu ?? 99) - (b.thuTu ?? 99)); },
     dsManHinh(tab) { return this.manHinh.filter((m) => m.tab === tab); },
     /** Màn hiện trên menu (màn có nhom:'caidat' nằm trong màn Cài đặt) */
     dsMenu(tab) { return this.manHinh.filter((m) => m.tab === tab && !m.nhom); },
