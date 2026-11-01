@@ -183,7 +183,7 @@
           }));
         }
       }
-      if (!viec.length) return datTT('xong');
+      if (!viec.length) return D.trangThai === 'loi' ? undefined : datTT('xong'); // không có gì để ghi: giữ báo lỗi đọc (VD luật Firebase chặn)
       datTT('luu');
       await Promise.all(viec);
       datTT('xong');
