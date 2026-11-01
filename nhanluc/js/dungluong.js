@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const MB = 1024 * 1024;
-  let tk = null, dangTai = false, loi = null;
+  let tk = null, daTaiTk = false, dangTai = false, loi = null; // daTaiTk: đã đọc 1 lần (tài liệu có thể chưa tồn tại → tk = null)
   const so = (n) => App.so(n, 0);
   const dl = (b) => (b >= 1024 * MB ? App.so(b / 1024 / MB, 2) + ' GB' : b >= MB ? App.so(b / MB, 1) + ' MB' : App.so(b / 1024, 0) + ' KB');
 
@@ -32,7 +32,8 @@
     const D = App.dongBo; if (!D || !D.chay) return;
     dangTai = true; loi = null; ve(el, ctx);
     try { tk = await D.layThongKe(); } catch (e) { loi = e.code === 'permission-denied' ? 'Firebase chưa cho đọc mục bdnl_chung.' : e.message; }
-    dangTai = false; ve(el, ctx);
+    dangTai = false; daTaiTk = true;
+    if (el.isConnected) ve(el, ctx); // đã rời màn thì thôi vẽ
   }
 
   function ve(el, ctx) {
@@ -48,7 +49,7 @@
         <div class="m">Gói miễn phí không tính tiền: vượt hạn mức trong ngày thì Firebase tạm chặn đọc/ghi tới khi hết ngày (khoảng 14–15h giờ VN), không phát sinh phí. Hạn mức dùng chung với Định biên và QLDA, nên cần để dư.</div>
         ${chay ? '' : '<p class="trong">Chưa đăng nhập Google nên phần mềm đang chạy trên máy, không dùng Firebase (0 lượt).</p>'}
       </div>
-      ${chay ? `<div class="card"><h3>Hôm nay — toàn bộ người dùng BĐNL <small>${tk ? 'cập nhật mỗi 10 phút/máy' : dangTai ? 'đang tải…' : ''}</small></h3>
+      ${chay ? `<div class="card"><h3>Hôm nay — toàn bộ người dùng BĐNL <small>${dangTai ? 'đang tải…' : tk ? 'cập nhật mỗi 10 phút/máy' : daTaiTk ? 'chưa có số liệu — máy gửi thống kê sau 10 phút hoặc khi đóng trang' : ''}</small></h3>
         ${loi ? `<p class="warn">${App.ui.esc(loi)}</p>` : ''}
         ${thanh('Lượt đọc', chung.doc, H.doc, so, '50.000 / ngày')}
         ${thanh('Lượt ghi', chung.ghi, H.ghi, so, '20.000 / ngày')}
@@ -68,8 +69,8 @@
         • Dữ liệu thử (Cài đặt › Dữ liệu thử) không đưa lên Firebase.<br>
         • Ước tính 1 dự án ~0,3 MB; 50 dự án × 2 năm thực tế ≈ 50–100 MB, còn xa hạn mức 1 GB.</div></div>
     </div>`;
-    el.onclick = (e) => { if (e.target.closest('[data-dl=tai]')) tai(el, ctx); };
-    if (chay && !tk && !dangTai && !loi) tai(el, ctx);
+    el.onclick = (e) => { if (e.target.closest('[data-dl=tai]') && !dangTai) tai(el, ctx); };
+    if (chay && !daTaiTk && !dangTai) tai(el, ctx); // tự đọc đúng 1 lần, sau đó chỉ đọc khi bấm Tải lại
   }
 
   App.dangKy({ id: 'dung-luong', tab: 'kh', nhom: 'caidat', ten: 'Dung lượng', icon: '📊', thuTu: 2, ve });
