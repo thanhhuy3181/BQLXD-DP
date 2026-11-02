@@ -6695,11 +6695,13 @@ function renderDienGiai(res) {
         const adj = adjF != null ? adjF : 1;
         // Chế độ % CBGS: x đã nhân 90% (CBGS) hoặc 15% (NVGS); đưa về CBGS gốc để hiện đúng ĐM
         const pf = pctNvFactor(meta.type, currentProjectData, res.pctOff, monthKey(months[j]));
-        klEff *= (it.hsCt != null ? it.hsCt : 1); // hệ số công trình
+        const klRaw = klEff;
+        const hsCt = it.hsCt != null ? it.hsCt : 1;
+        klEff *= hsCt; // hệ số công trình
         if(ratio > 0 && klEff > 0 && adj > 0) dm = klEff * ratio / ((x / pf) / adj);
         if(!(klEff > 0)) return;
         const ku = /_ht$/.test(meta.type) ? 'm²' : (it.dv || '');
-        (contrib[rIdx] = contrib[rIdx] || []).push({ name: it.ten, kl: klEff, x, ratio, adj, dm, ku, pf });
+        (contrib[rIdx] = contrib[rIdx] || []).push({ name: it.ten, kl: klEff, klRaw, hsCt, x, ratio, adj, dm, ku, pf });
       });
     });
   }
@@ -6728,7 +6730,9 @@ function renderDienGiai(res) {
     } else if(list && list.length) {
       const sum = list.reduce((s, c) => s + c.x, 0);
       const bullets = list.map(c => {
-        const klTxt = fmt(c.kl || 0, 0);
+        // Hệ số công trình: ghi "KL x %" trước dấu "/" khi khác 100%
+        const hsTxt = Math.abs((c.hsCt != null ? c.hsCt : 1) - 1) > 0.005 ? ` x ${Math.round(c.hsCt * 100)}%` : '';
+        const klTxt = `${fmt(c.klRaw != null ? c.klRaw : (c.kl || 0), 0)}${hsTxt}`;
         const base = c.dm ? `${klTxt} / ${fmt(c.dm, 0)}${c.ku ? ' ' + c.ku : ''}` : klTxt;
         // Hệ số 100% không cần giải thích; chỉ ghi khi khác 100%
         const rTxt = c.ratio > 0 && Math.abs(c.ratio - 1) > 0.005 ? ` x ${Math.round(c.ratio * 100)}%` : '';
