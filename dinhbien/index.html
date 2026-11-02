@@ -5218,10 +5218,18 @@ document.addEventListener('keydown', e => {
     else if(e.key === 'Escape') { e.preventDefault(); xl.editing.value = xl.editing.defaultValue; xl.editing.blur(); }
     return;
   }
+  // Tiêu điểm đang ở một ô chỉ đọc của lưới này (Tab/mũi tên vừa đưa tới): ô đó là vị trí chọn
+  const ae = document.activeElement;
+  const tag = ae && ae.tagName;
+  if(tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if(tag === 'INPUT') {
+    if(!xlIsCell(ae) || !ae.readOnly) return; // đang gõ, hoặc ô của bảng khác: để nơi khác xử lý
+    xlSetAnchor(ae);
+    xl.sel = new Set([xlKey(ae)]);
+    xlApplyClasses();
+  }
   const a = xlAnchor();
   if(!a) return;
-  const tag = document.activeElement && document.activeElement.tagName;
-  if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   const mod = e.ctrlKey || e.metaKey;
   if(mod) {
     if(e.key === 'c' || e.key === 'C') { e.preventDefault(); xlCopy(); }
@@ -5236,12 +5244,23 @@ document.addEventListener('keydown', e => {
     if(sel.length) xlCommit();
     return;
   }
+  // Tab / Shift+Tab: sang ô kế bên (bỏ qua ô không phải ô nhập liệu), như Excel. Ô cuối dòng thì dừng lại
+  if(e.key === 'Tab') {
+    e.preventDefault();
+    const p = xlPos(a);
+    const step = e.shiftKey ? -1 : 1;
+    const rowLen = p.tb.children[p.r] ? p.tb.children[p.r].children.length : 0;
+    let nxt = null;
+    for(let c = p.c + step; c >= 0 && c < rowLen && !nxt; c += step) nxt = xlCellAt(p.tb, p.r, c);
+    if(nxt) { xlSetAnchor(nxt); xl.sel = new Set([xlKey(nxt)]); xlApplyClasses(); nxt.focus(); }
+    return;
+  }
   const dir = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowRight: [0, 1], ArrowLeft: [0, -1] }[e.key];
   if(dir) {
     e.preventDefault();
     const p = xlPos(a);
     const nxt = xlCellAt(p.tb, p.r + dir[0], p.c + dir[1]);
-    if(nxt) { xlSetAnchor(nxt); xl.sel = new Set([xlKey(nxt)]); xlApplyClasses(); }
+    if(nxt) { xlSetAnchor(nxt); xl.sel = new Set([xlKey(nxt)]); xlApplyClasses(); nxt.focus(); }
     return;
   }
   if(e.key.length === 1) { // gõ số / chữ: thay nội dung ô đang chọn
@@ -6731,9 +6750,10 @@ function renderDienGiai(res) {
       const sum = list.reduce((s, c) => s + c.x, 0);
       const bullets = list.map(c => {
         // Hệ số công trình: ghi "KL x %" trước dấu "/" khi khác 100%
+        // Hệ số công trình nhân SAU khi chia định mức: "KL / ĐM x %"
         const hsTxt = Math.abs((c.hsCt != null ? c.hsCt : 1) - 1) > 0.005 ? ` x ${Math.round(c.hsCt * 100)}%` : '';
-        const klTxt = `${fmt(c.klRaw != null ? c.klRaw : (c.kl || 0), 0)}${hsTxt}`;
-        const base = c.dm ? `${klTxt} / ${fmt(c.dm, 0)}${c.ku ? ' ' + c.ku : ''}` : klTxt;
+        const klTxt = fmt(c.klRaw != null ? c.klRaw : (c.kl || 0), 0);
+        const base = c.dm ? `${klTxt} / ${fmt(c.dm, 0)}${c.ku ? ' ' + c.ku : ''}${hsTxt}` : `${klTxt}${hsTxt}`;
         // Hệ số 100% không cần giải thích; chỉ ghi khi khác 100%
         const rTxt = c.ratio > 0 && Math.abs(c.ratio - 1) > 0.005 ? ` x ${Math.round(c.ratio * 100)}%` : '';
         const aTxt = Math.abs(c.adj - 1) > 0.005 ? ` x ${Math.round(c.adj * 100)}%` : '';
