@@ -4063,7 +4063,9 @@ function renderTreeTable() {
         <td><input type="text" inputmode="decimal" style="text-align:right; font-family:var(--font-mono); font-weight:600; ${bptcInputStyle}${Number(curKl) === 0 ? ' color:#dc2626;' : ''}" value="${fmtKlInput(curKl)}" data-id="${r.id}" data-f="${fFieldKl}"></td>
         <td class="dv-fixed" style="text-align:center; font-size:10.5px; color:var(--text-muted);" title="Đơn vị theo Phân loại công trình (cố định, không sửa)">${escHtml(dvFixed)}</td>
         <td>${r.loai === 'Đường giao thông, công viên' || r.loai === 'Ép cọc' ? '' : `<input type="number" style="text-align:right; font-family:var(--font-mono);${!(r.dienTich > 0) ? ' background:#fef2f2; border-color:#dc2626;' : ''}" value="${r.dienTich > 0 ? r.dienTich : ''}" placeholder="⚠ Cần nhập" data-id="${r.id}" data-f="dienTich" title="Khối lượng hạ tầng (m²) của công trình. Cần nhập để tính CBGS/NVGS Hạ tầng">`}</td>
-        <td><input type="text" inputmode="decimal" style="text-align:right; font-family:var(--font-mono);" value="${Math.round((r.hsCt != null ? r.hsCt : 1) * 100)}%" data-id="${r.id}" data-f="hsCt" title="Hệ số công trình (100% = xây mới). Kết quả định biên của công trình được nhân với hệ số này"></td>
+        ${isBptcTab
+          ? `<td style="text-align:right; font-family:var(--font-mono); color:#64748b;" title="Lấy theo Hệ số công trình của Tiến độ dự án (sửa ở tab Tiến độ DA)">${Math.round((r.hsCt != null ? r.hsCt : 1) * 100)}%</td>`
+          : `<td><input type="text" inputmode="decimal" style="text-align:right; font-family:var(--font-mono);" value="${Math.round((r.hsCt != null ? r.hsCt : 1) * 100)}%" data-id="${r.id}" data-f="hsCt" title="Hệ số công trình (100% = xây mới). Kết quả định biên của công trình được nhân với hệ số này"></td>`}
         ${hmCells(hmCtMap[r.id])}
       `;
       tbody.appendChild(tr);
