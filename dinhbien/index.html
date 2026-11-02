@@ -6206,11 +6206,17 @@ function allBqlOptions() {
 // Danh sách dự án (BQLXD) đã tạo, để admin xóa
 function renderAdminProjects(el) {
   const rows = [];
-  DEFAULT_VUNGS.forEach(v => (getBqlRegistry(v.id) || []).forEach((b, idx, arr) => rows.push({ vungId: v.id, vungTen: v.ten, id: b.id, ten: b.ten, idx, last: arr.length - 1 })));
-  el.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Dự án / BQLXD đã tạo</div>`
+  DEFAULT_VUNGS.forEach(v => (getBqlRegistry(v.id) || []).forEach((b, idx, arr) => rows.push({ vungId: v.id, vungTen: v.ten, id: b.id, ten: b.ten, hidden: !!b.hidden, idx, last: arr.length - 1 })));
+  el.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Dự án / BQLXD đã tạo</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
+      <select id="apAddVung" style="padding:4px;border:1px solid #cbd5e1;border-radius:4px;">${DEFAULT_VUNGS.map(v => `<option value="${escHtml(v.id)}"${v.id === currentVungId ? ' selected' : ''}>${escHtml(v.ten)}</option>`).join('')}</select>
+      <input id="apAddSearch" list="dlDuAn" placeholder="Gõ tìm dự án trong DS DA để gán..." style="flex:1;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;">
+      <button type="button" id="apAddBtn" style="padding:2px 10px;">+ Gán</button>
+    </div>`
     + (rows.length
       ? `<table style="width:100%;border-collapse:collapse;">${rows.map(r => `<tr style="border-top:1px solid #e2e8f0;">
-          <td style="padding:6px;">${escHtml(r.ten)}</td>
+          <td style="padding:6px;">${escHtml(r.ten)}${r.hidden ? ' <span style="color:#b45309;">(ẩn, chưa có tab)</span>' : ''}</td>
+          <td style="text-align:center;white-space:nowrap;"><button type="button" data-hide-vung="${escHtml(r.vungId)}" data-hide-id="${escHtml(r.id)}" style="padding:2px 8px;">${r.hidden ? 'Đưa ra tab' : 'Ẩn tab'}</button></td>
           <td style="color:#64748b;">${escHtml(r.vungTen)}</td>
           <td style="text-align:center;white-space:nowrap;"><button type="button" data-move-vung="${escHtml(r.vungId)}" data-move-id="${escHtml(r.id)}" data-move-dir="-1"${r.idx === 0 ? ' disabled' : ''} style="padding:1px 6px;">▲</button> <button type="button" data-move-vung="${escHtml(r.vungId)}" data-move-id="${escHtml(r.id)}" data-move-dir="1"${r.idx === r.last ? ' disabled' : ''} style="padding:1px 6px;">▼</button></td>
           <td style="text-align:center;"><button type="button" data-del-vung="${escHtml(r.vungId)}" data-del-id="${escHtml(r.id)}" style="padding:2px 10px;color:#b91c1c;">Xóa</button></td>
@@ -6233,6 +6239,39 @@ function renderAdminProjects(el) {
   el.querySelectorAll('button[data-del-id]').forEach(btn => {
     btn.onclick = () => deleteBql(btn.dataset.delVung, btn.dataset.delId, btn.closest('tr'));
   });
+  // Bật / tắt hiện tab của dự án (dự án ẩn vẫn gán được cho tài khoản CB BQL)
+  el.querySelectorAll('button[data-hide-id]').forEach(btn => {
+    btn.onclick = () => {
+      const list = (getBqlRegistry(btn.dataset.hideVung) || []).slice();
+      const b = list.find(x => x.id === btn.dataset.hideId);
+      if(!b) return;
+      b.hidden = !b.hidden;
+      saveBqlRegistry(btn.dataset.hideVung, list);
+      renderOrgHierarchyButtons();
+      renderAdminProjects(el);
+    };
+  });
+  // Gõ tìm trong DS DA rồi gán vào vùng; sau đó hỏi có đưa ra tab hay không
+  const addBtn = el.querySelector('#apAddBtn');
+  const addInp = el.querySelector('#apAddSearch');
+  const assign = () => {
+    const name = addInp.value.trim();
+    if(!name) return;
+    const hit = getDsDuAn().find(s => s.toLowerCase() === name.toLowerCase());
+    if(!hit) { alert('Dự án này không có trong danh sách DS DA. Chọn tên gợi ý trong danh sách.'); return; }
+    const taken = DEFAULT_VUNGS.some(v => (getBqlRegistry(v.id) || []).some(b => b.ten.toLowerCase() === hit.toLowerCase()));
+    if(taken) { alert(`"${hit}" đã được gán cho một vùng.`); return; }
+    const vungId = el.querySelector('#apAddVung').value;
+    const vungTen = DEFAULT_VUNGS.find(v => v.id === vungId)?.ten || '';
+    const showTab = confirm(`Đưa "${hit}" ra tab (${vungTen}) ngay?\n\nOK: hiện tab.\nCancel: chỉ gán, chưa hiện tab (có thể bật sau).`);
+    const list = getBqlRegistry(vungId) || [];
+    list.push({ id: 'bql_' + Date.now(), ten: hit, hidden: !showTab });
+    saveBqlRegistry(vungId, list);
+    renderOrgHierarchyButtons();
+    renderAdminProjects(el);
+  };
+  addBtn.onclick = assign;
+  addInp.addEventListener('keydown', e => { if(e.key === 'Enter') { e.preventDefault(); assign(); } });
 }
 
 // Danh sách dự án (DS DA): sửa tên, xóa, thêm. Lưu lên Cloud để mọi máy dùng chung
@@ -6350,7 +6389,7 @@ async function loadAdminUsers(body) {
         <td style="text-align:center;white-space:nowrap;">${onlineHtml(id)}</td>
         <td style="text-align:center;"><select data-f="status"><option value="pending"${u.status !== 'approved' ? ' selected' : ''}>Chờ duyệt</option><option value="approved"${u.status === 'approved' ? ' selected' : ''}>Đã duyệt</option></select></td>
         <td style="text-align:center;"><select data-f="role">${roles.map(([v, t]) => `<option value="${v}"${u.role === v ? ' selected' : ''}>${t}</option>`).join('')}</select></td>
-        <td style="text-align:center;"><select data-f="vungId"><option value="">—</option>${DEFAULT_VUNGS.map(v => `<option value="${v.id}"${u.vungId === v.id ? ' selected' : ''}>${escHtml(v.ten)}</option>`).join('')}</select></td>
+        <td style="text-align:center;"><select data-f="vungId"><option value="">—</option><option value="khoi_xd"${u.vungId === 'khoi_xd' ? ' selected' : ''}>Khối XD</option>${DEFAULT_VUNGS.map(v => `<option value="${v.id}"${u.vungId === v.id ? ' selected' : ''}>${escHtml(v.ten)}</option>`).join('')}</select></td>
         <td style="text-align:center;"><select data-f="bqlId" style="max-width:200px;"><option value="">—</option>${allBqlOptions().map(b => `<option value="${escHtml(b.id)}"${u.bqlId === b.id ? ' selected' : ''}>${escHtml(b.ten)}</option>`).join('')}</select></td>
         <td style="text-align:center;"><button type="button" data-save="1" style="padding:2px 10px;">Lưu</button></td>
       </tr>`;
@@ -8175,7 +8214,7 @@ function renderOrgHierarchyButtons() {
     const vungBtns = Array.from(document.querySelectorAll('#rowVung [data-vung]'));
     vungBtns.forEach(vb => {
       const vId = vb.dataset.vung;
-      const bqlList = getBqlRegistry(vId);
+      const bqlList = getBqlRegistry(vId).filter(b => !b.hidden);
       bqlList.forEach(b => {
         const btn = document.createElement('button');
         btn.className = 'btn-org';
@@ -8194,7 +8233,7 @@ function renderOrgHierarchyButtons() {
     return;
   }
 
-  const bqlList = getBqlRegistry(currentVungId);
+  const bqlList = getBqlRegistry(currentVungId).filter(b => !b.hidden);
   bqlList.forEach(b => {
     const btn = document.createElement('button');
     btn.className = 'btn-org' + (b.id === currentBqlId ? ' active' : '');
