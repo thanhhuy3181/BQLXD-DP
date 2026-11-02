@@ -2463,17 +2463,78 @@ function getBqlRegistry(vungId) {
     const raw = localStorage.getItem(`db_v2_reg_${vungId}`);
     if(raw) return JSON.parse(raw);
   } catch(e){}
-  if(vungId === 'vung_bac') {
-    return [
-      { id: 'dan_phuong', ten: 'BQLXD Đan Phượng' },
-      { id: 'bql_abc', ten: 'BQLXD ABC' }
-    ];
-  }
+  // Không dùng danh sách mẫu: máy chưa tải danh sách từ Cloud mà lưu danh sách mẫu sẽ ghi đè mất các dự án thật
   return [];
 }
 
-function saveBqlRegistry(vungId, list) {
-  persistLocal(`db_v2_reg_${vungId}`, JSON.stringify(list), 'registries', vungId);
+// Lưu danh sách dự án của Vùng. Gộp với bản trên Cloud: dự án nào Cloud có mà danh sách này thiếu thì giữ lại,
+// trừ các dự án bị xóa có chủ đích (removedIds). Tránh máy có danh sách cũ ghi đè làm mất dự án.
+function saveBqlRegistry(vungId, list, removedIds) {
+  const key = `db_v2_reg_${vungId}`;
+  if(!window._cloud || !window._cloud.get) { persistLocal(key, JSON.stringify(list), 'registries', vungId); return; }
+  try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
+  const removed = new Set(removedIds || []);
+  window._cloud.get('registries', vungId).then(docv => {
+    let cloudList = [];
+    try { cloudList = docv && typeof docv.value === 'string' ? JSON.parse(docv.value) : []; } catch(e) {}
+    const have = new Set(list.map(b => b.id));
+    const extra = (cloudList || []).filter(b => b && b.id && !have.has(b.id) && !removed.has(b.id));
+    persistLocal(key, JSON.stringify(list.concat(extra)), 'registries', vungId);
+    if(extra.length) renderOrgHierarchyButtons();
+  }).catch(() => persistLocal(key, JSON.stringify(list), 'registries', vungId));
+}
+
+// Tìm dự án còn dữ liệu (trên máy này, bản sao lưu, Cloud) nhưng không còn trong danh sách tab của Vùng nào
+async function findOrphanProjects() {
+  const known = new Set();
+  DEFAULT_VUNGS.forEach(v => (getBqlRegistry(v.id) || []).forEach(b => known.add(makeStorageKey(v.id, b.id))));
+  const found = {};
+  const consider = (key, raw, src, ts) => {
+    if(key.startsWith('db_v2_backup_')) { key = key.slice('db_v2_backup_'.length); src = 'Bản sao lưu'; }
+    const v = DEFAULT_VUNGS.find(v => key.startsWith(`db_v2_${v.id}_`));
+    if(!v || known.has(key) || typeof raw !== 'string') return;
+    const bqlId = key.slice(`db_v2_${v.id}_`.length);
+    let d;
+    try { d = JSON.parse(raw); } catch(e) { return; }
+    if(!bqlId || !d || !Array.isArray(d.treeRows)) return;
+    const items = d.treeRows.filter(r => r.level === 3);
+    const prev = found[key];
+    if(prev && (prev.n > items.length || (prev.n === items.length && prev.ts >= ts))) return;
+    found[key] = { key, vungId: v.id, bqlId, ten: d.ten || bqlId, n: items.length, sample: items[0] ? items[0].ten : '', src, ts, raw };
+  };
+  try {
+    for(let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      const base = k.startsWith('db_v2_backup_') ? k.slice('db_v2_backup_'.length) : k;
+      consider(k, localStorage.getItem(k), 'Máy này', Number(localStorage.getItem(syncKey(base))) || 0);
+    }
+  } catch(e) {}
+  if(window._cloud && window._cloud.getAll) {
+    try {
+      const docs = await window._cloud.getAll('projects');
+      Object.keys(docs).forEach(id => consider(id, docs[id].value, 'Cloud', Number(docs[id].updatedAt) || 0));
+    } catch(e) { console.warn('[Khôi phục] đọc Cloud lỗi:', e); }
+  }
+  return Object.values(found).sort((a, b) => b.n - a.n);
+}
+
+// Gắn lại dự án vào danh sách tab của Vùng cũ (giữ nguyên mã dự án nên dữ liệu về đủ)
+function restoreOrphanProject(o) {
+  persistLocal(o.key, o.raw, 'projects', o.key);
+  let list = (getBqlRegistry(o.vungId) || []).slice();
+  // Dự án cùng tên tạo lại sau khi mất (đang trống) thì thay bằng dự án khôi phục
+  const dupEmpty = list.filter(b => b.ten.trim().toLowerCase() === String(o.ten).trim().toLowerCase() && (() => {
+    try {
+      const d = JSON.parse(localStorage.getItem(makeStorageKey(o.vungId, b.id)) || 'null');
+      return !d || !(d.treeRows || []).some(r => r.level === 3);
+    } catch(e) { return true; }
+  })());
+  if(dupEmpty.length && confirm(`Đã có tab "${o.ten}" đang trống. Thay tab trống bằng dự án khôi phục?`)) {
+    list = list.filter(b => !dupEmpty.includes(b));
+  }
+  list.push({ id: o.bqlId, ten: o.ten });
+  saveBqlRegistry(o.vungId, list, dupEmpty.length ? dupEmpty.map(b => b.id) : []);
+  renderOrgHierarchyButtons();
 }
 
 // Mở / tạo dự án: bảng Hạng mục công trình luôn bắt đầu ở tab Tiến độ DA
@@ -6236,7 +6297,31 @@ function renderAdminProjects(el) {
           <td style="text-align:center;white-space:nowrap;"><button type="button" data-move-vung="${escHtml(r.vungId)}" data-move-id="${escHtml(r.id)}" data-move-dir="-1"${r.idx === 0 ? ' disabled' : ''} style="padding:1px 6px;">▲</button> <button type="button" data-move-vung="${escHtml(r.vungId)}" data-move-id="${escHtml(r.id)}" data-move-dir="1"${r.idx === r.last ? ' disabled' : ''} style="padding:1px 6px;">▼</button></td>
           <td style="text-align:center;"><button type="button" data-del-vung="${escHtml(r.vungId)}" data-del-id="${escHtml(r.id)}" style="padding:2px 10px;color:#b91c1c;">Xóa</button></td>
         </tr>`).join('')}</table>`
-      : '<div>Chưa có dự án nào.</div>');
+      : '<div>Chưa có dự án nào.</div>')
+    + `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #cbd5e1;">
+        <button type="button" id="apScanOrphans" style="padding:4px 10px;font-weight:600;">🔎 Tìm &amp; khôi phục dự án bị mất khỏi tab</button>
+        <div id="apOrphans" style="margin-top:8px;"></div>
+      </div>`;
+  el.querySelector('#apScanOrphans').onclick = async () => {
+    const box = el.querySelector('#apOrphans');
+    box.textContent = 'Đang tìm trên máy này và Cloud...';
+    const list = await findOrphanProjects();
+    if(!list.length) { box.textContent = 'Không tìm thấy dự án nào bị mất khỏi tab.'; return; }
+    box.innerHTML = `<table style="width:100%;border-collapse:collapse;">${list.map((o, i) => `<tr style="border-top:1px solid #e2e8f0;">
+        <td style="padding:5px;font-weight:600;">${escHtml(o.ten)}</td>
+        <td style="color:#64748b;">${escHtml((DEFAULT_VUNGS.find(v => v.id === o.vungId) || {}).ten || o.vungId)}</td>
+        <td>${o.n} hạng mục${o.sample ? ` <span style="color:#64748b;">(vd: ${escHtml(o.sample)})</span>` : ''}</td>
+        <td style="color:#64748b;white-space:nowrap;">${escHtml(o.src)}${o.ts ? ' · ' + new Date(o.ts).toLocaleString('vi-VN') : ''}</td>
+        <td style="text-align:center;"><button type="button" data-restore="${i}" style="padding:2px 10px;color:#047857;font-weight:600;">Khôi phục</button></td>
+      </tr>`).join('')}</table>`;
+    box.querySelectorAll('button[data-restore]').forEach(btn => {
+      btn.onclick = () => {
+        const o = list[Number(btn.dataset.restore)];
+        restoreOrphanProject(o);
+        btn.closest('tr').innerHTML = `<td colspan="5" style="padding:5px;color:#047857;">✓ Đã khôi phục "${escHtml(o.ten)}" — mở lại Quản trị để thấy trong danh sách</td>`;
+      };
+    });
+  };
   // Đổi thứ tự dự án trong cùng Vùng (thứ tự này dùng cho danh sách chọn dự án)
   el.querySelectorAll('button[data-move-id]').forEach(btn => {
     btn.onclick = () => {
@@ -6370,7 +6455,7 @@ async function deleteBql(vungId, bqlId, rowEl) {
   if(!b) return;
   if(!confirm(`Xóa dự án "${b.ten}"?\n\nToàn bộ hạng mục, tiến độ và định mức của dự án này sẽ bị xóa khỏi máy này và Cloud. Không thể hoàn tác.`)) return;
   const key = makeStorageKey(vungId, bqlId);
-  saveBqlRegistry(vungId, list.filter(x => x.id !== bqlId));
+  saveBqlRegistry(vungId, list.filter(x => x.id !== bqlId), [bqlId]);
   try {
     localStorage.removeItem(key);
     localStorage.removeItem(syncKey(key));
