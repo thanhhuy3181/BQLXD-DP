@@ -2476,7 +2476,20 @@ function saveBqlRegistry(vungId, list) {
   persistLocal(`db_v2_reg_${vungId}`, JSON.stringify(list), 'registries', vungId);
 }
 
+// Mở / tạo dự án: bảng Hạng mục công trình luôn bắt đầu ở tab Tiến độ DA
+function resetHangMucTabToDa() {
+  currentHangMucTab = 'da';
+  document.querySelectorAll('#hangmucTabsBar [data-hmtab]').forEach(b => b.classList.toggle('active', b.dataset.hmtab === 'da'));
+  const btnSync = document.getElementById('btnSyncBptcFromDa');
+  if(btnSync) btnSync.style.display = 'none';
+}
+
+let lastLoadedProjectKey = null;
 function loadProject(vungId, bqlId) {
+  // Chỉ về tab Tiến độ DA khi đổi sang dự án khác (đồng bộ Cloud cùng dự án thì giữ tab đang xem)
+  const projKey = `${vungId}|${bqlId}`;
+  if(projKey !== lastLoadedProjectKey) resetHangMucTabToDa();
+  lastLoadedProjectKey = projKey;
   // Chế độ Tổng hợp Vùng (không có dự án cụ thể): chỉ dựng dữ liệu rỗng trong bộ nhớ, không lưu
   if(!bqlId) {
     currentProjectData = emptyProjectData(vungId, bqlId);
@@ -8364,6 +8377,8 @@ document.getElementById('btnConfirmAddBql').addEventListener('click', () => {
   saveBqlRegistry(currentVungId, list);
 
   currentBqlId = newId;
+  resetHangMucTabToDa();
+  lastLoadedProjectKey = `${currentVungId}|${newId}`;
   currentProjectData = {
     id: newId,
     vungId: currentVungId,
