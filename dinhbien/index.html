@@ -2509,13 +2509,20 @@ async function findOrphanProjects() {
       consider(k, localStorage.getItem(k), 'Máy này', Number(localStorage.getItem(syncKey(base))) || 0);
     }
   } catch(e) {}
+  let cloudMsg = 'Chưa kết nối Cloud';
   if(window._cloud && window._cloud.getAll) {
     try {
       const docs = await window._cloud.getAll('projects');
       Object.keys(docs).forEach(id => consider(id, docs[id].value, 'Cloud', Number(docs[id].updatedAt) || 0));
-    } catch(e) { console.warn('[Khôi phục] đọc Cloud lỗi:', e); }
+      cloudMsg = `Đã đọc Cloud: ${Object.keys(docs).length} dự án`;
+    } catch(e) {
+      console.warn('[Khôi phục] đọc Cloud lỗi:', e);
+      cloudMsg = 'KHÔNG đọc được Cloud (cần đăng nhập bằng Google với tài khoản đã duyệt, không dùng mật khẩu quản trị)';
+    }
   }
-  return Object.values(found).sort((a, b) => b.n - a.n);
+  const list = Object.values(found).sort((a, b) => b.n - a.n);
+  list.cloudMsg = cloudMsg;
+  return list;
 }
 
 // Gắn lại dự án vào danh sách tab của Vùng cũ (giữ nguyên mã dự án nên dữ liệu về đủ)
@@ -6306,8 +6313,9 @@ function renderAdminProjects(el) {
     const box = el.querySelector('#apOrphans');
     box.textContent = 'Đang tìm trên máy này và Cloud...';
     const list = await findOrphanProjects();
-    if(!list.length) { box.textContent = 'Không tìm thấy dự án nào bị mất khỏi tab.'; return; }
-    box.innerHTML = `<table style="width:100%;border-collapse:collapse;">${list.map((o, i) => `<tr style="border-top:1px solid #e2e8f0;">
+    const note = `<div style="font-size:11px;color:${/KHÔNG|Chưa/.test(list.cloudMsg) ? '#b91c1c' : '#64748b'};margin-bottom:4px;">${escHtml(list.cloudMsg)}</div>`;
+    if(!list.length) { box.innerHTML = note + '<div>Không tìm thấy dự án nào bị mất khỏi tab (trên máy này' + (/Đã đọc/.test(list.cloudMsg) ? ' và Cloud' : '') + ').</div>'; return; }
+    box.innerHTML = note + `<table style="width:100%;border-collapse:collapse;">${list.map((o, i) => `<tr style="border-top:1px solid #e2e8f0;">
         <td style="padding:5px;font-weight:600;">${escHtml(o.ten)}</td>
         <td style="color:#64748b;">${escHtml((DEFAULT_VUNGS.find(v => v.id === o.vungId) || {}).ten || o.vungId)}</td>
         <td>${o.n} hạng mục${o.sample ? ` <span style="color:#64748b;">(vd: ${escHtml(o.sample)})</span>` : ''}</td>
