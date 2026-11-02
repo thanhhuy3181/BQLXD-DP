@@ -2458,30 +2458,82 @@ function makeStorageKey(vungId, bqlId) {
   return `db_v2_${vungId}_${bqlId}`;
 }
 
-function getBqlRegistry(vungId) {
+// Danh sách dự án của Vùng lưu cả "bia mộ" (dự án đã xóa: deleted) và dấu thời gian t của mỗi dòng.
+// Khi gộp hai bản, dòng nào có t mới hơn thì thắng; dòng chỉ có ở một bản vẫn được giữ.
+// Nhờ vậy máy có danh sách cũ ghi đè lên Cloud không làm mất dự án; chỉ "Xóa" có chủ đích mới gỡ dự án.
+function getRegRaw(vungId) {
   try {
     const raw = localStorage.getItem(`db_v2_reg_${vungId}`);
-    if(raw) return JSON.parse(raw);
+    if(raw) { const l = JSON.parse(raw); if(Array.isArray(l)) return l; }
   } catch(e){}
-  // Không dùng danh sách mẫu: máy chưa tải danh sách từ Cloud mà lưu danh sách mẫu sẽ ghi đè mất các dự án thật
   return [];
 }
 
-// Lưu danh sách dự án của Vùng. Gộp với bản trên Cloud: dự án nào Cloud có mà danh sách này thiếu thì giữ lại,
-// trừ các dự án bị xóa có chủ đích (removedIds). Tránh máy có danh sách cũ ghi đè làm mất dự án.
+function getBqlRegistry(vungId) {
+  // Không dùng danh sách mẫu: máy chưa tải danh sách từ Cloud mà lưu danh sách mẫu sẽ ghi đè mất các dự án thật
+  return getRegRaw(vungId).filter(b => b && b.id && !b.deleted);
+}
+
+// Gộp 2 danh sách: giữ thứ tự của a, thêm dòng chỉ có ở b; trùng id thì lấy dòng có t lớn hơn (bằng nhau lấy a)
+function mergeReg(a, b) {
+  const byId = new Map();
+  const order = [];
+  (a || []).concat(b || []).forEach(x => {
+    if(!x || !x.id) return;
+    const cur = byId.get(x.id);
+    if(!cur) { byId.set(x.id, x); order.push(x.id); }
+    else if((x.t || 0) > (cur.t || 0)) byId.set(x.id, x);
+  });
+  return order.map(id => byId.get(id));
+}
+
 function saveBqlRegistry(vungId, list, removedIds) {
   const key = `db_v2_reg_${vungId}`;
-  if(!window._cloud || !window._cloud.get) { persistLocal(key, JSON.stringify(list), 'registries', vungId); return; }
-  try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
+  const now = Date.now();
+  const prev = getRegRaw(vungId);
+  const prevMap = new Map(prev.map(b => [b.id, b]));
   const removed = new Set(removedIds || []);
+  const out = list.map(b => {
+    const p = prevMap.get(b.id);
+    const same = p && !p.deleted && p.ten === b.ten && !!p.hidden === !!b.hidden;
+    const { deleted, ...rest } = b;
+    return { ...rest, t: same ? (p.t || 0) : now };
+  });
+  const inOut = new Set(out.map(b => b.id));
+  prev.forEach(p => {
+    if(inOut.has(p.id)) return;
+    if(removed.has(p.id)) out.push({ id: p.id, ten: p.ten, hidden: true, deleted: true, t: now });
+    else out.push(p); // dòng không có trong danh sách mới mà không bị xóa có chủ đích: giữ nguyên
+  });
+  removed.forEach(id => { if(!prevMap.has(id)) out.push({ id, ten: '', hidden: true, deleted: true, t: now }); });
+  if(!window._cloud || !window._cloud.get) { persistLocal(key, JSON.stringify(out), 'registries', vungId); return; }
+  try { localStorage.setItem(key, JSON.stringify(out)); } catch(e) {}
   window._cloud.get('registries', vungId).then(docv => {
     let cloudList = [];
     try { cloudList = docv && typeof docv.value === 'string' ? JSON.parse(docv.value) : []; } catch(e) {}
-    const have = new Set(list.map(b => b.id));
-    const extra = (cloudList || []).filter(b => b && b.id && !have.has(b.id) && !removed.has(b.id));
-    persistLocal(key, JSON.stringify(list.concat(extra)), 'registries', vungId);
-    if(extra.length) renderOrgHierarchyButtons();
-  }).catch(() => persistLocal(key, JSON.stringify(list), 'registries', vungId));
+    const merged = mergeReg(out, cloudList);
+    persistLocal(key, JSON.stringify(merged), 'registries', vungId);
+    if(merged.length !== out.length) renderOrgHierarchyButtons();
+  }).catch(() => persistLocal(key, JSON.stringify(out), 'registries', vungId));
+}
+
+// Nhận danh sách dự án từ Cloud: gộp với bản trên máy (không thay thế). Nếu bản gộp có thêm dòng
+// mà Cloud thiếu (do máy cũ ghi đè) thì đẩy bản gộp lên lại Cloud.
+function mergeRemoteRegistry(localKey, remoteVal, remoteTs) {
+  let remote = [];
+  try { remote = JSON.parse(remoteVal); } catch(e) {}
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem(localKey) || '[]'); } catch(e) {}
+  const merged = mergeReg(Array.isArray(remote) ? remote : [], Array.isArray(local) ? local : []);
+  const mergedStr = JSON.stringify(merged);
+  try {
+    localStorage.setItem(localKey, mergedStr);
+    localStorage.setItem(syncKey(localKey), String(remoteTs));
+    localStorage.removeItem('db_v2_dirty_' + localKey);
+  } catch(e) {}
+  if(mergedStr !== JSON.stringify(remote)) {
+    persistLocal(localKey, mergedStr, 'registries', localKey.slice('db_v2_reg_'.length));
+  }
 }
 
 // Tìm dự án còn dữ liệu (trên máy này, bản sao lưu, Cloud) nhưng không còn trong danh sách tab của Vùng nào
@@ -2771,6 +2823,12 @@ async function pullFromCloud() {
       const cloudTs = Number(docs[id].updatedAt) || 0;
       let localTs = 0;
       try { localTs = Number(localStorage.getItem(syncKey(localKey))) || 0; } catch(e) {}
+      if(col === 'registries' && typeof docs[id].value === 'string') {
+        const before = localStorage.getItem(localKey);
+        mergeRemoteRegistry(localKey, docs[id].value, Math.max(cloudTs, localTs));
+        if(localStorage.getItem(localKey) !== before) changed.push(localKey);
+        return;
+      }
       if(cloudTs > localTs && typeof docs[id].value === 'string') {
         try {
           localStorage.setItem(localKey, docs[id].value);
@@ -2800,6 +2858,7 @@ function startRealtimeSync() {
           dirty = localStorage.getItem('db_v2_dirty_' + localKey) === '1';
         } catch(e) {}
         if(cloudTs <= localTs) return; // đây chính là bản máy này vừa lưu, hoặc đã có sẵn
+        if(col === 'registries') { mergeRemoteRegistry(localKey, val, cloudTs); renderOrgHierarchyButtons(); return; }
         if(dirty) handleConflict(localKey, val, cloudTs);
         else applyRemote(localKey, val, cloudTs);
       });
