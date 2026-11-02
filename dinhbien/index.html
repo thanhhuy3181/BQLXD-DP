@@ -6390,16 +6390,47 @@ async function loadAdminUsers(body) {
         <td style="text-align:center;"><select data-f="status"><option value="pending"${u.status !== 'approved' ? ' selected' : ''}>Chờ duyệt</option><option value="approved"${u.status === 'approved' ? ' selected' : ''}>Đã duyệt</option></select></td>
         <td style="text-align:center;"><select data-f="role">${roles.map(([v, t]) => `<option value="${v}"${u.role === v ? ' selected' : ''}>${t}</option>`).join('')}</select></td>
         <td style="text-align:center;"><select data-f="vungId"><option value="">—</option><option value="khoi_xd"${u.vungId === 'khoi_xd' ? ' selected' : ''}>Khối XD</option>${DEFAULT_VUNGS.map(v => `<option value="${v.id}"${u.vungId === v.id ? ' selected' : ''}>${escHtml(v.ten)}</option>`).join('')}</select></td>
-        <td style="text-align:center;"><select data-f="bqlId" style="max-width:200px;"><option value="">—</option>${allBqlOptions().map(b => `<option value="${escHtml(b.id)}"${u.bqlId === b.id ? ' selected' : ''}>${escHtml(b.ten)}</option>`).join('')}</select></td>
+        <td style="text-align:center;"><input data-f="bqlId" list="dlBqlPick" data-bql-id="${escHtml(u.bqlId || '')}" value="${escHtml((allBqlOptions().find(b => b.id === u.bqlId) || {}).ten || '')}" placeholder="Gõ tìm dự án..." style="width:200px;padding:2px 4px;"></td>
         <td style="text-align:center;"><button type="button" data-save="1" style="padding:2px 10px;">Lưu</button></td>
       </tr>`;
     }).join('')}</tbody></table>`;
+  // Danh sách chọn Mã BQLXD: dự án đang có trên tab trước, sau đó là toàn bộ DS DA còn lại (gõ chữ để lọc)
+  const tabNames = [];
+  DEFAULT_VUNGS.forEach(v => (getBqlRegistry(v.id) || []).forEach(b => { if(!b.hidden) tabNames.push(b.ten); }));
+  const restNames = getDsDuAn().filter(s => !tabNames.some(t => t.toLowerCase() === s.toLowerCase()));
+  let dlPick = document.getElementById('dlBqlPick');
+  if(!dlPick) { dlPick = document.createElement('datalist'); dlPick.id = 'dlBqlPick'; document.body.appendChild(dlPick); }
+  dlPick.innerHTML = [...tabNames, ...restNames].map(s => `<option value="${escHtml(s)}">`).join('');
+  // Chọn dự án chưa có tab: hỏi có đưa ra tab (vùng của tài khoản) không, rồi gán
+  body.querySelectorAll('input[data-f="bqlId"]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const tr = inp.closest('tr');
+      const name = inp.value.trim();
+      if(!name) { inp.dataset.bqlId = ''; return; }
+      const hit = allBqlOptions().find(b => b.ten.toLowerCase() === name.toLowerCase());
+      if(hit) { inp.value = hit.ten; inp.dataset.bqlId = hit.id; return; }
+      const ds = getDsDuAn().find(s => s.toLowerCase() === name.toLowerCase());
+      if(!ds) { alert('Dự án này không có trong DS DA. Chọn tên gợi ý.'); inp.value = ''; inp.dataset.bqlId = ''; return; }
+      const vungId = tr.querySelector('[data-f="vungId"]').value;
+      const vung = DEFAULT_VUNGS.find(v => v.id === vungId);
+      if(!vung) { alert('Chọn Vùng cho tài khoản này trước, rồi chọn dự án.'); inp.value = ''; return; }
+      const showTab = confirm(`Đưa "${ds}" ra tab (${vung.ten}) ngay?\n\nOK: hiện tab.\nCancel: chỉ gán, chưa hiện tab.`);
+      const list = getBqlRegistry(vungId) || [];
+      const entry = { id: 'bql_' + Date.now(), ten: ds, hidden: !showTab };
+      list.push(entry);
+      saveBqlRegistry(vungId, list);
+      renderOrgHierarchyButtons();
+      inp.value = ds;
+      inp.dataset.bqlId = entry.id;
+    });
+  });
   body.querySelectorAll('button[data-save]').forEach(btn => {
     btn.onclick = async () => {
       const tr = btn.closest('tr');
       const id = tr.dataset.id;
       const g = f => tr.querySelector(`[data-f="${f}"]`).value;
-      const rec = { ...users[id], email: id, status: g('status'), role: g('role'), vungId: g('vungId'), bqlId: g('bqlId') };
+      const bqlId = tr.querySelector('[data-f="bqlId"]').dataset.bqlId || '';
+      const rec = { ...users[id], email: id, status: g('status'), role: g('role'), vungId: g('vungId'), bqlId };
       try { await window._cloud.put('users', id, rec); btn.textContent = 'Đã lưu'; }
       catch(e) { btn.textContent = 'Lỗi'; }
     };
