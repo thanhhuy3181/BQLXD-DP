@@ -9873,6 +9873,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const rowEl = dr > 0 ? tr.nextElementSibling : tr.previousElementSibling;
     return rowEl && rowEl.cells[td.cellIndex] ? ctrlIn(rowEl.cells[td.cellIndex]) : null;
   };
+  // Cách tìm lại một ô nhập sau khi bảng được vẽ lại (dựa trên data-id / data-f / data-tab / data-mk / data-key)
+  const xlLocator = el => {
+    const keys = ['id', 'f', 'tab', 'mk', 'key'].filter(k => el.dataset[k] != null);
+    if(!keys.length) return null;
+    const attrs = keys.map(k => `[data-${k.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}="${CSS.escape(el.dataset[k])}"]`).join('');
+    return `${XL_SCOPE} ${el.tagName.toLowerCase()}${attrs}`;
+  };
   const xlSelectCtrl = target => {
     const table = target.closest('table');
     const td = target.closest('td');
@@ -9895,19 +9902,24 @@ document.addEventListener('DOMContentLoaded', () => {
     else if(e.key === 'Tab') dc = e.shiftKey ? -1 : 1;
     else return;
     const target = xlNextCtrl(el, dr, dc);
+    // Lưu giá trị (change) có thể vẽ lại bảng và làm ô đích bị thay thế: ghi lại cách tìm ô đích trước khi lưu
+    const loc = target ? xlLocator(target) : null;
     e.preventDefault();
     e.stopPropagation();
     el.blur(); // lưu giá trị (change) rồi khóa ô
-    if(target) {
-      target.focus();
+    if(!target) return;
+    requestAnimationFrame(() => {
+      const next = (loc && document.querySelector(loc)) || target;
+      next.focus();
+      if(next.select && !isXl) next.select();
       if(isXl) {
-        xlSetAnchor(target);
-        xl.sel = new Set([xlKey(target)]);
+        xlSetAnchor(next);
+        xl.sel = new Set([xlKey(next)]);
         xlApplyClasses();
       } else {
-        xlSelectCtrl(target);
+        xlSelectCtrl(next);
       }
-    }
+    });
   }, true);
 
   // Mũi tên khi đang chọn một ô (chưa sửa): chuyển sang ô bên cạnh để nhập liệu, không chọn cả dòng
