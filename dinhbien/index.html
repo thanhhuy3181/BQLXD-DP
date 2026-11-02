@@ -62,6 +62,10 @@ try {
     },
     put(col, id, fields) {
       return setDoc(doc(db, col, id), fields);
+    },
+    // Ghi một phần trường, giữ nguyên các trường khác của tài liệu
+    touch(col, id, fields) {
+      return setDoc(doc(db, col, id), fields, { merge: true });
     }
   };
 } catch(e) {
@@ -6096,6 +6100,22 @@ async function checkGoogleUser(email, name) {
   }
   authUser = { ...rec };
   hideGate();
+  startPresence(key);
+}
+
+// Trạng thái online: mỗi phút ghi thời điểm hoạt động vào collection presence (admin đọc để hiển thị)
+let presenceTimer = null;
+function startPresence(email) {
+  const beat = () => {
+    try { window._cloud.touch('presence', email, { lastSeen: Date.now() }).catch(() => {}); } catch(e) {}
+  };
+  if(presenceTimer) clearInterval(presenceTimer);
+  beat();
+  presenceTimer = setInterval(beat, 60000);
+}
+function stopPresence() {
+  if(presenceTimer) clearInterval(presenceTimer);
+  presenceTimer = null;
 }
 
 function startAuth() {
@@ -6124,6 +6144,7 @@ function refreshAuthUI() {
 function signOutApp() {
   const wasGoogle = authUser && authUser.email;
   authUser = null;
+  stopPresence();
   try { sessionStorage.removeItem('db_v2_admin'); } catch(e) {}
   if(wasGoogle && window._auth) {
     window._auth.logout().catch(() => {});
@@ -6166,15 +6187,30 @@ function allBqlOptions() {
 // Danh sách dự án (BQLXD) đã tạo, để admin xóa
 function renderAdminProjects(el) {
   const rows = [];
-  DEFAULT_VUNGS.forEach(v => (getBqlRegistry(v.id) || []).forEach(b => rows.push({ vungId: v.id, vungTen: v.ten, id: b.id, ten: b.ten })));
+  DEFAULT_VUNGS.forEach(v => (getBqlRegistry(v.id) || []).forEach((b, idx, arr) => rows.push({ vungId: v.id, vungTen: v.ten, id: b.id, ten: b.ten, idx, last: arr.length - 1 })));
   el.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Dự án / BQLXD đã tạo</div>`
     + (rows.length
       ? `<table style="width:100%;border-collapse:collapse;">${rows.map(r => `<tr style="border-top:1px solid #e2e8f0;">
           <td style="padding:6px;">${escHtml(r.ten)}</td>
           <td style="color:#64748b;">${escHtml(r.vungTen)}</td>
+          <td style="text-align:center;white-space:nowrap;"><button type="button" data-move-vung="${escHtml(r.vungId)}" data-move-id="${escHtml(r.id)}" data-move-dir="-1"${r.idx === 0 ? ' disabled' : ''} style="padding:1px 6px;">▲</button> <button type="button" data-move-vung="${escHtml(r.vungId)}" data-move-id="${escHtml(r.id)}" data-move-dir="1"${r.idx === r.last ? ' disabled' : ''} style="padding:1px 6px;">▼</button></td>
           <td style="text-align:center;"><button type="button" data-del-vung="${escHtml(r.vungId)}" data-del-id="${escHtml(r.id)}" style="padding:2px 10px;color:#b91c1c;">Xóa</button></td>
         </tr>`).join('')}</table>`
       : '<div>Chưa có dự án nào.</div>');
+  // Đổi thứ tự dự án trong cùng Vùng (thứ tự này dùng cho danh sách chọn dự án)
+  el.querySelectorAll('button[data-move-id]').forEach(btn => {
+    btn.onclick = () => {
+      const vungId = btn.dataset.moveVung;
+      const list = (getBqlRegistry(vungId) || []).slice();
+      const from = list.findIndex(x => x.id === btn.dataset.moveId);
+      const to = from + Number(btn.dataset.moveDir);
+      if(from < 0 || to < 0 || to >= list.length) return;
+      [list[from], list[to]] = [list[to], list[from]];
+      saveBqlRegistry(vungId, list);
+      renderOrgHierarchyButtons();
+      renderAdminProjects(el);
+    };
+  });
   el.querySelectorAll('button[data-del-id]').forEach(btn => {
     btn.onclick = () => deleteBql(btn.dataset.delVung, btn.dataset.delId, btn.closest('tr'));
   });
@@ -6192,6 +6228,7 @@ function renderAdminDs(el) {
       <table style="width:100%;border-collapse:collapse;">${list.map((s, i) => `<tr style="border-top:1px solid #e2e8f0;">
         <td style="padding:3px 6px;color:#64748b;width:40px;">${i + 1}</td>
         <td style="padding:3px 6px;"><input data-ds-idx="${i}" value="${escHtml(s)}" style="width:100%;border:1px solid transparent;padding:2px 4px;"></td>
+        <td style="text-align:center;width:90px;white-space:nowrap;"><button type="button" data-ds-up="${i}"${i === 0 ? ' disabled' : ''} style="padding:1px 6px;">▲</button> <button type="button" data-ds-down="${i}"${i === list.length - 1 ? ' disabled' : ''} style="padding:1px 6px;">▼</button></td>
         <td style="text-align:center;width:70px;"><button type="button" data-ds-del="${i}" style="padding:1px 8px;color:#b91c1c;">Xóa</button></td>
       </tr>`).join('')}</table>
     </div>`;
@@ -6203,6 +6240,20 @@ function renderAdminDs(el) {
       l[Number(inp.dataset.dsIdx)] = v;
       saveDsDuAn(l);
     });
+  });
+  // Đổi thứ tự DS DA lên / xuống (thứ tự này cũng là thứ tự gợi ý khi chọn dự án)
+  const moveDs = (from, to) => {
+    const l = getDsDuAn();
+    if(to < 0 || to >= l.length) return;
+    [l[from], l[to]] = [l[to], l[from]];
+    saveDsDuAn(l);
+    renderAdminDs(el);
+  };
+  el.querySelectorAll('button[data-ds-up]').forEach(btn => {
+    btn.onclick = () => moveDs(Number(btn.dataset.dsUp), Number(btn.dataset.dsUp) - 1);
+  });
+  el.querySelectorAll('button[data-ds-down]').forEach(btn => {
+    btn.onclick = () => moveDs(Number(btn.dataset.dsDown), Number(btn.dataset.dsDown) + 1);
   });
   el.querySelectorAll('button[data-ds-del]').forEach(btn => {
     btn.onclick = () => {
@@ -6261,13 +6312,23 @@ async function loadAdminUsers(body) {
   catch(e) { body.textContent = 'Không tải được danh sách tài khoản.'; return; }
   const ids = Object.keys(users).sort();
   if(!ids.length) { body.textContent = 'Chưa có tài khoản Google nào đăng nhập.'; return; }
+  let presence = {};
+  try { presence = await window._cloud.getAll('presence'); } catch(e) {}
+  const now = Date.now();
+  const onlineHtml = id => {
+    const last = presence[id] && presence[id].lastSeen;
+    if(!last) return '<span style="color:#94a3b8;">Chưa rõ</span>';
+    if(now - last < 3 * 60 * 1000) return '<span style="color:#15803d;font-weight:700;">● Online</span>';
+    return `<span style="color:#64748b;">Offline · ${escHtml(new Date(last).toLocaleString('vi-VN'))}</span>`;
+  };
   const roles = [['bql', 'BQLXD'], ['vung', 'Vùng'], ['khoi', 'Khối'], ['admin', 'Admin']];
   body.innerHTML = `<table style="width:100%; border-collapse:collapse;">
-    <thead><tr style="background:#f1f5f9;"><th style="text-align:left;padding:6px;">Email</th><th>Trạng thái</th><th>Vai trò</th><th>Vùng</th><th>Mã BQLXD</th><th></th></tr></thead>
+    <thead><tr style="background:#f1f5f9;"><th style="text-align:left;padding:6px;">Email</th><th>Online</th><th>Trạng thái</th><th>Vai trò</th><th>Vùng</th><th>Mã BQLXD</th><th></th></tr></thead>
     <tbody>${ids.map(id => {
       const u = users[id];
       return `<tr data-id="${escHtml(id)}" style="border-top:1px solid #e2e8f0;">
         <td style="padding:6px;">${escHtml(id)}<div style="color:#64748b;">${escHtml(u.name || '')}</div></td>
+        <td style="text-align:center;white-space:nowrap;">${onlineHtml(id)}</td>
         <td style="text-align:center;"><select data-f="status"><option value="pending"${u.status !== 'approved' ? ' selected' : ''}>Chờ duyệt</option><option value="approved"${u.status === 'approved' ? ' selected' : ''}>Đã duyệt</option></select></td>
         <td style="text-align:center;"><select data-f="role">${roles.map(([v, t]) => `<option value="${v}"${u.role === v ? ' selected' : ''}>${t}</option>`).join('')}</select></td>
         <td style="text-align:center;"><select data-f="vungId"><option value="">—</option>${DEFAULT_VUNGS.map(v => `<option value="${v.id}"${u.vungId === v.id ? ' selected' : ''}>${escHtml(v.ten)}</option>`).join('')}</select></td>
