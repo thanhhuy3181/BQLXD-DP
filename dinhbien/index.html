@@ -6298,7 +6298,7 @@ function renderAdminProjects(el) {
     </div>`
     + (rows.length
       ? `<table style="width:100%;border-collapse:collapse;">${rows.map(r => `<tr style="border-top:1px solid #e2e8f0;">
-          <td style="padding:6px;">${escHtml(r.ten)}${r.hidden ? ' <span style="color:#b45309;">(ẩn, chưa có tab)</span>' : ''}</td>
+          <td style="padding:6px;">${escHtml(r.ten)} <span style="color:#64748b;font-size:11px;">(${(() => { try { const d = JSON.parse(localStorage.getItem(makeStorageKey(r.vungId, r.id)) || 'null'); return d ? (d.treeRows || []).filter(x => x.level === 3).length + ' hạng mục' : 'chưa có dữ liệu trên máy này'; } catch(e) { return '?'; } })()})</span>${r.hidden ? ' <span style="color:#b45309;">(ẩn, chưa có tab)</span>' : ''}</td>
           <td style="text-align:center;white-space:nowrap;"><button type="button" data-hide-vung="${escHtml(r.vungId)}" data-hide-id="${escHtml(r.id)}" style="padding:2px 8px;">${r.hidden ? 'Đưa ra tab' : 'Ẩn tab'}</button></td>
           <td style="color:#64748b;">${escHtml(r.vungTen)}</td>
           <td style="text-align:center;white-space:nowrap;"><button type="button" data-move-vung="${escHtml(r.vungId)}" data-move-id="${escHtml(r.id)}" data-move-dir="-1"${r.idx === 0 ? ' disabled' : ''} style="padding:1px 6px;">▲</button> <button type="button" data-move-vung="${escHtml(r.vungId)}" data-move-id="${escHtml(r.id)}" data-move-dir="1"${r.idx === r.last ? ' disabled' : ''} style="padding:1px 6px;">▼</button></td>
