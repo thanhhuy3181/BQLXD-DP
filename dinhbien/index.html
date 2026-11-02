@@ -8,6 +8,9 @@
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="dinhbien/ds-du-an.js"></script>
+<!-- Xuất Excel theo file mẫu: JSZip sửa thẳng file .xlsx mẫu (giữ biểu đồ, định dạng có điều kiện) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="dinhbien/xuat-excel.js"></script>
 <!-- ============================================================
      FIREBASE FIRESTORE — ĐỒNG BỘ DỮ LIỆU GIỮA CÁC MÁY
      Module chỉ khởi tạo kết nối và cung cấp hàm đọc/ghi qua window._cloud;
@@ -1890,7 +1893,7 @@ footer.app-footer {
       </button>
       <button class="btn btn-success" id="btnExportExcel">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Xuất Excel Chuẩn (11 Sheet)
+        Xuất Excel
       </button>
       <span id="fbStatusBadge" style="font-size:10.5px; font-weight:600; padding:2px 8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; cursor:default; color:#64748b;" title="Trạng thái đồng bộ dữ liệu với Cloud (Firebase)">🟡</span>
     </div>
@@ -2353,7 +2356,7 @@ footer.app-footer {
       <!-- MỤC 4 -->
       <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; background: #ffffff;">
         <h4 style="color: #1d4ed8; margin-bottom: 6px; font-size: 13.5px;">4. Dữ liệu Xuất ra File Excel Chuẩn (11 Sheet)</h4>
-        <p style="margin: 0 0 6px 0;">Khi bấm nút <b>"Xuất Excel Chuẩn (11 Sheet)"</b> ở góc trên bên phải, phần mềm xuất ra file <code>.xlsx</code> đầy đủ định dạng gồm đúng 11 Sheet theo mẫu báo cáo chuẩn:</p>
+        <p style="margin: 0 0 6px 0;">Khi bấm nút <b>"Xuất Excel"</b> ở góc trên bên phải, phần mềm xuất ra file <code>.xlsx</code> đầy đủ định dạng gồm đúng 11 Sheet theo mẫu báo cáo chuẩn:</p>
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 16px; font-size: 12px;">
           <div><b>1. Tổng hợp:</b> Bảng tổng hợp nhân sự toàn dự án theo tháng.</div>
           <div><b>2. Diễn giải:</b> Thuyết minh quy mô và thông số dự án.</div>
@@ -9451,7 +9454,67 @@ async function exportExcelStandard() {
   URL.revokeObjectURL(url);
 }
 
-document.getElementById('btnExportExcel').addEventListener('click', exportExcelStandard);
+// Xuất Excel theo file mẫu (dinhbien/dinhbien_template.xlsx, dinhbien/xuat-excel.js): web chỉ ghi dữ liệu đầu vào,
+// Excel tự tính bằng công thức. Chế độ Tổng hợp Vùng / Khối (không chọn dự án) vẫn dùng bản xuất số tĩnh.
+async function exportExcelTemplate() {
+  if(!currentBqlId || !currentProjectData || !window.XuatExcel || !window.JSZip) return exportExcelStandard();
+  const btn = document.getElementById('btnExportExcel');
+  if(btn) btn.disabled = true;
+  showUndoToast('⏳ Đang tạo file Excel theo mẫu...');
+  try {
+    if(!calcResultCache) calcResultCache = calculateAll();
+    const res = calcResultCache;
+    const proj = currentProjectData;
+    const months = res.months || [];
+    const mKeys = months.map(monthKey);
+    const detail = {};
+    (res.itemProgressDetail || []).forEach(d => { detail[d.id] = d; });
+    const items = (proj.treeRows || []).filter(r => r.level === 3).map((it, i) => {
+      const d = detail[it.id] || {};
+      return {
+        stt: i + 1, ten: it.ten || '', loai: it.loai || '', kieu: it.kieu || '', tc: it.tc || '',
+        batDau: parseDateAny(it.batDau), ketThuc: parseDateAny(it.ketThuc), banGiao: parseDateAny(it.banGiao),
+        kl: Number(it.kl) || 0, dv: it.dv || unitForLoai(it.loai) || '', dienTich: it.dienTich, hsCt: it.hsCt != null ? it.hsCt : 1,
+        bpBatDau: parseDateAny(it.bptc_batDau), bpKetThuc: parseDateAny(it.bptc_ketThuc), bpBanGiao: parseDateAny(it.bptc_banGiao),
+        bpKl: (it.bptc_kl != null && it.bptc_kl !== '') ? Number(it.bptc_kl) || 0 : null,
+        tiendo: { xd: d.xdRatio, me: d.meRatio, ht: d.htRatio, kho: d.khoRatio, bptc: d.bptcRatio }
+      };
+    });
+    const adj = {};
+    MATRIX_ROWS_META.forEach((meta, rIdx) => {
+      const v = {};
+      mKeys.forEach(mk => { const a = proj.adj && proj.adj[`${rIdx}_${mk}`]; v[mk] = a != null ? a : 1; });
+      adj[meta.cd] = v;
+    });
+    const data = { ten: proj.ten || '', items, months: mKeys, adj, dgMonth: filterDienGiai || defaultDienGiaiKey() };
+
+    const resp = await fetch('dinhbien/dinhbien_template.xlsx', { cache: 'no-cache' });
+    if(!resp.ok) throw new Error('Không tải được file mẫu (' + resp.status + ')');
+    const zip = await JSZip.loadAsync(await resp.arrayBuffer());
+    const info = await XuatExcel.fill(zip, data);
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Báo cáo Định biên 3BP - ${(proj.ten || 'Du an').replace(/[\\/:*?"<>|]/g, '_')}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const warn = [];
+    if(info.truncatedItems) warn.push(`chỉ xuất ${info.items} hạng mục đầu (mẫu tối đa ${XuatExcel.LAYOUT.N_ITEMS})`);
+    if(info.truncatedMonths) warn.push(`chỉ xuất ${info.months} tháng đầu (mẫu tối đa ${XuatExcel.LAYOUT.N_MONTHS})`);
+    showUndoToast(warn.length ? '⚠️ Đã xuất Excel, ' + warn.join('; ') : '✓ Đã xuất Excel theo mẫu — mở file để Excel tự tính');
+  } catch(err) {
+    console.error('[Xuất Excel]', err);
+    alert('Xuất Excel lỗi: ' + err.message);
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+document.getElementById('btnExportExcel').addEventListener('click', exportExcelTemplate);
 
 
   const btnPrintLandscape = document.getElementById('btnPrintLandscape');
