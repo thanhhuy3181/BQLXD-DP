@@ -215,6 +215,32 @@ async function rpc(req) {
 
   if (method.startsWith('collab_')) return require('./collaboration_rpc')({method,args,sql,user,state,allowedProject});
   if (method.startsWith('mailshare_')) return require('./mail_shares')({method,args,sql,user,state,allowedProject});
+  // Ghép AD bằng đăng nhập Gmail, không cần mã ghép cặp. Token được xác minh với
+  // cả hai OAuth Client (AwD/AwM và AD), rồi cấp khoá thiết bị cho đúng tài khoản
+  // đã liên kết với Gmail đó. Đặt trước nhánh awm_ vì người gọi chưa có phiên đăng nhập.
+  if (method === 'awm_google_pair') {
+    const { active, can } = require('./awm_rpc');
+    const credential = String(args[0] || '').trim();
+    if (!credential) return failure('Thiếu thông tin tài khoản Google.');
+    let profile;
+    try {
+      const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`, {signal: AbortSignal.timeout(10000)});
+      profile = await response.json();
+    } catch (error) { return failure('Không thể xác thực tài khoản Google lúc này.'); }
+    const allowedClientIds = ['334170590522-p4s1gj2uvrhg6m0tdvvkgvq8tgh7dcmh.apps.googleusercontent.com', '334170590522-nd8ohu4h0jtnn2evhlskd5tm6jjh56f8.apps.googleusercontent.com'];
+    if (!profile?.sub || !allowedClientIds.includes(profile.aud) || String(profile.email_verified) !== 'true' || !['accounts.google.com','https://accounts.google.com'].includes(profile.iss) || Number(profile.exp)*1000<=Date.now()) {
+      return failure('Tài khoản Google chưa được xác thực hoặc OAuth Client không khớp.');
+    }
+    const rows = await sql`SELECT username,status,data FROM bqlda_users WHERE data->>'google_sub'=${String(profile.sub)}`;
+    if (!rows[0]) return failure('Gmail này chưa có tài khoản trên web. Nhờ Quản trị viên tạo hoặc duyệt tài khoản trước.');
+    const target = publicUser(rows[0]);
+    if (!active(target)) return failure('Tài khoản Gmail này chưa được duyệt hoặc đã bị khóa.');
+    if (!can(target, state, 'tab_mail')) return failure('Không có quyền kết nối Mail.');
+    const token = crypto.randomBytes(32).toString('hex');
+    const device = { hash: crypto.createHash('sha256').update(token).digest('hex'), created_at: new Date().toISOString() };
+    await sql`INSERT INTO bqlda_state(key,value) VALUES(${'awm:device:' + target.username},${JSON.stringify(device)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;
+    return result({ device_token: token, username: target.username });
+  }
   if (method.startsWith('awm_')) return require('./awm_rpc')({method,args,sql,user,state,allowedProject,visibleProjects});
 
   if (method === 'get_bootstrap') return result({version:seed.version,theme:state.theme||seed.theme,catalog:seed.catalog});
