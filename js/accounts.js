@@ -153,6 +153,8 @@ const AccountsModule = (function() {
       const isLocked = u.status === 'Locked';
       const isPending = u.status === 'Pending';
       const isAdmin = u.username === 'admin';
+      const isSelf = u.username === _currentUser?.username;
+      const canLock = !isAdmin && u.role !== 'Admin' && !isSelf;
       const projects = Array.isArray(u.allowed_projects) ? u.allowed_projects : [];
       const projectLabel = projects.includes('*') ? 'Tất cả dự án' : (projects.length ? `${projects.length} dự án` : 'Chưa gán dự án');
       const projectTitle = projects.includes('*') ? 'Tất cả dự án' : projects.join(', ');
@@ -182,17 +184,17 @@ const AccountsModule = (function() {
           </td>
           <td>
             <span class="badge ${isPending ? 'badge-warning' : (isLocked ? 'badge-error' : 'badge-success')} badge-xs font-semibold">
-              ${isPending ? '⏳ Chờ duyệt' : (isLocked ? '🔒 Đã khóa' : '✔ Hoạt động')}
+              ${isPending ? '⏳ Chờ duyệt' : (isLocked ? '🔒 Khóa' : '✔ Duyệt')}
             </span>
           </td>
           <td>
             ${!isAdmin ? `
               ${isPending ? `<button class="btn btn-xs btn-success btn-outline" onclick="AccountsModule.approveUser('${escapeAttr(u.username)}')">Duyệt</button>` : ''}
               <button class="btn btn-xs btn-info btn-outline" onclick="AccountsModule.showProjectAccess('${escapeAttr(u.username)}')">Dự án</button>
-              <button class="btn btn-xs ${isLocked ? 'btn-success' : 'btn-warning'} btn-outline"
+              ${canLock || isLocked ? `<button class="btn btn-xs ${isLocked ? 'btn-success' : 'btn-warning'} btn-outline"
                       onclick="AccountsModule.toggleLock('${escapeAttr(u.username)}')">
                 ${isLocked ? 'Mở khóa' : 'Khóa'}
-              </button>
+              </button>` : ''}
             ` : '<span class="text-[11px] text-base-content/40 italic">Hệ thống</span>'}
           </td>
         </tr>
@@ -397,6 +399,23 @@ const AccountsModule = (function() {
     document.getElementById('account-management-dialog')?.remove();
   }
 
+  function projectSearchKey(text) {
+    return String(text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
+  }
+
+  function filterProjectAccess(query) {
+    const q = projectSearchKey(query).trim();
+    document.querySelectorAll('.account-project-row').forEach(row => {
+      row.style.display = (!q || row.dataset.search.includes(q)) ? '' : 'none';
+    });
+  }
+
+  async function pullProjectToTab(project) {
+    const res = await API.addProjectToBar(project);
+    if (!res.ok) return toast('Không đưa được dự án ra tab: ' + res.error, 'error');
+    toast(`Đã đưa "${project}" ra tab dự án.`, 'success');
+  }
+
   async function showProjectAccess(username) {
     const account = _users.find(item => item.username === username);
     if (!account) return toast('Không tìm thấy tài khoản.', 'error');
@@ -411,8 +430,12 @@ const AccountsModule = (function() {
     dialog.innerHTML = `<div class="modal-box max-w-xl">
       <h3 class="font-bold text-lg">📁 Dự án được phép xem</h3>
       <p class="text-sm opacity-70 mt-1"><b>${escapeHtml(account.fullname || account.username)}</b> chỉ xem dữ liệu thuộc dự án được chọn và các dữ liệu dùng chung.</p>
-      <div class="max-h-72 overflow-y-auto mt-4 space-y-2 border border-base-300 rounded-lg p-3">
-        ${projects.length ? projects.map(project => `<label class="flex items-center gap-3 cursor-pointer py-1"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary account-project-check" value="${escapeAttr(project)}" ${granted.has('*') || granted.has(project) ? 'checked' : ''}><span>${escapeHtml(project)}</span></label>`).join('') : '<p class="opacity-60 text-sm">Chưa có dự án. Hãy bấm “Thêm dự án” trước.</p>'}
+      <input id="account-project-search" class="input input-bordered input-sm w-full mt-4" placeholder="🔍 Tìm dự án…" oninput="AccountsModule.filterProjectAccess(this.value)">
+      <div class="max-h-72 overflow-y-auto mt-2 space-y-1 border border-base-300 rounded-lg p-3">
+        ${projects.length ? projects.map(project => `<div class="account-project-row flex items-center gap-3 py-1" data-search="${escapeAttr(projectSearchKey(project))}">
+          <label class="flex flex-1 items-center gap-3 cursor-pointer min-w-0"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary account-project-check" value="${escapeAttr(project)}" ${granted.has('*') || granted.has(project) ? 'checked' : ''}><span class="truncate">${escapeHtml(project)}</span></label>
+          <button type="button" class="btn btn-xs btn-ghost" data-project="${escapeAttr(project)}" onclick="AccountsModule.pullProjectToTab(this.dataset.project)">Đưa ra tab</button>
+        </div>`).join('') : '<p class="opacity-60 text-sm">Chưa có dự án. Hãy bấm “Thêm dự án” trước.</p>'}
       </div>
       <div class="modal-action"><button class="btn btn-sm" onclick="document.getElementById('account-management-dialog').close()">Hủy</button><button class="btn btn-sm btn-primary" onclick="AccountsModule.saveProjectAccess('${escapeAttr(username)}')">Lưu phân dự án</button></div>
     </div><form method="dialog" class="modal-backdrop"><button>Đóng</button></form>`;
@@ -623,6 +646,8 @@ const AccountsModule = (function() {
     approveUser,
     showProjectAccess,
     saveProjectAccess,
+    filterProjectAccess,
+    pullProjectToTab,
     showCreateProjectModal,
     createProject,
     setPermVal,

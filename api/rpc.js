@@ -460,6 +460,7 @@ async function rpc(req) {
       const role=String(args[1]||'CBGS');if(!['Admin','Văn phòng','Nội nghiệp','ĐTGS','CBGS'].includes(role))return failure('Chức danh không hợp lệ.');
       data.role=role;await sql`UPDATE bqlda_users SET data=${JSON.stringify(data)}::jsonb,updated_at=now() WHERE username=${username}`;return result({username,role:data.role});
     }
+    if(method==='toggle_user_lock'&&rows[0].status!=='Locked'){if(username===user.username)return failure('Không thể khóa chính tài khoản đang đăng nhập.');if(data.role==='Admin')return failure('Không khóa tài khoản Admin.');}
     const status=rows[0].status==='Locked'?(data.status_before_lock||'Active'):'Locked';
     if(status==='Locked') data.status_before_lock=rows[0].status; else delete data.status_before_lock;
     data.status=status;await sql`UPDATE bqlda_users SET status=${status},data=${JSON.stringify(data)}::jsonb,updated_at=now() WHERE username=${username}`;return result({username,status});
