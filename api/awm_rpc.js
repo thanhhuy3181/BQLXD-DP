@@ -63,6 +63,11 @@ function permissionValue(user,state,key){
 function can(user,state,key){if(String(user?.role||'').trim().toLowerCase()==='admin')return true;const v=permissionValue(user,state,key);return v===true||['view','edit','full'].includes(v);}
 function canEdit(user,state,key){if(String(user?.role||'').trim().toLowerCase()==='admin')return true;const v=permissionValue(user,state,key);return v===true||['edit','full'].includes(v);}
 function active(user){return !!user&&user.username!=='guest'&&user.status==='Active';}
+// Mỗi tài khoản giữ tối đa 5 khóa thiết bị: ghép máy mới không làm khóa của AD đang chạy hết hiệu lực.
+// "hash" luôn là khóa mới nhất để bản ghi cũ (chỉ có hash) vẫn đọc được.
+const MAX_DEVICE_KEYS=5;
+function addDeviceKey(previous,token){const hash=crypto.createHash('sha256').update(token).digest('hex');const old=Array.isArray(previous?.hashes)?previous.hashes:(previous?.hash?[previous.hash]:[]);return {hash,hashes:[...old.filter(h=>h!==hash),hash].slice(-MAX_DEVICE_KEYS),created_at:new Date().toISOString()};}
+function deviceKeyMatches(device,token){const actual=Buffer.from(crypto.createHash('sha256').update(String(token||'')).digest('hex'));const list=Array.isArray(device?.hashes)?device.hashes:[device?.hash];return list.some(h=>/^[0-9a-f]{64}$/.test(h||'')&&crypto.timingSafeEqual(actual,Buffer.from(h)));}
 const norm = s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();
 // AwM is a reading interface, so each group opens with the newest document
 // first.  Different datasets use different date field names and older
@@ -295,8 +300,8 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
  }
  if(method==='awm_pair_device'){
   if(!permission('tab_mail'))return fail('Không có quyền kết nối Mail.');
-  const token=crypto.randomBytes(32).toString('hex');
-  await write(sql,`awm:device:${user.username}`,{hash:crypto.createHash('sha256').update(token).digest('hex'),created_at:new Date().toISOString()});
+  const token=crypto.randomBytes(32).toString('hex'),key=`awm:device:${user.username}`;
+  await write(sql,key,addDeviceKey(await read(sql,key,null),token));
   return ok({device_token:token});
  }
  if(method==='awm_revoke_device'){
@@ -443,5 +448,7 @@ module.exports.canEdit=canEdit;
 module.exports.permissionValue=permissionValue;
 module.exports.recordDate=recordDate;
 module.exports.active=active;
+module.exports.addDeviceKey=addDeviceKey;
+module.exports.deviceKeyMatches=deviceKeyMatches;
 module.exports.groups=groups;
 module.exports.mailOnline=mailOnline;

@@ -219,7 +219,7 @@ async function rpc(req) {
   // cả hai OAuth Client (AwD/AwM và AD), rồi cấp khoá thiết bị cho đúng tài khoản
   // đã liên kết với Gmail đó. Đặt trước nhánh awm_ vì người gọi chưa có phiên đăng nhập.
   if (method === 'awm_google_pair') {
-    const { active, can } = require('./awm_rpc');
+    const { active, can, addDeviceKey } = require('./awm_rpc');
     const credential = String(args[0] || '').trim();
     if (!credential) return failure('Thiếu thông tin tài khoản Google.');
     let profile;
@@ -237,8 +237,10 @@ async function rpc(req) {
     if (!active(target)) return failure('Tài khoản Gmail này chưa được duyệt hoặc đã bị khóa.');
     if (!can(target, state, 'tab_mail')) return failure('Không có quyền kết nối Mail.');
     const token = crypto.randomBytes(32).toString('hex');
-    const device = { hash: crypto.createHash('sha256').update(token).digest('hex'), created_at: new Date().toISOString() };
-    await sql`INSERT INTO bqlda_state(key,value) VALUES(${'awm:device:' + target.username},${JSON.stringify(device)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;
+    const deviceKey = 'awm:device:' + target.username;
+    const previous = (await sql`SELECT value FROM bqlda_state WHERE key=${deviceKey}`)[0]?.value || null;
+    const device = addDeviceKey(previous, token);
+    await sql`INSERT INTO bqlda_state(key,value) VALUES(${deviceKey},${JSON.stringify(device)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;
     return result({ device_token: token, username: target.username });
   }
   if (method.startsWith('awm_')) return require('./awm_rpc')({method,args,sql,user,state,allowedProject,visibleProjects});

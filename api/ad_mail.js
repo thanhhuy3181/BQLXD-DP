@@ -1,7 +1,7 @@
 // AD sends normalized mail over HTTPS with its individually paired device token.
 const crypto=require('crypto');
 const {neon}=require('@neondatabase/serverless');
-const {can,active}=require('./awm_rpc');
+const {can,active,deviceKeyMatches}=require('./awm_rpc');
 function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POSTGRES_URL||process.env.POSTGRES_PRISMA_URL||'')){return async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  const fail=(code,error)=>res.status(code).json({ok:false,error});
@@ -14,8 +14,10 @@ function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POS
   const rows=await sql`SELECT u.username,u.status,u.data,s.value AS device FROM bqlda_users u JOIN bqlda_state s ON s.key=${`awm:device:${username}`} WHERE u.username=${username}`;
   const row=rows[0],user=row&&{...row.data,role:({'Phó nhóm':'Nội nghiệp','Thành viên':'CBGS'}[row.data.role]||row.data.role),username:row.username,status:row.status};
   const states=await sql`SELECT value FROM bqlda_state WHERE key='state'`;const state=states[0]?.value||{};
-  const actual=crypto.createHash('sha256').update(token).digest('hex');
-  if(!active(user)||!can(user,state,'tab_mail')||! /^[0-9a-f]{64}$/.test(row.device?.hash||'')||!crypto.timingSafeEqual(Buffer.from(actual),Buffer.from(row.device.hash)))return fail(403,'Thiết bị không được cấp quyền');
+  // Kiểm tra khóa trước: người không có khóa đúng luôn nhận cùng một lỗi, không dò được tài khoản.
+  if(!row||!deviceKeyMatches(row.device,token))return fail(403,'Khóa thiết bị không còn hiệu lực, cần ghép cặp lại.');
+  if(!active(user))return fail(403,'Tài khoản web chưa được kích hoạt hoặc đã bị khóa.');
+  if(!can(user,state,'tab_mail'))return fail(403,'Tài khoản web không có quyền Mail.');
   // ---- Hộp thư đi: AwD/AwM soạn, AD lấy về gửi qua Outlook ----
   const action=String(req.body?.action||''),outKey=`awm:outbox:${username}`;
   const readKey=async k=>(await sql`SELECT value FROM bqlda_state WHERE key=${k}`)[0]?.value;
