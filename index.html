@@ -703,15 +703,15 @@
         #page-mail .mail-rb-msg{background:#2ECC71;color:#000!important}
         #page-mail .mail-rb-msg:not(:disabled):hover{background:#27AE60}
         #page-mail .mail-rb-filter{flex-shrink:0;color:var(--m-blue)!important;border-color:var(--m-line2)}
-        @media (max-width:1450px){#page-mail .mail-rb-lbl{display:none}#page-mail .mail-ribbon-title p{display:none}#page-mail .mail-reader-pane{width:380px}}
+        @media (max-width:1450px){#page-mail .mail-rb-lbl{display:none}#page-mail .mail-ribbon-title p{display:none}}
         #page-mail .mail-rb-filter.active{background:var(--m-sel);border-color:var(--m-blue)}
-        #page-mail .mail-workspace{flex:1;display:flex;min-height:0;background:var(--m-pane);border:1px solid var(--m-line);border-radius:12px;overflow:hidden}
+        #page-mail .mail-workspace{flex:1;display:flex;position:relative;min-height:0;background:var(--m-pane);border:1px solid var(--m-line);border-radius:12px;overflow:hidden}
         #page-mail .mail-pane{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
         #page-mail .mail-split{flex:0 0 5px;cursor:col-resize;background:var(--m-line);border-left:2px solid var(--m-pane);border-right:2px solid var(--m-pane);touch-action:none}
         #page-mail .mail-split:hover,#page-mail .mail-split.dragging{background:var(--m-blue)}
         /* Cột trái: Favorites + cây thư mục */
-        #page-mail .mail-folder-pane{flex:0 0 auto;width:210px;background:var(--m-pane);overflow-y:auto}
-        #page-mail .mail-folder-pane.collapsed{width:30px!important}
+        #page-mail .mail-folder-pane{flex:0 1 auto;width:210px;min-width:150px;background:var(--m-pane);overflow-y:auto}
+        #page-mail .mail-folder-pane.collapsed{width:30px!important;min-width:30px}
         #page-mail .mail-folder-pane.collapsed>*:not(.mail-fav-head){display:none}
         #page-mail .mail-folder-pane.collapsed .mail-fav-head span{display:none}
         #page-mail .mail-folder-pane.collapsed+.mail-split{display:none}
@@ -733,17 +733,17 @@
         #page-mail .mail-cat-btn.active{background:var(--m-sel);border-left-color:var(--m-accent);font-weight:700}
         #page-mail .mail-cat-btn .mail-count{font-size:10px;color:var(--m-muted);background:var(--m-head);border-radius:8px;padding:0 6px}
         /* Cột giữa: danh sách thư dạng bảng */
-        #page-mail .mail-list-pane{flex:1 1 0;min-width:360px;background:var(--m-list)}
+        #page-mail .mail-list-pane{flex:1 1 0;min-width:360px;container-type:inline-size;background:var(--m-list)}
         #page-mail .mail-list-top{display:flex;align-items:center;gap:10px;padding:6px 10px 4px}
         #page-mail .mail-tab{background:none;border:0;border-bottom:2px solid transparent;padding:2px 2px;font-size:13px;color:var(--m-muted)!important;cursor:pointer}
         #page-mail .mail-tab.active{color:var(--m-blue)!important;border-bottom-color:var(--m-blue);font-weight:700}
-        #page-mail .mail-search{flex:1;min-width:120px;height:26px;padding:0 8px;border-radius:6px;background:var(--m-bg);border:1px solid var(--m-line2);color:var(--m-text);font-size:12px;outline:none}
+        #page-mail .mail-search{flex:1;min-width:70px;height:26px;padding:0 8px;border-radius:6px;background:var(--m-bg);border:1px solid var(--m-line2);color:var(--m-text);font-size:12px;outline:none}
         #page-mail .mail-search:focus{border-color:var(--m-blue)}
         #page-mail .mail-sort{background:none;border:0;color:var(--m-muted)!important;cursor:pointer;white-space:nowrap}
         #page-mail .mail-sort:hover{color:var(--m-text)!important}
         #page-mail .mail-folder-info{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 12px 4px}
         #page-mail .mail-folder-info b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        #page-mail .mail-folder-info span{color:var(--m-muted);font-size:10px;white-space:nowrap}
+        #page-mail .mail-folder-info span{color:var(--m-muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
         #page-mail .mail-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:3px 12px;font-size:11px;color:var(--m-muted);background:var(--m-head);border-top:1px solid var(--m-line)}
         #page-mail .mail-chips button{background:none;border:0;color:var(--m-blue)!important;cursor:pointer;font-weight:700}
         #page-mail .mail-list-scroll{flex:1;overflow:auto;border-top:1px solid var(--m-line2);outline:none}
@@ -826,6 +826,27 @@
         #page-mail .mail-statusbar b{color:var(--m-text)}
         #page-mail .mail-statusbar .mail-stat-unread{color:var(--m-blue)}
         #page-mail .mail-statusbar .mail-stat-main{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+        /* Cửa sổ hẹp: các khung tự co, panel lọc nổi đè lên khung đọc */
+        @media (max-width:1450px){#page-mail .mail-reader-pane{width:380px}}
+        @media (max-width:1200px){#page-mail .mail-filter-pane{position:absolute;top:0;right:0;bottom:0;width:260px;z-index:6;box-shadow:-10px 0 28px rgba(0,0,0,.5)}#page-mail .mail-ribbon-title h2{display:none}}
+        @media (max-width:1100px){#page-mail .mail-reader-pane{width:340px;min-width:260px}#page-mail .mail-list-pane{min-width:300px}#page-mail .mail-read-subject{font-size:15px}}
+        @media (max-width:900px){#page-mail .mail-folder-pane{width:170px}#page-mail .mail-reader-pane{width:300px;min-width:240px}#page-mail .mail-list-pane{min-width:260px}#page-mail .mail-rb-lbl2{display:none}#page-mail .mail-rb-group{padding:0 3px}}
+        /* Danh sách hẹp: bỏ cột Categories, rồi chuyển sang dạng 2 dòng giống Outlook (người gửi + ngày / tiêu đề + danh mục) */
+        @container (max-width:640px){#page-mail .mail-table col.c-cat{width:0}#page-mail .mail-table th:nth-child(5),#page-mail .mail-table td:nth-child(5){display:none}#page-mail .mail-table col.c-from{width:32%}}
+        @container (max-width:520px){
+          #page-mail .mail-table,#page-mail .mail-table tbody{display:block}
+          #page-mail .mail-table thead,#page-mail .mail-table colgroup{display:none}
+          #page-mail .mail-row{display:grid;grid-template-columns:26px minmax(0,1fr) auto;grid-template-areas:'ic from date' 'ic subj cat';border-bottom:1px solid var(--m-line)}
+          #page-mail .mail-row:hover{background:var(--m-hover)}
+          #page-mail .mail-row.active{background:var(--m-sel);box-shadow:inset 3px 0 0 var(--m-blue)}
+          #page-mail .mail-row td{border:0;background:transparent!important;box-shadow:none!important;padding:1px 6px}
+          #page-mail .mail-row td.c-ic{grid-area:ic;align-self:start;padding:6px 0 0;white-space:normal;line-height:1.3}
+          #page-mail .mail-row td:nth-child(2){grid-area:from;padding-top:6px;font-size:12.5px}
+          #page-mail .mail-row td:nth-child(3){grid-area:subj;padding-bottom:6px;color:var(--m-muted)}
+          #page-mail .mail-row.unread td:nth-child(3){color:var(--m-blue)}
+          #page-mail .mail-row td.c-date{grid-area:date;padding-top:7px;font-size:10.5px;text-align:right}
+          #page-mail .mail-table td:nth-child(5){display:block;grid-area:cat;padding-bottom:6px;text-align:right}
+        }
       </style>
 
       <!-- 1. Ribbon (giống thanh Home của tab Mail trên AD) -->
@@ -850,10 +871,10 @@
           <button type="button" class="mail-rb-btn" data-mail-need="1" onclick="MailModule.action('copy')" title="Sao chép nội dung" disabled><span>📋</span><span class="mail-rb-lbl">Sao chép nội dung</span></button>
         </div>
         <div class="mail-rb-group">
-          <button type="button" class="mail-rb-btn mail-rb-outlook" onclick="MailModule.connectOutlook()"><span>📥</span><span>Kết Nối Outlook Classic</span></button>
-          <button type="button" class="mail-rb-btn mail-rb-msg" onclick="MailModule.chooseScanFolder()"><span>📁</span><span>Quét Thư Mục .msg</span></button>
+          <button type="button" class="mail-rb-btn mail-rb-outlook" onclick="MailModule.connectOutlook()" title="Kết Nối Outlook Classic"><span>📥</span><span class="mail-rb-lbl2">Kết Nối Outlook Classic</span></button>
+          <button type="button" class="mail-rb-btn mail-rb-msg" onclick="MailModule.chooseScanFolder()" title="Quét Thư Mục .msg"><span>📁</span><span class="mail-rb-lbl2">Quét Thư Mục .msg</span></button>
         </div>
-        <button id="mail-filter-toggle" type="button" class="mail-rb-btn mail-rb-filter active" onclick="MailModule.toggleFilterPanel()" aria-pressed="true"><span>⊞</span><span>Lọc Thư / Categories</span></button>
+        <button id="mail-filter-toggle" type="button" class="mail-rb-btn mail-rb-filter active" onclick="MailModule.toggleFilterPanel()" aria-pressed="true" title="Lọc Thư / Categories"><span>⊞</span><span class="mail-rb-lbl2">Lọc Thư / Categories</span></button>
       </div>
 
       <!-- 2. Vùng làm việc 4 khung -->
