@@ -117,6 +117,7 @@ function recordDate(row){
 }
 async function read(sql,key,fallback){const rows=await sql`SELECT value FROM bqlda_state WHERE key=${key}`;return rows[0]?.value??fallback;}
 async function write(sql,key,value){await sql`INSERT INTO bqlda_state(key,value) VALUES(${key},${JSON.stringify(value)}::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;}
+function treeHasFolder(stores,id){const walk=nodes=>(nodes||[]).some(f=>f.id===id||walk(f.children));return (stores||[]).some(s=>walk(s.folders));}
 function mailOnline(bridge){const age=Date.now()-Date.parse(bridge?.updated_at);return Number.isFinite(age)&&age>=0&&age<90000&&(!bridge.connector_state||bridge.connector_state==='ready');}
 module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects})=>{
  if(!method.startsWith('awm_'))return undefined;
@@ -259,8 +260,45 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
   if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
   const id=String(args[0]||'');const list=await read(sql,`awm:mailreq:${user.username}`,[]);
   const r=(Array.isArray(list)?list:[]).find(x=>x.id===id);if(!r)return fail('Không tìm thấy yêu cầu.');
-  if(r.status!=='done')return ok({status:r.status,...(r.status==='error'?{error:r.error}:{})});
+  if(r.status!=='done')return ok({status:r.status,...(r.status==='error'?{error:r.error}:{}),...(r.progress?{progress:r.progress}:{})});
   return ok({status:'done',result:r.result});
+ }
+ // ---- Cây hòm thư/Data (AD gửi lên), danh sách thư theo thư mục (chỉ khi người dùng mở), thứ tự hòm thư ----
+ if(method==='awm_mail_tree'){
+  if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
+  const bridge=await read(sql,`awm:mail:${user.username}`,null);
+  const tree=await read(sql,`awm:mailtree:${user.username}`,null);
+  const order=await read(sql,`awm:mailorder:${user.username}`,[]);
+  return ok({online:mailOnline(bridge),stores:tree?.stores||[],updated_at:tree?.updated_at||null,order:Array.isArray(order)?order:[]});
+ }
+ if(method==='awm_mail_order_save'){
+  if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
+  const order=Array.isArray(args[0])?args[0].filter(x=>/^[0-9a-f]{24}$/.test(String(x))).slice(0,60):null;
+  if(!order)return fail('Thứ tự hòm thư không hợp lệ.');
+  await write(sql,`awm:mailorder:${user.username}`,order);
+  return ok({saved:order.length});
+ }
+ if(method==='awm_mail_folder_request'){
+  if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
+  const bridge=await read(sql,`awm:mail:${user.username}`,null);
+  if(!mailOnline(bridge))return fail('AD chưa kết nối. Mở AD trên máy tính để xem thư mục.');
+  const folderId=String(args[0]||'');if(!/^[0-9a-f]{24}$/.test(folderId))return fail('Thư mục không hợp lệ.');
+  const tree=await read(sql,`awm:mailtree:${user.username}`,null);
+  if(!treeHasFolder(tree?.stores,folderId))return fail('Thư mục không còn trong Outlook của AD. Hãy tải lại cây thư mục.');
+  const key=`awm:mailreq:${user.username}`;const list=await read(sql,key,[]);const arr=Array.isArray(list)?list:[];
+  const pend=arr.filter(r=>['queued','fetching'].includes(r.status));
+  const dup=pend.find(r=>r.type==='list'&&r.folder_id===folderId);if(dup)return ok({id:dup.id,status:dup.status});
+  if(pend.length>=20)return fail('Đang có quá nhiều yêu cầu chờ AD, thử lại sau.');
+  const now=new Date().toISOString(),id=crypto.randomBytes(12).toString('hex');
+  arr.push({id,type:'list',folder_id:folderId,mail_id:'',status:'queued',error:'',result:null,progress:null,created_at:now,updated_at:now});
+  await write(sql,key,arr.slice(-60));
+  return ok({id,status:'queued'});
+ }
+ if(method==='awm_mail_folder'){
+  if(!permission('tab_mail'))return fail('Không có quyền xem Mail.');
+  const folderId=String(args[0]||'');if(!/^[0-9a-f]{24}$/.test(folderId))return fail('Thư mục không hợp lệ.');
+  const stored=await read(sql,`awm:mailfolder:${user.username}:${folderId}`,null);
+  return ok({items:stored?.items||[],updated_at:stored?.updated_at||null});
  }
  if(method==='awm_mail_send'){
   if(!permission('tab_mail'))return fail('Không có quyền gửi Mail.');

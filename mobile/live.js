@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const TOKEN='awm_session',trackingMenu={progress:'progress',hsmt:'hsmt',contract:'contract','contractor:detail':'contract',payment:'payment',boq:'hsmt','chu-truong':'approval',bvtk:'design'};let mailAccount='',mailFolder='Inbox';const fmtMailDate=v=>{const d=new Date(v);return v&&!isNaN(d)?d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):String(v||'')};let bootstrap=null,page='home',project='',tab='',query='',epoch=0,records=[],columns=[],cursor=null,folders={},menu='',trail=[],driveFiles=[],driveNext='',timer=null,mailPollTimer=null,mailSeen=new Set(),todoFilter='open',todoItems=[],linkScope='project',linkItems=[],linkSearch='',driveSyncing=false,driveSearch='',driveSort='za';
+ const TOKEN='awm_session',trackingMenu={progress:'progress',hsmt:'hsmt',contract:'contract','contractor:detail':'contract',payment:'payment',boq:'hsmt','chu-truong':'approval',bvtk:'design'};let mailAccount='',mailFolder='Inbox',mailStores=[],mailStoreOrder=[],mailCollapsedKeys=new Set(),mailFolderId='',mailFolderToken=0,mailItems=[],mailProgress=null,mailOnline=false,mailDrag=null,mailDropTarget=null;const fmtMailDate=v=>{const d=new Date(v);return v&&!isNaN(d)?d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):String(v||'')};let bootstrap=null,page='home',project='',tab='',query='',epoch=0,records=[],columns=[],cursor=null,folders={},menu='',trail=[],driveFiles=[],driveNext='',timer=null,mailPollTimer=null,mailSeen=new Set(),todoFilter='open',todoItems=[],linkScope='project',linkItems=[],linkSearch='',driveSyncing=false,driveSearch='',driveSort='za';
  async function pollMail(){if(!bootstrap||!allowed('mail'))return;try{const data=await rpc('awm_mail_list',[project,'']);const items=Array.isArray(data?.items)?data.items:(Array.isArray(data)?data:[]);const ids=items.map(x=>String(x.id||x.message_id||x.subject||x.file_name||''));if(mailSeen.size){const fresh=ids.filter(id=>id&&!mailSeen.has(id));if(fresh.length){notice(`Có ${fresh.length} mail mới từ AD`);if('Notification' in window&&Notification.permission==='granted')new Notification('BQLDA có mail mới',{body:`${fresh.length} thư mới đã đồng bộ`})}}mailSeen=new Set(ids)}catch(_){} }
  function notice(s){$('toast').textContent=s;$('toast').style.display='block';clearTimeout(notice.timer);notice.timer=setTimeout(()=>$('toast').style.display='none',4000)}
  function addAdminAccountLink(){if(String(bootstrap?.user?.role||'').trim().toLowerCase()!=='admin')return;const panels=document.querySelectorAll('.admin-panel'),panel=panels[panels.length-1];if(!panel)return;const items=[['account-management','👥 Quản lý tài khoản →','../index.html?view=desktop&settings=accounts'],['appearance-management','🎨 Tùy biến Tab & Màu sắc →','../index.html?view=desktop&settings=appearance'],['project-management','🏢 QL HM/CT →','../index.html?view=desktop&settings=projects']];items.forEach(([id,text,href])=>{if($(id))return;const a=document.createElement('a');a.id=id;a.className='card';a.href=href;a.textContent=text;panel.append(a)})}
@@ -34,8 +34,8 @@
  function renderProjectSuggestions(query=''){const listEl=$('project-suggestions');if(!listEl)return;const allProjects=bootstrap?.projects||[];const favorites=favoriteProjects();const qTrim=String(query||'').trim();const qClean=removeVietnameseTones(qTrim);let filtered=allProjects;if(qClean){filtered=allProjects.filter(p=>removeVietnameseTones(p).includes(qClean))}filtered.sort((a,b)=>(Number(favorites.has(b))-Number(favorites.has(a)))||a.localeCompare(b,'vi',{numeric:true,sensitivity:'base'}));const countEl=$('project-modal-count');if(countEl){countEl.textContent=qTrim?`${filtered.length} dự án phù hợp (trong ${allProjects.length} dự án)`:`${allProjects.length} dự án được cấp quyền · ${favorites.size} đã lưu`}if(!filtered.length){listEl.innerHTML=`<div class="empty" style="padding:28px 12px;">Không tìm thấy dự án nào khớp với “<strong>${esc(qTrim)}</strong>”.<br><small class="muted" style="margin-top:6px;display:block;">Thử gõ không dấu hoặc kiểm tra lại tên dự án.</small></div>`;return}listEl.innerHTML=filtered.map(p=>{const isCur=(p===project),isFav=favorites.has(p);const label=qClean?highlightMatch(p,qTrim):esc(p);return `<button type="button" class="project-item ${isCur?'active':''}" data-project-pick="${esc(p)}" role="option" aria-selected="${isCur}"><div class="project-item-info"><span class="project-item-icon">🏢</span><div class="project-item-name">${label}</div></div><span class="project-item-actions" style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;"><span class="project-star ${isFav?'saved':''}" data-project-star="${esc(p)}" role="button" tabindex="0" style="font-size:22px;line-height:1;min-width:28px;text-align:center;color:#9aa69d;cursor:pointer;" aria-label="${isFav?'Bỏ lưu':'Lưu'} dự án" title="${isFav?'Bỏ khỏi dự án hay dùng':'Lưu dự án hay dùng'}">${isFav?'★':'☆'}</span>${isCur?'<span class="project-item-check" title="Dự án hiện tại">✓</span>':''}</span></button>`}).join('');listEl.querySelectorAll('[data-project-pick]').forEach(btn=>{btn.onclick=e=>{if(e.target.closest('[data-project-star]'))return;selectProject(btn.dataset.projectPick)}});listEl.querySelectorAll('[data-project-star]').forEach(btn=>{btn.onclick=e=>{e.stopPropagation();toggleFavoriteProject(btn.dataset.projectStar)}})}
  function openProjectModal(){if(!bootstrap?.projects?.length){notice('Tài khoản chưa được cấp dự án.');return}const modal=$('project-modal');if(!modal)return;const searchInput=$('project-search-input');if(searchInput){searchInput.value='';if($('project-search-clear'))$('project-search-clear').hidden=true}renderProjectSuggestions('');modal.showModal();modal.scrollTop=0;if(history.state?.awm_modal!=='project')history.pushState({awm_modal:'project'},'');if(searchInput){setTimeout(()=>{try{searchInput.focus()}catch(_){}},100)}}
  function closeProjectModal(fromPopstate=false){const modal=$('project-modal');if(!modal?.open)return;modal.close();if(!fromPopstate&&history.state?.awm_modal==='project')history.back()}
- function selectProject(newProject){if(!newProject){closeProjectModal();return}const changed=(newProject!==project);project=newProject;updateProjectDisplay();closeProjectModal();if(changed){if(window.CollaborationWorkspace?.unmount)window.CollaborationWorkspace.unmount();records=[];trail=[];folders={};query='';driveSearch='';driveSort='za';AwmViewer.close();closeSheet();notice('Đã chuyển sang dự án: '+newProject);render()}}
- function reset(){if(window.CollaborationWorkspace?.unmount)window.CollaborationWorkspace.unmount();epoch++;clearTimeout(timer);bootstrap=null;records=[];folders={};driveFiles=[];trail=[];driveSearch='';driveSort='za';linkItems=[];linkSearch='';driveSyncing=false;AwmDrive.clear();AwmViewer.close();$('sheet').close();$('project-modal')?.close();$('project').replaceChildren();updateProjectDisplay();$('nav').replaceChildren();document.querySelector('.projectbar').hidden=true}
+ function selectProject(newProject){if(!newProject){closeProjectModal();return}const changed=(newProject!==project);project=newProject;updateProjectDisplay();closeProjectModal();if(changed){if(window.CollaborationWorkspace?.unmount)window.CollaborationWorkspace.unmount();records=[];trail=[];folders={};query='';driveSearch='';driveSort='za';mailFolderId='';mailItems=[];mailProgress=null;mailFolderToken++;AwmViewer.close();closeSheet();notice('Đã chuyển sang dự án: '+newProject);render()}}
+ function reset(){if(window.CollaborationWorkspace?.unmount)window.CollaborationWorkspace.unmount();epoch++;clearTimeout(timer);bootstrap=null;records=[];folders={};driveFiles=[];trail=[];driveSearch='';driveSort='za';linkItems=[];linkSearch='';driveSyncing=false;mailStores=[];mailItems=[];mailFolderId='';mailProgress=null;mailFolderToken++;AwmDrive.clear();AwmViewer.close();$('sheet').close();$('project-modal')?.close();$('project').replaceChildren();updateProjectDisplay();$('nav').replaceChildren();document.querySelector('.projectbar').hidden=true}
  function auth(message=''){
   reset();$('settings').hidden=true;
   $('main').innerHTML=`<section class="auth"><span class="logo">B</span><div class="eyebrow">BQLDA / AwM</div><h1>Dự án của bạn.<br>Trong tầm tay.</h1><p class="muted">Đăng nhập bằng Google hoặc tài khoản hệ thống đã được Admin cấp quyền.</p><div id="google-button"></div><div class="auth-divider"><span>hoặc tài khoản hệ thống</span></div><form id="system-login-form" class="form auth-system"><label>Tên đăng nhập hoặc email<input id="auth-username" autocomplete="username" required maxlength="120" placeholder="Tên đăng nhập hoặc email"></label><label>Mật khẩu<div class="password-field"><input id="auth-password" type="password" autocomplete="current-password" required maxlength="200" placeholder="Mật khẩu"><button type="button" class="password-toggle" id="toggle-auth-password" aria-label="Hiện mật khẩu">👁</button></div></label><button class="primary" id="auth-system-submit">Đăng nhập</button></form><button type="button" id="show-register" class="text-button">Tạo tài khoản mới</button><form id="system-register-form" class="form auth-system" hidden><label>Họ và tên<input id="reg-fullname" required maxlength="100" placeholder="Nguyễn Văn A"></label><label>Tên đăng nhập<input id="reg-username" autocomplete="username" required maxlength="30" placeholder="Ví dụ: nguyenvana"></label><label>Mật khẩu<div class="password-field"><input id="reg-password" type="password" autocomplete="new-password" required maxlength="200" placeholder="Tối thiểu 8 ký tự"><button type="button" class="password-toggle" id="toggle-reg-password" aria-label="Hiện mật khẩu">👁</button></div></label><button class="primary" id="auth-register-submit">Gửi đăng ký</button></form><div id="auth-message" role="status">${message?error({message}):''}</div><p class="muted">Tài khoản mới cần Admin phê duyệt và cấp dự án trước khi truy cập.</p></section>`;
@@ -327,59 +327,163 @@
   if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data?.type==='awm-open'){page='mail';render()}});
   if(location.hash==='#mail')page='mail';
   function openCompose(kind,message){const go=()=>{clearTimeout(timer);window.MailCompose.open({rpc,kind,message,project,me:message?.account||mailAccount})};if(window.MailCompose)return go();const sc=document.createElement('script');sc.src='/js/mail_compose.js?v=2';sc.onload=go;sc.onerror=()=>notice('Không tải được màn hình soạn thư.');document.head.appendChild(sc);}
+  // ---- Mail AwM: cây Hòm thư / Data giống AD. Mở thư mục chỉ yêu cầu AD gửi danh sách (có %);
+  // nội dung một thư chỉ được tải khi người dùng mở thư đó. Thứ tự hòm thư dùng chung với AwD và AD.
+  function ensureMailStyle(){
+    if($('mail-tree-style'))return;
+    const st=document.createElement('style');st.id='mail-tree-style';
+    st.textContent='.mf-tree{margin:10px 0}.mf-store{margin:0 0 6px;border:1px solid #d6dcd3;border-radius:10px;background:#fff;overflow:hidden}.mf-store.dragging{opacity:.5}.mf-store.drop-before{box-shadow:inset 0 3px 0 #1d2f2c}.mf-store.drop-after{box-shadow:inset 0 -3px 0 #1d2f2c}.mf-head{display:flex;align-items:center;gap:2px;padding:4px 6px;background:#f3f6f1}.mf-grip{border:0;background:none;font-size:16px;color:#718477;padding:6px 8px;touch-action:none;cursor:grab}.mf-toggle{flex:1;text-align:left;border:0;background:none;font-weight:700;font-size:13px;color:#1d2f2c;padding:8px 2px}.mf-toggle small{font-weight:500;color:#718477;margin-left:4px}.mf-unread{font-size:11px;background:#1d2f2c;color:#fff;border-radius:10px;padding:1px 7px;margin-right:6px}.mf-row{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;border-top:1px solid #eef1ec;background:#fff;padding:9px 12px;font-size:13px;color:#1d2f2c;text-align:left}.mf-row.on{background:#1d2f2c;color:#fff}.mf-count{font-size:12px;opacity:.85}.mf-count b{margin-right:6px;background:#b45309;color:#fff;border-radius:10px;padding:0 6px}.mf-progress{margin:6px 0;display:flex;align-items:center;gap:8px;font-size:12px;color:#5b6b63}.mf-bar{flex:0 0 120px;height:6px;border-radius:3px;background:#e4e9e2;overflow:hidden}.mf-bar i{display:block;height:100%;background:#1d2f2c;transition:width .3s}';
+    document.head.appendChild(st);
+  }
+  const mailStoreKey=s=>s.id||('name:'+s.name);
+  const mailFolderIcon=name=>name==='Inbox'?'📥 Hộp thư đến':name==='Sent Items'?'📤 Đã gửi':'📁 '+esc(name);
+  function mailFolderRows(s,nodes,depth){
+    return (nodes||[]).map(f=>{
+      const on=f.id?f.id===mailFolderId:(!mailFolderId&&mailFolder===f.name&&mailAccount===s.name);
+      const attrs=f.id?`data-mf-id="${esc(f.id)}"`:`data-mf-acc="${esc(s.name)}" data-mf-name="${esc(f.name)}"`;
+      const unread=Number(f.unread)||0;
+      return `<button type="button" class="mf-row${on?' on':''}" ${attrs} style="padding-left:${12+depth*14}px"><span>${mailFolderIcon(f.name)}</span><span class="mf-count">${unread?`<b>${unread}</b>`:''}${Number(f.count)||0}</span></button>${mailFolderRows(s,f.children,depth+1)}`;
+    }).join('');
+  }
+  function mailStoreBlock(s){
+    const key=mailStoreKey(s),open=!mailCollapsedKeys.has(key);
+    const unread=(s.folders||[]).reduce((n,f)=>n+(Number(f.unread)||0),0);
+    return `<section class="mf-store"${s.id?` data-store-id="${esc(s.id)}"`:''}><header class="mf-head"><button type="button" class="mf-grip" aria-label="Kéo để đổi thứ tự"${s.id?'':' hidden'}>⠿</button><button type="button" class="mf-toggle" data-mtoggle="${esc(key)}">${open?'▾':'▸'} ${s.kind==='data'?'🗄':'✉'} ${esc(s.name)}${s.kind==='data'?' <small>Data</small>':''}</button>${!open&&unread?`<span class="mf-unread">${unread}</span>`:''}</header>${open?`<div>${mailFolderRows(s,s.folders,0)}</div>`:''}</section>`;
+  }
+  const mailOrdered=()=>{const rank=new Map(mailStoreOrder.map((id,i)=>[id,i]));return mailStores.map((s,i)=>({s,i})).sort((a,b)=>(rank.has(a.s.id)?rank.get(a.s.id):1e6+a.i)-(rank.has(b.s.id)?rank.get(b.s.id):1e6+b.i)).map(x=>x.s);};
+  function mailWalk(nodes,id){for(const f of nodes||[]){if(f.id===id)return f;const hit=mailWalk(f.children,id);if(hit)return hit;}return null;}
+  function mailFind(id){if(!id)return null;for(const s of mailStores){const f=mailWalk(s.folders,id);if(f)return {s,f};}return null;}
+  function paintMailTree(){
+    const host=$('mail-tree');if(!host)return;
+    const list=mailOrdered();
+    host.innerHTML=list.length?list.map(mailStoreBlock).join(''):(mailOnline?'<div class="empty">Chưa có hòm thư từ AD.</div>':'');
+    host.onclick=e=>{
+      const t=e.target.closest('[data-mtoggle]');
+      if(t){const k=t.dataset.mtoggle;if(mailCollapsedKeys.has(k))mailCollapsedKeys.delete(k);else mailCollapsedKeys.add(k);paintMailTree();return;}
+      const f=e.target.closest('[data-mf-id]');if(f){openMailFolder(f.dataset.mfId);return;}
+      const g=e.target.closest('[data-mf-acc]');if(g){mailFolderId='';mailAccount=g.dataset.mfAcc;mailFolder=g.dataset.mfName;mailItems=[];mailProgress=null;paintMailTree();paintMailList();refreshMailSync();}
+    };
+    host.onpointerdown=e=>{const grip=e.target.closest('.mf-grip');if(!grip||grip.hidden)return;const sec=grip.closest('[data-store-id]');if(!sec)return;e.preventDefault();mailDrag={id:sec.dataset.storeId};sec.classList.add('dragging');try{grip.setPointerCapture(e.pointerId)}catch(_){}};
+    host.onpointermove=e=>{
+      if(!mailDrag)return;
+      host.querySelectorAll('.drop-before,.drop-after').forEach(x=>x.classList.remove('drop-before','drop-after'));
+      const el=document.elementFromPoint(e.clientX,e.clientY);const sec=el&&el.closest?el.closest('[data-store-id]'):null;
+      if(sec&&sec.dataset.storeId!==mailDrag.id){const r=sec.getBoundingClientRect();const after=e.clientY>r.top+r.height/2;sec.classList.add(after?'drop-after':'drop-before');mailDropTarget={id:sec.dataset.storeId,after};}
+      else mailDropTarget=null;
+    };
+    const endDrag=()=>{if(!mailDrag)return;const from=mailDrag.id,target=mailDropTarget;mailDrag=null;mailDropTarget=null;if(target)moveMailStore(from,target.id,target.after);else paintMailTree();};
+    host.onpointerup=endDrag;host.onpointercancel=endDrag;
+  }
+  function moveMailStore(fromId,toId,after){
+    const ids=mailOrdered().map(s=>s.id).filter(Boolean);
+    if(!ids.includes(fromId)||!ids.includes(toId)||fromId===toId){paintMailTree();return;}
+    const rest=ids.filter(x=>x!==fromId);let idx=rest.indexOf(toId);if(after)idx++;rest.splice(idx,0,fromId);
+    mailStoreOrder=rest;paintMailTree();
+    rpc('awm_mail_order_save',[rest]).catch(e=>notice('Chưa lưu được thứ tự hòm thư: '+e.message));
+  }
+  async function loadMailTree(){
+    let tree=null;try{tree=await rpc('awm_mail_tree')}catch(_){}
+    const list=Array.isArray(tree?.stores)?tree.stores:[];
+    mailStores=list;
+    // Chưa có cây đồng bộ (AD cũ): dùng danh sách tài khoản/thư mục như trước
+    if(!list.length){try{const d=await rpc('awm_mail_list',[project,'','','']);mailStores=(d?.accounts||[]).map(a=>({id:'',kind:'mailbox',name:a.account,folders:(a.folders||[]).map(f=>({id:'',name:f.name,count:f.count||0,unread:f.unread||0,children:[]}))}))}catch(_){}}
+    mailStoreOrder=Array.isArray(tree?.order)?tree.order.map(String):[];
+  }
+  // Hòm thư không có mã thư mục (dữ liệu cũ): hiện thư đã đồng bộ theo tài khoản và tên thư mục
+  async function refreshMailSync(){
+    const t=++mailFolderToken;
+    try{const d=await rpc('awm_mail_list',[project,'',mailAccount,mailFolder]);if(t!==mailFolderToken)return;mailItems=Array.isArray(d?.items)?d.items:[];paintMailList();}
+    catch(e){if(t===mailFolderToken){mailItems=[];paintMailList();notice(e.message)}}
+  }
+  function paintMailList(){
+    const host=$('mail-list');if(!host)return;
+    const prog=mailProgress?`<div class="mf-progress"><div class="mf-bar"><i style="width:${mailProgress.pct}%"></i></div><span>${esc(mailProgress.label)}</span></div>`:'';
+    const empty=!mailOnline&&!mailItems.length?'<div class="empty">Mở AD trên máy tính để đồng bộ hòm thư Outlook.</div>':(mailFolderId?'<div class="empty">Thư mục này chưa có thư. Bấm Làm mới ↻ để AD đọc lại.</div>':'<div class="empty">Chọn một hòm thư hoặc thư mục ở trên để xem thư.</div>');
+    host.innerHTML=prog+(mailItems.length?mailItems.map((r,i)=>{const n=Number(r.att_count)||(r.attachments&&r.attachments.length)||0;return `<button class="card" data-mail="${i}"><span class="code">${esc(r.sender)}</span><h3>${esc(r.subject||'(Không có tiêu đề)')}</h3><div class="muted">${esc(fmtMailDate(r.date))}${n?' · 📎 '+n+' tệp':''}${r.categories?' · 🏷 '+esc(r.categories):''}</div></button>`}).join(''):(mailProgress?'':empty));
+    host.querySelectorAll('[data-mail]').forEach(b=>b.onclick=()=>{const r=mailItems[Number(b.dataset.mail)];if(r)openMailItem(r);});
+  }
+  // Mở thư mục: hiện danh sách đã nhớ, rồi yêu cầu AD gửi danh sách mới kèm % tiến trình
+  async function openMailFolder(id){
+    const hit=mailFind(String(id||''));if(!hit)return;
+    const token=++mailFolderToken;
+    mailFolderId=hit.f.id;mailAccount=hit.s.name;mailFolder=hit.f.name;
+    const withAcc=rows=>(Array.isArray(rows)?rows:[]).map(r=>({...r,account:r.account||hit.s.name}));
+    mailItems=[];mailProgress={pct:0,label:'Đang chờ AD nhận yêu cầu…'};paintMailTree();paintMailList();
+    try{
+      const cached=await rpc('awm_mail_folder',[mailFolderId]);if(token!==mailFolderToken)return;
+      if(Array.isArray(cached?.items)&&cached.items.length){mailItems=withAcc(cached.items);paintMailList();}
+      const req=await rpc('awm_mail_folder_request',[mailFolderId]);if(token!==mailFolderToken)return;
+      for(let i=0;i<300;i++){
+        const st=await rpc('awm_mail_request_status',[req.id]);if(token!==mailFolderToken)return;
+        if(page!=='mail'){mailProgress=null;return}
+        if(st.status==='done'){const data=await rpc('awm_mail_folder',[mailFolderId]);if(token!==mailFolderToken)return;mailItems=withAcc(data?.items);mailProgress=null;paintMailList();return}
+        if(st.status==='error'){mailProgress=null;paintMailList();notice('AD không liệt kê được thư mục: '+(st.error||''));return}
+        const p=st.progress,pct=p&&p.total?Math.min(100,Math.round(p.done*100/p.total)):0;
+        mailProgress=p&&p.total?{pct,label:`Đang tải danh sách từ AD: ${pct}% (${p.done}/${p.total} thư)`}:{pct:0,label:st.status==='queued'?'Đang chờ AD nhận yêu cầu…':'AD đang đọc danh sách thư…'};
+        paintMailList();
+        await new Promise(x=>setTimeout(x,1500));
+      }
+      if(token===mailFolderToken){mailProgress=null;paintMailList();notice('AD chưa trả danh sách. Mở AD trên máy tính rồi thử lại.')}
+    }catch(e){if(token===mailFolderToken){mailProgress=null;paintMailList();notice(e.message)}}
+  }
+  function scheduleMailRefresh(run){
+    timer=setTimeout(()=>{if(page!=='mail'||run!==epoch)return;if($('sheet').open)return scheduleMailRefresh(run);render()},30000);
+  }
+  function mailDetailHtml(r){
+    const attHtml=(r.attachments&&r.attachments.length)?`<div style="margin:10px 0;padding:8px 12px;background:#f6f8f5;border-radius:8px;font-size:12px;color:#b45309;"><span style="font-weight:700;">📎 ${r.attachments.length} tệp đính kèm:</span><br>${esc(r.attachments.join(', '))}</div>`:'';
+    return `<div class="eyebrow">${esc(r.sender)}</div><h2>${esc(r.subject)}</h2><p class="muted">${esc(fmtMailDate(r.date))}${r.project?' · 🏢 '+esc(r.project):''}${r.folder?' · '+esc(r.folder):''}</p>${mailOnline&&r.account?`<div class="actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0"><button class="primary" data-compose="reply">↩ Trả lời</button><button data-compose="reply_all">↩↩ Tất cả</button><button data-compose="forward">↪ Chuyển tiếp</button></div>`:''}${attHtml}<div class="detail-value">${esc(r.body)}</div>`;
+  }
+  function bindMailDetail(r){document.querySelectorAll('[data-compose]').forEach(x=>x.onclick=()=>{const kind=x.dataset.compose;$('sheet').close();openCompose(kind,{...r,date:fmtMailDate(r.date)});});}
+  // Chỉ khi mở thư mới đọc nội dung từ AD (một lần, rồi nhớ trong phiên)
+  async function openMailItem(r){
+    const show=body=>{if($('sheet').open){$('detail').innerHTML=mailDetailHtml({...r,body});bindMailDetail(r);}};
+    sheet(mailDetailHtml({...r,body:r.body||'Đang tải nội dung từ AD…'}));bindMailDetail(r);
+    if(r.body)return;
+    let msg='AD chưa trả nội dung. Mở AD trên máy tính rồi thử lại.';
+    try{
+      const req=await rpc('awm_mail_request',[r.id]);
+      for(let i=0;i<40;i++){
+        if(!$('sheet').open)return;
+        const st=await rpc('awm_mail_request_status',[req.id]);
+        if(st.status==='done'){r.body=st.result?.text||'(Thư không có nội dung văn bản)';return show(r.body)}
+        if(st.status==='error'){msg='Không tải được nội dung: '+(st.error||'');break}
+        await new Promise(x=>setTimeout(x,1500));
+      }
+    }catch(e){msg='Không tải được nội dung: '+e.message}
+    show(msg);
+  }
   async function mail(run){
-    $('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><div style="display:flex;gap:8px"><button id="refresh-mail" class="primary">Làm mới ↻</button><button id="new-mail">✉️ Thư mới</button><button id="push-mail" hidden>🔔 Bật thông báo</button></div><div id="mail-list"></div>';
-    $('refresh-mail').onclick=()=>render();
+    ensureMailStyle();
+    $('main').innerHTML='<div class="eyebrow">ÁNH XẠ TỪ AD</div><h1>Mail</h1><div id="mail-state" class="loading">Kiểm tra kết nối…</div><div style="display:flex;gap:8px"><button id="refresh-mail" class="primary">Làm mới ↻</button><button id="new-mail">✉️ Thư mới</button><button id="push-mail" hidden>🔔 Bật thông báo</button></div><div id="mail-tree" class="mf-tree"></div><div id="mail-list"></div>';
+    $('refresh-mail').onclick=()=>{if(mailFolderId)openMailFolder(mailFolderId);else render()};
     $('push-mail').onclick=enablePush;pushState().then(st=>{if($('push-mail'))$('push-mail').hidden=st==='on'});
     $('new-mail').onclick=()=>openCompose('new',mailAccount?{account:mailAccount,id:'',subject:'',body:''}:null);
     try{
       let status={online:false,source:'',last_sync:null};
-      try{ status=await rpc('awm_mail_status'); }catch(_){}
+      try{status=await rpc('awm_mail_status')}catch(_){}
       if(run!==epoch)return;
+      mailOnline=!!status.online;
       $('mail-state').className='message';
       $('mail-state').innerHTML=`<span class="badge ${status.online?'online':'warn'}">${status.online?'AD đang kết nối':'AD chưa kết nối'}</span><p>${status.online?esc(status.source):'Mở AD trên máy tính để tự động đồng bộ hòm thư Outlook.'}</p><div class="muted">${status.last_sync?'Lần đồng bộ: '+esc(new Date(status.last_sync).toLocaleString('vi-VN')):'Chưa có kết nối trực tiếp.'}</div>`;
-      
-      let items=[];
-      if(status.online){
-        try{
-          let data=await rpc('awm_mail_list',[project,'',mailAccount,mailFolder]);
-          const accs=data?.accounts||[];
-          if(accs.length&&!accs.some(a=>a.account===mailAccount&&a.folders.some(f=>f.name===mailFolder))){mailAccount=accs[0].account;mailFolder=(accs[0].folders.find(f=>f.name==='Inbox')||accs[0].folders[0]).name;data=await rpc('awm_mail_list',[project,'',mailAccount,mailFolder]);}
-          if(run!==epoch)return;
-          if(data&&data.items) items=data.items;
-          if(accs.length){
-            const cur=accs.find(a=>a.account===mailAccount)||accs[0];
-            const bar=document.createElement('div');bar.className='mail-accounts';bar.style.cssText='margin:12px 0;display:flex;flex-direction:column;gap:8px';
-            bar.innerHTML=`<label style="font-size:12px;font-weight:600">Tài khoản Outlook<select id="mail-account" style="width:100%;margin-top:4px;padding:10px;border-radius:10px;border:1px solid #d6d3c8;background:#fff">${accs.map(a=>`<option value="${esc(a.account)}" ${a.account===mailAccount?'selected':''}>${esc(a.account)}</option>`).join('')}</select></label><div style="display:flex;gap:6px;flex-wrap:wrap">${cur.folders.map(f=>`<button type="button" data-mail-folder="${esc(f.name)}" class="chip" style="padding:6px 12px;border-radius:16px;border:1px solid #c9d3cf;font-size:12px;${f.name===mailFolder?'background:#1d2f2c;color:#fff;':'background:#fff;color:#1d2f2c;'}">${f.name==='Inbox'?'📥 Hộp thư đến':f.name==='Sent Items'?'📤 Đã gửi':esc(f.name)} · ${f.count}</button>`).join('')}</div>`;
-            $('mail-list').before(bar);
-            $('mail-account').onchange=e=>{mailAccount=e.target.value;mailFolder='Inbox';render();};
-            bar.querySelectorAll('[data-mail-folder]').forEach(b=>b.onclick=()=>{mailFolder=b.dataset.mailFolder;render();});
-          }
-        }catch(_){}
-      }
-      
-      if(!items.length){
+      if(mailOnline){
+        await loadMailTree();
+        if(run!==epoch)return;
+        if(!mailFolderId){
+          try{const d=await rpc('awm_mail_list',[project,'','','']);if(run!==epoch)return;mailItems=Array.isArray(d?.items)?d.items:[]}catch(_){mailItems=[]}
+        }
+      }else{mailStores=[];mailItems=[];mailFolderId=''}
+      if(!mailItems.length&&!mailFolderId){
         try{
           const shareData=await rpc('mailshare_list',[project]);
           if(Array.isArray(shareData?.items)&&shareData.items.length){
-            items=shareData.items.map(m=>({id:m.id,sender:m.sender||'Cán bộ dự án',subject:m.subject||'Thư được chia sẻ',date:m.date||m.created_at||'',body:m.body||'',attachments:m.attachments||[],project:m.project||project}));
-            $('mail-state').innerHTML+=`<div style="margin-top:6px;font-size:12px;color:#182b29;font-weight:600;">📬 Hiển thị ${items.length} thư được chia sẻ trong dự án</div>`;
+            mailItems=shareData.items.map(m=>({id:m.id,sender:m.sender||'Cán bộ dự án',subject:m.subject||'Thư được chia sẻ',date:m.date||m.created_at||'',body:m.body||'',attachments:m.attachments||[],project:m.project||project}));
+            $('mail-state').innerHTML+=`<div style="margin-top:6px;font-size:12px;color:#182b29;font-weight:600;">📬 Hiển thị ${mailItems.length} thư được chia sẻ trong dự án</div>`;
           }
         }catch(_){}
       }
-      
       if(run!==epoch)return;
-      $('mail-list').innerHTML=items.length?items.map((r,i)=>`<button class="card" data-mail="${i}"><span class="code">${esc(r.sender)}</span><h3>${esc(r.subject)}</h3><div class="muted">${esc(fmtMailDate(r.date))}${r.attachments&&r.attachments.length?' · 📎 '+r.attachments.length+' tệp':''}</div></button>`).join(''):'<div class="empty">Chưa có thư thuộc dự án này. Mở AD trên máy tính để đồng bộ hòm thư Outlook.</div>';
-      
-      document.querySelectorAll('[data-mail]').forEach(b=>b.onclick=()=>{
-        const r=items[Number(b.dataset.mail)];
-        if(!r)return;
-        const attHtml=(r.attachments&&r.attachments.length)?`<div style="margin:10px 0;padding:8px 12px;background:#f6f8f5;border-radius:8px;font-size:12px;color:#b45309;"><span style="font-weight:700;">📎 ${r.attachments.length} tệp đính kèm:</span><br>${esc(r.attachments.join(', '))}</div>`:'';
-        sheet(`<div class="eyebrow">${esc(r.sender)}</div><h2>${esc(r.subject)}</h2><p class="muted">${esc(fmtMailDate(r.date))}${r.project?' · 🏢 '+esc(r.project):''}</p>${status.online&&r.account?`<div class="actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0"><button class="primary" data-compose="reply">↩ Trả lời</button><button data-compose="reply_all">↩↩ Tất cả</button><button data-compose="forward">↪ Chuyển tiếp</button></div>`:''}${attHtml}<div class="detail-value">${esc(r.body)}</div>`);
-        document.querySelectorAll('[data-compose]').forEach(x=>x.onclick=()=>{const kind=x.dataset.compose;$('sheet').close();openCompose(kind,{...r,date:fmtMailDate(r.date)});});
-      });
-      
-      timer=setTimeout(()=>{if(page==='mail'&&run===epoch){$('sheet').close();render()}},30000);
+      paintMailTree();paintMailList();
+      scheduleMailRefresh(run);
     }catch(e){
       if(run===epoch)$('mail-state').innerHTML=error(e);
     }

@@ -728,10 +728,6 @@
         #page-mail .mail-node.is-account{font-weight:700;padding-left:6px}
         #page-mail .mail-node.is-folder{padding-left:26px}
         #page-mail .mail-node .mail-caret{width:12px;color:var(--m-muted);font-size:10px}
-        #page-mail .mail-cat-btn{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;background:none;border:0;border-left:3px solid transparent;padding:4px 10px;cursor:pointer;text-align:left}
-        #page-mail .mail-cat-btn:hover{background:var(--m-hover)}
-        #page-mail .mail-cat-btn.active{background:var(--m-sel);border-left-color:var(--m-accent);font-weight:700}
-        #page-mail .mail-cat-btn .mail-count{font-size:10px;color:var(--m-muted);background:var(--m-head);border-radius:8px;padding:0 6px}
         /* Cột giữa: danh sách thư dạng bảng */
         #page-mail .mail-list-pane{flex:1 1 0;min-width:360px;container-type:inline-size;background:var(--m-list)}
         #page-mail .mail-list-top{display:flex;align-items:center;gap:10px;padding:6px 10px 4px}
@@ -822,6 +818,16 @@
         #page-mail .mail-fp-foot button{background:none;border:0;color:var(--m-muted)!important;cursor:pointer;font-size:11px}
         #page-mail .mail-fp-foot button:hover{color:var(--m-text)!important}
         /* Thanh trạng thái dưới cùng giống Outlook */
+        #page-mail .mail-store{margin-bottom:1px}
+        #page-mail .mail-node[draggable="true"]{cursor:grab}
+        #page-mail .mail-node.dragging{opacity:.45}
+        #page-mail .mail-node.drop-before{box-shadow:inset 0 2px 0 var(--m-accent)}
+        #page-mail .mail-node.drop-after{box-shadow:inset 0 -2px 0 var(--m-accent)}
+        #page-mail .mail-grip{color:var(--m-dim);font-size:10px;line-height:1;letter-spacing:-1px}
+        #page-mail .mail-kind{font-size:9px;color:var(--m-muted);border:1px solid var(--m-line2);border-radius:4px;padding:0 4px}
+        #page-mail .mail-progress{display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:11px;color:var(--m-muted);flex-shrink:0}
+        #page-mail .mail-progress-bar{flex:0 0 180px;height:6px;border-radius:3px;background:var(--m-head);overflow:hidden}
+        #page-mail .mail-progress-bar i{display:block;height:100%;background:var(--m-accent);transition:width .3s}
         #page-mail .mail-statusbar{display:flex;align-items:center;gap:14px;flex-shrink:0;padding:2px 10px;font-size:11px;color:var(--m-muted);white-space:nowrap;overflow:hidden}
         #page-mail .mail-statusbar b{color:var(--m-text)}
         #page-mail .mail-statusbar .mail-stat-unread{color:var(--m-blue)}
@@ -885,28 +891,6 @@
           <div id="mail-favorites"></div>
           <div class="mail-sep"></div>
           <div id="mail-account-tree"></div>
-          <div class="mail-sep"></div>
-          <div class="mail-sec-title">Phân loại nghiệp vụ</div>
-          <div class="pb-2">
-            <button type="button" class="mail-cat-btn active" data-cat="all" onclick="MailModule.setCategory('all')">
-              <span class="flex items-center gap-2"><span>📥</span><span>Tất cả thư</span></span><span id="mail-badge-all" class="mail-count">0</span>
-            </button>
-            <button type="button" class="mail-cat-btn" data-cat="hsmt" onclick="MailModule.setCategory('hsmt')">
-              <span class="flex items-center gap-2"><span>📑</span><span>Hồ sơ mời thầu</span></span><span id="mail-badge-hsmt" class="mail-count">0</span>
-            </button>
-            <button type="button" class="mail-cat-btn" data-cat="contract" onclick="MailModule.setCategory('contract')">
-              <span class="flex items-center gap-2"><span>🤝</span><span>Hợp đồng kinh tế</span></span><span id="mail-badge-contract" class="mail-count">0</span>
-            </button>
-            <button type="button" class="mail-cat-btn" data-cat="payment" onclick="MailModule.setCategory('payment')">
-              <span class="flex items-center gap-2"><span>🏢</span><span>Tạm ứng, TT</span></span><span id="mail-badge-payment" class="mail-count">0</span>
-            </button>
-            <button type="button" class="mail-cat-btn" data-cat="bvtk" onclick="MailModule.setCategory('bvtk')">
-              <span class="flex items-center gap-2"><span>📐</span><span>Bản vẽ thiết kế</span></span><span id="mail-badge-bvtk" class="mail-count">0</span>
-            </button>
-            <button type="button" class="mail-cat-btn" data-cat="chu-truong" onclick="MailModule.setCategory('chu-truong')">
-              <span class="flex items-center gap-2"><span>📋</span><span>Chủ trương</span></span><span id="mail-badge-chu-truong" class="mail-count">0</span>
-            </button>
-          </div>
         </aside>
         <div class="mail-split" data-split="folder" title="Kéo để đổi độ rộng cột thư mục"></div>
 

@@ -2,6 +2,29 @@
 const crypto=require('crypto');
 const {neon}=require('@neondatabase/serverless');
 const {can,active,deviceKeyMatches}=require('./awm_rpc');
+// Cây hòm thư/Data do AD gửi lên: chỉ tên, mã và số thư của từng thư mục (không có nội dung thư)
+const TREE_MAX_NODES=1500,TREE_MAX_DEPTH=8,TREE_MAX_STORES=40;
+const hex24=v=>typeof v==='string'&&/^[0-9a-f]{24}$/.test(v);
+function sanitizeTree(stores){
+ let budget=TREE_MAX_NODES;
+ const count=v=>Math.max(0,Math.min(10000000,Number(v)||0));
+ const node=(n,depth)=>{
+  if(!n||!hex24(n.id)||budget<=0||depth>TREE_MAX_DEPTH)return null;
+  budget--;
+  const children=(Array.isArray(n.children)?n.children:[]).map(c=>node(c,depth+1)).filter(Boolean);
+  return {id:n.id,name:String(n.name||'').slice(0,200),count:count(n.count),unread:count(n.unread),children};
+ };
+ return (Array.isArray(stores)?stores:[]).slice(0,TREE_MAX_STORES).map(s=>{
+  if(!s||!hex24(s.id))return null;
+  const folders=(Array.isArray(s.folders)?s.folders:[]).map(f=>node(f,1)).filter(Boolean);
+  return {id:s.id,kind:s.kind==='mailbox'?'mailbox':'data',name:String(s.name||'').slice(0,200),folders};
+ }).filter(Boolean);
+}
+// Một dòng thư trong danh sách thư mục: tiêu đề, người gửi, ngày, cờ (không có nội dung)
+function cleanFolderRow(r){
+ if(!r||typeof r.id!=='string'||!/^[0-9a-f]{64}$/.test(r.id))return null;
+ return {id:r.id,subject:String(r.subject||'').slice(0,1000),sender:String(r.sender||'').slice(0,500),to_text:String(r.to_text||'').slice(0,500),date:String(r.date||'').slice(0,100),unread:r.unread===true,att_count:Math.max(0,Math.min(999,Number(r.att_count)||0)),categories:String(r.categories||'').slice(0,300)};
+}
 function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POSTGRES_URL||process.env.POSTGRES_PRISMA_URL||'')){return async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  const fail=(code,error)=>res.status(code).json({ok:false,error});
@@ -27,16 +50,43 @@ function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POS
   if(op==='mailreq_fetch'){
    const list=Array.isArray(await readKey(reqKey))?await readKey(reqKey):[];const now=new Date().toISOString();const out=[];
    for(const r of list){if(r.status==='fetching'&&Date.now()-Date.parse(r.updated_at)>2*60000)r.status='queued';
-    if(r.status==='queued'){r.status='fetching';r.updated_at=now;out.push({id:r.id,type:r.type,mail_id:r.mail_id});}}
+    if(r.status==='queued'){r.status='fetching';r.updated_at=now;out.push({id:r.id,type:r.type,mail_id:r.mail_id,folder_id:r.folder_id||''});}}
    await writeKey(reqKey,list);return res.json({ok:true,data:{requests:out}});
   }
   if(op==='mailreq_result'){
    const rid=String(req.body?.id||''),good=req.body?.ok===true;
    const list=Array.isArray(await readKey(reqKey))?await readKey(reqKey):[];const target=list.find(r=>r.id===rid);
    if(!target)return res.json({ok:true,data:{updated:false}});
+   const now=new Date().toISOString();
+   if(target.type==='list'){
+    // Danh sách thư của một thư mục: lưu riêng để danh sách yêu cầu không phình to
+    const rows=good&&Array.isArray(req.body?.items)?req.body.items.slice(0,500).map(cleanFolderRow).filter(Boolean):[];
+    if(good&&hex24(target.folder_id))await writeKey(`awm:mailfolder:${username}:${target.folder_id}`,{updated_at:now,items:rows});
+    target.result=good?{count:rows.length}:null;
+   }else target.result=good?{text:String(req.body?.text||'').slice(0,100000)}:null;
    target.status=good?'done':'error';
    target.error=good?'':String(req.body?.error||'AD không đọc được thư này.').slice(0,300);
-   target.result=good?{text:String(req.body?.text||'').slice(0,100000)}:null;
+   target.progress=null;
+   target.updated_at=now;
+   await writeKey(reqKey,list);return res.json({ok:true,data:{updated:true}});
+  }
+  // ---- Cây hòm thư/Data (AD gửi), thứ tự hiển thị, tiến trình liệt kê thư mục ----
+  if(op==='mail_tree'){
+   const stores=sanitizeTree(req.body?.stores);
+   await writeKey(`awm:mailtree:${username}`,{updated_at:new Date().toISOString(),stores});
+   return res.json({ok:true,data:{stores:stores.length,order:(await readKey(`awm:mailorder:${username}`))||[]}});
+  }
+  if(op==='mail_order'){
+   const order=Array.isArray(req.body?.order)?req.body.order.filter(hex24).slice(0,TREE_MAX_STORES):[];
+   await writeKey(`awm:mailorder:${username}`,order);
+   return res.json({ok:true,data:{saved:order.length}});
+  }
+  if(op==='mailreq_progress'){
+   const rid=String(req.body?.id||'');
+   const raw=await readKey(reqKey),list=Array.isArray(raw)?raw:[];const target=list.find(r=>r.id===rid);
+   if(!target||target.status!=='fetching')return res.json({ok:true,data:{updated:false}});
+   const total=Math.max(0,Math.min(1000000,Number(req.body?.total)||0));
+   target.progress={done:Math.max(0,Math.min(total,Number(req.body?.done)||0)),total};
    target.updated_at=new Date().toISOString();
    await writeKey(reqKey,list);return res.json({ok:true,data:{updated:true}});
   }
@@ -66,7 +116,7 @@ function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POS
   const key=`awm:mail:${username}`;const old=await sql`SELECT value FROM bqlda_state WHERE key=${key}`;
   if(items?.some(r=>!r||typeof r.id!=='string'||!r.id||r.id.length>200)||items&&new Set(items.map(r=>r.id)).size!==items.length)return fail(400,'Mã thư thiếu, quá dài hoặc trùng lặp');
   const people=v=>Array.isArray(v)?v.slice(0,50).map(p=>({name:String(p?.name||'').slice(0,200),email:String(p?.email||'').slice(0,200)})):[];
-  const cleaned=items?.map(r=>({id:r.id,subject:String(r.subject||'').slice(0,1000),sender:String(r.sender||'').slice(0,500),email:String(r.email||'').slice(0,500),date:String(r.date||'').slice(0,100),body:String(r.body||'').slice(0,100000),project:String(r.project||'').slice(0,200),account:String(r.account||'').slice(0,200),folder:String(r.folder||'').slice(0,200),unread:r.unread===true,attachments:Array.isArray(r.attachments)?r.attachments.slice(0,50).map(x=>String(x).slice(0,180)):[],to:people(r.to),cc:people(r.cc)}));
+  const cleaned=items?.map(r=>({id:r.id,subject:String(r.subject||'').slice(0,1000),sender:String(r.sender||'').slice(0,500),email:String(r.email||'').slice(0,500),date:String(r.date||'').slice(0,100),body:String(r.body||'').slice(0,100000),project:String(r.project||'').slice(0,200),account:String(r.account||'').slice(0,200),folder:String(r.folder||'').slice(0,200),categories:String(r.categories||'').slice(0,300),unread:r.unread===true,attachments:Array.isArray(r.attachments)?r.attachments.slice(0,50).map(x=>String(x).slice(0,180)):[],to:people(r.to),cc:people(r.cc)}));
   // Giữ toàn bộ tiêu đề và người gửi (nhẹ). Nội dung chỉ giữ cho 50 thư nhận
   // và 20 thư gửi mới nhất; các thư còn lại để trống nội dung.
   const BODY_KEEP={inbox:50,sent:20};
@@ -87,7 +137,8 @@ function createHandler(getSql=()=>neon(process.env.DATABASE_URL||process.env.POS
    }
   }
   const outbox=await readKey(outKey);const pending=Array.isArray(outbox)?outbox.filter(j=>j.status==='queued').length:0;
-  return res.json({ok:true,data:{accepted:data.items.length,outbox_pending:pending}});
+  const reqRaw=await readKey(reqKey),mailreqPending=Array.isArray(reqRaw)?reqRaw.filter(r=>r.status==='queued').length:0;
+  return res.json({ok:true,data:{accepted:data.items.length,outbox_pending:pending,mailreq_pending:mailreqPending}});
  }catch(e){console.error('AD mail bridge:',e.message);return fail(500,'Không thể đồng bộ Mail lúc này');}
 };}
 module.exports=createHandler();
