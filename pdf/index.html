@@ -9838,6 +9838,8 @@ function start(){
           client_id: '893599506998-qimoqpucirv78c8nojgfgolh6cps22r7.apps.googleusercontent.com',
           scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email',
           ux_mode: 'popup',
+          // Luôn hiện bảng chọn tài khoản (để chọn tài khoản kho khác) và xin quyền lại để Google trả refresh token.
+          prompt: 'select_account consent',
           callback: async (resp) => {
             if (resp.error || !resp.code) { toast('Google: ' + (resp.error_description || resp.error || 'đã huỷ')); return; }
             toast('Đang lưu kết nối kho lưu trữ...');
