@@ -4743,20 +4743,30 @@ async function renderTextLayerForPage(ps, page, pageNum, pageEl, pi) {
       const item = textContent.items[itemIdx];
       if (!item.str || !item.str.trim()) continue;
       const tx = pdfjsLib.Util.transform(unscaledVp.transform, item.transform);
-      const fontHeight = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
+      const fontHeight = Math.hypot(tx[2], tx[3]);
+      const angleRad = Math.atan2(tx[1], tx[0]);
+
       const span = document.createElement('span');
       span.textContent = item.str;
       span.dataset.str = item.str;
       span.dataset.itemIdx = itemIdx;
 
       const leftPct = (tx[4] / fullW) * 100;
-      const topPct = (Math.max(0, tx[5] - fontHeight) / fullH) * 100;
+      const topPct = (tx[5] / fullH) * 100;
       const fontSizePx = Math.max(8, fontHeight * (pageH / fullH));
 
       span.style.left = leftPct + '%';
       span.style.top = topPct + '%';
       span.style.fontSize = fontSizePx + 'px';
       span.style.fontFamily = item.fontName || 'sans-serif';
+      span.style.transformOrigin = '0% 0%';
+
+      let transformStr = '';
+      if (Math.abs(angleRad) > 0.001) {
+        transformStr += `rotate(${angleRad}rad) `;
+      }
+      transformStr += `translateY(-${fontSizePx}px)`;
+      span.style.transform = transformStr.trim();
 
       textLayerEl.appendChild(span);
     }
