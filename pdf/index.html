@@ -10366,6 +10366,34 @@ function start(){
       renderTree();
     });
   }
+  // Mục 10: scrollIntoView/focus cuộn cả các khung cha overflow:hidden (html, body, .app...) làm giao diện bị đẩy lên.
+  // Khung nào bao quanh vùng trang PDF mà không cho người dùng cuộn thì luôn giữ ở vị trí 0.
+  document.addEventListener('scroll', e => {
+    const t = (e.target === document) ? document.scrollingElement : e.target;
+    if (!(t instanceof Element) || !(t.scrollTop || t.scrollLeft)) return;
+    const panes = document.getElementById('panes');
+    if (!panes || t === panes || !t.contains(panes)) return;
+    const cs = getComputedStyle(t);
+    if (t === document.scrollingElement || cs.overflowY === 'hidden' || cs.overflowX === 'hidden' || cs.overflow === 'hidden' || cs.overflow === 'clip') {
+      t.scrollTop = 0; t.scrollLeft = 0;
+    }
+  }, true);
+  // Chặn đồng bộ: sau scrollIntoView/focus, trả các khung cha (overflow:hidden) của vùng PDF về 0 ngay.
+  const resetLayoutScroll = () => {
+    const panes = document.getElementById('panes');
+    if (!panes) return;
+    for (let n = panes.parentElement; n; n = n.parentElement) {
+      if (n.scrollTop || n.scrollLeft) {
+        const cs = getComputedStyle(n);
+        if (n === document.documentElement || n === document.body || cs.overflowY === 'hidden' || cs.overflow === 'hidden') { n.scrollTop = 0; n.scrollLeft = 0; }
+      }
+    }
+  };
+  const _siv = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = function(...args){ const r = _siv.apply(this, args); resetLayoutScroll(); requestAnimationFrame(resetLayoutScroll); setTimeout(resetLayoutScroll, 400); return r; };
+  const _focus = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function(...args){ const r = _focus.apply(this, args); resetLayoutScroll(); return r; };
+  document.addEventListener('pointerup', () => setTimeout(resetLayoutScroll, 0), true);
   const dropPanes=$('#panes');
   dropPanes.ondragover=e=>{e.preventDefault();dropPanes.classList.add('dragover')};
   dropPanes.ondragleave=()=>dropPanes.classList.remove('dragover');
