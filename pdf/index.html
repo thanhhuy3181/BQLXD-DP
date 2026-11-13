@@ -9686,7 +9686,7 @@ function setGuestMode(on){
     g.id = 'guestIntro';
     g.className = 'guest-intro';
     g.innerHTML = '<div class="guest-card"><div class="tag">PDF QLDA</div><h2>Đăng nhập để bắt đầu</h2><p>Mở, ghi chú và cùng sửa tài liệu PDF với đội của bạn. Chưa có tài liệu nào được hiển thị khi chưa đăng nhập.</p><button class="btn primary" id="guestLoginBtn">Đăng nhập</button></div>';
-    const host = document.getElementById('app') || document.body;
+    const host = document.body; // gắn vào body để không bị khung #app (có thể có transform) làm lệch vị trí
     host.appendChild(g);
     document.getElementById('guestLoginBtn').onclick = () => {
       // Mở hộp đăng nhập ngay trên trang giới thiệu (hộp đăng nhập nằm trên lớp giới thiệu).
