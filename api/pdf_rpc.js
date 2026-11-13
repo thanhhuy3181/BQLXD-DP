@@ -495,7 +495,13 @@ module.exports = async function handler(req, res) {
             created_at: new Date().toISOString()
           };
           await sql`INSERT INTO bqlda_users (username,password_hash,status,data,updated_at) VALUES (${username},${hashPassword(crypto.randomBytes(16).toString('hex'))},'Pending',${JSON.stringify(newUser)},${Date.now()}) ON CONFLICT (username) DO NOTHING`;
-          return res.status(200).json(failure('Đã ghi nhận tài khoản. Vui lòng chờ Quản trị viên phê duyệt.'));
+          // Hai tài khoản chủ hệ thống được kích hoạt ngay lần đăng nhập Google đầu tiên (đoạn dưới nâng quyền/kích hoạt).
+          if (email !== 'thanhhuy3181@gmail.com' && email !== 'huycoi5@gmail.com') {
+            return res.status(200).json(failure('Đã ghi nhận tài khoản. Vui lòng chờ Quản trị viên phê duyệt.'));
+          }
+          rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE lower(username)=${username} LIMIT 1`;
+          row = rows[0];
+          if (!row) return res.status(200).json(failure('Không tạo được tài khoản, thử lại.'));
         }
         const rdata = typeof row.data === 'string' ? JSON.parse(row.data) : (row.data || {});
         const isAdm = email === 'thanhhuy3181@gmail.com';
