@@ -55,6 +55,25 @@ const PDF_DRIVE_CREDS = () => ({
   secret: process.env.PDF_DRIVE_CLIENT_SECRET || ''
 });
 const storageCreds = v => (v && v.client_id ? PDF_DRIVE_CREDS() : null);
+// Thư mục gốc trên Drive kho do Admin chọn (bqlda_settings key 'storage_root' = { id, name }).
+let rootCache = { at: 0, value: null };
+async function storageRoot(sql) {
+  if (!sql) return null;
+  if (Date.now() - rootCache.at < 30000) return rootCache.value;
+  try {
+    const rows = await sql`SELECT value FROM bqlda_settings WHERE key = 'storage_root' LIMIT 1`;
+    const v = rows[0] ? (typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value) : null;
+    rootCache = { at: Date.now(), value: v && v.id ? v : null };
+  } catch (_) { rootCache = { at: Date.now(), value: null }; }
+  return rootCache.value;
+}
+// ID thư mục gốc để lưu file: thư mục đã chọn, hoặc tự tạo "PDF-QLDA" như trước.
+async function rootFolderId(sql) {
+  const r = await storageRoot(sql);
+  return r ? r.id : ensureDriveFolder('PDF-QLDA');
+}
+const DRIVE_ID_RE = /^[A-Za-z0-9_-]{1,200}$/;
+
 let storageCache = { at: 0, value: null };
 async function loadStorageToken(sql) {
   try {
@@ -651,13 +670,54 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(result({ connected: false }));
     }
 
+    // 4c. CHỌN THƯ MỤC LƯU TRÊN DRIVE KHO (Admin): duyệt thư mục con, chọn thư mục đang đứng.
+    if (action === 'storage_folders' || action === 'storage_set_root') {
+      if (!isAdmin) return res.status(403).json(failure('Chỉ Quản trị viên được chọn thư mục lưu.'));
+      if (!sql) return res.status(200).json(failure('Chưa có cơ sở dữ liệu để lưu lựa chọn.'));
+      if (!(storageCache.value && storageCache.value.refresh_token)) return res.status(200).json(failure('Chưa kết nối tài khoản Google kho lưu trữ.'));
+      const meta = async id => {
+        const r = await driveFetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?supportsAllDrives=true&fields=id,name,mimeType,parents,trashed');
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error?.message || 'Không đọc được thư mục trên Drive.');
+        return d;
+      };
+      if (action === 'storage_folders') {
+        const parentIn = String(payload.parent_id || 'root');
+        if (parentIn !== 'root' && !DRIVE_ID_RE.test(parentIn)) return res.status(400).json(failure('Mã thư mục không hợp lệ.'));
+        const cur = await meta(parentIn);
+        const isRoot = parentIn === 'root' || !(cur.parents && cur.parents.length);
+        const q = `'${cur.id}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+        const lr = await driveFetch('https://www.googleapis.com/drive/v3/files?' + new URLSearchParams({
+          q, fields: 'files(id,name)', orderBy: 'name', pageSize: '300', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true'
+        }));
+        const ld = await lr.json().catch(() => ({}));
+        if (!lr.ok) return res.status(200).json(failure(ld.error?.message || 'Không liệt kê được thư mục.'));
+        return res.status(200).json(result({
+          folder: { id: cur.id, name: isRoot ? 'Drive của tôi' : cur.name, parent_id: isRoot ? null : cur.parents[0] },
+          folders: (ld.files || []).map(f => ({ id: f.id, name: f.name }))
+        }));
+      }
+      const fid = String(payload.folder_id || '');
+      if (fid !== 'root' && !DRIVE_ID_RE.test(fid)) return res.status(400).json(failure('Mã thư mục không hợp lệ.'));
+      const m = await meta(fid);
+      if (m.mimeType !== 'application/vnd.google-apps.folder' || m.trashed) return res.status(400).json(failure('Mục đã chọn không phải thư mục dùng được.'));
+      const isRoot = fid === 'root' || !(m.parents && m.parents.length);
+      const val = { id: m.id, name: isRoot ? 'Drive của tôi' : m.name, set_by: currentUser.username, set_at: new Date().toISOString() };
+      await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES ('storage_root', ${JSON.stringify(val)}, ${Date.now()})
+        ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`;
+      rootCache = { at: Date.now(), value: val };
+      return res.status(200).json(result({ root_folder: val.name, root_folder_id: val.id }));
+    }
+
     // 5. GOOGLE DRIVE STATUS & LISTING
     if (action === 'drive_status') {
       try {
         const token = await gdriveService.getAccessToken();
+        const root = await storageRoot(sql);
         return res.status(200).json(result({
           connected: !!token,
-          root_folder: 'PDF-QLDA',
+          root_folder: root ? root.name : 'PDF-QLDA',
+          root_folder_id: root ? root.id : null,
           email: (storageCache.value && storageCache.value.email) || '',
           dedicated: !!(storageCache.value && storageCache.value.refresh_token)
         }));
@@ -704,7 +764,7 @@ module.exports = async function handler(req, res) {
       let driveFileId = null;
 
       try {
-        const rootId = await ensureDriveFolder('PDF-QLDA');
+        const rootId = await rootFolderId(sql);
         const userFolderId = await ensureDriveFolder(folderName, rootId);
         const driveRes = await uploadToDrive(fileName, 'application/pdf', buffer, userFolderId);
         driveFileId = driveRes.id;
@@ -1068,7 +1128,7 @@ module.exports = async function handler(req, res) {
       const origin = uploadOrigin(req);
       if (origin === undefined) return deny('Origin không được phép tải lên.');
       const folderName = me;
-      const rootId = await ensureDriveFolder('PDF-QLDA');
+      const rootId = await rootFolderId(sql);
       const folderId = rootId && await ensureDriveFolder(folderName, rootId);
       if (!folderId) return res.status(502).json(failure('Không tạo được thư mục trên Google Drive.'));
       const uploadId = 'up_' + crypto.randomBytes(12).toString('hex');

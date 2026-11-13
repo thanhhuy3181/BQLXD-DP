@@ -96,6 +96,10 @@ body.guest .ribbon, body.guest .tree, body.guest .cmt, body.guest #pdfPanes { op
 body.guest #veilAuth{z-index:9100}
 .guest-intro[hidden]{display:none}
 .icon-btn[hidden],.tag[hidden]{display:none!important}
+.btn[hidden],#stoPicker[hidden]{display:none!important}
+.pk-item{display:block;width:100%;text-align:left;background:none;border:0;padding:7px 12px;font:inherit;font-size:12px;cursor:pointer;color:var(--fg)}
+.pk-item:hover,.pk-item:focus-visible{background:var(--bg)}
+.pk-note{padding:10px 12px;font-size:11.5px;color:var(--muted)}
 .guest-card{max-width:420px;margin:24px;padding:28px;background:var(--surface);border:1.5px solid var(--hard);border-radius:12px;box-shadow:6px 6px 0 var(--hard)}
 .guest-card h2{margin:10px 0 8px;font-size:22px}
 .guest-card p{color:var(--muted);line-height:1.6;margin:0 0 18px}
@@ -825,8 +829,23 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
           <button class="btn primary" id="btnConnectStorage" style="font-weight:700">🔐 Đăng nhập Google để kết nối kho lưu trữ</button>
           <span id="stoAdminHint" style="font-size:11px;color:var(--muted)"></span>
         </div>
-        <div style="margin-top:8px"><label style="font-size:11.5px">Thư mục gốc trên Drive kho:
-          <input class="field" id="stoRoot" value="PDF-QLDA" disabled style="width:160px;font-size:11.5px;padding:3px 8px"></label></div>
+        <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:11.5px">
+          <span>Thư mục lưu trên Drive kho:</span>
+          <b id="stoRootName" style="font-size:12px">PDF-QLDA</b>
+          <button class="btn ghost" id="btnPickRoot" style="padding:4px 10px;font-size:11.5px" hidden>📁 Chọn thư mục…</button>
+        </div>
+        <div id="stoPicker" hidden style="margin-top:10px;border:1.5px solid var(--line);border-radius:8px;overflow:hidden">
+          <div style="display:flex;gap:6px;align-items:center;padding:8px 10px;background:var(--bg);border-bottom:1px solid var(--line)">
+            <button class="btn ghost" id="pkUp" style="padding:3px 8px;font-size:11.5px" title="Lên thư mục cha">↑ Lên trên</button>
+            <b id="pkPath" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">Drive của tôi</b>
+          </div>
+          <div id="pkList" style="max-height:220px;overflow:auto;padding:4px 0"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:8px 10px;border-top:1px solid var(--line)">
+            <small style="color:var(--muted);margin-right:auto">Bấm vào thư mục để mở; dừng ở thư mục nào thì chọn thư mục đó.</small>
+            <button class="btn ghost" id="pkCancel" style="padding:4px 10px;font-size:11.5px">Huỷ</button>
+            <button class="btn primary" id="pkUse" style="padding:4px 10px;font-size:11.5px">Lưu vào thư mục này</button>
+          </div>
+        </div>
       </div>
 
       <!-- Thư mục theo tài khoản & Giới hạn -->
@@ -9543,11 +9562,57 @@ async function renderSto(){
     }
     if (stoAv) stoAv.textContent = ok && d.email ? d.email.slice(0, 2).toUpperCase() : 'GD';
     if (btnDisconnect) btnDisconnect.hidden = !(ok && isAdminUser);
+    const rootNameEl = $('#stoRootName');
+    if (rootNameEl) rootNameEl.textContent = d.root_folder || 'PDF-QLDA';
+    STO_ROOT_ID = d.root_folder_id || null;
+    const btnPick = $('#btnPickRoot');
+    if (btnPick) btnPick.hidden = !(ok && isAdminUser);
     if (box) box.append(el('div','row',ic('folder')+'<span class="who"><b>Thư mục gốc: ' + (d.root_folder || 'PDF-QLDA') + '</b><small>Mỗi tài khoản có thư mục con riêng</small></span><small>' + (ok ? 'Đang hoạt động' : 'Chưa kết nối') + '</small>'));
   } catch (err) {
     console.warn('renderSto error:', err);
   }
 }
+
+/* ---------- Chọn thư mục lưu trên Drive kho (chỉ Admin) ---------- */
+let STO_ROOT_ID = null;
+const PK = { cur: null };
+async function pkLoad(parentId){
+  const list = $('#pkList');
+  list.replaceChildren(Object.assign(document.createElement('div'), { className: 'pk-note', textContent: 'Đang tải thư mục…' }));
+  const r = await pdfApi('storage_folders', { parent_id: parentId || 'root' });
+  if (!r || !r.ok) {
+    list.replaceChildren(Object.assign(document.createElement('div'), { className: 'pk-note', textContent: (r && r.error) || 'Không tải được thư mục.' }));
+    return;
+  }
+  PK.cur = r.data.folder;
+  $('#pkPath').textContent = PK.cur.name;
+  $('#pkUp').disabled = !PK.cur.parent_id;
+  list.replaceChildren();
+  if (!r.data.folders.length) {
+    list.append(Object.assign(document.createElement('div'), { className: 'pk-note', textContent: 'Không có thư mục con. Bấm "Lưu vào thư mục này" để chọn thư mục đang mở.' }));
+  }
+  r.data.folders.forEach(f => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pk-item';
+    b.textContent = '📁 ' + f.name; // textContent: tên thư mục không bị hiểu là HTML
+    b.onclick = () => pkLoad(f.id);
+    list.append(b);
+  });
+}
+(() => {
+  const btnPick = $('#btnPickRoot'), picker = $('#stoPicker');
+  if (!btnPick || !picker) return;
+  btnPick.onclick = () => { picker.hidden = false; pkLoad(STO_ROOT_ID || 'root'); };
+  $('#pkUp').onclick = () => { if (PK.cur && PK.cur.parent_id) pkLoad(PK.cur.parent_id); };
+  $('#pkCancel').onclick = () => { picker.hidden = true; };
+  $('#pkUse').onclick = async () => {
+    if (!PK.cur) return;
+    const r = await pdfApi('storage_set_root', { folder_id: PK.cur.id });
+    if (r && r.ok) { toast('File PDF mới sẽ lưu vào: ' + r.data.root_folder); picker.hidden = true; renderSto(); }
+    else toast((r && r.error) || 'Không lưu được thư mục');
+  };
+})();
 
 function openCus(){
   if(!RIB[S.tab]){toast('Vui lòng chọn tab thường để tuỳ biến');return;}
