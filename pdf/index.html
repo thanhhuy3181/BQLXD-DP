@@ -867,8 +867,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
   <!-- Modal Đăng nhập QLDA Cloud & Google OAuth -->
   <div class="veil" id="veilAuth"><div class="dlg" style="width:min(420px,100%)" role="dialog" aria-label="Tài khoản QLDA">
     <h2>🔐 Tài khoản QLDA Cloud</h2>
-    <p style="color:var(--muted);margin:0 0 12px;line-height:1.4">Đăng nhập tài khoản Ban QLDA để đồng bộ trực tiếp với Google Drive và phối hợp cùng đồng nghiệp.</p>
-    <div style="display:flex;flex-direction:column;gap:8px">
+    <p id="authIntro" style="color:var(--muted);margin:0 0 12px;line-height:1.4">Đăng nhập tài khoản Ban QLDA để đồng bộ trực tiếp với Google Drive và phối hợp cùng đồng nghiệp.</p>
+    <div id="authLoginSec" style="display:flex;flex-direction:column;gap:8px">
       <label><b>Tên đăng nhập / Email</b>
         <input type="text" class="field" id="authUsername" placeholder="Tên đăng nhập hoặc email..."  style="width:100%">
       </label>
@@ -1426,24 +1426,10 @@ const COLLAB_PENDING_DELETES = new Set();
 let COLLAB_POLL_TIMER = null;
 let COLLAB_INITIALIZED = false;
 
+// Không tự tạo tài liệu: docId chỉ được đặt khi người dùng thật sự mở một tài liệu.
 async function ensureCollabDoc(){
-  const urlParams = new URLSearchParams(window.location.search);
-  let docId = urlParams.get('doc') || urlParams.get('doc_id') || localStorage.getItem('pdf_current_doc_id');
-
-  if(!docId){
-    try {
-      const dummyPdf = btoa('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF');
-      const r = await pdfApi('drive_upload_base64', { name: 'tmb_test.pdf', base64: dummyPdf, page_count: 7 });
-      if(r && r.ok && r.data && r.data.id){
-        docId = r.data.id;
-        localStorage.setItem('pdf_current_doc_id', docId);
-      }
-    } catch(e) {
-      console.warn('[collab] Không thể tạo doc demo:', e.message);
-    }
-  }
-  PDF_STATE.docId = docId || null;
-  return PDF_STATE.docId;
+  try { localStorage.removeItem('pdf_current_doc_id'); } catch(_) {}
+  return PDF_STATE.docId || null;
 }
 
 // Cộng tác trực tiếp qua API thật (/api/pdf_rpc: anno_upsert, anno_delete, anno_changes mỗi 1.5s)
@@ -10367,12 +10353,19 @@ function start(){
   $('#userBadge').onclick=()=>{
     const logSec = $('#authLogoutSec');
     const uInfo = $('#authCurrentUserInfo');
-    if (logSec && CURRENT_USER) {
-      logSec.style.display = 'block';
-      if (uInfo) uInfo.textContent = 'Đang đăng nhập: ' + (CURRENT_USER.fullname || CURRENT_USER.username) + ' (' + (CURRENT_USER.role || 'Thành viên') + ')';
-    } else if (logSec) {
-      logSec.style.display = 'none';
+    const loginSec = $('#authLoginSec');
+    const intro = $('#authIntro');
+    // Đã đăng nhập: chỉ hiện tài khoản đang dùng + Đăng xuất. Chưa đăng nhập: chỉ hiện form đăng nhập.
+    const signedIn = !!CURRENT_USER;
+    if (loginSec) loginSec.style.display = signedIn ? 'none' : 'flex';
+    if (intro) intro.style.display = signedIn ? 'none' : '';
+    if (logSec) {
+      logSec.style.display = signedIn ? 'block' : 'none';
+      logSec.style.borderTop = 'none';
+      logSec.style.marginTop = '0';
+      logSec.style.paddingTop = '0';
     }
+    if (uInfo && signedIn) uInfo.textContent = 'Đang đăng nhập: ' + (CURRENT_USER.fullname || CURRENT_USER.username) + ' (' + (CURRENT_USER.role || 'Thành viên') + ')';
     open('#veilAuth');
   };
   const btnLogout = $('#btnDoLogout');
