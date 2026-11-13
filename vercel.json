@@ -1,20 +1,10 @@
 {
   "functions": {
-    "api/rpc.js": {
-      "maxDuration": 30
-    },
-    "api/pdf_rpc.js": {
-      "maxDuration": 30
-    },
-    "api/pdf_file.js": {
-      "maxDuration": 30
-    }
+    "api/rpc.js": { "maxDuration": 30 },
+    "api/pdf_rpc.js": { "maxDuration": 30 }
   },
   "routes": [
-    {
-      "src": "/(?:data|api/data)/mail_snapshot\\.json",
-      "dest": "/api/private_mail"
-    },
+    {"src": "/(?:data|api/data)/mail_snapshot\\.json", "dest": "/api/private_mail"},
     {
       "src": "/(.*)",
       "headers": {
@@ -24,8 +14,6 @@
       },
       "continue": true
     },
-    {
-      "handle": "filesystem"
-    }
+    {"handle": "filesystem"}
   ]
 }
