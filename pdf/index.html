@@ -2066,7 +2066,8 @@ async function readPdfAnnotationsOnLoad(pdfDoc, ps, paneIdx) {
         const stroke = hasColor ? rgb01ToHex(an.color) : (type === 'stamp' ? '#ff0000' : 'transparent');
         const hasFill = Array.isArray(an.interiorColor) && an.interiorColor.length >= 3;
         const fill = hasFill ? rgb01ToHex(an.interiorColor) : (hasColor ? stroke : 'transparent');
-        const text = (an.contentsObj?.str != null ? an.contentsObj.str : an.contents) || '';
+        const rawText = (an.contentsObj?.str != null ? an.contentsObj.str : an.contents) || '';
+        const text = rawText;
         const title = (an.titleObj?.str != null ? an.titleObj.str : an.title) || 'PDF Gốc';
 
         const id = `anno_pdf_${paneIdx}_${pNum}_${idx}_${Date.now()}`;
@@ -3072,13 +3073,19 @@ function renderAnnoItem(a){
     elItem.style.border='none';
     elItem.style.background='none';
     elItem.style.opacity='1';
-    const stp=el('div','anno-stamp',a.text||'ĐÃ NGHIỆM THU');
-    stp.style.color=stroke;
-    stp.style.backgroundColor=fillRgba;
-    stp.style.opacity='1';
-    stp.style.borderColor=stroke;
-    stp.style.fontSize=(a.fontSize||13)+'px';
-    elItem.append(stp);
+    // Nếu là annotation gốc từ file PDF và không có text riêng, hình ảnh/con dấu đã được PDF.js vẽ trung thực từ luồng /AP trên trang
+    if (a.fromPdf && !a.isModified && (!a.text || a.text === 'ĐÃ NGHIỆM THU')) {
+      // Để khung bao trong suốt tương tác, không vẽ dải đỏ nhân tạo đè lên hình ảnh gốc của file
+      elItem.style.pointerEvents = 'auto';
+    } else {
+      const stp=el('div','anno-stamp',a.text||'ĐÃ NGHIỆM THU');
+      stp.style.color=stroke;
+      stp.style.backgroundColor=fillRgba;
+      stp.style.opacity='1';
+      stp.style.borderColor=stroke;
+      stp.style.fontSize=(a.fontSize||13)+'px';
+      elItem.append(stp);
+    }
   }else if(a.type==='text'){
     elItem.style.border=a.noBorder?'none':`${bw}px ${bs} ${stroke}`;
     elItem.style.backgroundColor=fillRgba;
@@ -4904,7 +4911,7 @@ async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
     const renderTask = page.render({
       canvasContext: ctx,
       viewport: vp,
-      annotationMode: (window.pdfjsLib && window.pdfjsLib.AnnotationMode) ? window.pdfjsLib.AnnotationMode.DISABLE : 0
+      annotationMode: (window.pdfjsLib && window.pdfjsLib.AnnotationMode) ? window.pdfjsLib.AnnotationMode.ENABLE : 1
     });
     const myEntry = {
       key: renderKey,
