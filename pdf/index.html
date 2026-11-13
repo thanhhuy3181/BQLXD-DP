@@ -683,6 +683,12 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
               <option value="review">🟠 Chờ sửa</option>
               <option value="rejected">🔴 Từ chối</option>
             </select>
+            <select id="cmtSort" title="Sắp xếp bình luận">
+              <option value="new">Mới nhất</option>
+              <option value="page">Theo trang</option>
+              <option value="author">Theo người</option>
+              <option value="status">Theo trạng thái</option>
+            </select>
           </div>
           <div class="clist" id="clist"></div>
         </div>
@@ -6550,8 +6556,9 @@ function bindLayerInteraction(ly,paneIdx){
       return;
     }
 
+    const upPtX=x, upPtY=y; /* toạ độ con trỏ ngoài khối (tránh che bởi let x bên trong) */
     if(tempAnno&&startPt){
-      const cdUp=constrainDraw(ly,e,draftObj,startPt,[x,y]);
+      const cdUp=constrainDraw(ly,e,draftObj,startPt,[upPtX,upPtY]);
       let x=cdUp.pt[0], y=cdUp.pt[1];
       if(draftObj && draftObj.textKind==='typewriter' && Math.abs(x-startPt[0])<1 && Math.abs(y-startPt[1])<1){
         x=Math.min(100,startPt[0]+22); y=Math.min(100,startPt[1]+3.2);
@@ -9594,10 +9601,27 @@ async function renderTree() {
 const USERS=[];
 const ini=n=>n.slice(0,2).toUpperCase();
 
+let CMT_SEQ = 0;
+function sortComments(){
+  const l = $('#clist'); if(!l) return;
+  const mode = $('#cmtSort')?.value || 'new';
+  const ord = {accepted:0, review:1, rejected:2, none:3};
+  const items = Array.from(l.children).filter(x => x.classList && x.classList.contains('c'));
+  const num = (x,k) => parseInt(x.dataset[k], 10) || 0;
+  items.sort((a,b) => {
+    if(mode === 'page') return num(a,'page') - num(b,'page') || num(a,'seq') - num(b,'seq');
+    if(mode === 'author') return (a.dataset.who||'').localeCompare(b.dataset.who||'', 'vi') || num(a,'seq') - num(b,'seq');
+    if(mode === 'status') return (ord[a.dataset.status] ?? 3) - (ord[b.dataset.status] ?? 3) || num(a,'seq') - num(b,'seq');
+    return num(b,'seq') - num(a,'seq');
+  });
+  items.forEach(x => l.append(x));
+}
 function addCmt(who,color,text,isNew,pageNum=null,annoId=null,status='none'){
   const pNum = pageNum || PDF_STATE.currentPage || 1;
   const c=el('div','c'+(isNew?' new':''),`<header><span class="av" style="background:${color}">${ini(who)}</span><span class="who-name">${who}</span><time>${isNew?'vừa xong':'hôm qua'}</time></header><p class="c-body">${text}</p><footer><span class="c-page">Trang ${pNum}</span><button class="link btn-reply-cmt" style="padding:0">Trả lời</button></footer>`);
   c.dataset.page = pNum;
+  c.dataset.seq = String(++CMT_SEQ);
+  c.dataset.who = String(who||'');
   c.dataset.annoId = annoId || '';
   c.dataset.status = status || 'none';
   const l=$('#clist');
@@ -11023,6 +11047,7 @@ function start(){
 
   // Lọc và tìm kiếm bình luận (K3)
   if($('#cmtSearch')) $('#cmtSearch').oninput = filterComments;
+  if($('#cmtSort')) $('#cmtSort').onchange = () => { sortComments(); filterComments(); };
   if($('#cmtFilterStatus')) $('#cmtFilterStatus').onchange = e => {
     filterComments();
     toast(e.target.value === 'all' ? 'Hiện tất cả bình luận' : 'Lọc theo trạng thái: ' + e.target.value);
