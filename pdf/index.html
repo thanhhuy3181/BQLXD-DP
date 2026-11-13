@@ -1442,7 +1442,7 @@ async function ensureCollabDoc(){
       console.warn('[collab] Không thể tạo doc demo:', e.message);
     }
   }
-  PDF_STATE.docId = docId || 'tmb';
+  PDF_STATE.docId = docId || null;
   return PDF_STATE.docId;
 }
 
@@ -1487,7 +1487,13 @@ ANNO_MAP.delete = function(id){
 };
 
 async function collabPollLoop(){
-  const docId = PDF_STATE.docId || 'doc_demo_collab';
+  // Chỉ đồng bộ khi đang mở một tài liệu thật và đã đăng nhập.
+  if (!PDF_STATE.docId || !CURRENT_USER) {
+    const sv = document.getElementById('docSavedStatus');
+    if (sv) sv.innerHTML = '';
+    return;
+  }
+  const docId = PDF_STATE.docId;
   const curPage = PDF_STATE.currentPage || 1;
 
   // 1. Gửi các ghi chú đã thêm hoặc sửa (anno_upsert)
@@ -1634,7 +1640,8 @@ setTimeout(() => renderCollaboratorPresence([]), 200);
 
 // Giải phóng hiện diện khi đóng tab
 window.addEventListener('pagehide', () => {
-  const docId = PDF_STATE.docId || 'doc_demo_collab';
+  const docId = PDF_STATE.docId;
+  if (!docId) return;
   try {
     fetch('/api/pdf_rpc', {
       method: 'POST',
@@ -9390,7 +9397,7 @@ function renderPeopleFromPerms(perms, owner = 'ban'){
       s.append(op);
     });
     s.onchange = async () => {
-      const docId = PDF_STATE.docId || 'tmb';
+      const docId = PDF_STATE.docId;
       if(s.value === 'Gỡ quyền'){
         CURRENT_DOC_PERMISSIONS.splice(idx, 1);
       } else {
@@ -9448,7 +9455,7 @@ function renderPendingAccessRequests(requests){
 }
 
 async function loadShareDialogData(){
-  const docId = PDF_STATE.docId || 'tmb';
+  const docId = PDF_STATE.docId;
   try {
     const res = await pdfApi('doc_get', { doc_id: docId });
     if(res && res.ok && res.data){
@@ -9673,6 +9680,8 @@ document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement
 function guestReset(){
   try { ANNO_MAP.clear(); } catch(_) {}
   try { ACC.length = 0; renderAcc(); } catch(_) {}
+  try { PDF_STATE.docId = null; } catch(_) {}
+  try { document.getElementById('docTitleText').textContent = 'Chưa mở tài liệu'; document.getElementById('docSavedStatus').innerHTML = ''; } catch(_) {}
   try { PANE_STATES.forEach((_, i) => { PANE_STATES[i] = createPaneState(i); }); } catch(_) {}
   try { CURRENT_DOC_PERMISSIONS = []; } catch(_) {}
   try { renderPanes(); } catch(_) {}
@@ -10497,7 +10506,7 @@ function start(){
     const v = $('#inEmail').value.trim();
     if(!v) return toast('Nhập tên hoặc email trước');
     const role = $('#inRole').value;
-    const docId = PDF_STATE.docId || 'tmb';
+    const docId = PDF_STATE.docId;
     const uName = v.includes('@') ? v.split('@')[0] : v;
     const existingIdx = CURRENT_DOC_PERMISSIONS.findIndex(p => p.username === uName || p.email === v);
     if(existingIdx !== -1){
@@ -10531,7 +10540,7 @@ function start(){
   };
 
   $('#rqSend').onclick = async () => {
-    const docId = PDF_STATE.docId || 'tmb';
+    const docId = PDF_STATE.docId;
     const role = $('#rqRole').value;
     const msg = $('#rqMsg').value.trim();
     try {
@@ -10571,19 +10580,17 @@ if (localStorage.getItem('pdf_reduced_motion') === '1') {
 
 start();
 
-// Tự động tải tài liệu cộng tác dùng chung khi mở /pdf/?doc=<id> hoặc mặc định tmb
-const qDocId = new URLSearchParams(location.search).get('doc') || new URLSearchParams(location.search).get('doc_id') || 'tmb';
+// Chỉ tự mở tài liệu khi đường dẫn có ?doc=<id> (không còn tài liệu mặc định).
+const qDocId = new URLSearchParams(location.search).get('doc') || new URLSearchParams(location.search).get('doc_id') || '';
 if (qDocId) {
-  PDF_STATE.docId = qDocId;
   (async () => {
     try {
-      let res = await fetch('/api/pdf_file?doc=' + encodeURIComponent(qDocId));
-      if (!res.ok && (qDocId === 'tmb' || qDocId.includes('tmb'))) {
-        res = await fetch('/pdf/tmb.pdf');
-      }
+      const tok = localStorage.getItem('bqlda_session_token') || '';
+      const res = await fetch('/api/pdf_file?doc=' + encodeURIComponent(qDocId), { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
       if (res.ok) {
+        PDF_STATE.docId = qDocId;
         const ab = await res.arrayBuffer();
-        const fn = qDocId === 'tmb' ? '260121 TMB khu A, B, C, D, E, F.pdf' : (qDocId.endsWith('.pdf') ? qDocId : (qDocId + '.pdf'));
+        const fn = qDocId.endsWith('.pdf') ? qDocId : (qDocId + '.pdf');
         await loadRealPdf(new Uint8Array(ab), fn, false, 0);
         S.tab = 'Ghi chú';
         renderTabs();
