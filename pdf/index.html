@@ -451,8 +451,10 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 
 /* Thanh bên 3 chế độ */
 .side>*{min-width:216px}
-.side-head .icon-btn{flex:none;border:1.5px solid var(--line)}
-.icon-btn.on{background:var(--accent);color:var(--accent-fg);border-color:var(--fg)}
+.side-head .icon-btn{flex:none;border:1.5px solid var(--line);background:var(--surface);color:var(--fg)}
+.side-head .icon-btn:hover{background:var(--surface-2);color:var(--accent)}
+.side-head .icon-btn svg.i{width:18px;height:18px;stroke-width:2.2;stroke:currentColor}
+.icon-btn.on{background:var(--accent)!important;color:var(--accent-fg)!important;border-color:var(--fg)!important}
 .side.auto{position:absolute;inset:0 auto 0 0;z-index:4;width:14px;background:var(--surface-2)}
 .side.auto>*{opacity:0;transition:opacity var(--fast)}
 .side.auto::after{content:"›";position:absolute;right:3px;top:50%;font-family:var(--mono);color:var(--muted)}
@@ -571,7 +573,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
     </div>
     <div class="body" id="body">
       <aside class="side" id="side">
-        <div class="side-head"><button class="btn primary" id="btnUp"></button><button class="icon-btn on" id="btnPin" aria-label="Ghim hoặc tự ẩn thanh bên" title="Đang ghim. Bấm để tự ẩn"></button><button class="icon-btn" id="btnHide" aria-label="Ẩn thanh bên" title="Ẩn thanh bên"></button></div>
+        <div class="side-head"><button class="btn primary" id="btnUp"></button><button class="icon-btn on" id="btnPin" aria-label="Ghim hoặc tự ẩn thanh bên" title="Đang ghim. Bấm để tự ẩn"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/></svg></button><button class="icon-btn" id="btnHide" aria-label="Ẩn thanh bên" title="Ẩn thanh bên"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6l-6 6 6 6m7-12-6 6 6 6"/></svg></button></div>
         <div class="side-tabs" id="sideTabs">
           <button class="side-tab on" id="tabSideTree">📁 Thư mục</button>
           <button class="side-tab" id="tabSideThumbs">🖼 Trang (<span id="sideThumbsCount">0</span>)</button>
@@ -8108,13 +8110,33 @@ function exportPageAsPng(){
   }
 }
 
+function generateBlankA4PdfBytes(){
+  // Chuẩn cú pháp PDF 1.4 A4 (595.28 x 841.89 pt) thuần JavaScript, không phụ thuộc thư viện ngoài
+  const s = '%PDF-1.4\n' +
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n' +
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n' +
+    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources <<>> >>\nendobj\n' +
+    'xref\n0 4\n' +
+    '0000000000 65535 f \n' +
+    '0000000009 00000 n \n' +
+    '0000000058 00000 n \n' +
+    '0000000115 00000 n \n' +
+    'trailer\n<< /Size 4 /Root 1 0 R >>\n' +
+    'startxref\n208\n%%EOF';
+  return new TextEncoder().encode(s);
+}
+
 async function createNewBlankPdf(){
-  if(!window.PDFLib) return toast('Thư viện PDF chưa sẵn sàng');
-  toast('Đang tạo trang PDF trắng mới...');
+  toast('Đang tạo trang PDF trắng mới (A4)...');
   try {
-    const pdfDoc = await PDFLib.PDFDocument.create();
-    pdfDoc.addPage([595.28, 841.89]); // A4 chuẩn
-    const bytes = await pdfDoc.save();
+    let bytes;
+    if (window.PDFLib && window.PDFLib.PDFDocument) {
+      const pdfDoc = await PDFLib.PDFDocument.create();
+      pdfDoc.addPage([595.28, 841.89]); // A4 chuẩn
+      bytes = await pdfDoc.save();
+    } else {
+      bytes = generateBlankA4PdfBytes();
+    }
     await loadRealPdf(bytes, 'Tai-lieu-trang.pdf', false);
     S.tab = 'Ghi chú';
     renderTabs();
@@ -8122,7 +8144,16 @@ async function createNewBlankPdf(){
     toast('Đã tạo tài liệu PDF trắng mới (A4)');
   } catch(e) {
     console.error('Lỗi tạo PDF trắng:', e);
-    toast('Lỗi tạo PDF trắng: ' + e.message);
+    try {
+      const fallbackBytes = generateBlankA4PdfBytes();
+      await loadRealPdf(fallbackBytes, 'Tai-lieu-trang.pdf', false);
+      S.tab = 'Ghi chú';
+      renderTabs();
+      renderTools(false);
+      toast('Đã tạo tài liệu PDF trắng mới (A4)');
+    } catch(err2) {
+      toast('Lỗi tạo PDF trắng: ' + e.message);
+    }
   }
 }
 
@@ -8146,8 +8177,11 @@ async function renderTree(){
     if(name && name.trim()) toast('Đã tạo thư mục: ' + name.trim());
   };
 
+  const listContainer = el('div', 'tree-list');
+  box.append(listContainer);
+
   if(!CURRENT_USER){
-    box.append(el('div', 'hint', '<div style="padding:16px 8px;text-align:center;font-size:11.5px;color:var(--muted)">Chưa đăng nhập Cloud.<br>Bạn có thể bấm <b>"PDF trắng mới"</b> ở trên hoặc mở file từ máy để làm việc.</div>'));
+    listContainer.append(el('div', 'hint', '<div style="padding:16px 8px;text-align:center;font-size:11.5px;color:var(--muted)">Chưa đăng nhập Cloud.<br>Bạn có thể bấm <b>"PDF trắng mới"</b> ở trên hoặc mở file từ máy để làm việc.</div>'));
     return;
   }
 
@@ -8157,7 +8191,7 @@ async function renderTree(){
     const docs = rawDocs.filter(d => d && d.has_file !== false);
 
     if(!docs.length){
-      box.innerHTML = '<div class="hint" style="padding:12px;text-align:center">Chưa có tài liệu trên Cloud.<br>Hãy đăng nhập hoặc bấm "Tải PDF lên".</div>';
+      listContainer.innerHTML = '<div class="hint" style="padding:12px;text-align:center">Chưa có tài liệu trên Cloud.<br>Hãy tải file hoặc bấm "PDF trắng mới" để bắt đầu.</div>';
       return;
     }
 
@@ -8168,7 +8202,7 @@ async function renderTree(){
       groups.get(folder).push(doc);
     });
 
-    box.append(el('h4', '', 'Tài liệu trên Cloud'));
+    listContainer.append(el('h4', '', 'Tài liệu trên Cloud'));
     groups.forEach((files, folderName) => {
       const b = el('button', 'node open', ic('chev').replace('class="i"', 'class="i chev"') + ic('folder') + `<span>${folderName}</span><em class="badge">${files.length}</em>`);
       const k = el('div', 'kids');
@@ -8185,7 +8219,7 @@ async function renderTree(){
       });
       k.append(inner);
       b.onclick = () => { b.classList.toggle('open'); k.classList.toggle('shut'); };
-      box.append(b, k);
+      listContainer.append(b, k);
     });
   }catch(err){
     console.warn('renderTree error:', err);
