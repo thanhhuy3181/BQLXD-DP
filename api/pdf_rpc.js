@@ -466,6 +466,9 @@ module.exports = async function handler(req, res) {
         if (!row) return res.status(200).json(failure('Tài khoản không tồn tại trên hệ thống!'));
         if (row.status === 'Locked') return res.status(200).json(failure('Tài khoản này đã bị khóa bởi Quản trị viên!'));
         if (row.status === 'Pending' || row.status === 'wait') return res.status(200).json(failure('Tài khoản đang chờ Quản trị viên phê duyệt.'));
+        // Chỉ tài khoản Admin đăng nhập bằng mật khẩu; các tài khoản khác phải đăng nhập bằng Google.
+        const rdataRole = (typeof row.data === 'string' ? JSON.parse(row.data) : (row.data || {})).role;
+        if (rdataRole !== 'Admin') return res.status(200).json(failure('Tài khoản này đăng nhập bằng Google.'));
         if (row.password_hash !== pHash) return res.status(200).json(failure('Sai mật khẩu đăng nhập!'));
 
         const token = crypto.randomBytes(32).toString('hex');
@@ -476,8 +479,9 @@ module.exports = async function handler(req, res) {
         if (!DEMO) return res.status(503).json(failure("Máy chủ chưa kết nối cơ sở dữ liệu."));
         // Chỉ chạy tới đây ở chế độ thử trên máy (DEMO)
         const isAdm = identifier.includes('thanhhuy3181') || identifier === 'admin';
-        const isMem = identifier.includes('huycoi5');
-        const role = isAdm ? 'Admin' : 'CBGS';
+        if (!isAdm) return res.status(200).json(failure('Tài khoản này đăng nhập bằng Google.'));
+        const isMem = false;
+        const role = 'Admin';
         const fullname = isAdm ? 'Thanh Huy (Admin)' : (isMem ? 'Huy Còi (Tester)' : 'Người dùng ' + identifier);
         return res.status(200).json({
           ...result({ username: identifier || 'ban', fullname, email: identifier.includes('@') ? identifier : `${identifier}@gmail.com`, role, status: 'Active' }),

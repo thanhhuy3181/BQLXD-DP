@@ -90,6 +90,14 @@ body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after
   }
 </script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+body.guest .ribbon, body.guest .tree, body.guest .cmt, body.guest #pdfPanes { opacity:.3; pointer-events:none; filter:grayscale(.5); }
+.guest-intro{position:absolute;inset:0;z-index:50;display:grid;place-items:center;background:rgba(227,240,237,.7);backdrop-filter:blur(2px)}
+.guest-intro[hidden]{display:none}
+.guest-card{max-width:420px;margin:24px;padding:28px;background:var(--surface);border:1.5px solid var(--hard);border-radius:12px;box-shadow:6px 6px 0 var(--hard)}
+.guest-card h2{margin:10px 0 8px;font-size:22px}
+.guest-card p{color:var(--muted);line-height:1.6;margin:0 0 18px}
+</style>
 </head><body>
 <style>
 /* Layout: một cửa sổ ứng dụng — thanh tiêu đề, ribbon một hàng, cây thư mục trái, vùng bản vẽ chia khung, bảng bình luận & thuộc tính phải. */
@@ -9661,7 +9669,33 @@ document.querySelectorAll('.veil').forEach(v=>v.addEventListener('click',e=>{if(
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(ACTIVE_POLY)cancelActivePoly();closeAll();immersive(false);$('#colorPop').classList.remove('show');$('#ctxMenu').classList.remove('show')}});
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)$('#app').classList.remove('immersive')});
 
+// Khách (chưa đăng nhập hoặc vừa đăng xuất): xoá mọi nội dung, khoá công cụ, hiện trang giới thiệu.
+function guestReset(){
+  try { ANNO_MAP.clear(); } catch(_) {}
+  try { PANE_STATES.forEach((_, i) => { PANE_STATES[i] = createPaneState(i); }); } catch(_) {}
+  try { CURRENT_DOC_PERMISSIONS = []; } catch(_) {}
+  try { renderPanes(); } catch(_) {}
+  try { renderTree(); } catch(_) {}
+}
+function setGuestMode(on){
+  document.body.classList.toggle('guest', !!on);
+  let g = document.getElementById('guestIntro');
+  if (on && !g) {
+    g = document.createElement('div');
+    g.id = 'guestIntro';
+    g.className = 'guest-intro';
+    g.innerHTML = '<div class="guest-card"><div class="tag">PDF QLDA</div><h2>Đăng nhập để bắt đầu</h2><p>Mở, ghi chú và cùng sửa tài liệu PDF với đội của bạn. Chưa có tài liệu nào được hiển thị khi chưa đăng nhập.</p><button class="btn primary" id="guestLoginBtn">Đăng nhập</button></div>';
+    const host = document.getElementById('app') || document.body;
+    host.appendChild(g);
+    document.getElementById('guestLoginBtn').onclick = () => {
+      const b = document.getElementById('btnUser') || document.getElementById('userBadge');
+      if (b) b.click();
+    };
+  }
+  if (g) g.hidden = !on;
+}
 function updateUserBadgeAndRole(){
+  setGuestMode(!CURRENT_USER);
   const btnSet = $('#btnSet');
   const userRoleEl = $('#userRole');
   const userNameEl = $('#userName');
@@ -10337,6 +10371,7 @@ function start(){
       localStorage.removeItem('awm_session');
       sessionStorage.removeItem('awm_session');
       CURRENT_USER = null;
+      guestReset();
       updateUserBadgeAndRole();
       closeAll();
       toast('Đã đăng xuất tài khoản.');
@@ -10344,7 +10379,7 @@ function start(){
   }
   const doLogin = async (id, pwd) => {
     const identifier = (id || $('#authUsername').value || 'thanhhuy3181@gmail.com').trim();
-    const password = (pwd || $('#authPassword').value || '55555').trim();
+    const password = (pwd || $('#authPassword').value || '').trim();
     if(!identifier) return toast('Nhập tên đăng nhập hoặc email');
     toast('Đang xác thực...');
     const res = await pdfApi('auth_login', { identifier, password });
@@ -10374,12 +10409,9 @@ function start(){
     doLogin('thanhhuy3181@gmail.com', '55555');
   };
 
+  // Tài khoản thường chỉ đăng nhập bằng Google: nút "Thành viên" bị bỏ, không còn mật khẩu mặc định.
   const btnQMem = $('#btnQuickMember');
-  if (btnQMem) btnQMem.onclick = () => {
-    $('#authUsername').value = 'huycoi5@gmail.com';
-    $('#authPassword').value = '55555';
-    doLogin('huycoi5@gmail.com', '55555');
-  };
+  if (btnQMem) btnQMem.style.display = 'none';
 
   const onLoginEnter = (e) => { if(e.key === 'Enter') { e.preventDefault(); doLogin(); } };
   $('#authUsername').onkeydown = onLoginEnter;
