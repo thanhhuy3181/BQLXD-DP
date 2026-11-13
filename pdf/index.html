@@ -95,6 +95,7 @@ body.guest .ribbon, body.guest .tree, body.guest .cmt, body.guest #pdfPanes { op
 .guest-intro{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:#e3f0ed;background:var(--bg,#e3f0ed)}
 body.guest #veilAuth{z-index:9100}
 .guest-intro[hidden]{display:none}
+.icon-btn[hidden],.tag[hidden]{display:none!important}
 .guest-card{max-width:420px;margin:24px;padding:28px;background:var(--surface);border:1.5px solid var(--hard);border-radius:12px;box-shadow:6px 6px 0 var(--hard)}
 .guest-card h2{margin:10px 0 8px;font-size:22px}
 .guest-card p{color:var(--muted);line-height:1.6;margin:0 0 18px}
@@ -9465,10 +9466,8 @@ async function loadShareDialogData(){
 }
 
 /* ---------- Cài đặt: tài khoản và nơi lưu trữ ---------- */
-const ACC=[
-  ['Thanh Huy (Admin)', 'thanhhuy3181@gmail.com', 'Quản trị', 'ok', '#0b7a71', 'thanhhuy3181'],
-  ['Huy Còi (Tester)', 'huycoi5@gmail.com', 'Thành viên', 'ok', '#7c3aed', 'huycoi5']
-];
+// Danh sách tài khoản: chỉ nạp từ máy chủ (users_list) khi Quản trị viên đăng nhập; không ghi cứng trong mã.
+const ACC=[];
 const STN={ok:'Đang dùng',wait:'Chờ duyệt',lock:'Đã khoá'};
 function renderAcc(){
   const q=($('#accFind').value||'').toLowerCase(),box=$('#accList');
@@ -9673,6 +9672,7 @@ document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement
 // Khách (chưa đăng nhập hoặc vừa đăng xuất): xoá mọi nội dung, khoá công cụ, hiện trang giới thiệu.
 function guestReset(){
   try { ANNO_MAP.clear(); } catch(_) {}
+  try { ACC.length = 0; renderAcc(); } catch(_) {}
   try { PANE_STATES.forEach((_, i) => { PANE_STATES[i] = createPaneState(i); }); } catch(_) {}
   try { CURRENT_DOC_PERMISSIONS = []; } catch(_) {}
   try { renderPanes(); } catch(_) {}
@@ -9719,6 +9719,8 @@ function updateUserBadgeAndRole(){
     if(btnSet){
       btnSet.hidden = !(role === 'Admin' || role === 'Quản trị');
     }
+    // Chỉ Quản trị viên được thấy danh sách tài khoản; tài khoản khác không giữ dữ liệu của phiên trước.
+    if(!(role === 'Admin' || role === 'Quản trị')){ try{ ACC.length = 0; renderAcc(); }catch(_){} }
   }else{
     if(userNameEl) userNameEl.textContent = 'Đăng nhập';
     if(userAvEl){
