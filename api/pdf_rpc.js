@@ -692,6 +692,18 @@ module.exports = async function handler(req, res) {
         }
         return d;
       };
+      // Đường dẫn đầy đủ từ gốc Drive tới thư mục: [{ id, name }, ...]
+      const pathOf = async m => {
+        const path = [];
+        let cur = m, guard = 0;
+        while (cur && guard++ < 30) {
+          const top = !(cur.parents && cur.parents.length);
+          path.unshift({ id: cur.id, name: top ? 'Drive của tôi' : cur.name });
+          if (top) break;
+          cur = await meta(cur.parents[0]);
+        }
+        return path;
+      };
       if (action === 'storage_folders') {
         const parentIn = String(payload.parent_id || 'root');
         if (parentIn !== 'root' && !DRIVE_ID_RE.test(parentIn)) return res.status(400).json(failure('Mã thư mục không hợp lệ.'));
@@ -705,6 +717,7 @@ module.exports = async function handler(req, res) {
         if (!lr.ok) return res.status(200).json(failure(ld.error?.message || 'Không liệt kê được thư mục.'));
         return res.status(200).json(result({
           folder: { id: cur.id, name: isRoot ? 'Drive của tôi' : cur.name, parent_id: isRoot ? null : cur.parents[0] },
+          path: await pathOf(cur),
           folders: (ld.files || []).map(f => ({ id: f.id, name: f.name }))
         }));
       }
@@ -713,11 +726,12 @@ module.exports = async function handler(req, res) {
       const m = await meta(fid);
       if (m.mimeType !== 'application/vnd.google-apps.folder' || m.trashed) return res.status(400).json(failure('Mục đã chọn không phải thư mục dùng được.'));
       const isRoot = fid === 'root' || !(m.parents && m.parents.length);
-      const val = { id: m.id, name: isRoot ? 'Drive của tôi' : m.name, set_by: currentUser.username, set_at: new Date().toISOString() };
+      const fullPath = (await pathOf(m)).map(p => p.name).join(' / ');
+      const val = { id: m.id, name: isRoot ? 'Drive của tôi' : m.name, path: fullPath, set_by: currentUser.username, set_at: new Date().toISOString() };
       await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES ('storage_root', ${JSON.stringify(val)}, ${Date.now()})
         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`;
       rootCache = { at: Date.now(), value: val };
-      return res.status(200).json(result({ root_folder: val.name, root_folder_id: val.id }));
+      return res.status(200).json(result({ root_folder: val.name, root_path: val.path, root_folder_id: val.id }));
     }
 
     // 5. GOOGLE DRIVE STATUS & LISTING
@@ -736,6 +750,7 @@ module.exports = async function handler(req, res) {
           drive_ok: driveOk,
           root_folder: root ? root.name : 'PDF-QLDA',
           root_folder_id: root ? root.id : null,
+          root_path: root ? (root.path || root.name) : 'Drive của tôi / PDF-QLDA',
           email: (storageCache.value && storageCache.value.email) || '',
           dedicated: !!(storageCache.value && storageCache.value.refresh_token)
         }));

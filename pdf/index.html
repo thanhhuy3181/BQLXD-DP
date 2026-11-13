@@ -100,6 +100,8 @@ body.guest #veilAuth{z-index:9100}
 .pk-item{display:block;width:100%;text-align:left;background:none;border:0;padding:7px 12px;font:inherit;font-size:12px;cursor:pointer;color:var(--fg)}
 .pk-item:hover,.pk-item:focus-visible{background:var(--bg)}
 .pk-note{padding:10px 12px;font-size:11.5px;color:var(--muted)}
+.pk-crumb{background:none;border:0;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline}
+.pk-sep{color:var(--muted)}
 .guest-card{max-width:420px;margin:24px;padding:28px;background:var(--surface);border:1.5px solid var(--hard);border-radius:12px;box-shadow:6px 6px 0 var(--hard)}
 .guest-card h2{margin:10px 0 8px;font-size:22px}
 .guest-card p{color:var(--muted);line-height:1.6;margin:0 0 18px}
@@ -837,7 +839,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
         <div id="stoPicker" hidden style="margin-top:10px;border:1.5px solid var(--line);border-radius:8px;overflow:hidden">
           <div style="display:flex;gap:6px;align-items:center;padding:8px 10px;background:var(--bg);border-bottom:1px solid var(--line)">
             <button class="btn ghost" id="pkUp" style="padding:3px 8px;font-size:11.5px" title="Lên thư mục cha">↑ Lên trên</button>
-            <b id="pkPath" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">Drive của tôi</b>
+            <span id="pkPath" style="font-size:12px;flex:1;line-height:1.6;word-break:break-word">Drive của tôi</span>
           </div>
           <div id="pkList" style="max-height:220px;overflow:auto;padding:4px 0"></div>
           <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:8px 10px;border-top:1px solid var(--line)">
@@ -9567,14 +9569,14 @@ async function renderSto(){
     if (stoAv) stoAv.textContent = ok && d.email ? d.email.slice(0, 2).toUpperCase() : 'GD';
     if (btnDisconnect) btnDisconnect.hidden = !(ok && isAdminUser);
     const rootNameEl = $('#stoRootName');
-    if (rootNameEl) rootNameEl.textContent = d.root_folder || 'PDF-QLDA';
+    if (rootNameEl) rootNameEl.textContent = d.root_path || d.root_folder || 'PDF-QLDA';
     STO_ROOT_ID = d.root_folder_id || null;
     const btnPick = $('#btnPickRoot');
     if (btnPick) btnPick.hidden = !(ok && isAdminUser);
     if (box) {
       box.replaceChildren(); // xoá ngay trước khi vẽ: hai lần gọi chồng nhau không tạo dòng trùng
       const row = el('div','row',ic('folder')+'<span class="who"><b></b><small>Mỗi tài khoản có thư mục con riêng</small></span><small></small>');
-      row.querySelector('b').textContent = 'Thư mục gốc: ' + (d.root_folder || 'PDF-QLDA'); // tên thư mục từ Drive: không chèn như HTML
+      row.querySelector('b').textContent = 'Thư mục gốc: ' + (d.root_path || d.root_folder || 'PDF-QLDA'); // tên thư mục từ Drive: không chèn như HTML
       row.querySelector('span.who + small').textContent = ok ? 'Đang hoạt động' : (noDrive ? 'Thiếu quyền Drive' : 'Chưa kết nối');
       box.append(row);
     }
@@ -9595,7 +9597,18 @@ async function pkLoad(parentId){
     return;
   }
   PK.cur = r.data.folder;
-  $('#pkPath').textContent = PK.cur.name;
+  // Đường dẫn đầy đủ từ gốc Drive; bấm vào một đoạn để nhảy về thư mục đó.
+  const pathEl = $('#pkPath');
+  pathEl.replaceChildren();
+  const segs = Array.isArray(r.data.path) && r.data.path.length ? r.data.path : [{ id: PK.cur.id, name: PK.cur.name }];
+  segs.forEach((p, i) => {
+    if (i) pathEl.append(Object.assign(document.createElement('span'), { className: 'pk-sep', textContent: ' / ' }));
+    if (i === segs.length - 1) { pathEl.append(Object.assign(document.createElement('b'), { textContent: p.name })); return; }
+    const a = document.createElement('button');
+    a.type = 'button'; a.className = 'pk-crumb'; a.textContent = p.name;
+    a.onclick = () => pkLoad(p.id);
+    pathEl.append(a);
+  });
   $('#pkUp').disabled = !PK.cur.parent_id;
   list.replaceChildren();
   if (!r.data.folders.length) {
@@ -9619,7 +9632,7 @@ async function pkLoad(parentId){
   $('#pkUse').onclick = async () => {
     if (!PK.cur) return;
     const r = await pdfApi('storage_set_root', { folder_id: PK.cur.id });
-    if (r && r.ok) { toast('File PDF mới sẽ lưu vào: ' + r.data.root_folder); picker.hidden = true; renderSto(); }
+    if (r && r.ok) { toast('File PDF mới sẽ lưu vào: ' + (r.data.root_path || r.data.root_folder)); picker.hidden = true; renderSto(); }
     else toast((r && r.error) || 'Không lưu được thư mục');
   };
 })();
