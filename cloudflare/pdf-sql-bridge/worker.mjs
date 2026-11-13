@@ -3,7 +3,7 @@
 // Triển khai (chạy tay, cần đăng nhập Cloudflare):
 //   npx wrangler deploy --config cloudflare/pdf-sql-bridge/wrangler.toml
 //   npx wrangler secret put SQL_TOKEN --config cloudflare/pdf-sql-bridge/wrangler.toml
-// Sau đó trên Vercel đặt SQL_URL = URL của Worker, SQL_TOKEN = cùng giá trị secret.
+// Sau đó trên Vercel đặt PDF_SQL_URL = URL của Worker, PDF_SQL_TOKEN = cùng giá trị secret.
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,

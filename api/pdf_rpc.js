@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Serverless Backend API cho PDF QLDA trên Vercel.
- * CSDL: Cloudflare D1 (SQLite) qua Worker cầu nối (SQL_URL, SQL_TOKEN), và Google Drive service.
+ * CSDL: Cloudflare D1 (SQLite) qua Worker cầu nối (PDF_SQL_URL, PDF_SQL_TOKEN), và Google Drive service.
  */
 const crypto = require('crypto');
 const { signToken, verifyToken } = require('./_auth_token');

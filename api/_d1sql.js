@@ -2,7 +2,7 @@
 /**
  * Lớp truy vấn dùng chung cho PDF QLDA trên Cloudflare D1 (SQLite).
  * Giữ kiểu gọi sql`SELECT ... WHERE a=${x}` như trước (Neon), nhưng câu lệnh chạy trên:
- *  - D1 qua một Worker cầu nối: SQL_URL + SQL_TOKEN (sản xuất trên Vercel), hoặc
+ *  - D1 qua một Worker cầu nối: PDF_SQL_URL + PDF_SQL_TOKEN (sản xuất trên Vercel), hoặc
  *  - SQLite của Node (node:sqlite) qua sqlLocal(file): chạy thử trên máy và bộ kiểm.
  * Quy ước: JSON được ghi dưới dạng TEXT; cột tên *_json, data, value, state được tự parse khi đọc;
  * boolean -> 1/0; Date -> mili-giây; undefined -> null.
@@ -77,7 +77,7 @@ function localRun(file) {
 
 // Đã cấu hình Worker cầu nối? Trả về hàm sql, hoặc null khi chưa có CSDL.
 function sqlFromEnv() {
-  const base = process.env.SQL_URL, token = process.env.SQL_TOKEN;
+  const base = process.env.PDF_SQL_URL, token = process.env.PDF_SQL_TOKEN;
   if (!base || !token) return null;
   return makeSql(httpRun(base, token));
 }
