@@ -9835,7 +9835,7 @@ function start(){
       if (!window.google?.accounts?.oauth2) { toast('Đang nạp dịch vụ Google, thử lại sau vài giây...'); return; }
       try {
         const client = google.accounts.oauth2.initCodeClient({
-          client_id: '893599506998-qimoqpucirv78c8nojgfgolh6cps22r7.apps.googleusercontent.com',
+          client_id: '893599506998-5o9a9t5b2v5bca51r89hb2sgegcijqu5.apps.googleusercontent.com', // mã Web "BQLDA Web V386" (mã Desktop không dùng được trên web)
           scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email',
           ux_mode: 'popup',
           // Luôn hiện bảng chọn tài khoản (để chọn tài khoản kho khác) và xin quyền lại để Google trả refresh token.

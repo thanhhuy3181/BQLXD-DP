@@ -49,6 +49,12 @@ const SESSION_MS = 30 * 24 * 3600 * 1000;
 const OWNER_ADMINS = ['admin', 'thanhhuy3181'];
 const isOwnerAdmin = username => OWNER_ADMINS.includes(String(username || '').toLowerCase());
 const normRole = r => (r === 'Admin' || r === 'Quản trị') ? 'Admin' : 'CBGS';
+// Ứng dụng OAuth loại "Web" dùng để Admin kết nối tài khoản Google kho (mã ID công khai; secret chỉ ở biến môi trường).
+const PDF_DRIVE_CREDS = () => ({
+  id: process.env.PDF_DRIVE_CLIENT_ID || '893599506998-5o9a9t5b2v5bca51r89hb2sgegcijqu5.apps.googleusercontent.com',
+  secret: process.env.PDF_DRIVE_CLIENT_SECRET || ''
+});
+const storageCreds = v => (v && v.client_id ? PDF_DRIVE_CREDS() : null);
 let storageCache = { at: 0, value: null };
 async function loadStorageToken(sql) {
   try {
@@ -56,7 +62,7 @@ async function loadStorageToken(sql) {
     const rows = await sql`SELECT value FROM bqlda_settings WHERE key = 'storage_drive' LIMIT 1`;
     const v = rows[0] ? (typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value) : null;
     storageCache = { at: Date.now(), value: v };
-    gdriveService.setRefreshToken(v && v.refresh_token ? v.refresh_token : '');
+    gdriveService.setRefreshToken(v && v.refresh_token ? v.refresh_token : '', storageCreds(v));
     return v;
   } catch (e) { return null; }
 }
@@ -615,9 +621,11 @@ module.exports = async function handler(req, res) {
       if (!sql) return res.status(200).json(failure('Chưa có cơ sở dữ liệu để lưu kết nối.'));
       const code = String(payload.code || '').trim();
       if (!code) return res.status(200).json(failure('Thiếu mã xác thực Google.'));
+      const creds = PDF_DRIVE_CREDS();
+      if (!creds.secret) return res.status(200).json(failure('Máy chủ chưa có PDF_DRIVE_CLIENT_SECRET (client secret của mã Web "BQLDA Web V386") trong biến môi trường Vercel.'));
       const tr = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
-        body: new URLSearchParams({ code, client_id: gdriveService.CLIENT_ID, client_secret: gdriveService.CLIENT_SECRET, redirect_uri: 'postmessage', grant_type: 'authorization_code' }),
+        body: new URLSearchParams({ code, client_id: creds.id, client_secret: creds.secret, redirect_uri: 'postmessage', grant_type: 'authorization_code' }),
         signal: AbortSignal.timeout(15000)
       });
       const td = await tr.json();
@@ -628,11 +636,11 @@ module.exports = async function handler(req, res) {
         const ui = await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + td.access_token }, signal: AbortSignal.timeout(10000) })).json();
         email = String(ui.email || '');
       } catch (_) {}
-      const val = { refresh_token: td.refresh_token, email, connected_by: currentUser.username, connected_at: new Date().toISOString() };
+      const val = { refresh_token: td.refresh_token, client_id: creds.id, email, connected_by: currentUser.username, connected_at: new Date().toISOString() };
       await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES ('storage_drive', ${JSON.stringify(val)}, ${Date.now()})
         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`;
       storageCache = { at: Date.now(), value: val };
-      gdriveService.setRefreshToken(val.refresh_token);
+      gdriveService.setRefreshToken(val.refresh_token, creds);
       return res.status(200).json(result({ connected: true, email }));
     }
     if (action === 'storage_disconnect') {
@@ -1218,6 +1226,7 @@ async function authorizeDocRead(req, docId) {
   const user = await getSessionUser(sql, req);
   if (!user || user.status !== 'Active') return { status: 401, error: 'Chưa đăng nhập hoặc phiên đã hết hạn.' };
   if (!docId) return { status: 400, error: 'Thiếu doc' };
+  await loadStorageToken(sql); // tải file bằng đúng tài khoản Google kho đã kết nối
   const rows = await sql`SELECT * FROM bqlda_pdf_docs WHERE id=${String(docId)} LIMIT 1`;
   const doc = rows[0] || null;
   const role = computeRole(user, doc);

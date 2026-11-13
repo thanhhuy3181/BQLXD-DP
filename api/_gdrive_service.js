@@ -10,9 +10,12 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || _dec([109,101,105,121,
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN || _dec([27,5,5,26,77,120,100,94,125,18,122,76,98,99,25,126,105,77,115,99,107,120,107,107,109,104,107,121,100,93,108,7,102,19,99,88,27,82,80,89,80,93,67,92,30,25,68,122,99,68,94,29,110,80,71,112,126,100,123,120,100,83,28,111,117,95,107,71,80,24,121,90,70,78,72,105,18,72,99,88,66,24,121,125,121,88,78,71,30,70,70,78,73,29,29,117,73,83,103,77,120,112,115]);
 
 let overrideRefresh = '';
-function setRefreshToken(t) {
+let overrideCreds = null; // { id, secret } của ứng dụng OAuth đã cấp refresh token kho (PDF: mã Web)
+function setRefreshToken(t, creds) {
   t = String(t || '');
-  if (t !== overrideRefresh) { overrideRefresh = t; cachedToken = ''; tokenExpiresAt = 0; }
+  const c = creds && creds.id && creds.secret ? { id: creds.id, secret: creds.secret } : null;
+  const same = t === overrideRefresh && (c ? c.id : '') === (overrideCreds ? overrideCreds.id : '');
+  if (!same) { overrideRefresh = t; overrideCreds = c; cachedToken = ''; tokenExpiresAt = 0; }
 }
 let cachedToken = '';
 let tokenExpiresAt = 0;
@@ -21,9 +24,10 @@ async function getAccessToken() {
   if (cachedToken && Date.now() < tokenExpiresAt - 60000) {
     return cachedToken;
   }
+  const useOverride = !!(overrideRefresh && overrideCreds);
   const params = new URLSearchParams({
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
+    client_id: useOverride ? overrideCreds.id : CLIENT_ID,
+    client_secret: useOverride ? overrideCreds.secret : CLIENT_SECRET,
     refresh_token: overrideRefresh || REFRESH_TOKEN,
     grant_type: 'refresh_token'
   });
