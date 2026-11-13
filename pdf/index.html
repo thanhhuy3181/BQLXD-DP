@@ -8938,7 +8938,10 @@ async function loadShareDialogData(){
 }
 
 /* ---------- Cài đặt: tài khoản và nơi lưu trữ ---------- */
-const ACC=[];
+const ACC=[
+  ['Thanh Huy (Admin)', 'thanhhuy3181@gmail.com', 'Quản trị', 'ok', '#0b7a71', 'thanhhuy3181'],
+  ['Huy Còi (Tester)', 'huycoi5@gmail.com', 'Thành viên', 'ok', '#7c3aed', 'huycoi5']
+];
 const STN={ok:'Đang dùng',wait:'Chờ duyệt',lock:'Đã khoá'};
 function renderAcc(){
   const q=($('#accFind').value||'').toLowerCase(),box=$('#accList');
@@ -9228,7 +9231,11 @@ function start(){
   renderAcc();
   renderSto();
   $('#accFind').oninput=renderAcc;
-  $('#btnSet').onclick=()=>open('#veilSet');
+  $('#btnSet').onclick=()=>{
+    loadCloudAccounts();
+    renderSto();
+    open('#veilSet');
+  };
   $('#setTabs').onclick=e=>{
     const b=e.target.closest('[data-t]');
     if(!b)return;
@@ -9943,16 +9950,18 @@ function start(){
   });
 
   async function loadCloudAccounts(){
-    if(!CURRENT_USER||(CURRENT_USER.role!=='Admin'&&CURRENT_USER.role!=='Quản trị')) return;
     try{
       const res=await pdfApi('users_list');
       if(res&&res.ok&&Array.isArray(res.data)&&res.data.length>0){
         ACC.length=0;
+        const curU = (CURRENT_USER?.username || 'thanhhuy3181').toLowerCase();
+        const curE = (CURRENT_USER?.email || 'thanhhuy3181@gmail.com').toLowerCase();
         res.data.forEach(u=>{
-          const isMe=u.username===(CURRENT_USER.username||'ban');
-          const st=u.status==='Active'?'ok':u.status==='Locked'?'lock':'wait';
-          const color=isMe?'#0b7a71':'#7c3aed';
-          ACC.push([u.fullname||u.username,u.email||`${u.username}@congty.vn`,u.role==='Admin'?'Quản trị':'Thành viên',st,color,u.username]);
+          const isMe = (u.username && u.username.toLowerCase() === curU) || (u.email && u.email.toLowerCase() === curE);
+          const st = u.status==='Active'?'ok':u.status==='Locked'?'lock':'wait';
+          const color = isMe ? '#0b7a71' : '#7c3aed';
+          const roleLabel = (u.role === 'Admin' || u.role === 'Quản trị') ? 'Quản trị' : 'Thành viên';
+          ACC.push([u.fullname || u.username, u.email || `${u.username}@gmail.com`, roleLabel, st, color, u.username]);
         });
         renderAcc();
       }

@@ -69,6 +69,8 @@ async function ensureDb() {
       expires_at timestamptz NOT NULL
     )`;
 
+    
+
     // 2. Bảng tài liệu PDF QLDA
     await sql`CREATE TABLE IF NOT EXISTS bqlda_pdf_docs (
       id text PRIMARY KEY,
@@ -567,15 +569,21 @@ module.exports = async function handler(req, res) {
     if (action === 'users_list') {
       if (sql) {
         const rows = await sql`SELECT username,status,data,updated_at FROM bqlda_users ORDER BY updated_at DESC`;
-        const list = rows.map(r => { const u = publicUser(r); return { username: u.username, fullname: u.fullname, email: u.email || '', role: u.role, status: u.status }; });
+        let list = rows.map(r => { const u = publicUser(r); return { username: u.username, fullname: u.fullname, email: u.email || '', role: u.role, status: u.status }; });
+        // Lọc bỏ triệt để tài khoản demo cũ
+        list = list.filter(u => !['minh@congty.vn', 'lan@congty.vn', 'tuan@congty.vn', 'hoa@congty.vn', 'ban@congty.vn'].includes(u.email));
+        // Đảm bảo thanhhuy3181 và huycoi5 luôn có trong danh sách
+        if (!list.some(u => u.username === 'thanhhuy3181' || u.email === 'thanhhuy3181@gmail.com')) {
+          list.unshift({ username: 'thanhhuy3181', fullname: 'Thanh Huy (Admin)', email: 'thanhhuy3181@gmail.com', role: 'Admin', status: 'Active' });
+        }
+        if (!list.some(u => u.username === 'huycoi5' || u.email === 'huycoi5@gmail.com')) {
+          list.push({ username: 'huycoi5', fullname: 'Huy Còi (Tester)', email: 'huycoi5@gmail.com', role: 'Thành viên', status: 'Active' });
+        }
         return res.status(200).json(result(list));
       } else {
         const fallbackUsers = [
-          { username: 'ban', fullname: 'Bạn', email: 'ban@congty.vn', role: 'Quản trị', status: 'Active' },
-          { username: 'minh', fullname: 'Minh', email: 'minh@congty.vn', role: 'Thành viên', status: 'Active' },
-          { username: 'lan', fullname: 'Lan', email: 'lan@congty.vn', role: 'Thành viên', status: 'Active' },
-          { username: 'tuan', fullname: 'Tuấn', email: 'tuan@congty.vn', role: 'Thành viên', status: 'Locked' },
-          { username: 'hoa', fullname: 'Hoa', email: 'hoa@congty.vn', role: 'Thành viên', status: 'Pending' }
+          { username: 'thanhhuy3181', fullname: 'Thanh Huy (Admin)', email: 'thanhhuy3181@gmail.com', role: 'Admin', status: 'Active' },
+          { username: 'huycoi5', fullname: 'Huy Còi (Tester)', email: 'huycoi5@gmail.com', role: 'Thành viên', status: 'Active' }
         ];
         return res.status(200).json(result(fallbackUsers));
       }
