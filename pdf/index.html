@@ -208,6 +208,9 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .side.dragover{outline:2.5px dashed var(--hot);outline-offset:-4px}
 .folder-node.drop-hover>.tree-folder-header{background:rgba(249,115,22,.15)!important;border-color:var(--hot)!important}
 .split{position:relative;display:inline-flex}
+.split-sm{display:flex}
+.split-sm>.tool.sm{flex:1;padding-right:16px}
+.split-sm .split-arrow{right:0;bottom:auto;top:50%;transform:translateY(-50%);height:18px;width:14px;background:none}
 .split-mini .split-arrow{position:absolute;right:-3px;bottom:-3px;width:13px;height:12px;padding:0;border:0;border-radius:3px;background:var(--surface);font-size:9px;line-height:12px;color:var(--fg);cursor:pointer}
 .split-lg{flex-direction:column;align-items:stretch}
 .split-lg .tool.lg{height:64px;border-bottom-left-radius:0;border-bottom-right-radius:0}
@@ -1137,6 +1140,8 @@ const P={
 };
 Object.assign(P, {
   typewriter:'M4 5h16v4h-2V7h-5v10h2v2H9v-2h2V7H6v2H4z',
+  textbox:'M3 4h18v16H3zM7 8h10M12 8v9',
+  calloutx:'M10 3h11v10H10zM13 6h5M15.5 6v5M10 11l-6 7m0 0v-4m0 4h4',
   ngon5:'M12 3l8.5 6.2-3.2 10H6.7L3.5 9.2z',
   ngon6:'M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z',
   ngon7:'M12 3l6.8 3.3 1.7 7.4-4.7 5.9H8.2l-4.7-5.9 1.7-7.4z',
@@ -1216,7 +1221,20 @@ const RIB={
   ],
   'Ghi chú':[
     ['Công cụ',[['hand','Kéo','tool','sm'],['cursor','Chọn chữ','tool','sm'],['search','Tìm','search','sm'],['pick','Chọn ghi chú','tool','lg'],['undo','Hoàn tác','undo','sm'],['redo','Làm lại','redo','sm']]],
-    ['Chữ',[['typewriter','Typewriter','tool','sm'],['text','Text Box','tool','sm'],['callout','Callout','tool','sm']]],
+    ['Chữ',[['typewriter','Typewriter','pset','sm',[
+        ['Courier 14, đen (mặc định)',{fontFamily:"'Courier New', Courier, monospace",fontSize:14,fontBold:false,textColor:'#000000'}],
+        ['Arial 15 đậm, đen',{fontFamily:'Arial',fontSize:15,fontBold:true,textColor:'#000000'}],
+        ['Arial 12, đỏ',{fontFamily:'Arial',fontSize:12,fontBold:false,textColor:'#dc2626'}],
+        ['Arial 12, xanh',{fontFamily:'Arial',fontSize:12,fontBold:false,textColor:'#2563eb'}]]],
+      ['text','Text Box','pset','sm',[
+        ['Viền đen, nền trắng',{stroke:'#000000',fill:'#ffffff',noFill:false,borderStyle:'solid',borderWidth:1,textColor:'#000000'}],
+        ['Mây đỏ (Cloudy Extra)',{stroke:'#d32f2f',fill:'#ef5350',noFill:false,borderStyle:'cloud-lg',borderWidth:1,fontFamily:'Arial',fontSize:24,fontBold:true,textColor:'#000000'}],
+        ['Nền vàng, viền cam',{stroke:'#f97316',fill:'#fef08a',noFill:false,borderStyle:'solid',borderWidth:1,textColor:'#000000'}],
+        ['Không viền, không nền',{stroke:'transparent',fill:'transparent',noFill:true,borderWidth:0,textColor:'#000000'}]]],
+      ['callout','Callout','pset','sm',[
+        ['Viền đỏ, mũi tên mở',{stroke:'#ff0000',fill:'#ffffff',noFill:false,lineEndEnding:'OpenArrow',fontFamily:'Arial',fontSize:24,fontBold:true,textColor:'#000000'}],
+        ['Viền đen, mũi tên kín',{stroke:'#000000',fill:'#ffffff',noFill:false,lineEndEnding:'ClosedArrow',textColor:'#000000'}],
+        ['Viền xanh, chấm tròn',{stroke:'#2563eb',fill:'#ffffff',noFill:false,lineEndEnding:'Circle',textColor:'#000000'}]]]]],
     ['Ghi chú',[['note','Ghi chú dán','tool','sm'],['image','Chèn ảnh','insertImg','sm']]],
     ['Đánh dấu',[['hl','Tô chữ','tool','sm']]],
     ['Vẽ',[['line','Đường thẳng','tool','mini'],['arrow','Mũi tên','tool','mini'],['rect','Chữ nhật','tool','mini'],['oval','Oval','tool','mini'],['polyline','Đường liên tiếp','tool','mini'],['poly','Đa giác','tool','mini'],['ngonPick','Đa giác đều / Ngôi sao','split','mini',[['ngon5','Ngũ giác đều'],['ngon6','Lục giác đều'],['ngon7','Thất giác đều'],['ngon8','Bát giác đều'],['star','Ngôi sao']]],['cloud','Đám mây','tool','mini'],['pen','Bút vẽ','tool','mini'],['eraser','Tẩy','tool','mini'],['bigDraw','Công cụ vẽ','split','lg',[['poly','Đa giác'],['line','Đường thẳng'],['arrow','Mũi tên'],['rect','Chữ nhật'],['oval','Oval'],['polyline','Đường liên tiếp'],['ngon5','Ngũ giác đều'],['ngon6','Lục giác đều'],['ngon7','Thất giác đều'],['ngon8','Bát giác đều'],['star','Ngôi sao'],['cloud','Đám mây'],['pen','Bút vẽ'],['stamp','Con dấu']]]]],
@@ -4556,9 +4574,42 @@ function splitBtn([key, label, , size, choices]){
   wrap.append(main, arrow);
   return wrap;
 }
+const TEXT_PRESET = (() => { try { return JSON.parse(localStorage.getItem('pdf_text_preset') || '{}'); } catch (_) { return {}; } })();
+const PSET_ICON = { text: 'textbox', callout: 'calloutx' };
+function presetBtn([id, label, , size, presets]){
+  const wrap = el('div', 'split split-mini split-sm');
+  const main = toolBtn([id, label, 'tool', size]);
+  if (PSET_ICON[id]) { const svg = main.querySelector('svg'); if (svg) svg.outerHTML = ic(PSET_ICON[id]); }
+  const cur = TEXT_PRESET[id];
+  if (cur && cur.name) main.title = label + ' — ' + cur.name;
+  const arrow = el('button', 'split-arrow', '▾');
+  arrow.title = 'Kiểu ' + label;
+  arrow.setAttribute('aria-label', 'Chọn kiểu ' + label);
+  arrow.onclick = e => {
+    e.stopPropagation();
+    openRibbonPopup(arrow, presets.map(([name, style]) => {
+      const b = el('button', 'tool sm', '<span class="pset-sw"></span><span></span>');
+      const sw = b.querySelector('.pset-sw');
+      sw.style.cssText = 'display:inline-block;width:14px;height:14px;border-radius:3px;flex:none;border:2px ' + (String(style.borderStyle || '').startsWith('cloud') ? 'dotted ' : 'solid ') + (style.stroke && style.stroke !== 'transparent' ? style.stroke : 'var(--line)') + ';background:' + (style.noFill === false && style.fill ? style.fill : 'transparent');
+      b.lastChild.textContent = name + ((cur && cur.name === name) ? ' ✓' : '');
+      b.onclick = () => {
+        TEXT_PRESET[id] = { name, style };
+        try { localStorage.setItem('pdf_text_preset', JSON.stringify(TEXT_PRESET)); } catch (_) {}
+        $('#rgroupPop')?.classList.remove('show');
+        act(id, 'tool', label);
+        renderTools(false);
+        toast(label + ': ' + name);
+      };
+      return b;
+    }));
+  };
+  wrap.append(main, arrow);
+  return wrap;
+}
 function toolBtn(item){
   const [id,label,kind,size]=item;
   if(kind==='split')return splitBtn(item);
+  if(kind==='pset')return presetBtn(item);
   if(kind==='colorWidget')return renderColorWidget();
   if(kind==='zoomBox')return renderZoomWidget();
   if(kind==='pageNavBox')return renderPageNavWidget();
@@ -6308,6 +6359,9 @@ function bindLayerInteraction(ly,paneIdx){
       }else if(S.tool==='callout'){
         Object.assign(draftObj,{textKind:'callout',fill:'#ffffff',noFill:false,opacity:100,textColor:'#000000',radius:0,
           lineEndEnding:'OpenArrow',lineEndScale:1});
+      }
+      if(TEXT_PRESET[S.tool] && TEXT_PRESET[S.tool].style && ['typewriter','text','callout'].includes(S.tool)){
+        Object.assign(draftObj, TEXT_PRESET[S.tool].style);
       }
       if(S.tool==='hl'){
         draftObj.fill=S.fillColor||'#facc15';
