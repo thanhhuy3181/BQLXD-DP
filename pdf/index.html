@@ -9579,6 +9579,21 @@ async function renderSto(){
       row.querySelector('b').textContent = 'Thư mục gốc: ' + (d.root_path || d.root_folder || 'PDF-QLDA'); // tên thư mục từ Drive: không chèn như HTML
       row.querySelector('span.who + small').textContent = ok ? 'Đang hoạt động' : (noDrive ? 'Thiếu quyền Drive' : 'Chưa kết nối');
       box.append(row);
+      // Thư mục con theo tài khoản (Admin): máy chủ tạo nếu thiếu (tên = nick Google), rồi trả danh sách.
+      if (ok && isAdminUser) {
+        pdfApi('storage_user_folders').then(fr => {
+          if (!fr || !fr.ok) return;
+          box.querySelectorAll('.uf').forEach(n => n.remove());
+          (fr.data.folders || []).forEach(f => {
+            const r2 = el('div','row uf',ic('folder')+'<span class="who"><b></b><small></small></span><small></small>');
+            r2.style.paddingLeft = '22px';
+            r2.querySelector('b').textContent = f.folder || f.username;
+            r2.querySelector('span.who small').textContent = f.fullname;
+            r2.querySelector('span.who + small').textContent = f.ready ? 'Đã có thư mục' : 'Chưa tạo được';
+            box.append(r2);
+          });
+        }).catch(() => {});
+      }
     }
   } catch (err) {
     console.warn('renderSto error:', err);

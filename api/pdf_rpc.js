@@ -73,6 +73,21 @@ async function rootFolderId(sql) {
   return r ? r.id : ensureDriveFolder('PDF-QLDA');
 }
 const DRIVE_ID_RE = /^[A-Za-z0-9_-]{1,200}$/;
+// Tạo sẵn (nếu chưa có) thư mục con của một tài khoản trong thư mục gốc của kho. Lỗi Drive không chặn đăng nhập.
+function userFolderName(u) {
+  const data = u && typeof u.data === 'string' ? (() => { try { return JSON.parse(u.data); } catch (_) { return {}; } })() : ((u && u.data) || {});
+  const email = String((u && u.email) || data.email || '');
+  const nick = email.includes('@') ? email.split('@')[0] : String((u && u.username) || '');
+  return nick.replace(/[\/\\:*?"<>|]/g, '_').trim();
+}
+async function ensureUserFolder(sql, username) {
+  try {
+    const st = await loadStorageToken(sql);
+    if (!(st && st.refresh_token) || !username) return null;
+    const rootId = await rootFolderId(sql);
+    return rootId ? await ensureDriveFolder(String(username), rootId) : null;
+  } catch (_) { return null; }
+}
 
 let storageCache = { at: 0, value: null };
 async function loadStorageToken(sql) {
@@ -475,6 +490,7 @@ module.exports = async function handler(req, res) {
         const token = crypto.randomBytes(32).toString('hex');
         await sql`DELETE FROM bqlda_sessions WHERE expires_at<=${Date.now()}`;
         await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},${Date.now() + SESSION_MS})`;
+        await ensureUserFolder(sql, userFolderName(row));
         return res.status(200).json({ ...result(publicUser(row)), session_token: token });
       } else {
         if (!DEMO) return res.status(503).json(failure("Máy chủ chưa kết nối cơ sở dữ liệu."));
@@ -528,6 +544,7 @@ module.exports = async function handler(req, res) {
             created_at: new Date().toISOString()
           };
           await sql`INSERT INTO bqlda_users (username,password_hash,status,data,updated_at) VALUES (${username},${hashPassword(crypto.randomBytes(16).toString('hex'))},'Pending',${JSON.stringify(newUser)},${Date.now()}) ON CONFLICT (username) DO NOTHING`;
+          await ensureUserFolder(sql, email.split('@')[0]);
           // Hai tài khoản chủ hệ thống được kích hoạt ngay lần đăng nhập Google đầu tiên (đoạn dưới nâng quyền/kích hoạt).
           if (email !== 'thanhhuy3181@gmail.com' && email !== 'huycoi5@gmail.com') {
             return res.status(200).json(failure('Đã ghi nhận tài khoản. Vui lòng chờ Quản trị viên phê duyệt.'));
@@ -555,6 +572,7 @@ module.exports = async function handler(req, res) {
         if (row.status !== 'Active') return res.status(200).json(failure('Tài khoản đang chờ Quản trị viên phê duyệt.'));
         const token = crypto.randomBytes(32).toString('hex');
         await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},${Date.now() + SESSION_MS})`;
+        await ensureUserFolder(sql, userFolderName(row));
         return res.status(200).json({ ...result(publicUser(row)), session_token: token });
       } else {
         if (!DEMO) return res.status(503).json(failure("Máy chủ chưa kết nối cơ sở dữ liệu."));
@@ -731,7 +749,25 @@ module.exports = async function handler(req, res) {
       await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES ('storage_root', ${JSON.stringify(val)}, ${Date.now()})
         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`;
       rootCache = { at: Date.now(), value: val };
-      return res.status(200).json(result({ root_folder: val.name, root_path: val.path, root_folder_id: val.id }));
+      // Tạo sẵn thư mục con cho mọi tài khoản đang hoạt động trong thư mục vừa chọn.
+      const act = await sql`SELECT username, data FROM bqlda_users WHERE status = 'Active' ORDER BY username LIMIT 100`;
+      for (const u of act) await ensureUserFolder(sql, userFolderName(u));
+      return res.status(200).json(result({ root_folder: val.name, root_path: val.path, root_folder_id: val.id, user_folders: act.map(u => u.username) }));
+    }
+
+    // 4d. Thư mục con theo tài khoản (Admin): tạo nếu thiếu và trả danh sách để hiển thị.
+    if (action === 'storage_user_folders') {
+      if (!isAdmin) return res.status(403).json(failure('Chỉ Quản trị viên xem được thư mục theo tài khoản.'));
+      if (!sql) return res.status(200).json(result({ folders: [] }));
+      const act = await sql`SELECT username, data FROM bqlda_users WHERE status = 'Active' ORDER BY username LIMIT 100`;
+      const folders = [];
+      for (const u of act) {
+        const name = userFolderName(u);
+        const id = await ensureUserFolder(sql, name);
+        const d = typeof u.data === 'string' ? JSON.parse(u.data) : (u.data || {});
+        folders.push({ username: u.username, folder: name, fullname: d.fullname || u.username, ready: !!id });
+      }
+      return res.status(200).json(result({ folders }));
     }
 
     // 5. GOOGLE DRIVE STATUS & LISTING
@@ -785,7 +821,7 @@ module.exports = async function handler(req, res) {
     if (action === 'drive_upload_base64') {
       const fileName = String(payload.name || 'Tai-lieu.pdf').trim();
       const base64Data = payload.base64;
-      const folderName = currentUser.username;
+      const folderName = userFolderName(currentUser);
       const pageCount = Number(payload.page_count) || 1;
       const scaleRatio = payload.scale_ratio || '1:100';
 
@@ -1160,7 +1196,7 @@ module.exports = async function handler(req, res) {
       if (size > MAX_UPLOAD_BYTES) return bad('File vượt quá 100 MB.');
       const origin = uploadOrigin(req);
       if (origin === undefined) return deny('Origin không được phép tải lên.');
-      const folderName = me;
+      const folderName = userFolderName(currentUser);
       const rootId = await rootFolderId(sql);
       const folderId = rootId && await ensureDriveFolder(folderName, rootId);
       if (!folderId) return res.status(502).json(failure('Không tạo được thư mục trên Google Drive.'));
