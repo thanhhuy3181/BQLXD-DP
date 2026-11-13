@@ -201,6 +201,12 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   check('Người không được chia sẻ doc_get -> 403', r.status === 403, r);
   r = await call('an', 'users_update', { username: 'binh', role: 'Admin' });
   check('Tài khoản thường users_update -> 403', r.status === 403, r);
+  r = await call('admin', 'users_update', { username: 'binh', role: 'Quản trị' });
+  check('Admin không nâng được tài khoản khác lên Quản trị', r.status === 200 && r.body.ok === false, r.body);
+  r = await call('admin', 'users_update', { username: 'binh', role: 'Thành viên' });
+  check('Admin đặt vai trò Thành viên -> lưu thành CBGS', r.body.ok === true && r.body.data.role === 'CBGS', r.body);
+  r = await call('binh', 'auth_login', { identifier: 'binh', password: 'x' });
+  check('Thành viên đăng nhập bằng mật khẩu bị từ chối (phải dùng Google)', r.body.ok === false && /Google/.test(r.body.error), r.body);
   r = await call('binh', 'anno_upsert', { doc_id: 'd1', items: [anno('b1', 1)] });
   check('Người sửa anno_upsert -> 200 applied', r.status === 200 && r.body.data.applied.length === 1, r);
   r = await call('dung', 'anno_upsert', { doc_id: 'd1', items: [anno('d1a', 2), anno('b1', 1, { hacked: true })] });

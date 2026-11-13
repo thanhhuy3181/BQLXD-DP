@@ -818,7 +818,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
       <div style="background:var(--surface);padding:14px;border-radius:8px;border:2px solid var(--accent);margin-bottom:14px">
         <b style="font-size:13.5px;display:block;margin-bottom:4px">Tài khoản Google làm kho lưu trữ (độc lập với tài khoản đăng nhập)</b>
         <p style="font-size:11.5px;color:var(--muted);margin:0 0 10px;line-height:1.5">
-          Mọi file PDF của các tài khoản (thanhhuy3181, huycoi5, thành viên cơ quan...) sẽ được ứng dụng tự lưu vào Drive của <b>một tài khoản Google riêng</b> (ví dụ bqlxddp).
+          Mọi file PDF của các tài khoản thành viên sẽ được ứng dụng tự lưu vào Drive của <b>một tài khoản Google riêng</b> (ví dụ bqlxddp).
           Quản trị viên chỉ cần đăng nhập tài khoản đó <b>một lần</b>; thư mục để riêng tư, không cần chia sẻ.
         </p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
@@ -10382,7 +10382,7 @@ function start(){
     };
   }
   const doLogin = async (id, pwd) => {
-    const identifier = (id || $('#authUsername').value || 'thanhhuy3181@gmail.com').trim();
+    const identifier = (id || $('#authUsername').value || '').trim();
     const password = (pwd || $('#authPassword').value || '').trim();
     if(!identifier) return toast('Nhập tên đăng nhập hoặc email');
     toast('Đang xác thực...');
@@ -10406,16 +10406,8 @@ function start(){
 
   $('#btnDoLogin').onclick = () => doLogin();
 
-  const btnQAdm = $('#btnQuickAdmin');
-  if (btnQAdm) btnQAdm.onclick = () => {
-    $('#authUsername').value = 'thanhhuy3181@gmail.com';
-    $('#authPassword').value = '55555';
-    doLogin('thanhhuy3181@gmail.com', '55555');
-  };
-
-  // Tài khoản thường chỉ đăng nhập bằng Google: nút "Thành viên" bị bỏ, không còn mật khẩu mặc định.
-  const btnQMem = $('#btnQuickMember');
-  if (btnQMem) btnQMem.style.display = 'none';
+  // Không còn nút đăng nhập nhanh: Admin gõ tên + mật khẩu; thành viên đăng nhập bằng Google.
+  ['#btnQuickAdmin', '#btnQuickMember'].forEach(s => { const b = $(s); if (b) b.remove(); });
 
   const onLoginEnter = (e) => { if(e.key === 'Enter') { e.preventDefault(); doLogin(); } };
   $('#authUsername').onkeydown = onLoginEnter;
@@ -10487,8 +10479,8 @@ function start(){
       const res=await pdfApi('users_list');
       if(res&&res.ok&&Array.isArray(res.data)&&res.data.length>0){
         ACC.length=0;
-        const curU = (CURRENT_USER?.username || 'thanhhuy3181').toLowerCase();
-        const curE = (CURRENT_USER?.email || 'thanhhuy3181@gmail.com').toLowerCase();
+        const curU = (CURRENT_USER?.username || '').toLowerCase();
+        const curE = (CURRENT_USER?.email || '').toLowerCase();
         res.data.forEach(u=>{
           const isMe = (u.username && u.username.toLowerCase() === curU) || (u.email && u.email.toLowerCase() === curE);
           const st = u.status==='Active'?'ok':u.status==='Locked'?'lock':'wait';

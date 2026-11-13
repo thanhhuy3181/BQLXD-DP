@@ -45,6 +45,10 @@ const roleRank = role => (role ? (ROLE_RANK[role] || 1) : 0);
 
 /* ---------- Kho lưu trữ Drive riêng (tài khoản Google độc lập, do Admin đăng nhập 1 lần) ---------- */
 const SESSION_MS = 30 * 24 * 3600 * 1000;
+// Chỉ hai tài khoản này là Quản trị; mọi tài khoản khác là thành viên (CBGS).
+const OWNER_ADMINS = ['admin', 'thanhhuy3181'];
+const isOwnerAdmin = username => OWNER_ADMINS.includes(String(username || '').toLowerCase());
+const normRole = r => (r === 'Admin' || r === 'Quản trị') ? 'Admin' : 'CBGS';
 let storageCache = { at: 0, value: null };
 async function loadStorageToken(sql) {
   try {
@@ -65,6 +69,10 @@ async function ensureDb() {
 
     // 1. Bảng lõi (người dùng, phiên, cài đặt, tài liệu, ghi chú, tuỳ chọn): idempotent.
     for (const stmt of CORE_SCHEMA_STATEMENTS) await sql.raw(stmt);
+    // Tài khoản quản trị đăng nhập bằng mật khẩu (theo yêu cầu chủ sản phẩm). Chỉ tạo khi chưa có,
+    // nên đổi mật khẩu sau này không bị ghi đè.
+    await sql`INSERT OR IGNORE INTO bqlda_users (username,password_hash,status,data,updated_at)
+      VALUES ('admin', ${hashPassword('55555')}, 'Active', ${JSON.stringify({ username: 'admin', fullname: 'Quản trị viên', role: 'Admin', status: 'Active' })}, ${Date.now()})`;
 
     
 
@@ -558,7 +566,7 @@ module.exports = async function handler(req, res) {
 
       if (!targetUsername) return res.status(200).json(failure('Thiếu username'));
       if (newStatus && !['Active', 'Locked', 'Pending'].includes(newStatus)) return res.status(200).json(failure('Trạng thái không hợp lệ'));
-      if (targetUsername === currentUser.username && (newStatus === 'Locked' || (newRole && newRole !== 'Admin'))) return res.status(200).json(failure('Không thể tự khóa hoặc tự hạ quyền chính mình.'));
+      if (targetUsername === currentUser.username && (newStatus === 'Locked' || (newRole && normRole(newRole) !== 'Admin'))) return res.status(200).json(failure('Không thể tự khóa hoặc tự hạ quyền chính mình.'));
 
       if (sql) {
         const rows = await sql`SELECT username,status,data FROM bqlda_users WHERE username=${targetUsername}`;
@@ -567,7 +575,12 @@ module.exports = async function handler(req, res) {
 
         const data = typeof row.data === 'string' ? JSON.parse(row.data) : (row.data || {});
         if (data.role === 'Admin' && newStatus === 'Locked') return res.status(200).json(failure('Không khóa tài khoản Admin.'));
-        if (newRole) data.role = newRole;
+        if (newRole) {
+          const want = normRole(newRole);
+          if (want === 'Admin' && !isOwnerAdmin(targetUsername)) return res.status(200).json(failure('Chỉ tài khoản admin và thanhhuy3181 là Quản trị; tài khoản khác là thành viên.'));
+          if (want !== 'Admin' && isOwnerAdmin(targetUsername)) return res.status(200).json(failure('Không hạ quyền tài khoản quản trị chính.'));
+          data.role = want;
+        }
         const statusToSet = newStatus || row.status;
 
         await sql`UPDATE bqlda_users SET status=${statusToSet}, data=${JSON.stringify(data)}, updated_at=${Date.now()} WHERE username=${targetUsername}`;
