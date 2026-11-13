@@ -266,7 +266,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .anno-item[data-type="ruler"] .anno-ruler-tag{pointer-events:auto;cursor:move}
 .anno-inline-editor{position:absolute;inset:0;width:100%;height:100%;box-sizing:border-box;background:rgba(255,255,255,.96);color:#0f172a;border:2px solid #2563eb;border-radius:3px;padding:3px 5px;resize:none;outline:none;z-index:25;font-family:inherit;line-height:1.3}
 @keyframes pop{from{transform:scale(.85);opacity:0}}
-.anno-item.selected{outline:2px dashed #2563eb;outline-offset:2px}
+.anno-item.selected{outline:none}
 .anno-item.locked{cursor:not-allowed!important}
 .anno-badge{position:absolute;top:-18px;left:0;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:3px;color:#fff;white-space:nowrap;font-family:var(--mono);box-shadow:1px 1px 0 var(--hard);display:flex;align-items:center;gap:4px;z-index:2}
 .anno-lock-ico{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:2px;padding:1px 3px;font-size:9px;line-height:1}
@@ -280,7 +280,12 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .pin::after{content:"";position:absolute;inset:5px;border-radius:50%;background:#fff}
 
 /* Selection Box & Transform Handles */
-.sel-box{position:absolute;border:1.5px dashed #2563eb;pointer-events:auto;cursor:move;z-index:10;box-sizing:border-box}
+.sel-box{position:absolute;border:1px dashed rgba(37,99,235,.55);pointer-events:none;z-index:10;box-sizing:border-box}
+.sel-edge{position:absolute;pointer-events:auto;cursor:move;z-index:11}
+.sel-edge.t{left:0;right:0;top:-5px;height:10px}
+.sel-edge.b{left:0;right:0;bottom:-5px;height:10px}
+.sel-edge.l{top:0;bottom:0;left:-5px;width:10px}
+.sel-edge.r{top:0;bottom:0;right:-5px;width:10px}
 .anno-item{cursor:move}
 .sel-hdl{position:absolute;width:8px;height:8px;background:#ffffff;border:1.5px solid #2563eb;border-radius:1px;pointer-events:auto;z-index:12}
 .sel-hdl.nw{left:-5px;top:-5px;cursor:nwse-resize}
@@ -799,43 +804,21 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
         </div>
       </div>
 
-      <!-- Hướng dẫn và Chọn Thư mục Google Drive trực tiếp -->
+      <!-- Kho lưu trữ độc lập: 1 tài khoản Google riêng, Admin đăng nhập 1 lần -->
       <div style="background:var(--surface);padding:14px;border-radius:8px;border:2px solid var(--accent);margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-          <span style="font-size:20px">📁</span>
-          <div>
-            <b style="font-size:13.5px;color:var(--text);display:block">Chọn Thư mục Google Drive bạn muốn lưu trữ</b>
-            <span style="font-size:11.5px;color:var(--muted)">Hệ thống tự động đồng bộ và lưu toàn bộ bản vẽ PDF vào đúng thư mục này của bạn. Không cần cài đặt JSON, token hay cấu hình phức tạp.</span>
-          </div>
+        <b style="font-size:13.5px;display:block;margin-bottom:4px">Tài khoản Google làm kho lưu trữ (độc lập với tài khoản đăng nhập)</b>
+        <p style="font-size:11.5px;color:var(--muted);margin:0 0 10px;line-height:1.5">
+          Mọi file PDF của các tài khoản (thanhhuy3181, huycoi5, thành viên cơ quan...) sẽ được ứng dụng tự lưu vào Drive của <b>một tài khoản Google riêng</b> (ví dụ bqlxddp).
+          Quản trị viên chỉ cần đăng nhập tài khoản đó <b>một lần</b>; thư mục để riêng tư, không cần chia sẻ.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <button class="btn primary" id="btnConnectStorage" style="font-weight:700">🔐 Đăng nhập Google để kết nối kho lưu trữ</button>
+          <span id="stoAdminHint" style="font-size:11px;color:var(--muted)"></span>
         </div>
-
-        <div style="background:var(--surface-2);padding:10px 12px;border-radius:6px;margin-bottom:12px;font-size:11.5px;line-height:1.5;border:1px dashed var(--line)">
-          <b style="color:var(--accent)">3 bước đơn giản:</b><br>
-          1. Vào <b>drive.google.com</b> -> Tạo hoặc mở thư mục bạn muốn lưu bản vẽ.<br>
-          2. Bấm nút <b>Chia sẻ (Share)</b> của thư mục đó -> Chọn <i>"Bất kỳ ai có đường liên kết"</i> (quyền Người chỉnh sửa/Editor) -> Bấm <b>Sao chép đường liên kết</b>.<br>
-          3. Dán đường liên kết đó vào ô bên dưới và bấm <b>"Áp dụng Thư mục này"</b>!
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <label style="font-size:12px;display:flex;flex-direction:column;gap:4px">
-            <b>Đường liên kết (Link) Thư mục Google Drive của bạn:</b>
-            <div style="display:flex;gap:6px">
-              <input class="field" id="stoFolderLink" placeholder="Ví dụ: https://drive.google.com/drive/folders/1ABCxyz... hoặc Folder ID" style="flex:1;font-size:12px;padding:6px 10px">
-              <button class="btn primary" id="btnApplyDriveFolder" style="flex:none;font-weight:700;padding:6px 16px;font-size:12px">💾 Áp dụng Thư mục này</button>
-            </div>
-          </label>
-
-          <div style="display:flex;gap:10px;align-items:center;margin-top:2px">
-            <label style="font-size:11.5px;display:flex;align-items:center;gap:6px;flex:1">
-              <span style="white-space:nowrap;color:var(--muted)">Tên hiển thị:</span>
-              <input class="field" id="stoRoot" value="PDF-QLDA" placeholder="PDF-QLDA" style="flex:1;font-size:11.5px;padding:3px 8px">
-            </label>
-            <a href="https://drive.google.com" target="_blank" rel="noopener" class="btn sm ghost" style="text-decoration:none;font-size:11.5px">
-              Mở Google Drive ↗
-            </a>
-          </div>
-        </div>
+        <div style="margin-top:8px"><label style="font-size:11.5px">Thư mục gốc trên Drive kho:
+          <input class="field" id="stoRoot" value="PDF-QLDA" disabled style="width:160px;font-size:11.5px;padding:3px 8px"></label></div>
       </div>
+
       <!-- Thư mục theo tài khoản & Giới hạn -->
       <h5>Thư mục theo tài khoản</h5>
       <div id="stoList"></div>
@@ -3496,6 +3479,7 @@ function updateSelectionOverlay(){
       });
     }
 
+    ['t','b','l','r'].forEach(k=>box.append(el('div','sel-edge '+k)));
     const rotLine=el('div','sel-rot-line');
     const rotHdl=el('div','sel-rot-hdl');
     rotHdl.dataset.hdl='rot';
@@ -3503,6 +3487,26 @@ function updateSelectionOverlay(){
 
     bindSelectionDrag(box,ly,minX,minY);
     ly.append(box);
+
+    // Điểm đầu/cuối cho Đường thẳng & Mũi tên (kéo để đổi hướng/độ dài)
+    if (items.length === 1 && (items[0].type === 'line' || items[0].type === 'arrow') && !items[0].locked) {
+      const a = items[0];
+      const rotDeg = a.rotate || 0;
+      const rad = rotDeg * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+      const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+      [['x1','y1','Điểm đầu'],['x2','y2','Điểm cuối']].forEach(([kx,ky,label],i)=>{
+        const px = a[kx] != null ? a[kx] : (i ? a.x + a.w : a.x);
+        const py = a[ky] != null ? a[ky] : (i ? a.y + a.h : a.y);
+        const rx = px - cx, ry = py - cy;
+        const cp = el('div','ctrl-pt');
+        cp.dataset.annoId = a.id;
+        cp.title = label + ' (kéo để thay đổi)';
+        cp.style.left = (cx + rx*cs - ry*sn) + '%';
+        cp.style.top = (cy + rx*sn + ry*cs) + '%';
+        bindLineEndDrag(cp, ly, a, i);
+        ly.append(cp);
+      });
+    }
 
     // Hiển thị các điểm điều khiển (Control Points .ctrl-pt) ở từng đỉnh cho Đa giác & Đường liên tiếp
     items.forEach(a => {
@@ -3539,6 +3543,47 @@ function updateSelectionOverlay(){
       }
     });
   });
+}
+
+function bindLineEndDrag(cp, ly, a, endIdx) {
+  cp.onpointerdown = e => {
+    if (e.button !== 0 || a.locked) return;
+    e.stopPropagation();
+    cp.setPointerCapture(e.pointerId);
+    const preSnap = captureAnnoSnapshot();
+    // Gộp góc xoay vào toạ độ 2 đầu để chỉnh tự do
+    const rotDeg = a.rotate || 0;
+    const x1 = a.x1 != null ? a.x1 : a.x, y1 = a.y1 != null ? a.y1 : a.y;
+    const x2 = a.x2 != null ? a.x2 : a.x + a.w, y2 = a.y2 != null ? a.y2 : a.y + a.h;
+    const rad = rotDeg * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+    const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+    const rot = (px, py) => [cx + (px-cx)*cs - (py-cy)*sn, cy + (px-cx)*sn + (py-cy)*cs];
+    let P = [rot(x1, y1), rot(x2, y2)];
+    a.rotate = 0;
+    let changed = false;
+    const apply = () => {
+      a.x1 = P[0][0]; a.y1 = P[0][1]; a.x2 = P[1][0]; a.y2 = P[1][1];
+      a.x = Math.min(a.x1, a.x2); a.y = Math.min(a.y1, a.y2);
+      a.w = Math.max(1.5, Math.abs(a.x2 - a.x1)); a.h = Math.max(1.5, Math.abs(a.y2 - a.y1));
+    };
+    apply();
+    const onMove = ev => {
+      changed = true;
+      const [nx, ny] = pct(ly, ev);
+      P[endIdx] = [nx, ny];
+      apply();
+      if (a.type === 'ruler') { /* giữ nguyên nhãn */ }
+      syncAllAnnotations(true, true);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (changed || rotDeg) { a.isModified = true; pushUndoState(preSnap); }
+      syncAllAnnotations(false);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
 }
 
 function bindControlPointDrag(cp, ly, a, ptIdx) {
@@ -9246,72 +9291,25 @@ async function renderSto(){
   const btnDisconnect = $('#stoDisconnect');
   const stoAv = $('#stoAv');
 
-  // Nạp link / ID thư mục đã lưu
-  const savedFolderLink = localStorage.getItem('pdf_gdrive_folder_link') || '';
-  const savedFolderId = localStorage.getItem('pdf_gdrive_folder_id') || '';
-  const savedRootName = localStorage.getItem('pdf_gdrive_root_folder') || 'PDF-QLDA';
-
-  if (folderLinkEl && savedFolderLink) folderLinkEl.value = savedFolderLink;
-  if (rootEl && savedRootName) rootEl.value = savedRootName;
-
-  // Kiểm tra cấu hình thư mục Google Drive riêng đã liên kết
-  if (savedFolderId || savedFolderLink) {
-    if(emailEl) emailEl.innerHTML = 'Thư mục Drive: <b>' + savedRootName + '</b>' + (savedFolderLink ? ' <a href="' + savedFolderLink + '" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);margin-left:6px">Mở Drive ↗</a>' : '');
-    if(statusEl) {
-      statusEl.innerHTML = '<i class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;margin-right:5px"></i>Đã liên kết với Google Drive của bạn (ID: ' + (savedFolderId || 'Custom') + ')';
-      statusEl.style.color = 'var(--ok)';
-    }
-    if(btnDisconnect) btnDisconnect.hidden = false;
-    if(stoAv) stoAv.textContent = 'GD';
-    if(box) {
-      box.append(el('div','row',ic('folder')+'<span class="who"><b>Thư mục lưu trữ: ' + savedRootName + '</b><small>' + (savedFolderLink || ('Folder ID: ' + savedFolderId)) + '</small></span><span class="tag ok">Đang dùng</span>'));
-    }
-    return;
-  }
-
-  // Kiểm tra tài khoản Google Drive cá nhân kết nối qua OAuth
-  let localGdrive = null;
-  try { localGdrive = JSON.parse(localStorage.getItem('pdf_gdrive_account') || 'null'); } catch(e){}
-
-  if (localGdrive && localGdrive.email) {
-    if(emailEl) emailEl.textContent = localGdrive.email;
-    if(statusEl) {
-      statusEl.innerHTML = '<i class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;margin-right:5px"></i>Đã kết nối với Google Drive của bạn';
-      statusEl.style.color = 'var(--ok)';
-    }
-    if(btnDisconnect) btnDisconnect.hidden = false;
-    if(stoAv) stoAv.textContent = (localGdrive.email.slice(0, 2)).toUpperCase();
-    if(box) {
-      box.append(el('div','row',ic('folder')+'<span class="who"><b>Thư mục gốc: ' + (rootEl?.value || 'PDF-QLDA') + '</b><small>Tài khoản: ' + localGdrive.email + '</small></span><span class="tag ok">Đang dùng</span>'));
-    }
-    return;
-  }
-
-  // Kiểm tra dịch vụ Google Drive máy chủ backend
-  try{
+  const isAdminUser = !!CURRENT_USER && CURRENT_USER.role === 'Admin';
+  const btnConn = $('#btnConnectStorage');
+  if (btnConn) btnConn.hidden = !isAdminUser;
+  const hint = $('#stoAdminHint');
+  if (hint) hint.textContent = isAdminUser ? '' : 'Chỉ Quản trị viên mới kết nối được kho lưu trữ.';
+  try {
     const res = await pdfApi('drive_status');
-    if(res && res.ok && res.data){
-      const d = res.data;
-      if(d.connected){
-        if(emailEl) emailEl.textContent = 'Google Drive Service (QLDA Cloud)';
-        if(statusEl){
-          statusEl.innerHTML = '<i class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;margin-right:5px"></i>Kết nối máy chủ hoạt động bình thường';
-          statusEl.style.color = 'var(--ok)';
-        }
-        if(btnDisconnect) btnDisconnect.hidden = false;
-      } else {
-        if(emailEl) emailEl.textContent = 'Chưa liên kết thư mục Google Drive';
-        if(statusEl){
-          statusEl.innerHTML = '<i class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-right:5px"></i>Dán link thư mục Google Drive của bạn ở mục 1 để kết nối';
-          statusEl.style.color = 'var(--warn)';
-        }
-        if(btnDisconnect) btnDisconnect.hidden = true;
-      }
-      if(box){
-        box.append(el('div','row',ic('folder')+'<span class="who"><b>Thư mục: ' + (d.root_folder || 'PDF-QLDA') + '</b></span><small>' + (d.connected ? 'Đang hoạt động' : 'Chưa cấu hình') + '</small>'));
-      }
+    const d = (res && res.ok && res.data) ? res.data : {};
+    const ok = !!d.connected && !!d.dedicated;
+    if (emailEl) emailEl.textContent = ok ? (d.email || 'Tài khoản kho lưu trữ') : 'Chưa kết nối tài khoản kho lưu trữ';
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + (ok ? '#10b981' : 'var(--warn)') + ';margin-right:5px"></i>' +
+        (ok ? 'Đang kết nối – file của mọi tài khoản được lưu vào Drive này' : 'Quản trị viên cần đăng nhập tài khoản Google kho (nút bên dưới)');
+      statusEl.style.color = ok ? 'var(--ok)' : 'var(--warn)';
     }
-  }catch(err){
+    if (stoAv) stoAv.textContent = ok && d.email ? d.email.slice(0, 2).toUpperCase() : 'GD';
+    if (btnDisconnect) btnDisconnect.hidden = !(ok && isAdminUser);
+    if (box) box.append(el('div','row',ic('folder')+'<span class="who"><b>Thư mục gốc: ' + (d.root_folder || 'PDF-QLDA') + '</b><small>Mỗi tài khoản có thư mục con riêng</small></span><small>' + (ok ? 'Đang hoạt động' : 'Chưa kết nối') + '</small>'));
+  } catch (err) {
     console.warn('renderSto error:', err);
   }
 }
@@ -9563,76 +9561,42 @@ function start(){
     };
   }
 
-  // Nút Kết nối Google OAuth trực tiếp
-  const btnConnectGD = document.getElementById('btnConnectGoogleDrive');
-  if (btnConnectGD) {
-    btnConnectGD.onclick = () => {
-      const cid = localStorage.getItem('bqlda_gdrive_client_id') || '334170590522-p4s1gj2uvrhg6m0tdvvkgvq8tgh7dcmh.apps.googleusercontent.com';
-      if (!window.google?.accounts?.oauth2) {
-        toast('Đang nạp Google Identity Services, vui lòng thử lại sau 2 giây...');
-        return;
-      }
-
-      toast('Đang mở cửa sổ đăng nhập Google Drive...');
+  // Admin đăng nhập tài khoản Google kho lưu trữ (code flow, server giữ refresh token)
+  const btnConnS = document.getElementById('btnConnectStorage');
+  if (btnConnS) {
+    btnConnS.onclick = () => {
+      if (!window.google?.accounts?.oauth2) { toast('Đang nạp dịch vụ Google, thử lại sau vài giây...'); return; }
       try {
-        const tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: cid,
-          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+        const client = google.accounts.oauth2.initCodeClient({
+          client_id: '893599506998-qimoqpucirv78c8nojgfgolh6cps22r7.apps.googleusercontent.com',
+          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email',
+          ux_mode: 'popup',
           callback: async (resp) => {
-            if (resp.error) {
-              if (resp.error === 'invalid_client' || String(resp.error).includes('origin')) {
-                $('#boxOauthGuide').hidden = false;
-                toast('Lỗi 401: Tên miền chưa được đăng ký trong Client ID này. Vui lòng xem hướng dẫn bên dưới hoặc dùng Phương thức 1!');
-              } else {
-                toast('Lỗi cấp quyền Google: ' + resp.error);
-              }
-              return;
-            }
-            try {
-              const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: 'Bearer ' + resp.access_token }
-              });
-              const info = await infoRes.json();
-              const email = info.email || 'Tài khoản Google';
-              const gdriveData = {
-                email: email,
-                access_token: resp.access_token,
-                expires_at: Date.now() + (Number(resp.expires_in) || 3600) * 1000,
-                connected: true,
-                root_folder: $('#stoRoot')?.value || 'PDF-QLDA'
-              };
-              localStorage.setItem('pdf_gdrive_account', JSON.stringify(gdriveData));
-              toast('Đã kết nối thành công với Google Drive: ' + email);
-              renderSto();
-            } catch(e) {
-              toast('Đã kết nối Google Drive thành công!');
-              renderSto();
-            }
-          }
+            if (resp.error || !resp.code) { toast('Google: ' + (resp.error_description || resp.error || 'đã huỷ')); return; }
+            toast('Đang lưu kết nối kho lưu trữ...');
+            const r = await pdfApi('storage_connect', { code: resp.code });
+            if (r && r.ok) { toast('Đã kết nối kho lưu trữ: ' + (r.data?.email || 'OK')); renderSto(); }
+            else toast((r && r.error) || 'Kết nối thất bại');
+          },
+          error_callback: (e) => toast('Không mở được cửa sổ Google: ' + (e?.type || e?.message || 'lỗi')),
         });
-        tokenClient.requestAccessToken({ prompt: 'consent' });
-      } catch(err) {
-        toast('Lỗi khởi tạo Google OAuth: ' + err.message);
-      }
+        client.requestCode();
+      } catch (err) { toast('Lỗi khởi tạo đăng nhập Google: ' + err.message); }
     };
   }
 
-  // Ngắt kết nối Google Drive
   const btnDisconnectGD = document.getElementById('stoDisconnect');
   if (btnDisconnectGD) {
-    btnDisconnectGD.onclick = () => {
-      if (confirm('Bạn có chắc chắn muốn ngắt kết nối với kho lưu trữ Google Drive này?')) {
-        localStorage.removeItem('pdf_gdrive_account');
-        localStorage.removeItem('pdf_gdrive_folder_id');
-        localStorage.removeItem('pdf_gdrive_folder_link');
-        toast('Đã ngắt kết nối kho lưu trữ Google Drive');
-        renderSto();
-      }
+    btnDisconnectGD.onclick = async () => {
+      if (!confirm('Ngắt kết nối kho lưu trữ? Các file mới sẽ không lưu được cho tới khi kết nối lại.')) return;
+      const r = await pdfApi('storage_disconnect');
+      toast(r && r.ok ? 'Đã ngắt kết nối kho lưu trữ' : ((r && r.error) || 'Lỗi'));
+      renderSto();
     };
   }
 
   // Nút Kiểm tra kết nối
-  $('#stoTest').onclick=async()=>{
+  $('#stoTest').onclick=async()=>{ const rr=await pdfApi('drive_status'); toast(rr&&rr.data&&rr.data.connected&&rr.data.dedicated?'Kho lưu trữ hoạt động tốt'+(rr.data.email?' ('+rr.data.email+')':''):'Kho lưu trữ chưa kết nối hoặc đã hết hạn'); renderSto(); return;
     toast('Đang kiểm tra kết nối Google Drive...');
     try{
       const folderId = localStorage.getItem('pdf_gdrive_folder_id');

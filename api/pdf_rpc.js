@@ -48,6 +48,20 @@ function computeRole(user, doc) {
 }
 const roleRank = role => (role ? (ROLE_RANK[role] || 1) : 0);
 
+/* ---------- Kho lưu trữ Drive riêng (tài khoản Google độc lập, do Admin đăng nhập 1 lần) ---------- */
+let storageCache = { at: 0, value: null };
+async function loadStorageToken(sql) {
+  try {
+    if (Date.now() - storageCache.at < 30000) return storageCache.value;
+    await sql`CREATE TABLE IF NOT EXISTS bqlda_settings (key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz DEFAULT now())`;
+    const rows = await sql`SELECT value FROM bqlda_settings WHERE key = 'storage_drive' LIMIT 1`;
+    const v = rows[0] ? (typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value) : null;
+    storageCache = { at: Date.now(), value: v };
+    gdriveService.setRefreshToken(v && v.refresh_token ? v.refresh_token : '');
+    return v;
+  } catch (e) { return null; }
+}
+
 async function ensureDb() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
@@ -413,6 +427,7 @@ module.exports = async function handler(req, res) {
       return res.status(401).json(failure('Chưa đăng nhập hoặc phiên đã hết hạn.'));
     }
     const isAdmin = !!currentUser && currentUser.role === 'Admin';
+    if (currentUser && sql) await loadStorageToken(sql);
     const roleOn = doc => computeRole(currentUser, doc);
     const canRead = doc => !!roleOn(doc);
     const canWrite = doc => { const r = roleOn(doc); return !!r && r !== 'Người xem'; };
@@ -634,6 +649,41 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(result({ success: true, deleted: targetUsername }));
     }
 
+    // 4b. KẾT NỐI KHO LƯU TRỮ (Admin đăng nhập Google của tài khoản kho, 1 lần)
+    if (action === 'storage_connect') {
+      if (!isAdmin) return res.status(403).json(failure('Chỉ Quản trị viên được kết nối kho lưu trữ.'));
+      if (!sql) return res.status(200).json(failure('Chưa có cơ sở dữ liệu để lưu kết nối.'));
+      const code = String(payload.code || '').trim();
+      if (!code) return res.status(200).json(failure('Thiếu mã xác thực Google.'));
+      const tr = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        body: new URLSearchParams({ code, client_id: gdriveService.CLIENT_ID, client_secret: gdriveService.CLIENT_SECRET, redirect_uri: 'postmessage', grant_type: 'authorization_code' }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const td = await tr.json();
+      if (!tr.ok || !td.access_token) return res.status(200).json(failure('Google từ chối: ' + (td.error_description || td.error || 'lỗi không rõ')));
+      if (!td.refresh_token) return res.status(200).json(failure('Google không trả quyền truy cập lâu dài. Hãy vào myaccount.google.com/permissions gỡ quyền của ứng dụng rồi kết nối lại.'));
+      let email = '';
+      try {
+        const ui = await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + td.access_token }, signal: AbortSignal.timeout(10000) })).json();
+        email = String(ui.email || '');
+      } catch (_) {}
+      const val = { refresh_token: td.refresh_token, email, connected_by: currentUser.username, connected_at: new Date().toISOString() };
+      await sql`CREATE TABLE IF NOT EXISTS bqlda_settings (key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz DEFAULT now())`;
+      await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES ('storage_drive', ${JSON.stringify(val)}::jsonb, now())
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`;
+      storageCache = { at: Date.now(), value: val };
+      gdriveService.setRefreshToken(val.refresh_token);
+      return res.status(200).json(result({ connected: true, email }));
+    }
+    if (action === 'storage_disconnect') {
+      if (!isAdmin) return res.status(403).json(failure('Chỉ Quản trị viên được ngắt kết nối kho lưu trữ.'));
+      if (sql) await sql`DELETE FROM bqlda_settings WHERE key = 'storage_drive'`;
+      storageCache = { at: Date.now(), value: null };
+      gdriveService.setRefreshToken('');
+      return res.status(200).json(result({ connected: false }));
+    }
+
     // 5. GOOGLE DRIVE STATUS & LISTING
     if (action === 'drive_status') {
       try {
@@ -641,7 +691,8 @@ module.exports = async function handler(req, res) {
         return res.status(200).json(result({
           connected: !!token,
           root_folder: 'PDF-QLDA',
-          service_account: true
+          email: (storageCache.value && storageCache.value.email) || '',
+          dedicated: !!(storageCache.value && storageCache.value.refresh_token)
         }));
       } catch (err) {
         return res.status(200).json(result({

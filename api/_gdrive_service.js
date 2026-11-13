@@ -9,6 +9,11 @@ const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || _dec([18,19,25,31,19,19,31,26,
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || _dec([109,101,105,121,122,114,7,25,108,111,26,64,88,115,80,72,24,107,83,108,89,104,27,126,100,28,70,95,73,105,25,125,64,31,28]);
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN || _dec([27,5,5,26,77,120,100,94,125,18,122,76,98,99,25,126,105,77,115,99,107,120,107,107,109,104,107,121,100,93,108,7,102,19,99,88,27,82,80,89,80,93,67,92,30,25,68,122,99,68,94,29,110,80,71,112,126,100,123,120,100,83,28,111,117,95,107,71,80,24,121,90,70,78,72,105,18,72,99,88,66,24,121,125,121,88,78,71,30,70,70,78,73,29,29,117,73,83,103,77,120,112,115]);
 
+let overrideRefresh = '';
+function setRefreshToken(t) {
+  t = String(t || '');
+  if (t !== overrideRefresh) { overrideRefresh = t; cachedToken = ''; tokenExpiresAt = 0; }
+}
 let cachedToken = '';
 let tokenExpiresAt = 0;
 
@@ -19,7 +24,7 @@ async function getAccessToken() {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     client_secret: CLIENT_SECRET,
-    refresh_token: REFRESH_TOKEN,
+    refresh_token: overrideRefresh || REFRESH_TOKEN,
     grant_type: 'refresh_token'
   });
   const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -145,6 +150,9 @@ async function downloadFile(fileId, mimeType = '') {
 }
 
 module.exports = {
+  setRefreshToken,
+  CLIENT_ID,
+  CLIENT_SECRET,
   getAccessToken,
   listFiles,
   findFile,
