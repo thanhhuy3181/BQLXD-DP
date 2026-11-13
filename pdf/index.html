@@ -354,9 +354,12 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .prop-sec{border:1.5px solid var(--line);border-radius:6px;padding:8px;background:var(--surface);display:flex;flex-direction:column;gap:6px}
 .prop-sec-title{font-size:10.5px;text-transform:uppercase;font-weight:700;color:var(--muted);letter-spacing:.6px;font-family:var(--mono);display:flex;align-items:center;gap:4px;border-bottom:1px dashed var(--line);padding-bottom:4px}
 .prop-row{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px}
-.prop-row label{color:var(--muted);white-space:nowrap}
-.prop-row input[type="range"]{flex:1;accent-color:var(--accent)}
-.prop-row .val{font-family:var(--mono);font-size:11px;min-width:36px;text-align:right}
+.prop-row label{color:var(--muted);white-space:nowrap;min-width:95px}
+.prop-row input[type="range"]{flex:1;min-width:60px;accent-color:var(--accent)}
+.prop-row .val{font-family:var(--mono);font-size:11px;min-width:44px;text-align:right;white-space:nowrap;display:inline-block}
+.prop-num-box{width:52px;padding:2px 4px;font-size:11px;font-family:var(--mono);border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--fg);text-align:right}
+.prop-num-box:focus{border-color:var(--accent);outline:none;background:var(--surface-2)}
+.prop-style-opt:hover{background:var(--surface-2)!important}.prop-style-opt.on{background:var(--accent-soft)!important;font-weight:700}
 .prop-num{width:56px;padding:2px 4px;font-size:11px;font-family:var(--mono);border:1px solid var(--line);border-radius:4px;text-align:right}
 .prop-btn-grp{display:flex;gap:3px}
 .prop-btn-grp button{padding:3px 7px;font-size:10.5px;border:1px solid var(--line);border-radius:4px;font-weight:600}
@@ -368,7 +371,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .prop-floating-head{padding:6px 10px;background:var(--surface-2);border-bottom:1.5px solid var(--fg);display:flex;align-items:center;justify-content:space-between;cursor:move;user-select:none;font-weight:700;font-size:12px;font-family:var(--mono)}
 
 /* Popovers & Context Menu */
-.popover{position:absolute;background:var(--surface);border:1.5px solid var(--hard);border-radius:8px;box-shadow:5px 5px 0 var(--hard);padding:10px;z-index:25;display:none;flex-direction:column;gap:8px;min-width:240px;transform-origin:var(--origin, top center);opacity:0;transform:scale(.96);transition:transform 160ms var(--out),opacity 160ms var(--out)}
+.popover{position:absolute;background:var(--surface);border:1.5px solid var(--hard);border-radius:8px;box-shadow:5px 5px 0 var(--hard);padding:10px;z-index:25;display:none;flex-direction:column;gap:8px;width:300px;min-width:300px;box-sizing:border-box;transform-origin:var(--origin, top center);opacity:0;transform:scale(.96);transition:transform 160ms var(--out),opacity 160ms var(--out)}
 .popover.show{display:flex;opacity:1;transform:scale(1)}
 .pop-tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding-bottom:4px}
 .pop-tab{flex:1;padding:3px 6px;font-size:11px;font-weight:600;text-align:center;border-radius:4px}
@@ -685,12 +688,18 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
       <div class="prop-row">
         <label>Độ mờ (Opacity):</label>
         <input type="range" id="popRangeOpacity" min="10" max="100" value="100">
-        <span class="val" id="popValOpacity">100%</span>
+        <div style="display:flex;align-items:center;gap:2px">
+          <input type="number" class="prop-num-box" id="popNumOpacity" min="10" max="100" value="100" title="Nhập độ mờ từ 10 đến 100%">
+          <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">%</span>
+        </div>
       </div>
       <div class="prop-row">
         <label>Độ dày viền:</label>
-        <input type="range" id="popRangeWidth" min="1" max="12" value="2">
-        <span class="val" id="popValWidth">2pt</span>
+        <input type="range" id="popRangeWidth" min="1" max="16" value="2">
+        <div style="display:flex;align-items:center;gap:2px">
+          <input type="number" class="prop-num-box" id="popNumWidth" min="0.5" max="30" step="0.5" value="2" title="Nhập độ dày viền (pt)">
+          <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">pt</span>
+        </div>
       </div>
       <div class="prop-row" style="align-items:center">
         <label>Kiểu nét:</label>
@@ -699,7 +708,10 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
       <div class="prop-row">
         <label>Tỷ lệ nét đứt:</label>
         <input type="range" id="popDashScale" min="0.25" max="10" step="0.25" value="1">
-        <span class="val" id="popDashScaleVal">1.00×</span>
+        <div style="display:flex;align-items:center;gap:2px">
+          <input type="number" class="prop-num-box" id="popNumDashScale" min="0.1" max="20" step="0.1" value="1.0" title="Nhập tỷ lệ nét đứt (0.1 đến 20x)">
+          <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">×</span>
+        </div>
       </div>
     </div>
   </div>
@@ -2513,9 +2525,9 @@ function createStrokeStylePicker(currentStyleId, onSelectStyle, prefix = 'prop')
       <span class="style-name" style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis">${curPattern.name}</span>
       <span style="color:var(--muted);font-size:10px">▼</span>
     </button>
-    <div class="prop-style-menu" id="${prefix}StyleMenu" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99999;background:var(--panel);border:1.5px solid var(--border);border-radius:6px;box-shadow:0 6px 16px rgba(0,0,0,0.22);max-height:240px;overflow-y:auto">
+    <div class="prop-style-menu" id="${prefix}StyleMenu" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99999;background:var(--surface);border:1.5px solid var(--fg);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.28);max-height:240px;overflow-y:auto">
       ${STROKE_PATTERNS.map(p => `
-        <div class="prop-style-opt ${p.id === curPattern.id ? 'on' : ''}" data-style="${p.id}" data-name="${p.name}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;font-size:11px;border-bottom:1px solid rgba(128,128,128,0.15)">
+        <div class="prop-style-opt ${p.id === curPattern.id ? 'on' : ''}" data-style="${p.id}" data-name="${p.name}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;font-size:11px;background:var(--surface);color:var(--fg);border-bottom:1px solid var(--line);transition:background var(--fast)">
           ${renderPatternSvgPreview(p)}
           <span style="font-weight:500">${p.name}</span>
         </div>
@@ -3544,9 +3556,9 @@ function openColorPopover(target, anchorBtn){
 
   // Nạp giá trị hiện tại lên Popover controls
   $('#popRangeOpacity').value = S.opacity;
-  $('#popValOpacity').textContent = S.opacity + '%';
+  const numOp = $('#popNumOpacity'); if (numOp) numOp.value = S.opacity;
   $('#popRangeWidth').value = S.strokeWidth;
-  $('#popValWidth').textContent = S.strokeWidth + 'pt';
+  const numW = $('#popNumWidth'); if (numW) numW.value = S.strokeWidth;
 
   // Luôn render bảng màu 40 ô và dùng gần đây
   renderColorPaletteGrid();
@@ -3567,24 +3579,36 @@ function openColorPopover(target, anchorBtn){
     }, 'pop'));
   }
 
-  // Tỷ lệ nét đứt (Dash scale slider) trong Popover
+  // Tỷ lệ nét đứt (Dash scale slider & direct number input) trong Popover
   const popScale = $('#popDashScale');
-  const popScaleVal = $('#popDashScaleVal');
-  if (popScale && popScaleVal) {
+  const popNumScale = $('#popNumDashScale');
+  if (popScale) {
     const activeObj = S.sel.size > 0 ? Array.from(S.sel).map(id => ANNO_MAP.get(id)).find(Boolean) : null;
     const curScale = (activeObj && activeObj.dashScale != null) ? activeObj.dashScale : (S.dashScale || 1);
     popScale.value = curScale;
-    popScaleVal.textContent = (+curScale).toFixed(2) + '×';
-    popScale.oninput = (e) => {
-      const v = +e.target.value;
-      popScaleVal.textContent = v.toFixed(2) + '×';
+    if (popNumScale) popNumScale.value = (+curScale).toFixed(2);
+
+    const updateScaleVal = (v, syncSlider = true) => {
       S.dashScale = v;
+      if (syncSlider) popScale.value = v;
+      if (popNumScale) popNumScale.value = v.toFixed(2);
       applyPropertiesToSelection({ dashScale: v }, { live: true });
       const propScale = $('#propDashScale');
+      const propNum = $('#propNumDashScale');
       const propVal = $('#propDashScaleVal');
       if (propScale) propScale.value = v;
+      if (propNum) propNum.value = v.toFixed(2);
       if (propVal) propVal.textContent = v.toFixed(2) + '×';
     };
+
+    popScale.oninput = (e) => updateScaleVal(+e.target.value, false);
+    if (popNumScale) {
+      popNumScale.oninput = (e) => {
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v) && v > 0) updateScaleVal(v, true);
+      };
+      popNumScale.onchange = () => { pushUndoState(); triggerCloudSync(); };
+    }
     popScale.onchange = () => {
       pushUndoState();
       triggerCloudSync();
@@ -3593,7 +3617,7 @@ function openColorPopover(target, anchorBtn){
 
   // Định vị popover không che khuất nhóm Thuộc tính (D7 & D8)
   const rect = anchorBtn.getBoundingClientRect();
-  const popW = 280;
+  const popW = 300;
   pop.style.width = popW + 'px';
 
   // Kiểm tra nếu mở từ bảng Thuộc tính (cột phải) hoặc nút ở gần mép phải:
@@ -3699,16 +3723,43 @@ $('#popBtnNoFill').onclick = () => {
 $('#popNativeColor').oninput = e => {
   selectColorFromPop(e.target.value);
 };
-$('#popRangeOpacity').oninput = e => {
-  S.opacity = +e.target.value;
-  $('#popValOpacity').textContent = S.opacity + '%';
+const setPopoverOpacity = (v, syncSlider = true) => {
+  v = Math.max(10, Math.min(100, Math.round(v)));
+  S.opacity = v;
+  if (syncSlider) $('#popRangeOpacity').value = v;
+  const num = $('#popNumOpacity'); if (num) num.value = v;
   applyPropertiesToSelection({ opacity: S.opacity });
+  const propOp = $('#propOpacity'); if (propOp) propOp.value = v;
+  const propNumOp = $('#propNumOpacity'); if (propNumOp) propNumOp.value = v;
 };
-$('#popRangeWidth').oninput = e => {
-  S.strokeWidth = +e.target.value;
-  $('#popValWidth').textContent = S.strokeWidth + 'pt';
+$('#popRangeOpacity').oninput = e => setPopoverOpacity(+e.target.value, false);
+const popNumOp = $('#popNumOpacity');
+if (popNumOp) {
+  popNumOp.oninput = e => {
+    const v = parseInt(e.target.value, 10);
+    if (!isNaN(v)) setPopoverOpacity(v, true);
+  };
+  popNumOp.onchange = () => { pushUndoState(); triggerCloudSync(); };
+}
+
+const setPopoverWidth = (v, syncSlider = true) => {
+  v = Math.max(0.5, Math.min(30, +v));
+  S.strokeWidth = v;
+  if (syncSlider) $('#popRangeWidth').value = v;
+  const num = $('#popNumWidth'); if (num) num.value = v;
   applyPropertiesToSelection({ borderWidth: S.strokeWidth });
+  const propW = $('#propBorderWidth'); if (propW) propW.value = v;
+  const propNumW = $('#propNumBorderWidth'); if (propNumW) propNumW.value = v;
 };
+$('#popRangeWidth').oninput = e => setPopoverWidth(+e.target.value, false);
+const popNumW = $('#popNumWidth');
+if (popNumW) {
+  popNumW.oninput = e => {
+    const v = parseFloat(e.target.value);
+    if (!isNaN(v) && v > 0) setPopoverWidth(v, true);
+  };
+  popNumW.onchange = () => { pushUndoState(); triggerCloudSync(); };
+}
 
 /* Đóng Popover và Dropdown khi click ra ngoài */
 window.addEventListener('pointerdown', e => {
@@ -6918,46 +6969,70 @@ function syncPropertiesPanel(){
   secApp.append(rowStyle);
 
   let preSliderSnap=null;
-  const bindSmoothSlider=(sliderEl, valEl, propName, unit)=>{
+  const bindSmoothSlider=(sliderEl, valEl, propName, unit, numInputEl = null)=>{
     sliderEl.onpointerdown=()=>{preSliderSnap=captureAnnoSnapshot();};
-    sliderEl.oninput=e=>{
+    const updateVal = (v, syncSlider = true) => {
       if(!preSliderSnap)preSliderSnap=captureAnnoSnapshot();
-      const v=+e.target.value;
-      valEl.textContent=v+unit;
+      if (syncSlider) sliderEl.value = v;
+      if (valEl) valEl.textContent = (unit === '×' ? (+v).toFixed(2) : v) + unit;
+      if (numInputEl) numInputEl.value = (unit === '×' ? (+v).toFixed(2) : v);
       applyPropertiesToSelection({[propName]:v},{live:true});
+    };
+    sliderEl.oninput=e=>{
+      updateVal(+e.target.value, false);
     };
     sliderEl.onchange=()=>{
       if(preSliderSnap){pushUndoState(preSliderSnap);preSliderSnap=null;}
       else pushUndoState();
       triggerCloudSync();
     };
+    if (numInputEl) {
+      numInputEl.oninput = e => {
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v)) updateVal(v, true);
+      };
+      numInputEl.onchange = () => {
+        if(preSliderSnap){pushUndoState(preSliderSnap);preSliderSnap=null;}
+        else pushUndoState();
+        triggerCloudSync();
+      };
+    }
   };
 
   // D9: Tỷ lệ nét (Dash scale)
   const rowDashScale = el('div', 'prop-row', `
     <label>Tỷ lệ nét (Dash scale):</label>
     <input type="range" id="propDashScale" min="0.25" max="10" step="0.25" value="${obj.dashScale || 1}">
-    <span class="val" id="propDashScaleVal">${(obj.dashScale || 1).toFixed(2)}×</span>
+    <div style="display:flex;align-items:center;gap:2px">
+      <input type="number" class="prop-num-box" id="propNumDashScale" min="0.1" max="20" step="0.1" value="${(obj.dashScale || 1).toFixed(2)}">
+      <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">×</span>
+    </div>
   `);
-  bindSmoothSlider(rowDashScale.querySelector('#propDashScale'), rowDashScale.querySelector('#propDashScaleVal'), 'dashScale', '×');
+  bindSmoothSlider(rowDashScale.querySelector('#propDashScale'), null, 'dashScale', '×', rowDashScale.querySelector('#propNumDashScale'));
   secApp.append(rowDashScale);
 
   // Độ dày viền
   const rowWidth=el('div','prop-row',`
     <label>Độ dày nét:</label>
     <input type="range" id="propBorderWidth" min="1" max="16" value="${obj.borderWidth||2}">
-    <span class="val" id="propBorderWidthVal">${obj.borderWidth||2}pt</span>
+    <div style="display:flex;align-items:center;gap:2px">
+      <input type="number" class="prop-num-box" id="propNumBorderWidth" min="0.5" max="30" step="0.5" value="${obj.borderWidth||2}">
+      <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">pt</span>
+    </div>
   `);
-  bindSmoothSlider(rowWidth.querySelector('#propBorderWidth'), rowWidth.querySelector('#propBorderWidthVal'), 'borderWidth', 'pt');
+  bindSmoothSlider(rowWidth.querySelector('#propBorderWidth'), null, 'borderWidth', 'pt', rowWidth.querySelector('#propNumBorderWidth'));
   secApp.append(rowWidth);
 
   // Độ mờ (Opacity)
   const rowOp=el('div','prop-row',`
     <label>Độ mờ (Opacity):</label>
     <input type="range" id="propOpacity" min="5" max="100" value="${obj.opacity!=null?obj.opacity:80}">
-    <span class="val" id="propOpacityVal">${obj.opacity!=null?obj.opacity:80}%</span>
+    <div style="display:flex;align-items:center;gap:2px">
+      <input type="number" class="prop-num-box" id="propNumOpacity" min="5" max="100" value="${obj.opacity!=null?obj.opacity:80}">
+      <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">%</span>
+    </div>
   `);
-  bindSmoothSlider(rowOp.querySelector('#propOpacity'), rowOp.querySelector('#propOpacityVal'), 'opacity', '%');
+  bindSmoothSlider(rowOp.querySelector('#propOpacity'), null, 'opacity', '%', rowOp.querySelector('#propNumOpacity'));
   secApp.append(rowOp);
 
   // Bo góc (Corner Radius)
