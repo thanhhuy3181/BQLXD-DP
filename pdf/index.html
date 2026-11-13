@@ -810,28 +810,18 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
     <p style="color:var(--muted);margin:0 0 12px;line-height:1.4">Đăng nhập tài khoản Ban QLDA để đồng bộ trực tiếp với Google Drive và phối hợp cùng đồng nghiệp.</p>
     <div style="display:flex;flex-direction:column;gap:8px">
       <label><b>Tên đăng nhập / Email</b>
-        <input type="text" class="field" id="authUsername" placeholder="Tên đăng nhập hoặc email..." value="thanhhuy3181@gmail.com" style="width:100%">
+        <input type="text" class="field" id="authUsername" placeholder="Tên đăng nhập hoặc email..."  style="width:100%">
       </label>
       <label><b>Mật khẩu</b>
-        <input type="password" class="field" id="authPassword" placeholder="Mật khẩu (mặc định: 55555)..." value="55555" style="width:100%">
+        <input type="password" class="field" id="authPassword" placeholder="Nhập mật khẩu..." style="width:100%">
       </label>
       <button class="btn primary" id="btnDoLogin" style="width:100%;justify-content:center;margin-top:4px">Đăng nhập QLDA</button>
 
-      <!-- Phím đăng nhập nhanh 1-Click -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:2px">
-        <button type="button" class="btn ghost" id="btnQuickAdmin" style="font-size:11px;padding:6px;border:1px solid #059669;color:#059669;background:rgba(5,150,105,0.06);cursor:pointer">
-          👑 Admin (Huy)
-        </button>
-        <button type="button" class="btn ghost" id="btnQuickMember" style="font-size:11px;padding:6px;border:1px solid #7c3aed;color:#7c3aed;background:rgba(124,58,237,0.06);cursor:pointer">
-          👤 Member (Huy Còi)
-        </button>
-      </div>
-
-      <div style="text-align:center;color:var(--muted);font-size:11px;margin:2px 0">— HOẶC TIẾP TỤC VỚI GOOGLE —</div>
+      <div style="text-align:center;color:var(--muted);font-size:11px;margin:6px 0 2px">— HOẶC TIẾP TỤC VỚI GOOGLE —</div>
       <div id="googlePdfLoginBtn" style="display:flex;justify-content:center;min-height:38px;width:100%"></div>
-      <button class="btn ghost" id="btnGoogleLogin" style="width:100%;justify-content:center;gap:8px">
+      <button class="btn ghost" id="btnGoogleLogin" style="width:100%;justify-content:center;gap:8px;display:none">
         <svg class="i" viewBox="0 0 24 24" style="color:#ea4335"><path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>
-        Đăng nhập bằng Google Drive
+        Đăng nhập bằng Google
       </button>
     </div>
     <div id="authLogoutSec" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:none">
@@ -9226,6 +9216,9 @@ function start(){
       if (gCont) {
         gCont.innerHTML = '';
         google.accounts.id.renderButton(gCont, { theme: 'outline', size: 'medium', width: 280, text: 'continue_with' });
+        // Nếu nút Google One-Tap/Identity đã render thành công thì ẩn nút fallback thủ công
+        const btnManual = $('#btnGoogleLogin');
+        if (btnManual) btnManual.style.display = 'none';
       }
     } catch (_) {}
   }
