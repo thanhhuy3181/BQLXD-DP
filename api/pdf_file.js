@@ -11,7 +11,7 @@
  */
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const gdriveService = require('./gdrive_service');
+const gdriveService = require('./_gdrive_service');
 const { authorizeDocRead } = require('./pdf_rpc');
 
 const RANGE_RE = /^bytes=(\d*)-(\d*)$/;

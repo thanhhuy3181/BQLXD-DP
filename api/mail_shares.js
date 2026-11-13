@@ -1,6 +1,6 @@
 'use strict';
 const crypto=require('crypto');
-const model=require('./collaboration_model');
+const model=require('./_collaboration_model');
 const {storage}=require('./collaboration_rpc');
 const {active,can,mailOnline}=require('./awm_rpc');
 const ok=data=>({ok:true,data,error:null}),fail=error=>({ok:false,data:null,error});

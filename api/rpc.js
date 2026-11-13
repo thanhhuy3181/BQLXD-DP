@@ -8,7 +8,7 @@ const progressData = require('./data/progress.json');
 const contractorData = require('./data/contractors.json');
 const homeData = require('./data/home.json');
 const boqData = require('./data/boq.json');
-const trackingService = require('./tracking_service');
+const trackingService = require('./_tracking_service');
 const sapData = require('./data/sap.json');
 
 let initPromise;

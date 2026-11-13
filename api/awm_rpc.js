@@ -351,7 +351,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
    const pageToken = String(args[2] || '').trim();
    if(!folderId) return fail('Folder ID Google Drive không hợp lệ.');
    try {
-     const gdrive = require('./gdrive_service');
+     const gdrive = require('./_gdrive_service');
      const data = await gdrive.listFiles(folderId, pageToken);
      return ok(data);
    } catch(e) {
@@ -363,7 +363,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
    const kind = String(args[2] || 'all').trim();
    if(!code) return ok({ files: [] });
    try {
-     const gdrive = require('./gdrive_service');
+     const gdrive = require('./_gdrive_service');
      const files = await gdrive.findFile(code, kind);
      return ok({ files });
    } catch(e) {
@@ -374,7 +374,7 @@ module.exports=async({method,args,sql,user,state,allowedProject,visibleProjects}
    if(!allowedProject(user,project)||!permission('tab_quan_ly'))return fail('Không có quyền đọc tài liệu Drive.');
    const fileId=String(args[1]||'').trim(); const mime=String(args[2]||'').trim();
    if(!fileId)return fail('Tài liệu không hợp lệ.');
-   try { const gdrive=require('./gdrive_service'); return ok(await gdrive.downloadFile(fileId,mime)); }
+   try { const gdrive=require('./_gdrive_service'); return ok(await gdrive.downloadFile(fileId,mime)); }
    catch(e){ return fail(e.message); }
   }
   if(method==='awm_get_msg'){

@@ -5,7 +5,7 @@
  */
 const crypto = require('crypto');
 const { neon } = require('@neondatabase/serverless');
-const gdriveService = require('./gdrive_service');
+const gdriveService = require('./_gdrive_service');
 const { COLLAB_SCHEMA_STATEMENTS } = require('./_pdf_schema');
 const { createMemSql } = require('./_pdf_memsql');
 
