@@ -2112,6 +2112,12 @@ async function readPdfAnnotationsOnLoad(pdfDoc, ps, paneIdx) {
           aObj.y1 = Number(ly1.toFixed(3));
           aObj.x2 = Number(lx2.toFixed(3));
           aObj.y2 = Number(ly2.toFixed(3));
+
+          // Đọc chính xác Line Endings từ file PDF cũ
+          if (Array.isArray(an.lineEndings) && an.lineEndings.length >= 2) {
+            aObj.lineStartEnding = an.lineEndings[0] || 'None';
+            aObj.lineEndEnding = an.lineEndings[1] || 'None';
+          }
         }
 
         if ((type === 'poly' || type === 'polyline') && Array.isArray(an.vertices) && an.vertices.length >= 2) {
@@ -2335,7 +2341,10 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
     const [sx, sy] = pctPtToPdfUser(ps, pageNum, a.x1 != null ? a.x1 : a.x, a.y1 != null ? a.y1 : (a.y + a.h / 2), pW, pH);
     const [ex, ey] = pctPtToPdfUser(ps, pageNum, a.x2 != null ? a.x2 : (a.x + a.w), a.y2 != null ? a.y2 : (a.y + a.h / 2), pW, pH);
     annotObj.L = [sx, sy, ex, ey];
-    if (a.type === 'arrow') annotObj.LE = [PDFLib.PDFName.of('None'), PDFLib.PDFName.of('OpenArrow')];
+
+    const sType = a.lineStartEnding || (a.type === 'arrow' && a.reverse ? 'OpenArrow' : 'None');
+    const eType = a.lineEndEnding || (a.type === 'arrow' && !a.reverse ? 'OpenArrow' : (a.type === 'line' ? 'None' : 'OpenArrow'));
+    annotObj.LE = [PDFLib.PDFName.of(sType), PDFLib.PDFName.of(eType)];
   }
   if ((subtype === 'Polygon' || subtype === 'PolyLine') && Array.isArray(a.points) && a.points.length >= 2) {
     const verts = [];
@@ -2926,6 +2935,115 @@ function generateCloudSvg(wPct,hPct,stroke,fill,noFill,opacity,borderWidth,pageA
 }
 
 /* Render 1 Annotation Item ra DOM */
+
+// 10 kiểu Line Endings chuẩn quốc tế (Adobe Acrobat, Bluebeam, Foxit)
+const LINE_ENDING_TYPES = [
+  { id: 'None', name: 'Không (None)', icon: '—' },
+  { id: 'OpenArrow', name: 'Mũi tên hở (Open Arrow)', icon: '→' },
+  { id: 'ClosedArrow', name: 'Mũi tên kín (Closed Arrow)', icon: '▶' },
+  { id: 'Square', name: 'Hình vuông (Square)', icon: '■' },
+  { id: 'Circle', name: 'Hình tròn (Circle)', icon: '●' },
+  { id: 'Diamond', name: 'Hình thoi (Diamond)', icon: '◆' },
+  { id: 'Butt', name: 'Thanh chặn (Butt / T-bar)', icon: '┨' },
+  { id: 'RClosedArrow', name: 'Mũi tên đảo (Reversed Arrow)', icon: '◀' },
+  { id: 'ROpenArrow', name: 'Mũi tên hở đảo (Reversed Open)', icon: '←' },
+  { id: 'Slash', name: 'Gạch chéo (Slash / 45°)', icon: '╱' }
+];
+
+function buildSvgMarkerDef(markerId, endingType, strokeColor, fillColor, isStart = false, scale = 1, bw = 2) {
+  if (!endingType || endingType === 'None') return '';
+  const sc = Math.max(0.2, Math.min(5, scale || 1));
+  const baseSize = 8 * sc;
+  const fill = fillColor && fillColor !== 'transparent' ? fillColor : strokeColor;
+
+  let pathData = '';
+  let refX = 4 * sc, refY = 4 * sc;
+  let viewBox = `0 0 ${baseSize} ${baseSize}`;
+
+  switch(endingType) {
+    case 'OpenArrow':
+      if (isStart) {
+        pathData = `M${baseSize},${baseSize} L0,${baseSize/2} L${baseSize},0`;
+        refX = 0; refY = baseSize/2;
+      } else {
+        pathData = `M0,0 L${baseSize},${baseSize/2} L0,${baseSize}`;
+        refX = baseSize; refY = baseSize/2;
+      }
+      return `<marker id="${markerId}" markerWidth="${baseSize}" markerHeight="${baseSize}" refX="${refX}" refY="${refY}" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="${pathData}" fill="none" stroke="${strokeColor}" stroke-width="${Math.max(1, bw * 0.8)}" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>`;
+
+    case 'ClosedArrow':
+      if (isStart) {
+        pathData = `M${baseSize},${baseSize} L0,${baseSize/2} L${baseSize},0 Z`;
+        refX = 0; refY = baseSize/2;
+      } else {
+        pathData = `M0,0 L${baseSize},${baseSize/2} L0,${baseSize} Z`;
+        refX = baseSize; refY = baseSize/2;
+      }
+      return `<marker id="${markerId}" markerWidth="${baseSize}" markerHeight="${baseSize}" refX="${refX}" refY="${refY}" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="${pathData}" fill="${fill}" stroke="${strokeColor}" stroke-width="1"/>
+      </marker>`;
+
+    case 'Square':
+      refX = baseSize/2; refY = baseSize/2;
+      return `<marker id="${markerId}" markerWidth="${baseSize}" markerHeight="${baseSize}" refX="${refX}" refY="${refY}" orient="auto" markerUnits="userSpaceOnUse">
+        <rect x="${baseSize*0.1}" y="${baseSize*0.1}" width="${baseSize*0.8}" height="${baseSize*0.8}" fill="${fill}" stroke="${strokeColor}" stroke-width="1"/>
+      </marker>`;
+
+    case 'Circle':
+      refX = baseSize/2; refY = baseSize/2;
+      return `<marker id="${markerId}" markerWidth="${baseSize}" markerHeight="${baseSize}" refX="${refX}" refY="${refY}" orient="auto" markerUnits="userSpaceOnUse">
+        <circle cx="${baseSize/2}" cy="${baseSize/2}" r="${baseSize*0.4}" fill="${fill}" stroke="${strokeColor}" stroke-width="1"/>
+      </marker>`;
+
+    case 'Diamond':
+      refX = baseSize/2; refY = baseSize/2;
+      return `<marker id="${markerId}" markerWidth="${baseSize}" markerHeight="${baseSize}" refX="${refX}" refY="${refY}" orient="auto" markerUnits="userSpaceOnUse">
+        <polygon points="${baseSize/2},0 ${baseSize},${baseSize/2} ${baseSize/2},${baseSize} 0,${baseSize/2}" fill="${fill}" stroke="${strokeColor}" stroke-width="1"/>
+      </marker>`;
+
+    case 'Butt':
+      refX = baseSize/2; refY = baseSize/2;
+      return `<marker id="${markerId}" markerWidth="${baseSize}" markerHeight="${baseSize}" refX="${refX}" refY="${refY}" orient="auto" markerUnits="userSpaceOnUse">
+        <line x1="${baseSize/2}" y1="0" x2="${baseSize/2}" y2="${baseSize}" stroke="${strokeColor}" stroke-width="${Math.max(1.5, bw)}" stroke-linecap="butt"/>
+      </marker>`;
+
+    case 'ROpenArrow':
+      if (isStart) {
+        pathData = `M0,0 L${baseSize},${baseSize/2} L0,${baseSize}`;
+        refX = baseSize; refY = baseSize/2;
+      } else {
+        pathData = `M${baseSize},${baseSize} L0,${baseSize/2} L${baseSize},0`;
+        refX = 0; refY = baseSize/2;
+      }
+      return `<marker id="${markerId}" markerWidth="${baseSize}" markerHeight="${baseSize}" refX="${refX}" refY="${refY}" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="${pathData}" fill="none" stroke="${strokeColor}" stroke-width="${Math.max(1, bw * 0.8)}" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>`;
+
+    case 'RClosedArrow':
+      if (isStart) {
+        pathData = `M0,0 L${baseSize},${baseSize/2} L0,${baseSize} Z`;
+        refX = baseSize; refY = baseSize/2;
+      } else {
+        pathData = `M${baseSize},${baseSize} L0,${baseSize/2} L${baseSize},0 Z`;
+        refX = 0; refY = baseSize/2;
+      }
+      return `<marker id="${markerId}" markerWidth="${baseSize}" markerHeight="${baseSize}" refX="${refX}" refY="${refY}" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="${pathData}" fill="${fill}" stroke="${strokeColor}" stroke-width="1"/>
+      </marker>`;
+
+    case 'Slash':
+      refX = baseSize/2; refY = baseSize/2;
+      return `<marker id="${markerId}" markerWidth="${baseSize}" markerHeight="${baseSize}" refX="${refX}" refY="${refY}" orient="auto" markerUnits="userSpaceOnUse">
+        <line x1="0" y1="${baseSize}" x2="${baseSize}" y2="0" stroke="${strokeColor}" stroke-width="${Math.max(1.5, bw)}" stroke-linecap="round"/>
+      </marker>`;
+
+    default:
+      return '';
+  }
+}
+
 function renderAnnoItem(a){
   let elItem=document.getElementById(a.id);
   if(!elItem){
@@ -3173,7 +3291,7 @@ function renderAnnoItem(a){
     p.style.background=stroke;
     p.title=a.text||'Ghi chú dán';
     elItem.append(p);
-  }else if(a.type==='line'){
+  }else if(a.type==='line' || a.type==='arrow'){
     elItem.style.border='none';
     elItem.style.background='none';
     elItem.style.opacity='1';
@@ -3181,27 +3299,28 @@ function renderAnnoItem(a){
     const ly1 = (a.y1 != null && a.h > 0.01) ? ((a.y1 - a.y) / a.h) * 100 : 0;
     const lx2 = (a.x2 != null && a.w > 0.01) ? ((a.x2 - a.x) / a.w) * 100 : 100;
     const ly2 = (a.y2 != null && a.h > 0.01) ? ((a.y2 - a.y) / a.h) * 100 : 100;
-    elItem.innerHTML=`<svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 100 100" preserveAspectRatio="none">
-      <line x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="transparent" stroke-width="14" pointer-events="stroke" vector-effect="non-scaling-stroke"/>
-      <line x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="${stroke}" stroke-width="${bw}" stroke-dasharray="${dashAttr}" stroke-opacity="${op}" vector-effect="non-scaling-stroke"/>
-    </svg>`;
-  }else if(a.type==='arrow'){
-    elItem.style.border='none';
-    elItem.style.background='none';
-    elItem.style.opacity='1';
-    const markerId='arrowhead_'+a.id;
-    const lx1 = (a.x1 != null && a.w > 0.01) ? ((a.x1 - a.x) / a.w) * 100 : 0;
-    const ly1 = (a.y1 != null && a.h > 0.01) ? ((a.y1 - a.y) / a.h) * 100 : 0;
-    const lx2 = (a.x2 != null && a.w > 0.01) ? ((a.x2 - a.x) / a.w) * 100 : 100;
-    const ly2 = (a.y2 != null && a.h > 0.01) ? ((a.y2 - a.y) / a.h) * 100 : 100;
+
+    // Ký hiệu đầu (start) & cuối (end)
+    const startType = a.lineStartEnding || (a.type === 'arrow' && a.reverse ? 'OpenArrow' : 'None');
+    const endType = a.lineEndEnding || (a.type === 'arrow' && !a.reverse ? 'OpenArrow' : (a.type === 'line' ? 'None' : 'OpenArrow'));
+    const startScale = a.lineStartScale != null ? a.lineStartScale : 1;
+    const endScale = a.lineEndScale != null ? a.lineEndScale : 1;
+
+    const startMarkerId = 'm_start_' + a.id;
+    const endMarkerId = 'm_end_' + a.id;
+    const startMarkerSvg = buildSvgMarkerDef(startMarkerId, startType, stroke, fillRgba, true, startScale, bw);
+    const endMarkerSvg = buildSvgMarkerDef(endMarkerId, endType, stroke, fillRgba, false, endScale, bw);
+
+    const markerStartAttr = (startType && startType !== 'None') ? `marker-start="url(#${startMarkerId})"` : '';
+    const markerEndAttr = (endType && endType !== 'None') ? `marker-end="url(#${endMarkerId})"` : '';
+
     elItem.innerHTML=`<svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 100 100" preserveAspectRatio="none">
       <defs>
-        <marker id="${markerId}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 L2,3 Z" fill="${stroke}"/>
-        </marker>
+        ${startMarkerSvg}
+        ${endMarkerSvg}
       </defs>
       <line x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="transparent" stroke-width="14" pointer-events="stroke" vector-effect="non-scaling-stroke"/>
-      <line x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="${stroke}" stroke-width="${bw}" stroke-dasharray="${dashAttr}" stroke-opacity="${op}" marker-end="url(#${markerId})" vector-effect="non-scaling-stroke"/>
+      <line x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="${stroke}" stroke-width="${bw}" stroke-dasharray="${dashAttr}" stroke-opacity="${op}" ${markerStartAttr} ${markerEndAttr} vector-effect="non-scaling-stroke"/>
     </svg>`;
   }else if(a.type==='poly'||a.type==='polyline'){
     elItem.style.border='none';
@@ -7296,6 +7415,69 @@ function syncPropertiesPanel(){
   `);
   bindSmoothSlider(rowRad.querySelector('#propRadius'), rowRad.querySelector('#propRadiusVal'), 'radius', 'px');
   secApp.append(rowRad);
+
+  // KÝ HIỆU ĐẦU & CUỐI (LINE ENDINGS) CHO ĐƯỜNG THẲNG & MŨI TÊN (Bluebeam / Acrobat style)
+  if (obj.type === 'line' || obj.type === 'arrow') {
+    const secLineEnds = el('div', 'prop-sec', '', { style: 'margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)' });
+    secLineEnds.append(el('div', 'prop-sec-title', '▼ Ký hiệu đầu & cuối (Line Endings)'));
+
+    const curStart = obj.lineStartEnding || (obj.type === 'arrow' && obj.reverse ? 'OpenArrow' : 'None');
+    const curEnd = obj.lineEndEnding || (obj.type === 'arrow' && !obj.reverse ? 'OpenArrow' : (obj.type === 'line' ? 'None' : 'OpenArrow'));
+    const curStartScale = obj.lineStartScale != null ? obj.lineStartScale : 1;
+    const curEndScale = obj.lineEndScale != null ? obj.lineEndScale : 1;
+
+    const buildEndingOptions = (selectedId) => {
+      return LINE_ENDING_TYPES.map(t => `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''}>${t.icon} ${t.name}</option>`).join('');
+    };
+
+    // 1. Ký hiệu đầu (Start ending) & Tỷ lệ (Start scale)
+    const rowStartEnd = el('div', 'prop-row', `
+      <label style="font-weight:600">Điểm đầu (Start):</label>
+      <select class="field sm" id="propLineStartEnding" style="flex:1;font-size:11.5px">
+        ${buildEndingOptions(curStart)}
+      </select>
+    `);
+    rowStartEnd.querySelector('#propLineStartEnding').onchange = (e) => {
+      applyPropertiesToSelection({ lineStartEnding: e.target.value });
+    };
+    secLineEnds.append(rowStartEnd);
+
+    const rowStartScale = el('div', 'prop-row', `
+      <label>Tỷ lệ đầu (Start scale):</label>
+      <input type="range" id="propStartScale" min="0.25" max="4" step="0.25" value="${curStartScale}">
+      <div style="display:flex;align-items:center;gap:2px">
+        <input type="number" class="prop-num-box" id="propNumStartScale" min="0.2" max="6" step="0.1" value="${(+curStartScale).toFixed(2)}">
+        <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">×</span>
+      </div>
+    `);
+    bindSmoothSlider(rowStartScale.querySelector('#propStartScale'), null, 'lineStartScale', '×', rowStartScale.querySelector('#propNumStartScale'));
+    secLineEnds.append(rowStartScale);
+
+    // 2. Ký hiệu cuối (End ending) & Tỷ lệ (End scale)
+    const rowEndEnd = el('div', 'prop-row', `
+      <label style="font-weight:600">Điểm cuối (End):</label>
+      <select class="field sm" id="propLineEndEnding" style="flex:1;font-size:11.5px">
+        ${buildEndingOptions(curEnd)}
+      </select>
+    `);
+    rowEndEnd.querySelector('#propLineEndEnding').onchange = (e) => {
+      applyPropertiesToSelection({ lineEndEnding: e.target.value });
+    };
+    secLineEnds.append(rowEndEnd);
+
+    const rowEndScale = el('div', 'prop-row', `
+      <label>Tỷ lệ cuối (End scale):</label>
+      <input type="range" id="propEndScale" min="0.25" max="4" step="0.25" value="${curEndScale}">
+      <div style="display:flex;align-items:center;gap:2px">
+        <input type="number" class="prop-num-box" id="propNumEndScale" min="0.2" max="6" step="0.1" value="${(+curEndScale).toFixed(2)}">
+        <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">×</span>
+      </div>
+    `);
+    bindSmoothSlider(rowEndScale.querySelector('#propEndScale'), null, 'lineEndScale', '×', rowEndScale.querySelector('#propNumEndScale'));
+    secLineEnds.append(rowEndScale);
+
+    secApp.append(secLineEnds);
+  }
 
   targetBox.append(secApp);
 
