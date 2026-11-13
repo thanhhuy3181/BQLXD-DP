@@ -1080,6 +1080,7 @@ const P={
   redo:'M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13'
 };
 Object.assign(P, {
+  typewriter:'M4 5h16v4h-2V7h-5v10h2v2H9v-2h2V7H6v2H4z',
   ngon5:'M12 3l8.5 6.2-3.2 10H6.7L3.5 9.2z',
   ngon6:'M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z',
   ngon7:'M12 3l6.8 3.3 1.7 7.4-4.7 5.9H8.2l-4.7-5.9 1.7-7.4z',
@@ -1137,6 +1138,7 @@ try {
 } catch (_) {}
 
 const TOOLN={
+  typewriter:'Typewriter',
   ngon5:'Ngũ giác đều', ngon6:'Lục giác đều', ngon7:'Thất giác đều', ngon8:'Bát giác đều', star:'Ngôi sao',
   hand:'Kéo bản vẽ',cursor:'Chọn chữ',pick:'Chọn ghi chú',rect:'Hình chữ nhật',
   oval:'Hình Oval',cloud:'Đám mây sửa đổi',poly:'Đa giác',polyline:'Đường liên tiếp',arrow:'Mũi tên chỉ dẫn',
@@ -1158,7 +1160,7 @@ const RIB={
   ],
   'Ghi chú':[
     ['Công cụ',[['hand','Kéo','tool','sm'],['cursor','Chọn chữ','tool','sm'],['search','Tìm','search','sm'],['pick','Chọn ghi chú','tool','lg'],['undo','Hoàn tác','undo','sm'],['redo','Làm lại','redo','sm']]],
-    ['Chữ',[['text','Ô chữ','tool','sm'],['callout','Chú dẫn','tool','sm']]],
+    ['Chữ',[['typewriter','Typewriter','tool','sm'],['text','Text Box','tool','sm'],['callout','Callout','tool','sm']]],
     ['Ghi chú',[['note','Ghi chú dán','tool','sm'],['image','Chèn ảnh','insertImg','sm']]],
     ['Đánh dấu',[['hl','Tô chữ','tool','sm']]],
     ['Vẽ',[['line','Đường thẳng','tool','mini'],['arrow','Mũi tên','tool','mini'],['rect','Chữ nhật','tool','mini'],['oval','Oval','tool','mini'],['polyline','Đường liên tiếp','tool','mini'],['poly','Đa giác','tool','mini'],['ngon5','Ngũ giác đều','tool','mini'],['ngon6','Lục giác đều','tool','mini'],['ngon7','Thất giác đều','tool','mini'],['ngon8','Bát giác đều','tool','mini'],['star','Ngôi sao','tool','mini'],['cloud','Đám mây','tool','mini'],['pen','Bút vẽ','tool','mini'],['eraser','Tẩy','tool','mini'],['stamp','Con dấu','tool','lg']]],
@@ -2140,10 +2142,10 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
 
   const [pA_x, pA_y] = pctPtToPdfUser(ps, pageNum, a.x, a.y, pW, pH);
   const [pB_x, pB_y] = pctPtToPdfUser(ps, pageNum, a.x + a.w, a.y + a.h, pW, pH);
-  const llx = Math.min(pA_x, pB_x);
-  const lly = Math.min(pA_y, pB_y);
-  const urx = Math.max(pA_x, pB_x);
-  const ury = Math.max(pA_y, pB_y);
+  let llx = Math.min(pA_x, pB_x);
+  let lly = Math.min(pA_y, pB_y);
+  let urx = Math.max(pA_x, pB_x);
+  let ury = Math.max(pA_y, pB_y);
   const rw = Math.max(2, urx - llx);
   const rh = Math.max(2, ury - lly);
 
@@ -2151,6 +2153,26 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
   const fillRgb = (!a.noFill && a.fill && a.fill !== 'none' && a.fill !== 'transparent') ? hexToRgb01(a.fill) : null;
   const op = Math.max(0.05, Math.min(1, (a.opacity != null ? a.opacity : 80) / 100));
   const bw = Math.max(0.5, a.borderWidth || 2);
+  const isTypewriter = a.type === 'text' && a.textKind === 'typewriter';
+  const textRgb = a.textColor ? (hexToRgb01(a.textColor) || strokeRgb) : strokeRgb;
+  const boxLlx = llx, boxLly = lly, boxUrx = urx, boxUry = ury;
+  let bx0 = 0, by0 = 0, leaderPdf = null;
+  const sScaleX = a.lineStartScale != null ? a.lineStartScale : 1;
+  const eScaleX = a.lineEndScale != null ? a.lineEndScale : 1;
+  if (a.type === 'line' || a.type === 'arrow' || a.type === 'ruler') {
+    const pad = Math.max(7, bw * 4.5) * Math.max(sScaleX, eScaleX, 1) + 2;
+    llx -= pad; lly -= pad; urx += pad; ury += pad;
+  } else if (a.type === 'callout') {
+    const gp = calloutLeaderPct(a);
+    const cv = pt => pctPtToPdfUser(ps, pageNum, pt[0], pt[1], pW, pH);
+    leaderPdf = { start: cv(gp.start), knee: cv(gp.knee), tip: cv(gp.tip) };
+    const pad = Math.max(7, bw * 4.5) * Math.max(eScaleX, 1) + 2;
+    [leaderPdf.start, leaderPdf.knee, leaderPdf.tip].forEach(([x, y]) => {
+      llx = Math.min(llx, x - pad); lly = Math.min(lly, y - pad);
+      urx = Math.max(urx, x + pad); ury = Math.max(ury, y + pad);
+    });
+    bx0 = boxLlx - llx; by0 = boxLly - lly;
+  }
 
   let subtype = 'Square';
   if (a.type === 'oval') subtype = 'Circle';
@@ -2197,6 +2219,7 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
       apOps.push(`${(rw * 0.2).toFixed(2)} ${(rh * 0.5).toFixed(2)} m ${(rw * 0.42).toFixed(2)} ${(rh * 0.22).toFixed(2)} l ${(rw * 0.82).toFixed(2)} ${(rh * 0.8).toFixed(2)} l S`);
     }
   } else {
+    if (a.type === 'callout') apOps.push(`1 0 0 1 ${bx0.toFixed(2)} ${by0.toFixed(2)} cm`);
     apOps.push(`${strokeRgb[0].toFixed(3)} ${strokeRgb[1].toFixed(3)} ${strokeRgb[2].toFixed(3)} RG`);
     if (fillRgb) {
       apOps.push(`${fillRgb[0].toFixed(3)} ${fillRgb[1].toFixed(3)} ${fillRgb[2].toFixed(3)} rg`);
@@ -2264,7 +2287,7 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
       addEdgeScallops(xL, yB, xL, yT);
       apOps.push('h');
       apOps.push(fillRgb ? 'B' : 'S');
-    } else {
+    } else if (!isTypewriter) {
       apOps.push(`${(bw / 2).toFixed(2)} ${(bw / 2).toFixed(2)} ${Math.max(1, rw - bw).toFixed(2)} ${Math.max(1, rh - bw).toFixed(2)} re`);
       apOps.push(fillRgb ? 'B' : 'S');
     }
@@ -2274,14 +2297,36 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
       const encoded = vnFont.encodeText(String(a.text));
       apOps.push('BT');
       apOps.push(`/F1 ${fSize} Tf`);
-      apOps.push(`${strokeRgb[0].toFixed(3)} ${strokeRgb[1].toFixed(3)} ${strokeRgb[2].toFixed(3)} rg`);
+      apOps.push(`${textRgb[0].toFixed(3)} ${textRgb[1].toFixed(3)} ${textRgb[2].toFixed(3)} rg`);
       apOps.push(`4 ${(Math.max(4, rh / 2 - fSize / 3)).toFixed(2)} Td`);
       apOps.push(`${encoded.toString()} Tj`);
       apOps.push('ET');
     }
   }
+  // Ký hiệu đầu mút của Đường thẳng/Mũi tên và đường dẫn của Callout phải nằm trong luồng AP
+  if (subtype === 'Line') {
+    const [lsx, lsy] = pctPtToPdfUser(ps, pageNum, a.x1 != null ? a.x1 : a.x, a.y1 != null ? a.y1 : (a.y + a.h / 2), pW, pH);
+    const [lex, ley] = pctPtToPdfUser(ps, pageNum, a.x2 != null ? a.x2 : (a.x + a.w), a.y2 != null ? a.y2 : (a.y + a.h / 2), pW, pH);
+    const dl = Math.hypot(lex - lsx, ley - lsy) || 1;
+    const ux = (lex - lsx) / dl, uy = (ley - lsy) / dl;
+    const sT = a.lineStartEnding || (a.type === 'arrow' && a.reverse ? 'OpenArrow' : 'None');
+    const eT = a.lineEndEnding || (a.type === 'arrow' && !a.reverse ? 'OpenArrow' : (a.type === 'line' ? 'None' : 'OpenArrow'));
+    const sz = Math.max(7, bw * 4.5);
+    apOps.push(...lineEndingOps(sT, lsx - llx, lsy - lly, -ux, -uy, sz * sScaleX, strokeRgb));
+    apOps.push(...lineEndingOps(eT, lex - llx, ley - lly, ux, uy, sz * eScaleX, strokeRgb));
+  }
+  if (a.type === 'callout' && leaderPdf) {
+    apOps.push(`1 0 0 1 ${(-bx0).toFixed(2)} ${(-by0).toFixed(2)} cm`);
+    const rel = p => [p[0] - llx, p[1] - lly];
+    const s0 = rel(leaderPdf.start), k0 = rel(leaderPdf.knee), t0 = rel(leaderPdf.tip);
+    apOps.push(`${strokeRgb.map(v => v.toFixed(3)).join(' ')} RG [] 0 d ${bw.toFixed(2)} w`);
+    apOps.push(`${s0[0].toFixed(2)} ${s0[1].toFixed(2)} m ${k0[0].toFixed(2)} ${k0[1].toFixed(2)} l ${t0[0].toFixed(2)} ${t0[1].toFixed(2)} l S`);
+    const dl = Math.hypot(t0[0] - k0[0], t0[1] - k0[1]) || 1;
+    apOps.push(...lineEndingOps(a.lineEndEnding || 'OpenArrow', t0[0], t0[1], (t0[0] - k0[0]) / dl, (t0[1] - k0[1]) / dl, Math.max(7, bw * 4.5) * eScaleX, strokeRgb));
+  }
   apOps.push('Q');
 
+  const fullW = Math.max(2, urx - llx), fullH = Math.max(2, ury - lly);
   const resDict = {};
   if (vnFont) resDict.Font = ctx.obj({ F1: vnFont.ref });
   if (embeddedImg) resDict.XObject = ctx.obj({ Im1: embeddedImg.ref });
@@ -2289,15 +2334,15 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
   const apStream = ctx.flateStream(apOps.join('\n'), {
     Type: 'XObject',
     Subtype: 'Form',
-    BBox: [0, 0, rw, rh],
+    BBox: [0, 0, fullW, fullH],
     Resources: apResources
   });
   const apStreamRef = ctx.register(apStream);
 
   // D8 & D9: Nét vẽ chuẩn kèm tỷ lệ nét
-  let bsObj = { W: bw, S: PDFLib.PDFName.of('S') };
+  let bsObj = { W: isTypewriter ? 0 : bw, S: PDFLib.PDFName.of('S') };
   const pat = STROKE_PATTERNS.find(x => x.id === a.borderStyle);
-  if (pat && pat.dash && pat.dash.length) {
+  if (!isTypewriter && pat && pat.dash && pat.dash.length) {
     const scale = a.dashScale || 1;
     const scaledDash = pat.dash.map(d => Math.max(1, Math.round(d * scale)));
     bsObj = { W: bw, S: PDFLib.PDFName.of('D'), D: scaledDash };
@@ -2349,7 +2394,14 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
   }
   if (subtype === 'FreeText') {
     annotObj.DA = PDFLib.PDFString.of(`0 0 0 rg /F1 ${a.fontSize || 12} Tf`);
-    if (a.type === 'callout') annotObj.IT = PDFLib.PDFName.of('FreeTextCallout');
+    if (a.type === 'callout' && leaderPdf) {
+      annotObj.IT = PDFLib.PDFName.of('FreeTextCallout');
+      annotObj.CL = [leaderPdf.tip[0], leaderPdf.tip[1], leaderPdf.knee[0], leaderPdf.knee[1], leaderPdf.start[0], leaderPdf.start[1]];
+      annotObj.LE = PDFLib.PDFName.of(a.lineEndEnding || 'OpenArrow');
+      annotObj.RD = [bx0, by0, urx - boxUrx, ury - boxUry];
+    } else if (isTypewriter) {
+      annotObj.IT = PDFLib.PDFName.of('FreeTextTypeWriter');
+    }
   }
   if (subtype === 'Highlight') {
     annotObj.QuadPoints = [llx, ury, urx, ury, llx, lly, urx, lly];
@@ -3158,8 +3210,21 @@ function renderAnnoItem(a){
     elItem.style.opacity='1';
     elItem.style.borderRadius=(a.radius||4)+'px';
     elItem.style.padding='4px';
-    elItem.innerHTML+=`<svg class="anno-callout-line" style="overflow:visible;left:0;bottom:-18px;width:24px;height:20px"><path d="M4 0 L-10 16 L-2 16" stroke="${stroke}" stroke-width="${bw}" fill="none"/></svg>`;
-    const tx=el('div','',`<div style="font-weight:${a.fontBold?'700':'500'};font-size:${a.fontSize||11}px;color:#0f172a;overflow:hidden;word-break:break-word;width:100%;height:100%">${a.text||'Chú dẫn...'}</div>`);
+    {
+      const gl=calloutLeaderLocal(a);
+      const endT=a.lineEndEnding||'OpenArrow';
+      const mkId='m_co_'+a.id;
+      const mkSvg=buildSvgMarkerDef(mkId,endT,stroke,stroke,false,a.lineEndScale!=null?a.lineEndScale:1,bw);
+      const pc=f=>[(f[0]*100)+'%',(f[1]*100)+'%'];
+      const [s0x,s0y]=pc(gl.start),[k0x,k0y]=pc(gl.knee),[t0x,t0y]=pc(gl.tip);
+      const mAttr=(endT&&endT!=='None')?`marker-end="url(#${mkId})"`:'';
+      elItem.innerHTML+=`<svg style="position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none"><defs>${mkSvg}</defs>
+        <line x1="${s0x}" y1="${s0y}" x2="${k0x}" y2="${k0y}" stroke="transparent" stroke-width="12" pointer-events="stroke"/>
+        <line x1="${k0x}" y1="${k0y}" x2="${t0x}" y2="${t0y}" stroke="transparent" stroke-width="12" pointer-events="stroke"/>
+        <line x1="${s0x}" y1="${s0y}" x2="${k0x}" y2="${k0y}" stroke="${stroke}" stroke-width="${bw}"/>
+        <line x1="${k0x}" y1="${k0y}" x2="${t0x}" y2="${t0y}" stroke="${stroke}" stroke-width="${bw}" ${mAttr}/></svg>`;
+    }
+    const tx=el('div','',`<div style="font-weight:${a.fontBold?'700':'500'};font-size:${a.fontSize||11}px;color:${a.textColor||'#0f172a'};font-family:${a.fontFamily||'inherit'};font-style:${a.fontItalic?'italic':'normal'};overflow:hidden;word-break:break-word;white-space:pre-wrap;width:100%;height:100%">${a.text||'Chú dẫn...'}</div>`);
     elItem.append(tx);
   }else if(a.type==='ruler'){
     elItem.style.border='none';
@@ -3198,6 +3263,15 @@ function renderAnnoItem(a){
       elItem.append(stp);
     }
   }else if(a.type==='text'){
+    if(a.borderStyle==='cloud'||a.borderStyle==='cloud-lg'){
+      elItem.style.border='none'; elItem.style.background='none'; elItem.style.opacity='1'; elItem.style.padding='0';
+      const pgSzT=getPagePdfSizePt(a.pane ?? S.focus, a.page ?? 1);
+      const pageAspectT=pgSzT.heightPt/(pgSzT.widthPt||1);
+      const safeT=String(a.text||'Văn bản...').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      elItem.innerHTML+=generateCloudSvg(a.w,a.h,stroke,a.fill||stroke,a.noFill,a.opacity!=null?a.opacity:80,bw,pageAspectT)+
+        `<div style="position:absolute;inset:0;padding:10% 8%;box-sizing:border-box;z-index:2;overflow:hidden;white-space:pre-wrap;word-break:break-word;text-align:${a.textAlign||'left'};color:${a.textColor||'#000'};font-family:${a.fontFamily||'inherit'};font-weight:${a.fontBold?'700':'500'};font-style:${a.fontItalic?'italic':'normal'};font-size:${a.fontSize||13}px">${safeT}</div>`;
+      return elItem;
+    }
     elItem.style.border=a.noBorder?'none':`${bw}px ${bs} ${stroke}`;
     elItem.style.backgroundColor=fillRgba;
     elItem.style.opacity='1';
@@ -3516,6 +3590,25 @@ function updateSelectionOverlay(){
       });
     }
 
+    // Callout: 2 điểm kéo (gối + mũi tên) của đường dẫn
+    if (items.length === 1 && items[0].type === 'callout' && !items[0].locked) {
+      const a = items[0];
+      const g = calloutLeader(a);
+      const rad = (a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+      const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+      g.forEach((f, i) => {
+        const px = a.x + f[0] * a.w, py = a.y + f[1] * a.h;
+        const rx = px - cx, ry = py - cy;
+        const cp = el('div', 'ctrl-pt');
+        cp.dataset.annoId = a.id;
+        cp.title = i ? 'Đầu mũi tên (kéo để đổi hướng chỉ)' : 'Điểm gấp (kéo để uốn đường dẫn)';
+        cp.style.left = (cx + rx * cs - ry * sn) + '%';
+        cp.style.top = (cy + rx * sn + ry * cs) + '%';
+        bindCalloutPtDrag(cp, ly, a, i);
+        ly.append(cp);
+      });
+    }
+
     // Hiển thị các điểm điều khiển (Control Points .ctrl-pt) ở từng đỉnh cho Đa giác & Đường liên tiếp
     items.forEach(a => {
       if (a.type === 'poly' || a.type === 'polyline' || (Array.isArray(a.points) && a.points.length >= 2)) {
@@ -3551,6 +3644,37 @@ function updateSelectionOverlay(){
       }
     });
   });
+}
+
+function bindCalloutPtDrag(cp, ly, a, idx) {
+  cp.onpointerdown = e => {
+    if (e.button !== 0 || a.locked) return;
+    e.stopPropagation();
+    cp.setPointerCapture(e.pointerId);
+    const preSnap = captureAnnoSnapshot();
+    a.leader = calloutLeader(a).map(f => [f[0], f[1]]);
+    let changed = false;
+    const onMove = ev => {
+      changed = true;
+      const [nx, ny] = pct(ly, ev);
+      const rad = -(a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+      const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+      const lx = cx + (nx - cx) * cs - (ny - cy) * sn;
+      const ly2 = cy + (nx - cx) * sn + (ny - cy) * cs;
+      const nl = a.leader.map(f => [f[0], f[1]]);
+      nl[idx] = [(lx - a.x) / Math.max(0.01, a.w), (ly2 - a.y) / Math.max(0.01, a.h)];
+      a.leader = nl;
+      syncAllAnnotations(true, true);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (changed) { a.isModified = true; pushUndoState(preSnap); }
+      syncAllAnnotations(false);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
 }
 
 function bindLineEndDrag(cp, ly, a, endIdx) {
@@ -4965,7 +5089,7 @@ function syncLayers() {
   if (typeof ACTIVE_POLY !== 'undefined' && ACTIVE_POLY && S.tool !== ACTIVE_POLY.type) {
     cancelActivePoly(true);
   }
-  const draw = !S.space && ['ngon5','ngon6','ngon7','ngon8','star','pick','rect','oval','cloud','poly','polyline','arrow','line','text','callout','note','stamp','ruler','crop','hl','redact','pen','eraser','check','form'].includes(S.tool);
+  const draw = !S.space && ['typewriter','ngon5','ngon6','ngon7','ngon8','star','pick','rect','oval','cloud','poly','polyline','arrow','line','text','callout','note','stamp','ruler','crop','hl','redact','pen','eraser','check','form'].includes(S.tool);
   document.querySelectorAll('.layer').forEach(l => l.classList.toggle('draw', draw));
   document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('cursor-mode', S.tool === 'cursor'));
   $('#panes').classList.toggle('pan', S.space || S.tool === 'hand');
@@ -5456,6 +5580,46 @@ function pct(ly,e){
   ];
 }
 
+/* ----- Callout: đường dẫn (leader) lưu theo TỈ LỆ so với khung chữ => di chuyển/co giãn/xoay khung thì đường dẫn đi theo ----- */
+function calloutLeader(a) {
+  const k = (a.leader && a.leader[0]) ? a.leader[0] : [-0.2, 0.5];
+  const t = (a.leader && a.leader[1]) ? a.leader[1] : [-0.35, 1.9];
+  return [k, t];
+}
+function calloutLeaderLocal(a) {
+  const [k, t] = calloutLeader(a);
+  let s;
+  if (k[0] < 0) s = [0, 0.5]; else if (k[0] > 1) s = [1, 0.5]; else if (k[1] > 1) s = [0.5, 1]; else s = [0.5, 0];
+  return { start: s, knee: k, tip: t };
+}
+function calloutLeaderPct(a) {
+  const g = calloutLeaderLocal(a);
+  const P = f => [a.x + f[0] * a.w, a.y + f[1] * a.h];
+  return { start: P(g.start), knee: P(g.knee), tip: P(g.tip) };
+}
+/* Vẽ ký hiệu đầu mút vào luồng AP của PDF (Acrobat hiển thị theo AP, không tự vẽ lại từ /LE) */
+function lineEndingOps(type, px, py, dx, dy, size, rgb) {
+  if (!type || type === 'None') return [];
+  const f = n => n.toFixed(2);
+  const P = (x, y) => f(x) + ' ' + f(y);
+  const nx = -dy, ny = dx, half = size * 0.45;
+  const ops = [rgb.map(v => v.toFixed(3)).join(' ') + ' rg', '[] 0 d'];
+  const at = (a, b) => [px + dx * a + nx * b, py + dy * a + ny * b];
+  const poly = (pts, op) => ops.push(pts.map(([x, y], i) => P(x, y) + (i ? ' l' : ' m')).join(' ') + ' h ' + op);
+  switch (type) {
+    case 'OpenArrow': { const b1 = at(-size, half), b2 = at(-size, -half); ops.push(P(b1[0], b1[1]) + ' m ' + P(px, py) + ' l ' + P(b2[0], b2[1]) + ' l S'); break; }
+    case 'ClosedArrow': poly([[px, py], at(-size, half), at(-size, -half)], 'B'); break;
+    case 'ROpenArrow': { const a0 = at(size, 0), b1 = at(0, half), b2 = at(0, -half); ops.push(P(b1[0], b1[1]) + ' m ' + P(a0[0], a0[1]) + ' l ' + P(b2[0], b2[1]) + ' l S'); break; }
+    case 'RClosedArrow': poly([at(size, 0), at(0, half), at(0, -half)], 'B'); break;
+    case 'Square': { const s = size * 0.4; poly([at(-s, s), at(s, s), at(s, -s), at(-s, -s)], 'B'); break; }
+    case 'Diamond': { const s = size * 0.5; poly([at(s, 0), at(0, s), at(-s, 0), at(0, -s)], 'B'); break; }
+    case 'Circle': { const r = size * 0.4, pts = []; for (let i = 0; i < 20; i++) { const t = i * Math.PI / 10; pts.push([px + Math.cos(t) * r, py + Math.sin(t) * r]); } poly(pts, 'B'); break; }
+    case 'Butt': { const b1 = at(0, half), b2 = at(0, -half); ops.push(P(b1[0], b1[1]) + ' m ' + P(b2[0], b2[1]) + ' l S'); break; }
+    case 'Slash': { const b1 = at(half * 0.8, half * 0.8), b2 = at(-half * 0.8, -half * 0.8); ops.push(P(b1[0], b1[1]) + ' m ' + P(b2[0], b2[1]) + ' l S'); break; }
+  }
+  return ops;
+}
+
 /* Hình vẽ kéo thả có thể ép vuông/tròn bằng Shift/Ctrl; đa giác đều & ngôi sao */
 const SHAPE_TOOLS = ['ngon5','ngon6','ngon7','ngon8','star'];
 const SQUARE_TOOLS = ['rect','oval','cloud','ngon5','ngon6','ngon7','ngon8','star'];
@@ -5902,14 +6066,14 @@ function bindLayerInteraction(ly,paneIdx){
       ly.append(tempAnno);
       ly.setPointerCapture(e.pointerId);
       return;
-    }else if(['rect','oval','cloud','arrow','line','callout','ruler','hl','redact','text','ngon5','ngon6','ngon7','ngon8','star'].includes(S.tool)){
+    }else if(['rect','oval','cloud','arrow','line','callout','ruler','hl','redact','text','typewriter','ngon5','ngon6','ngon7','ngon8','star'].includes(S.tool)){
       startPt=[x,y];
       const id='anno_'+Date.now()+'_'+Math.floor(Math.random()*1000);
       draftObj={
         id,
         pane:paneIdx,
         page:pageNum,
-        type:SHAPE_TOOLS.includes(S.tool)?'poly':S.tool,
+        type:SHAPE_TOOLS.includes(S.tool)?'poly':(S.tool==='typewriter'?'text':S.tool),
         shapeKind:SHAPE_TOOLS.includes(S.tool)?S.tool:undefined,
         x,y,w:0.2,h:0.2,
         x1:x,y1:y,x2:x,y2:y,
@@ -5933,6 +6097,16 @@ function bindLayerInteraction(ly,paneIdx){
         replies:[],
         popupOpen:false
       };
+      if(S.tool==='typewriter'){
+        Object.assign(draftObj,{textKind:'typewriter',noBorder:true,noFill:true,fill:'transparent',stroke:'#000000',textColor:'#000000',
+          borderWidth:0,borderStyle:'solid',opacity:100,fontSize:14,fontBold:false,radius:0,
+          fontFamily:"'Courier New', Courier, monospace"});
+      }else if(S.tool==='text'){
+        Object.assign(draftObj,{textKind:'textbox',borderStyle:'solid',borderWidth:1,opacity:100,textColor:'#000000',radius:0});
+      }else if(S.tool==='callout'){
+        Object.assign(draftObj,{textKind:'callout',fill:'#ffffff',noFill:false,opacity:100,textColor:'#000000',radius:0,
+          lineEndEnding:'OpenArrow',lineEndScale:1});
+      }
       if(S.tool==='hl'){
         draftObj.fill=S.fillColor||'#facc15';
         draftObj.stroke='transparent';
@@ -6122,7 +6296,10 @@ function bindLayerInteraction(ly,paneIdx){
 
     if(tempAnno&&startPt){
       const cdUp=constrainDraw(ly,e,draftObj,startPt,[x,y]);
-      const x=cdUp.pt[0], y=cdUp.pt[1];
+      let x=cdUp.pt[0], y=cdUp.pt[1];
+      if(draftObj && draftObj.textKind==='typewriter' && Math.abs(x-startPt[0])<1 && Math.abs(y-startPt[1])<1){
+        x=Math.min(100,startPt[0]+22); y=Math.min(100,startPt[1]+3.2);
+      }
       if(draftObj){
         const rawW=Math.abs(x-startPt[0]);
         const rawH=Math.abs(y-startPt[1]);
@@ -7555,7 +7732,7 @@ function syncPropertiesPanel(){
   secApp.append(rowRad);
 
   // KÝ HIỆU ĐẦU & CUỐI (LINE ENDINGS) CHO ĐƯỜNG THẲNG & MŨI TÊN (Bluebeam / Acrobat style)
-  if (obj.type === 'line' || obj.type === 'arrow') {
+  if (obj.type === 'line' || obj.type === 'arrow' || obj.type === 'callout') {
     const secLineEnds = el('div', 'prop-sec', '', { style: 'margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)' });
     secLineEnds.append(el('div', 'prop-sec-title', '▼ Ký hiệu đầu & cuối (Line Endings)'));
 
@@ -7578,7 +7755,7 @@ function syncPropertiesPanel(){
     rowStartEnd.querySelector('#propLineStartEnding').onchange = (e) => {
       applyPropertiesToSelection({ lineStartEnding: e.target.value });
     };
-    secLineEnds.append(rowStartEnd);
+    if (obj.type !== 'callout') secLineEnds.append(rowStartEnd);
 
     const rowStartScale = el('div', 'prop-row', `
       <label>Tỷ lệ đầu (Start scale):</label>
@@ -7589,7 +7766,7 @@ function syncPropertiesPanel(){
       </div>
     `);
     bindSmoothSlider(rowStartScale.querySelector('#propStartScale'), null, 'lineStartScale', '×', rowStartScale.querySelector('#propNumStartScale'));
-    secLineEnds.append(rowStartScale);
+    if (obj.type !== 'callout') secLineEnds.append(rowStartScale);
 
     // 2. Ký hiệu cuối (End ending) & Tỷ lệ (End scale)
     const rowEndEnd = el('div', 'prop-row', `
