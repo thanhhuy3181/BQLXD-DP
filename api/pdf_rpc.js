@@ -561,7 +561,7 @@ module.exports = async function handler(req, res) {
     }
 
     // 4. USERS LIST & UPDATE (QUẢN LÝ TÀI KHOẢN)
-    if ((action === 'users_list' || action === 'users_update') && !isAdmin) {
+    if ((action === 'users_list' || action === 'users_update' || action === 'users_delete') && !isAdmin) {
       return res.status(403).json(failure('Chỉ Quản trị viên được quản lý tài khoản.'));
     }
     if (action === 'users_list') {
@@ -611,6 +611,19 @@ module.exports = async function handler(req, res) {
       } else {
         return res.status(200).json(result({ success: true, username: targetUsername, status: newStatus, role: newRole }));
       }
+    }
+
+    if (action === 'users_delete') {
+      const targetUsername = String(payload.username || '').trim();
+      if (!targetUsername) return res.status(200).json(failure('Thiếu username'));
+      if (targetUsername === currentUser.username || targetUsername === 'ban') {
+        return res.status(200).json(failure('Không thể tự xóa tài khoản của chính mình.'));
+      }
+      if (sql) {
+        await sql`DELETE FROM bqlda_sessions WHERE username=${targetUsername}`;
+        await sql`DELETE FROM bqlda_users WHERE username=${targetUsername}`;
+      }
+      return res.status(200).json(result({ success: true, deleted: targetUsername }));
     }
 
     // 5. GOOGLE DRIVE STATUS & LISTING

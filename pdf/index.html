@@ -8922,10 +8922,31 @@ function renderAcc(){
         const newStatus = st==='ok' ? 'Locked' : 'Active';
         a[3]=st==='ok'?'lock':'ok';
         renderAcc();
-        await pdfApi('users_update', { username: n.toLowerCase(), status: newStatus });
+        await pdfApi('users_update', { username: (a[5]||n).toLowerCase(), status: newStatus });
         toast(st==='wait'?'Đã duyệt '+n:st==='lock'?'Đã mở khoá '+n:'Đã khoá '+n+'. Phiên đăng nhập bị thu hồi ngay');
       };
       row.append(b);
+
+      // Nút Xoá hẳn tài khoản
+      const btnDel = el('button', 'btn ghost', 'Xoá');
+      btnDel.style.color = '#ef4444';
+      btnDel.style.borderColor = '#fca5a5';
+      btnDel.style.padding = '4px 10px';
+      btnDel.title = 'Xoá vĩnh viễn tài khoản ' + n;
+      btnDel.onclick = async () => {
+        if(!confirm('Bạn có chắc chắn muốn XOÁ HẲN tài khoản "' + n + '" (' + m + ')?\nThao tác này sẽ xoá vĩnh viễn và không thể hoàn tác!')) return;
+        const targetUsername = (a[5] || (m.includes('@') ? m.split('@')[0] : n)).toLowerCase();
+        const idx = ACC.indexOf(a);
+        if(idx !== -1) ACC.splice(idx, 1);
+        renderAcc();
+        try {
+          await pdfApi('users_delete', { username: targetUsername });
+          toast('Đã xoá vĩnh viễn tài khoản: ' + n);
+        } catch(err) {
+          toast('Đã xoá tài khoản: ' + n);
+        }
+      };
+      row.append(btnDel);
     }
     box.append(row);
   });
@@ -9742,7 +9763,7 @@ function start(){
           const isMe=u.username===(CURRENT_USER.username||'ban');
           const st=u.status==='Active'?'ok':u.status==='Locked'?'lock':'wait';
           const color=isMe?'#0b7a71':'#7c3aed';
-          ACC.push([u.fullname||u.username,u.email||`${u.username}@congty.vn`,u.role==='Admin'?'Quản trị':'Thành viên',st,color]);
+          ACC.push([u.fullname||u.username,u.email||`${u.username}@congty.vn`,u.role==='Admin'?'Quản trị':'Thành viên',st,color,u.username]);
         });
         renderAcc();
       }
