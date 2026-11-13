@@ -226,7 +226,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 
 /* thân */
 .body{flex:1;display:flex;min-height:0;position:relative}
-.side{width:230px;flex:none;border-right:1.5px solid var(--fg);display:flex;flex-direction:column;background:var(--surface);transition:width var(--mid),opacity var(--mid);overflow:hidden}
+.side{width:270px;flex:none;border-right:1.5px solid var(--fg);display:flex;flex-direction:column;background:var(--surface);transition:width var(--mid),opacity var(--mid);overflow:hidden}
 .side.closed{width:0;opacity:0;border-right:0}
 .side-head{padding:10px;display:flex;gap:6px}
 .side-head .btn{flex:1;justify-content:center}
@@ -460,7 +460,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .side.auto{position:absolute;inset:0 auto 0 0;z-index:4;width:14px;background:var(--surface-2)}
 .side.auto>*{opacity:0;transition:opacity var(--fast)}
 .side.auto::after{content:"›";position:absolute;right:3px;top:50%;font-family:var(--mono);color:var(--muted)}
-.side.auto:hover,.side.auto:focus-within{width:230px;background:var(--surface);box-shadow:6px 0 0 var(--hard)}
+.side.auto:hover,.side.auto:focus-within{width:270px;background:var(--surface);box-shadow:6px 0 0 var(--hard)}
 .side.auto:hover>*,.side.auto:focus-within>*{opacity:1}
 .side.auto:hover::after,.side.auto:focus-within::after{content:none}
 .body.rail .work{margin-left:14px}
