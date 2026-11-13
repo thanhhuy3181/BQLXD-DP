@@ -649,6 +649,11 @@ module.exports = async function handler(req, res) {
       });
       const td = await tr.json();
       if (!tr.ok || !td.access_token) return res.status(200).json(failure('Google từ chối: ' + (td.error_description || td.error || 'lỗi không rõ')));
+      // Màn hình xin quyền của Google cho bỏ tick từng quyền: thiếu quyền Drive thì không lưu kết nối.
+      const granted = String(td.scope || '').split(/\s+/);
+      if (!granted.includes('https://www.googleapis.com/auth/drive')) {
+        return res.status(200).json(failure('Chưa cấp quyền Google Drive. Bấm kết nối lại và TICK ô "Xem, chỉnh sửa, tạo và xoá mọi tệp trên Google Drive" ở màn hình xin quyền.'));
+      }
       if (!td.refresh_token) return res.status(200).json(failure('Google không trả quyền truy cập lâu dài. Hãy vào myaccount.google.com/permissions gỡ quyền của ứng dụng rồi kết nối lại.'));
       let email = '';
       try {
@@ -678,7 +683,13 @@ module.exports = async function handler(req, res) {
       const meta = async id => {
         const r = await driveFetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?supportsAllDrives=true&fields=id,name,mimeType,parents,trashed');
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d.error?.message || 'Không đọc được thư mục trên Drive.');
+        if (!r.ok) {
+          const msg = String(d.error?.message || '');
+          if (/insufficient authentication scopes|insufficientPermissions/i.test(msg + JSON.stringify(d.error?.errors || ''))) {
+            throw new Error('Tài khoản kho chưa cấp quyền Google Drive. Bấm "Đăng nhập Google để kết nối kho lưu trữ" lại và TICK ô quyền Google Drive.');
+          }
+          throw new Error(msg || 'Không đọc được thư mục trên Drive.');
+        }
         return d;
       };
       if (action === 'storage_folders') {
@@ -714,8 +725,15 @@ module.exports = async function handler(req, res) {
       try {
         const token = await gdriveService.getAccessToken();
         const root = await storageRoot(sql);
+        // Kiểm quyền thật của token kho: có quyền Google Drive hay chỉ có email.
+        let driveOk = null;
+        try {
+          const ti = await (await fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(token), { signal: AbortSignal.timeout(8000) })).json();
+          if (ti && typeof ti.scope === 'string') driveOk = ti.scope.split(/\s+/).includes('https://www.googleapis.com/auth/drive');
+        } catch (_) { /* không kiểm được thì để null */ }
         return res.status(200).json(result({
           connected: !!token,
+          drive_ok: driveOk,
           root_folder: root ? root.name : 'PDF-QLDA',
           root_folder_id: root ? root.id : null,
           email: (storageCache.value && storageCache.value.email) || '',

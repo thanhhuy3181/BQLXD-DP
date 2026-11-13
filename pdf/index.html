@@ -9553,11 +9553,15 @@ async function renderSto(){
   try {
     const res = await pdfApi('drive_status');
     const d = (res && res.ok && res.data) ? res.data : {};
-    const ok = !!d.connected && !!d.dedicated;
-    if (emailEl) emailEl.textContent = ok ? (d.email || 'Tài khoản kho lưu trữ') : 'Chưa kết nối tài khoản kho lưu trữ';
+    const linked = !!d.connected && !!d.dedicated;
+    const noDrive = linked && d.drive_ok === false; // đã kết nối nhưng không được cấp quyền Google Drive
+    const ok = linked && !noDrive;
+    if (emailEl) emailEl.textContent = linked ? (d.email || 'Tài khoản kho lưu trữ') : 'Chưa kết nối tài khoản kho lưu trữ';
     if (statusEl) {
       statusEl.innerHTML = '<i class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + (ok ? '#10b981' : 'var(--warn)') + ';margin-right:5px"></i>' +
-        (ok ? 'Đang kết nối – file của mọi tài khoản được lưu vào Drive này' : 'Quản trị viên cần đăng nhập tài khoản Google kho (nút bên dưới)');
+        (ok ? 'Đang kết nối – file của mọi tài khoản được lưu vào Drive này'
+          : noDrive ? 'Thiếu quyền Google Drive – bấm nút kết nối bên dưới và TICK ô quyền Google Drive'
+          : 'Quản trị viên cần đăng nhập tài khoản Google kho (nút bên dưới)');
       statusEl.style.color = ok ? 'var(--ok)' : 'var(--warn)';
     }
     if (stoAv) stoAv.textContent = ok && d.email ? d.email.slice(0, 2).toUpperCase() : 'GD';
@@ -9567,7 +9571,13 @@ async function renderSto(){
     STO_ROOT_ID = d.root_folder_id || null;
     const btnPick = $('#btnPickRoot');
     if (btnPick) btnPick.hidden = !(ok && isAdminUser);
-    if (box) box.append(el('div','row',ic('folder')+'<span class="who"><b>Thư mục gốc: ' + (d.root_folder || 'PDF-QLDA') + '</b><small>Mỗi tài khoản có thư mục con riêng</small></span><small>' + (ok ? 'Đang hoạt động' : 'Chưa kết nối') + '</small>'));
+    if (box) {
+      box.replaceChildren(); // xoá ngay trước khi vẽ: hai lần gọi chồng nhau không tạo dòng trùng
+      const row = el('div','row',ic('folder')+'<span class="who"><b></b><small>Mỗi tài khoản có thư mục con riêng</small></span><small></small>');
+      row.querySelector('b').textContent = 'Thư mục gốc: ' + (d.root_folder || 'PDF-QLDA'); // tên thư mục từ Drive: không chèn như HTML
+      row.querySelector('span.who + small').textContent = ok ? 'Đang hoạt động' : (noDrive ? 'Thiếu quyền Drive' : 'Chưa kết nối');
+      box.append(row);
+    }
   } catch (err) {
     console.warn('renderSto error:', err);
   }
