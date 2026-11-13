@@ -4,6 +4,7 @@
  * Kết nối Neon Serverless PostgreSQL và Google Drive service.
  */
 const crypto = require('crypto');
+const { signToken, verifyToken } = require('./_auth_token');
 const { neon } = require('@neondatabase/serverless');
 const gdriveService = require('./_gdrive_service');
 const { COLLAB_SCHEMA_STATEMENTS } = require('./_pdf_schema');
@@ -134,10 +135,12 @@ const publicUser = row => {
 };
 
 async function getSessionUser(sql, req) {
-  if (!sql) return null;
   const header = req.headers?.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : (header || req.headers?.['x-session-token'] || req.body?.session_token || '');
   if (!token) return null;
+  const tUser = verifyToken(token);
+  if (tUser) return tUser;
+  if (!sql) return null;
   try {
     const rows = await sql`SELECT u.username,u.status,u.data FROM bqlda_sessions s JOIN bqlda_users u ON u.username=s.username WHERE s.token=${token} AND s.expires_at>now()`;
     return publicUser(rows[0]);
@@ -398,8 +401,9 @@ module.exports = async function handler(req, res) {
 
     // Chế độ hoạt động linh hoạt: khi CSDL Neon chạm hạn ngạch thì chuyển sang bộ nhớ đệm
     const DEMO = !sql;
+    const reqToken = (req.headers?.authorization || '').replace(/^Bearer /, '') || req.headers?.['x-session-token'] || req.body?.session_token || '';
     let currentUser = await getSessionUser(sql, req);
-    if (!currentUser && DEMO) currentUser = { username: 'ban', fullname: 'Bạn (chạy thử)', role: 'Admin', status: 'Active' };
+    if (!currentUser && DEMO && !reqToken) currentUser = { username: 'ban', fullname: 'Bạn (chạy thử)', role: 'Admin', status: 'Active' };
     if (currentUser && currentUser.status !== 'Active') currentUser = null;
 
     const PUBLIC_ACTIONS = ['auth_status', 'auth_login', 'login_user', 'auth_google', 'google_login'];
@@ -423,11 +427,9 @@ module.exports = async function handler(req, res) {
     // 1. AUTH STATUS
     if (action === 'auth_status') {
       let user = currentUser;
+      if (!user && reqToken) user = verifyToken(reqToken);
       if (!user && DEMO) {
-        const token = (req.headers?.authorization || '').replace(/^Bearer /, '');
-        if (token.includes('thanhhuy3181')) user = { username: 'thanhhuy3181', fullname: 'Thanh Huy (Admin)', email: 'thanhhuy3181@gmail.com', role: 'Admin', status: 'Active' };
-        else if (token.includes('huycoi5')) user = { username: 'huycoi5', fullname: 'Huy Còi (Tester)', email: 'huycoi5@gmail.com', role: 'CBGS', status: 'Active' };
-        else user = { username: 'ban', fullname: 'Bạn (chạy thử)', role: 'Admin', status: 'Active' };
+        user = { username: 'ban', fullname: 'Bạn (chạy thử)', role: 'Admin', status: 'Active' };
       }
       return res.status(200).json(result({
         authenticated: !!user,
@@ -483,7 +485,7 @@ module.exports = async function handler(req, res) {
         const fullname = isAdm ? 'Thanh Huy (Admin)' : (isMem ? 'Huy Còi (Tester)' : 'Người dùng ' + identifier);
         return res.status(200).json({
           ...result({ username: identifier || 'ban', fullname, email: identifier.includes('@') ? identifier : `${identifier}@gmail.com`, role, status: 'Active' }),
-          session_token: 'demo-session-' + (isAdm ? 'thanhhuy3181-' : (isMem ? 'huycoi5-' : '')) + Date.now()
+          session_token: signToken(identifier || 'ban', role)
         });
       }
     }

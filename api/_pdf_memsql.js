@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 'use strict';
 /**
  * Bộ giả lập trong bộ nhớ của client SQL (hàm tagged-template giống @neondatabase/serverless).
@@ -11,8 +12,14 @@
  */
 
 function createMemSql(opts = {}) {
+  const hash = v => crypto.createHash('sha256').update(`SALT_BNGUA_${v}`).digest('hex');
+  const defaultUsers = new Map([
+    ['admin', { username: 'admin', password_hash: hash('55555'), status: 'Active', data: { username: 'admin', fullname: 'Quản Trị Viên (Admin)', email: 'admin@bngua.com', role: 'Admin', status: 'Active' } }],
+    ['thanhhuy3181', { username: 'thanhhuy3181', password_hash: hash('55555'), status: 'Active', data: { username: 'thanhhuy3181', fullname: 'Thanh Huy (Admin)', email: 'thanhhuy3181@gmail.com', role: 'Admin', status: 'Active' } }],
+    ['huycoi5', { username: 'huycoi5', password_hash: hash('55555'), status: 'Active', data: { username: 'huycoi5', fullname: 'Huy Còi (Tester)', email: 'huycoi5@gmail.com', role: 'CBGS', status: 'Active' } }]
+  ]);
   const state = {
-    users: opts.users || new Map(),       // username -> { username, status, data }
+    users: opts.users || defaultUsers,       // username -> { username, status, data }
     sessions: opts.sessions || new Map(), // token -> { username, expires_at: Date }
     docs: opts.docs || new Map(),         // id -> doc row
     blobs: opts.blobs || new Map(),       // doc_id -> { annos_json, comments_json, updated_by, updated_at }
@@ -41,6 +48,42 @@ function createMemSql(opts = {}) {
         if (!s || !(s.expires_at > now())) return [];
         const u = state.users.get(s.username);
         return u ? [clone(u)] : [];
+      }
+      if (/FROM bqlda_users WHERE (lower\(username\)=|lower\(data->>'email'\)=)/.test(t)) {
+        const id = String(v[0] || v[1] || '').trim().toLowerCase();
+        for (const u of state.users.values()) {
+          const email = (u.data?.email || '').toLowerCase();
+          if (u.username.toLowerCase() === id || email === id) return [clone(u)];
+        }
+        return [];
+      }
+      if (/^INSERT INTO bqlda_users/.test(t)) {
+        const uObj = { username: v[0], password_hash: v[1], status: v[2], data: typeof v[3] === 'string' ? JSON.parse(v[3]) : v[3] };
+        state.users.set(v[0], uObj);
+        return [];
+      }
+      if (/^UPDATE bqlda_users SET/.test(t)) {
+        const emailHit = (/lower\(data->>'email'\)='([^']+)'/.exec(t) || [])[1];
+        if (emailHit) {
+          for (const u of state.users.values()) {
+            if ((u.data?.email || '').toLowerCase() === emailHit.toLowerCase()) {
+              u.status = 'Active';
+              if (/Admin/.test(t)) u.data.role = 'Admin';
+            }
+          }
+        }
+        return [];
+      }
+      if (/^INSERT INTO bqlda_sessions/.test(t)) {
+        state.sessions.set(v[0], { username: v[1], expires_at: new Date(Date.now() + 30 * 86400000) });
+        return [];
+      }
+      if (/^DELETE FROM bqlda_sessions/.test(t)) {
+        if (v && v[0]) state.sessions.delete(v[0]);
+        return [];
+      }
+      if (/SELECT username,status,data,updated_at FROM bqlda_users/.test(t)) {
+        return [...state.users.values()].map(clone);
       }
       if (/^SELECT \* FROM bqlda_pdf_docs WHERE id=/.test(t)) {
         const d = state.docs.get(v[0]);
