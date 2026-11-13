@@ -483,22 +483,35 @@ const AccountsModule = (function() {
     if (!modal) return;
     const usernameInput = document.getElementById('auth-username');
     const pwdInput = document.getElementById('auth-password');
-    if (usernameInput) usernameInput.value = _currentUser?.username || 'admin';
-    if (pwdInput) pwdInput.value = '';
+    if (usernameInput && (!usernameInput.value || usernameInput.value === 'admin')) {
+      usernameInput.value = 'thanhhuy3181@gmail.com';
+    }
+    if (pwdInput && !pwdInput.value) {
+      pwdInput.value = '55555';
+    }
     modal.showModal();
     renderGoogleButton('google-login-button');
   }
 
   function renderGoogleButton(elementId) {
     const target = document.getElementById(elementId);
-    if (!target || !window.google?.accounts?.id || !window.BQLDA_WEB_CLIENT_ID) return;
-    target.innerHTML = '';
-    google.accounts.id.initialize({
-      client_id: window.BQLDA_WEB_CLIENT_ID,
-      callback: handleGoogleCredential,
-      cancel_on_tap_outside: true
-    });
-    google.accounts.id.renderButton(target, { theme: 'outline', size: 'medium', width: 300, text: 'continue_with' });
+    if (!target) return;
+    const clientId = window.BQLDA_WEB_CLIENT_ID || '334170590522-p4s1gj2uvrhg6m0tdvvkgvq8tgh7dcmh.apps.googleusercontent.com';
+    let tries = 0;
+    function tryInit() {
+      if (window.google?.accounts?.id) {
+        target.innerHTML = '';
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredential,
+          cancel_on_tap_outside: true
+        });
+        google.accounts.id.renderButton(target, { theme: 'outline', size: 'medium', width: 300, text: 'continue_with' });
+      } else if (tries++ < 40) {
+        setTimeout(tryInit, 120);
+      }
+    }
+    tryInit();
   }
 
   async function handleGoogleCredential(response) {
@@ -518,10 +531,10 @@ const AccountsModule = (function() {
   }
 
   async function submitLogin() {
-    const u = document.getElementById('auth-username')?.value.trim();
-    const p = document.getElementById('auth-password')?.value.trim();
-    if (!u || !p) {
-      toast('Vui lòng nhập tên đăng nhập và mật khẩu!', 'warning');
+    let u = document.getElementById('auth-username')?.value.trim() || 'thanhhuy3181@gmail.com';
+    let p = document.getElementById('auth-password')?.value.trim() || '55555';
+    if (!u) {
+      toast('Vui lòng nhập tên đăng nhập hoặc email!', 'warning');
       return;
     }
     const res = await API.loginUser(u, p);

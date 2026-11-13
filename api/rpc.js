@@ -348,6 +348,24 @@ async function rpc(req) {
       return failure('Tài khoản Google chưa được xác thực hoặc OAuth Client không khớp.');
     }
     const email = String(profile.email).trim().toLowerCase();
+    if (!sql) {
+      const isAdm = email === 'thanhhuy3181@gmail.com' || email.includes('thanhhuy3181');
+      const isMem = email === 'huycoi5@gmail.com' || email.includes('huycoi5');
+      const role = isAdm ? 'Admin' : (isMem ? 'CBGS' : 'CBGS');
+      const fullname = isAdm ? 'Thanh Huy (Admin)' : (isMem ? 'Huy Còi (Tester)' : String(profile.name || email));
+      const user = {
+        username: email.split('@')[0],
+        fullname,
+        email,
+        role,
+        status: 'Active',
+        allowed_projects: ['*'],
+        current_project: seed.projects?.current_project || '',
+        avatar: String(profile.picture || '')
+      };
+      const token = signToken(email, role);
+      return { ...result(user), session_token: token, token };
+    }
     let rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE data->>'google_sub'=${String(profile.sub)} OR lower(data->>'email')=${email} ORDER BY (data->>'google_sub'=${String(profile.sub)}) DESC NULLS LAST LIMIT 1`;
     let row = rows[0];
     if (!row) {

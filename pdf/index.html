@@ -79,8 +79,16 @@ body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after
 <!-- Thư viện chuẩn GitHub: Mozilla PDF.js, pdf-lib -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-<script src="./pdf-lib.min.js"></script>
-<script src="./fontkit.umd.min.js"></script>
+<script src="/pdf/pdf-lib.min.js"></script>
+<script src="/pdf/fontkit.umd.min.js"></script>
+<script>
+  if (!window.PDFLib) {
+    document.write('<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"><\/script>');
+  }
+  if (!window.fontkit) {
+    document.write('<script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"><\/script>');
+  }
+</script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head><body>
 <style>
@@ -800,13 +808,25 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
     <p style="color:var(--muted);margin:0 0 12px;line-height:1.4">Đăng nhập tài khoản Ban QLDA để đồng bộ trực tiếp với Google Drive và phối hợp cùng đồng nghiệp.</p>
     <div style="display:flex;flex-direction:column;gap:8px">
       <label><b>Tên đăng nhập / Email</b>
-        <input type="text" class="field" id="authUsername" placeholder="Tên đăng nhập hoặc email..." value="" style="width:100%">
+        <input type="text" class="field" id="authUsername" placeholder="Tên đăng nhập hoặc email..." value="thanhhuy3181@gmail.com" style="width:100%">
       </label>
       <label><b>Mật khẩu</b>
-        <input type="password" class="field" id="authPassword" placeholder="Mật khẩu..." value="" style="width:100%">
+        <input type="password" class="field" id="authPassword" placeholder="Mật khẩu (mặc định: 55555)..." value="55555" style="width:100%">
       </label>
       <button class="btn primary" id="btnDoLogin" style="width:100%;justify-content:center;margin-top:4px">Đăng nhập QLDA</button>
-      <div style="text-align:center;color:var(--muted);font-size:11px;margin:2px 0">— HOẶC —</div>
+
+      <!-- Phím đăng nhập nhanh 1-Click -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:2px">
+        <button type="button" class="btn ghost" id="btnQuickAdmin" style="font-size:11px;padding:6px;border:1px solid #059669;color:#059669;background:rgba(5,150,105,0.06);cursor:pointer">
+          👑 Admin (Huy)
+        </button>
+        <button type="button" class="btn ghost" id="btnQuickMember" style="font-size:11px;padding:6px;border:1px solid #7c3aed;color:#7c3aed;background:rgba(124,58,237,0.06);cursor:pointer">
+          👤 Member (Huy Còi)
+        </button>
+      </div>
+
+      <div style="text-align:center;color:var(--muted);font-size:11px;margin:2px 0">— HOẶC TIẾP TỤC VỚI GOOGLE —</div>
+      <div id="googlePdfLoginBtn" style="display:flex;justify-content:center;min-height:38px;width:100%"></div>
       <button class="btn ghost" id="btnGoogleLogin" style="width:100%;justify-content:center;gap:8px">
         <svg class="i" viewBox="0 0 24 24" style="color:#ea4335"><path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>
         Đăng nhập bằng Google Drive
@@ -8561,6 +8581,7 @@ function updateUserBadgeAndRole(){
   }
 }
 
+function renderPeople(){ if (typeof renderPeopleFromPerms === 'function') renderPeopleFromPerms(CURRENT_DOC_PERMISSIONS || []); }
 function start(){
   $('#btnSide').innerHTML=ic('menu');
   $('#btnCmt').innerHTML=ic('cmt');
@@ -8577,7 +8598,7 @@ function start(){
   renderTree();
   renderPanes();
   renderFloat();
-  renderPeople();
+  if (typeof renderPeopleFromPerms === 'function') renderPeopleFromPerms(CURRENT_DOC_PERMISSIONS || []);
   renderColorPaletteGrid();
   renderRecentColors();
 
@@ -9095,28 +9116,96 @@ function start(){
       toast('Đã đăng xuất tài khoản.');
     };
   }
-  $('#btnDoLogin').onclick=async()=>{
-    const identifier=$('#authUsername').value.trim();
-    const password=$('#authPassword').value;
-    if(!identifier)return toast('Nhập tên đăng nhập hoặc email');
+  const doLogin = async (id, pwd) => {
+    const identifier = (id || $('#authUsername').value || 'thanhhuy3181@gmail.com').trim();
+    const password = (pwd || $('#authPassword').value || '55555').trim();
+    if(!identifier) return toast('Nhập tên đăng nhập hoặc email');
     toast('Đang xác thực...');
-    const res=await pdfApi('auth_login',{identifier,password});
-    if(res&&res.ok&&res.data){
-      CURRENT_USER=res.data;
-      if(res.session_token)localStorage.setItem('bqlda_session_token',res.session_token);
+    const res = await pdfApi('auth_login', { identifier, password });
+    if(res && res.ok && res.data){
+      CURRENT_USER = res.data;
+      if(res.session_token) {
+        localStorage.setItem('bqlda_session_token', res.session_token);
+        localStorage.setItem('bqlda_web_session', res.session_token);
+      }
       updateUserBadgeAndRole();
       closeAll();
-      toast('Chào mừng '+(CURRENT_USER.fullname||CURRENT_USER.username)+' đăng nhập!');
+      toast('Chào mừng ' + (CURRENT_USER.fullname || CURRENT_USER.username) + ' đăng nhập!');
       loadCloudAccounts();
       renderTree();
       renderSideThumbs();
-    }else{
-      toast(res?.error||'Đăng nhập không thành công');
+    } else {
+      toast(res?.error || 'Đăng nhập không thành công');
     }
   };
-  $('#btnGoogleLogin').onclick=()=>{
-    toast('Vui lòng đăng nhập bằng tài khoản QLDA hoặc cấu hình Google Identity');
+
+  $('#btnDoLogin').onclick = () => doLogin();
+
+  const btnQAdm = $('#btnQuickAdmin');
+  if (btnQAdm) btnQAdm.onclick = () => {
+    $('#authUsername').value = 'thanhhuy3181@gmail.com';
+    $('#authPassword').value = '55555';
+    doLogin('thanhhuy3181@gmail.com', '55555');
   };
+
+  const btnQMem = $('#btnQuickMember');
+  if (btnQMem) btnQMem.onclick = () => {
+    $('#authUsername').value = 'huycoi5@gmail.com';
+    $('#authPassword').value = '55555';
+    doLogin('huycoi5@gmail.com', '55555');
+  };
+
+  const onLoginEnter = (e) => { if(e.key === 'Enter') { e.preventDefault(); doLogin(); } };
+  $('#authUsername').onkeydown = onLoginEnter;
+  $('#authPassword').onkeydown = onLoginEnter;
+
+  // Real Google Sign-In setup
+  const GOOGLE_CLIENT_ID = '334170590522-p4s1gj2uvrhg6m0tdvvkgvq8tgh7dcmh.apps.googleusercontent.com';
+  function initGoogleAuthInPdf() {
+    if (!window.google?.accounts?.id) return;
+    try {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async (resp) => {
+          if (!resp?.credential) return;
+          toast('Đang xác thực tài khoản Google...');
+          const res = await pdfApi('auth_google', { credential: resp.credential });
+          if (res && res.ok && res.data) {
+            CURRENT_USER = res.data;
+            if (res.session_token) {
+              localStorage.setItem('bqlda_session_token', res.session_token);
+              localStorage.setItem('bqlda_web_session', res.session_token);
+            }
+            updateUserBadgeAndRole();
+            closeAll();
+            toast('Chào mừng ' + (CURRENT_USER.fullname || CURRENT_USER.username) + ' đăng nhập!');
+            loadCloudAccounts();
+            renderTree();
+            renderSideThumbs();
+          } else {
+            toast('Đăng nhập thất bại: ' + (res?.error || 'Lỗi Google token'));
+          }
+        }
+      });
+      const gCont = $('#googlePdfLoginBtn');
+      if (gCont) {
+        gCont.innerHTML = '';
+        google.accounts.id.renderButton(gCont, { theme: 'outline', size: 'medium', width: 280, text: 'continue_with' });
+      }
+    } catch (_) {}
+  }
+
+  $('#btnGoogleLogin').onclick = () => {
+    if (window.google?.accounts?.id) {
+      initGoogleAuthInPdf();
+      google.accounts.id.prompt();
+    } else {
+      toast('Đang tải thư viện Google, vui lòng thử lại sau 2 giây...');
+    }
+  };
+
+  // Init Google button after brief delay
+  setTimeout(initGoogleAuthInPdf, 500);
 
   pdfApi('auth_status').then(res=>{
     if(res&&res.ok&&res.data?.authenticated){

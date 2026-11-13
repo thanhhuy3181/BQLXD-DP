@@ -555,7 +555,7 @@ module.exports = async function handler(req, res) {
         const tag = isAdm ? 'thanhhuy3181-' : (email === 'huycoi5@gmail.com' ? 'huycoi5-' : '');
         return res.status(200).json({
           ...result({ username, fullname: profile.name || username, email, role, status: 'Active' }),
-          session_token: 'google-session-' + tag + Date.now()
+          session_token: signToken(email, role)
         });
       }
     }

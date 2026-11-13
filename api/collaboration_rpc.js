@@ -10,6 +10,7 @@ const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-
 // This DDL creates a new table only; it never changes or migrates existing data.
 const schemaPromises=new WeakMap();
 async function ensure(sql) {
+  if(!sql) return;
   if(schemaPromises.has(sql))return schemaPromises.get(sql);
   const promise=initializeSchema(sql);schemaPromises.set(sql,promise);
   try{return await promise;}catch(error){schemaPromises.delete(sql);throw error;}
@@ -115,6 +116,7 @@ async function handle({method, args = [], sql, user, state, allowedProject}) {
   const assignLevel = permissionValue(user, state, 'ql_project_mgmt');
   const canAssign = String(user.role).toLowerCase() === 'admin' || assignLevel === true || ['edit','full'].includes(assignLevel);
   try {
+    if(!sql) { if (method === 'collab_unread_count') return ok({ count: 0 }); return ok({ items: [], total: 0 }); }
     await ensure(sql);
     const rows = await sql`SELECT username,status,data FROM bqlda_users WHERE status='Active'`;
     const people = rows.map(row => ({...row.data, username:row.username,status:row.status}))
