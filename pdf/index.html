@@ -1143,7 +1143,7 @@ const RIB={
   ]
 };
 
-const CTX_RIB_TABS = ['Định dạng', 'Sắp xếp'];
+const CTX_RIB_TABS = ['Định dạng', 'Văn bản', 'Sắp xếp'];
 const ANNO_PRESETS = [
   { name: 'Đỏ chuẩn', stroke: '#dc2626', fill: '#fee2e2', noFill: false, opacity: 80 },
   { name: 'Tím', stroke: '#7c3aed', fill: '#ede9fe', noFill: false, opacity: 80 },
@@ -4019,6 +4019,46 @@ function openRibbonPopup(anchorEl, items){
   pop.classList.add('show');
 }
 
+function getAlignIconSvg(type){
+  const style = 'width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle';
+  switch(type){
+    case 'align-left':
+      return `<svg viewBox="0 0 24 24" style="${style}"><line x1="4" y1="4" x2="4" y2="20" stroke-width="2.5"/><rect x="7" y="6" width="13" height="4" rx="1" fill="currentColor" fill-opacity="0.2"/><rect x="7" y="14" width="8" height="4" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>`;
+    case 'align-center-h':
+      return `<svg viewBox="0 0 24 24" style="${style}"><line x1="12" y1="3" x2="12" y2="21" stroke-dasharray="2 2"/><rect x="5" y="6" width="14" height="4" rx="1" fill="currentColor" fill-opacity="0.2"/><rect x="7" y="14" width="10" height="4" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>`;
+    case 'align-right':
+      return `<svg viewBox="0 0 24 24" style="${style}"><line x1="20" y1="4" x2="20" y2="20" stroke-width="2.5"/><rect x="4" y="6" width="13" height="4" rx="1" fill="currentColor" fill-opacity="0.2"/><rect x="9" y="14" width="8" height="4" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>`;
+    case 'align-top':
+      return `<svg viewBox="0 0 24 24" style="${style}"><line x1="4" y1="4" x2="20" y2="4" stroke-width="2.5"/><rect x="6" y="7" width="4" height="13" rx="1" fill="currentColor" fill-opacity="0.2"/><rect x="14" y="7" width="4" height="8" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>`;
+    case 'align-middle-v':
+      return `<svg viewBox="0 0 24 24" style="${style}"><line x1="3" y1="12" x2="21" y2="12" stroke-dasharray="2 2"/><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" fill-opacity="0.2"/><rect x="14" y="7" width="4" height="10" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>`;
+    case 'align-bottom':
+      return `<svg viewBox="0 0 24 24" style="${style}"><line x1="4" y1="20" x2="20" y2="20" stroke-width="2.5"/><rect x="6" y="4" width="4" height="13" rx="1" fill="currentColor" fill-opacity="0.2"/><rect x="14" y="9" width="4" height="8" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>`;
+    case 'dist-h':
+      return `<svg viewBox="0 0 24 24" style="${style}"><line x1="4" y1="4" x2="4" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/><rect x="9" y="7" width="6" height="10" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>`;
+    case 'dist-v':
+      return `<svg viewBox="0 0 24 24" style="${style}"><line x1="4" y1="4" x2="20" y2="4"/><line x1="4" y1="20" x2="20" y2="20"/><rect x="7" y="9" width="10" height="6" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>`;
+    case 'rot-0':
+      return `<svg viewBox="0 0 24 24" style="${style}"><path d="M4 12a8 8 0 0 1 14.9-4M20 4v5h-5"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" fill-opacity="0.2"/></svg>`;
+    case 'rot-left':
+      return `<svg viewBox="0 0 24 24" style="${style}"><path d="M4 12a8 8 0 0 1 14.9-4M20 4v5h-5"/></svg>`;
+    case 'rot-right':
+      return `<svg viewBox="0 0 24 24" style="${style}"><path d="M20 12a8 8 0 0 1-14.9 4M4 20v-5h5"/></svg>`;
+    case 'rot-180':
+      return `<svg viewBox="0 0 24 24" style="${style}"><path d="M12 4v4m0 8v4M4 12h4m8 0h4"/></svg>`;
+    case 'bring-front':
+      return `<svg viewBox="0 0 24 24" style="${style}"><polygon points="12 3 2 8 12 13 22 8 12 3" fill="currentColor" fill-opacity="0.3"/><path d="M2 14l10 5 10-5M2 18l10 5 10-5"/></svg>`;
+    case 'bring-forward':
+      return `<svg viewBox="0 0 24 24" style="${style}"><polygon points="12 6 4 10 12 14 20 10 12 6" fill="currentColor" fill-opacity="0.3"/><path d="M4 14l8 4 8-4"/></svg>`;
+    case 'send-backward':
+      return `<svg viewBox="0 0 24 24" style="${style}"><polygon points="12 10 4 14 12 18 20 14 12 10"/><path d="M4 8l8-4 8 4" stroke-dasharray="2 2"/></svg>`;
+    case 'send-back':
+      return `<svg viewBox="0 0 24 24" style="${style}"><path d="M2 6l10-4 10 4M2 10l10-4 10 4"/><polygon points="12 21 2 16 12 11 22 16 12 21" fill="currentColor" fill-opacity="0.3"/></svg>`;
+    default:
+      return '';
+  }
+}
+
 function buildContextualRibbon(tabName){
   const groups=[];
   const firstObj=ANNO_MAP.get(Array.from(S.sel)[0]);
@@ -4091,14 +4131,149 @@ function buildContextualRibbon(tabName){
     sb.append(col1,col2,bProp);
     gStyleTools.append(sb,el('div','rgroup-title','Kiểu & Ghi chú'));
     groups.push(gStyleTools);
+  }else if(tabName==='Văn bản'){
+    // Tab Văn bản dành cho Ô chữ, Chú dẫn, Ghi chú dán, Con dấu
+    const obj = firstObj || {};
+
+    // Nhóm 1: Phông chữ & Cỡ chữ
+    const gFont = el('div','rgroup');gFont.dataset.group='Phông chữ';
+    const bFont = el('div','rgroup-body');
+    const colFont = el('div','rcol');
+    colFont.style.gap = '4px';
+
+    const selFamily = el('select','field', `
+      <option value="inherit">Mặc định hệ thống</option>
+      <option value="'Be Vietnam Pro', sans-serif" ${obj.fontFamily?.includes('Vietnam')?'selected':''}>Be Vietnam Pro</option>
+      <option value="'Segoe UI', sans-serif" ${obj.fontFamily?.includes('Segoe')?'selected':''}>Segoe UI</option>
+      <option value="Arial, sans-serif" ${obj.fontFamily==='Arial, sans-serif'?'selected':''}>Arial</option>
+      <option value="'Times New Roman', serif" ${obj.fontFamily?.includes('Times')?'selected':''}>Times New Roman</option>
+      <option value="'JetBrains Mono', monospace" ${obj.fontFamily?.includes('JetBrains')?'selected':''}>JetBrains Mono</option>
+    `);
+    selFamily.style.fontSize = '11px';
+    selFamily.style.padding = '2px 4px';
+    selFamily.style.width = '125px';
+    selFamily.onchange = e => applyPropertiesToSelection({ fontFamily: e.target.value });
+
+    const rowSize = el('div','', `
+      <div style="display:flex;align-items:center;gap:4px">
+        <select class="field" id="ribbonFontSize" style="font-size:11px;padding:2px 4px;width:60px">
+          ${[9,10,11,12,13,14,16,18,20,24,28,32,36,48].map(sz => `<option value="${sz}" ${(obj.fontSize||13)===sz?'selected':''}>${sz} pt</option>`).join('')}
+        </select>
+        <button class="tool sm" id="btnFontBigger" title="Tăng cỡ chữ" style="padding:2px 5px;font-weight:700">A▲</button>
+        <button class="tool sm" id="btnFontSmaller" title="Giảm cỡ chữ" style="padding:2px 5px;font-weight:700">A▼</button>
+      </div>
+    `);
+    rowSize.querySelector('#ribbonFontSize').onchange = e => applyPropertiesToSelection({ fontSize: +e.target.value });
+    rowSize.querySelector('#btnFontBigger').onclick = () => {
+      const cur = obj.fontSize || 13;
+      applyPropertiesToSelection({ fontSize: Math.min(72, cur + 2) });
+    };
+    rowSize.querySelector('#btnFontSmaller').onclick = () => {
+      const cur = obj.fontSize || 13;
+      applyPropertiesToSelection({ fontSize: Math.max(8, cur - 2) });
+    };
+
+    colFont.append(selFamily, rowSize);
+    bFont.append(colFont);
+    gFont.append(bFont, el('div','rgroup-title','Phông & Cỡ chữ'));
+    groups.push(gFont);
+
+    // Nhóm 2: Kiểu chữ (Bold, Italic, Underline, Strike)
+    const gStyle = el('div','rgroup');gStyle.dataset.group='Định dạng chữ';
+    const bStyle = el('div','rgroup-body');
+    const colStyle = el('div','rcol');
+    colStyle.style.display = 'grid';
+    colStyle.style.gridTemplateColumns = 'repeat(4, 1fr)';
+    colStyle.style.gap = '2px';
+
+    const bBold = el('button', 'tool sm' + (obj.fontBold?' on':''), '<span style="font-weight:700;font-size:13px">B</span>');
+    bBold.title = 'In đậm (Ctrl+B)';
+    bBold.onclick = () => applyPropertiesToSelection({ fontBold: !obj.fontBold });
+
+    const bItalic = el('button', 'tool sm' + (obj.fontItalic?' on':''), '<span style="font-style:italic;font-size:13px">I</span>');
+    bItalic.title = 'In nghiêng (Ctrl+I)';
+    bItalic.onclick = () => applyPropertiesToSelection({ fontItalic: !obj.fontItalic });
+
+    const bUnder = el('button', 'tool sm' + (obj.fontUnderline?' on':''), '<span style="text-decoration:underline;font-size:13px">U</span>');
+    bUnder.title = 'Gạch chân (Ctrl+U)';
+    bUnder.onclick = () => applyPropertiesToSelection({ fontUnderline: !obj.fontUnderline });
+
+    const bStrike = el('button', 'tool sm' + (obj.fontStrike?' on':''), '<span style="text-decoration:line-through;font-size:13px">S</span>');
+    bStrike.title = 'Gạch ngang';
+    bStrike.onclick = () => applyPropertiesToSelection({ fontStrike: !obj.fontStrike });
+
+    colStyle.append(bBold, bItalic, bUnder, bStrike);
+    bStyle.append(colStyle);
+    gStyle.append(bStyle, el('div','rgroup-title','Kiểu chữ'));
+    groups.push(gStyle);
+
+    // Nhóm 3: Căn lề đoạn văn (Align Paragraph)
+    const gAlign = el('div','rgroup');gAlign.dataset.group='Căn lề chữ';
+    const bAlign = el('div','rgroup-body');
+    const colAlign = el('div','rcol');
+    colAlign.style.display = 'grid';
+    colAlign.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    colAlign.style.gap = '3px';
+
+    const bAlignL = el('button', 'tool sm' + ((obj.textAlign||'left')==='left'?' on':''), `
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>
+    `);
+    bAlignL.title = 'Căn lề trái (Left)';
+    bAlignL.onclick = () => applyPropertiesToSelection({ textAlign: 'left' });
+
+    const bAlignC = el('button', 'tool sm' + (obj.textAlign==='center'?' on':''), `
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="5" y1="18" x2="19" y2="18"/></svg>
+    `);
+    bAlignC.title = 'Căn giữa (Center)';
+    bAlignC.onclick = () => applyPropertiesToSelection({ textAlign: 'center' });
+
+    const bAlignR = el('button', 'tool sm' + (obj.textAlign==='right'?' on':''), `
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="6" y1="18" x2="20" y2="18"/></svg>
+    `);
+    bAlignR.title = 'Căn lề phải (Right)';
+    bAlignR.onclick = () => applyPropertiesToSelection({ textAlign: 'right' });
+
+    colAlign.append(bAlignL, bAlignC, bAlignR);
+    bAlign.append(colAlign);
+    gAlign.append(bAlign, el('div','rgroup-title','Căn lề đoạn'));
+    groups.push(gAlign);
+
+    // Nhóm 4: Màu chữ & Thuộc tính chi tiết
+    const gTxtColor = el('div','rgroup');gTxtColor.dataset.group='Màu chữ';
+    const bTxtColor = el('div','rgroup-body');
+    const colTxtColor = el('div','rcol');
+    const bColorPick = el('button','tool sm', `
+      <span style="display:flex;align-items:center;gap:4px">
+        <span style="font-weight:700;font-size:13px;border-bottom:3px solid ${obj.textColor||'#0f172a'};padding:0 2px">A</span>
+        <span style="font-size:10px">Màu chữ ▾</span>
+      </span>
+    `);
+    bColorPick.onclick = (e) => {
+      e.stopPropagation();
+      openColorPopover('stroke', bColorPick);
+    };
+    const bEditTxt = el('button','tool sm', ic('text') + '<span>Sửa ô chữ</span>');
+    bEditTxt.onclick = () => {
+      if(obj) startEditingAnnotationText(obj);
+    };
+    colTxtColor.append(bColorPick, bEditTxt);
+    bTxtColor.append(colTxtColor);
+    gTxtColor.append(bTxtColor, el('div','rgroup-title','Màu & Sửa'));
+    groups.push(gTxtColor);
+
   }else if(tabName==='Sắp xếp'){
-    const mkActGroup=(title, btns)=>{
+    const mkVisualGroup=(title, btns)=>{
       const g=el('div','rgroup');g.dataset.group=title;
       const body=el('div','rgroup-body');
       for(let i=0;i<btns.length;i+=3){
         const col=el('div','rcol');
-        btns.slice(i,i+3).forEach(([lbl, fn])=>{
-          const b=el('button','tool sm',`<span>${lbl}</span>`);
+        btns.slice(i,i+3).forEach(([iconKey, titleTip, fn])=>{
+          const b=el('button','tool sm', `${getAlignIconSvg(iconKey)}<span style="font-size:10.5px">${titleTip}</span>`);
+          b.title=titleTip;
+          b.style.display='inline-flex';
+          b.style.alignItems='center';
+          b.style.gap='5px';
+          b.style.padding='3px 7px';
           b.onclick=fn;
           col.append(b);
         });
@@ -4107,27 +4282,27 @@ function buildContextualRibbon(tabName){
       g.append(body,el('div','rgroup-title',title));
       return g;
     };
-    groups.push(mkActGroup('Căn lề',[
-      ['Căn trái',()=>alignSelection('left')],
-      ['Căn giữa ngang',()=>alignSelection('center')],
-      ['Căn phải',()=>alignSelection('right')],
-      ['Căn trên',()=>alignSelection('top')],
-      ['Căn giữa dọc',()=>alignSelection('middle')],
-      ['Căn dưới',()=>alignSelection('bottom')]
+    groups.push(mkVisualGroup('Căn lề',[
+      ['align-left','Trái',()=>alignSelection('left')],
+      ['align-center-h','Giữa ngang',()=>alignSelection('center')],
+      ['align-right','Phải',()=>alignSelection('right')],
+      ['align-top','Trên',()=>alignSelection('top')],
+      ['align-middle-v','Giữa dọc',()=>alignSelection('middle')],
+      ['align-bottom','Dưới',()=>alignSelection('bottom')]
     ]));
-    groups.push(mkActGroup('Phân bố & Xoay',[
-      ['Phân bố ngang',()=>distributeSelection('horizontal')],
-      ['Phân bố dọc',()=>distributeSelection('vertical')],
-      ['Xoay 0°',()=>applyPropertiesToSelection({rotate:0})],
-      ['Xoay -90°',()=>applyPropertiesToSelection({rotate:((firstObj?.rotate||0)-90)})],
-      ['Xoay +90°',()=>applyPropertiesToSelection({rotate:((firstObj?.rotate||0)+90)})],
-      ['Xoay 180°',()=>applyPropertiesToSelection({rotate:((firstObj?.rotate||0)+180)})]
+    groups.push(mkVisualGroup('Phân bố & Xoay',[
+      ['dist-h','Đều ngang',()=>distributeSelection('horizontal')],
+      ['dist-v','Đều dọc',()=>distributeSelection('vertical')],
+      ['rot-0','Góc 0°',()=>applyPropertiesToSelection({rotate:0})],
+      ['rot-left','-90°',()=>applyPropertiesToSelection({rotate:((firstObj?.rotate||0)-90)})],
+      ['rot-right','+90°',()=>applyPropertiesToSelection({rotate:((firstObj?.rotate||0)+90)})],
+      ['rot-180','180°',()=>applyPropertiesToSelection({rotate:((firstObj?.rotate||0)+180)})]
     ]));
-    groups.push(mkActGroup('Thứ tự',[
-      ['Lên trên cùng',()=>bringToFront()],
-      ['Lên một bậc',()=>bringForward()],
-      ['Xuống một bậc',()=>sendBackward()],
-      ['Xuống dưới cùng',()=>sendToBack()]
+    groups.push(mkVisualGroup('Thứ tự',[
+      ['bring-front','Lên trên cùng',()=>bringToFront()],
+      ['bring-forward','Lên 1 bậc',()=>bringForward()],
+      ['send-backward','Xuống 1 bậc',()=>sendBackward()],
+      ['send-back','Dưới cùng',()=>sendToBack()]
     ]));
     if(firstObj){
       const mm=pctBoxToMm(firstObj);
