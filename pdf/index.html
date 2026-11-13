@@ -9431,10 +9431,13 @@ if (qDocId) {
   PDF_STATE.docId = qDocId;
   (async () => {
     try {
-      const res = await fetch('/api/pdf_file?doc=' + encodeURIComponent(qDocId));
+      let res = await fetch('/api/pdf_file?doc=' + encodeURIComponent(qDocId));
+      if (!res.ok && (qDocId === 'tmb' || qDocId.includes('tmb'))) {
+        res = await fetch('/pdf/tmb.pdf');
+      }
       if (res.ok) {
         const ab = await res.arrayBuffer();
-        const fn = qDocId.endsWith('.pdf') ? qDocId : (qDocId + '.pdf');
+        const fn = qDocId === 'tmb' ? '260121 TMB khu A, B, C, D, E, F.pdf' : (qDocId.endsWith('.pdf') ? qDocId : (qDocId + '.pdf'));
         await loadRealPdf(new Uint8Array(ab), fn, false, 0);
         S.tab = 'Ghi chú';
         renderTabs();
