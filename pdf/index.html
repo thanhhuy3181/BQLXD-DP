@@ -280,7 +280,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .pin::after{content:"";position:absolute;inset:5px;border-radius:50%;background:#fff}
 
 /* Selection Box & Transform Handles */
-.sel-box{position:absolute;border:1.5px dashed #2563eb;pointer-events:none;z-index:10;box-sizing:border-box}
+.sel-box{position:absolute;border:1.5px dashed #2563eb;pointer-events:auto;cursor:move;z-index:10;box-sizing:border-box}
+.anno-item{cursor:move}
 .sel-hdl{position:absolute;width:8px;height:8px;background:#ffffff;border:1.5px solid #2563eb;border-radius:1px;pointer-events:auto;z-index:12}
 .sel-hdl.nw{left:-5px;top:-5px;cursor:nwse-resize}
 .sel-hdl.n{left:calc(50% - 4px);top:-5px;cursor:ns-resize}
@@ -290,8 +291,9 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .sel-hdl.s{left:calc(50% - 4px);bottom:-5px;cursor:ns-resize}
 .sel-hdl.sw{left:-5px;bottom:-5px;cursor:nesw-resize}
 .sel-hdl.w{left:-5px;top:calc(50% - 4px);cursor:ew-resize}
-.sel-rot-line{position:absolute;left:50%;top:-20px;width:1.5px;height:16px;background:#2563eb;transform:translateX(-50%)}
-.sel-rot-hdl{position:absolute;left:50%;top:-26px;width:10px;height:10px;background:#ffffff;border:1.5px solid #2563eb;border-radius:50%;transform:translateX(-50%);cursor:grab;pointer-events:auto;z-index:12}
+.sel-rot-line{position:absolute;left:50%;top:-36px;width:1.5px;height:32px;background:#2563eb;transform:translateX(-50%);pointer-events:none}
+.sel-rot-hdl{position:absolute;left:50%;top:-46px;width:13px;height:13px;background:#ffffff;border:2px solid #2563eb;border-radius:50%;transform:translateX(-50%);cursor:grab;pointer-events:auto;z-index:14;box-shadow:0 1px 3px rgba(0,0,0,0.25)}
+.sel-rot-hdl:hover{transform:translateX(-50%) scale(1.25);background:#eff6ff}
 
 /* Marquee Box: 2 kiểu vùng quét khác nhau (Chạm = viền đứt xanh lá, Nằm trọn = viền liền xanh dương) */
 .marquee{position:absolute;pointer-events:none;z-index:15;box-sizing:border-box}
@@ -3506,13 +3508,31 @@ function updateSelectionOverlay(){
     items.forEach(a => {
       if (a.type === 'poly' || a.type === 'polyline' || (Array.isArray(a.points) && a.points.length >= 2)) {
         const pts = ensureAnnoPoints(a);
+        const rotDeg = a.rotate || 0;
+        const rad = rotDeg * (Math.PI / 180);
+        const cosR = Math.cos(rad);
+        const sinR = Math.sin(rad);
+        const cx = a.x + a.w / 2;
+        const cy = a.y + a.h / 2;
+
         pts.forEach(([px, py], ptIdx) => {
           const cp = el('div', 'ctrl-pt');
           cp.dataset.annoId = a.id;
           cp.dataset.ptIdx = ptIdx;
           cp.title = `Đỉnh #${ptIdx + 1} (Kéo chuột để sửa vị trí đỉnh)`;
-          cp.style.left = px + '%';
-          cp.style.top = py + '%';
+
+          // Khi hình xoay, đỉnh phải quay theo quanh tâm của hình
+          let finalX = px;
+          let finalY = py;
+          if (rotDeg !== 0) {
+            const rx = px - cx;
+            const ry = py - cy;
+            finalX = cx + (rx * cosR - ry * sinR);
+            finalY = cy + (rx * sinR + ry * cosR);
+          }
+
+          cp.style.left = finalX + '%';
+          cp.style.top = finalY + '%';
           bindControlPointDrag(cp, ly, a, ptIdx);
           ly.append(cp);
         });
@@ -3532,8 +3552,24 @@ function bindControlPointDrag(cp, ly, a, ptIdx) {
     const onMove = ev => {
       changed = true;
       const [nx, ny] = pct(ly, ev);
-      const clampedX = Math.max(0, Math.min(100, Number(nx.toFixed(3))));
-      const clampedY = Math.max(0, Math.min(100, Number(ny.toFixed(3))));
+      const rotDeg = a.rotate || 0;
+      let localX = nx;
+      let localY = ny;
+
+      if (rotDeg !== 0) {
+        const rad = -rotDeg * (Math.PI / 180);
+        const cosR = Math.cos(rad);
+        const sinR = Math.sin(rad);
+        const cx = a.x + a.w / 2;
+        const cy = a.y + a.h / 2;
+        const rx = nx - cx;
+        const ry = ny - cy;
+        localX = cx + (rx * cosR - ry * sinR);
+        localY = cy + (rx * sinR + ry * cosR);
+      }
+
+      const clampedX = Math.max(0, Math.min(100, Number(localX.toFixed(3))));
+      const clampedY = Math.max(0, Math.min(100, Number(localY.toFixed(3))));
       a.points[ptIdx] = [clampedX, clampedY];
       recomputePointsBounds(a);
       if (a.isMeasure) a.text = computePolyMeasureText(a);
@@ -9531,7 +9567,7 @@ function start(){
   const btnConnectGD = document.getElementById('btnConnectGoogleDrive');
   if (btnConnectGD) {
     btnConnectGD.onclick = () => {
-      const cid = localStorage.getItem('bqlda_gdrive_client_id') || '893599506998-qimoqpucirv78c8nojgfgolh6cps22r7.apps.googleusercontent.com';
+      const cid = localStorage.getItem('bqlda_gdrive_client_id') || '334170590522-p4s1gj2uvrhg6m0tdvvkgvq8tgh7dcmh.apps.googleusercontent.com';
       if (!window.google?.accounts?.oauth2) {
         toast('Đang nạp Google Identity Services, vui lòng thử lại sau 2 giây...');
         return;
