@@ -17,8 +17,9 @@ process.env.GOOGLE_CLIENT_SECRET = 'test-secret';
 process.env.GOOGLE_REFRESH_TOKEN = 'test-refresh';
 
 const root = path.resolve(__dirname, '..');
-const { createMemSql } = require(path.join(root, 'api', '_pdf_memsql.js'));
-const { COLLAB_SCHEMA_STATEMENTS } = require(path.join(root, 'api', '_pdf_schema.js'));
+const os = require('os');
+const { sqlLocal, resetLocal } = require(path.join(root, 'api', '_d1sql.js'));
+const { CORE_SCHEMA_STATEMENTS, COLLAB_SCHEMA_STATEMENTS } = require(path.join(root, 'api', '_pdf_schema.js'));
 
 /* ---------- Google giả ---------- */
 const fakeDrive = { files: new Map(), sessions: new Map(), calls: [] };
@@ -80,21 +81,42 @@ const pdfFile = require(path.join(root, 'api', 'pdf_file.js'));
 const USERS = {
   admin: 'Admin', an: 'CBGS', binh: 'CBGS', chi: 'CBGS', dung: 'CBGS', em: 'CBGS', giang: 'CBGS'
 };
+// CSDL thật: SQLite trong một file tạm riêng cho mỗi lần reset. logged ghi lại mọi câu SQL đã chạy.
 let db;
-function resetDb(latencyMs = 0) {
-  db = createMemSql({ latencyMs });
+let logged = [];
+let dbFile = null;
+let dbSeq = 0;
+async function resetDb() {
+  if (dbFile) { resetLocal(dbFile); try { fs.rmSync(dbFile, { force: true }); } catch (_) { /* bỏ qua */ } }
+  dbFile = path.join(os.tmpdir(), `qlda-pdf-test-${process.pid}-${++dbSeq}.db`);
+  const base = sqlLocal(dbFile);
+  db = Object.assign((strings, ...values) => { logged.push(strings.join('?')); return base(strings, ...values); }, {
+    raw: (q, p) => { logged.push(q); return base.raw(q, p); }
+  });
+  for (const s of CORE_SCHEMA_STATEMENTS.concat(COLLAB_SCHEMA_STATEMENTS)) await db.raw(s);
   for (const [u, role] of Object.entries(USERS)) {
-    db.state.users.set(u, { username: u, status: 'Active', data: { fullname: u.toUpperCase(), role, email: u + '@x.vn' } });
-    db.state.sessions.set('tok_' + u, { username: u, expires_at: new Date(Date.now() + 3600e3) });
+    await db.raw('INSERT INTO bqlda_users (username,password_hash,status,data,updated_at) VALUES (?,?,?,?,?)',
+      [u, 'x', 'Active', { fullname: u.toUpperCase(), role, email: u + '@x.vn' }, Date.now()]);
+    await db.raw('INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (?,?,?)', ['tok_' + u, u, Date.now() + 3600e3]);
   }
-  db.state.sessions.set('tok_expired', { username: 'an', expires_at: new Date(Date.now() - 1000) });
-  db.state.docs.set('d1', {
+  await db.raw('INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (?,?,?)', ['tok_expired', 'an', Date.now() - 1000]);
+  await insertDoc({
     id: 'd1', title: 'Ban ve.pdf', drive_file_id: 'drv_secret_d1', folder_name: 'an', owner_username: 'an', file_size: 10, page_count: 3, scale_ratio: '1:100',
-    permissions_json: [{ username: 'an', role: 'Chủ sở hữu' }, { username: 'binh', role: 'Người sửa' }, { username: 'chi', role: 'Người xem' }, { username: 'dung', role: 'Người nhận xét' }],
-    updated_at: new Date()
+    permissions_json: [{ username: 'an', role: 'Chủ sở hữu' }, { username: 'binh', role: 'Người sửa' }, { username: 'chi', role: 'Người xem' }, { username: 'dung', role: 'Người nhận xét' }]
   });
   rpc.__setSqlFactoryForTests(() => db);
+  logged = [];
 }
+async function insertDoc(d) {
+  await db.raw('INSERT INTO bqlda_pdf_docs (id,title,drive_file_id,folder_name,owner_username,file_size,page_count,scale_ratio,permissions_json,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    [d.id, d.title, d.drive_file_id, d.folder_name, d.owner_username, d.file_size, d.page_count, d.scale_ratio, d.permissions_json, Date.now()]);
+}
+async function setAnnoBlob(docId, annos, comments) {
+  await db.raw('INSERT OR REPLACE INTO bqlda_pdf_annos (doc_id, annos_json, comments_json, updated_by, updated_at) VALUES (?,?,?,?,?)',
+    [docId, annos, comments, 'an', Date.now()]);
+}
+const countRows = async q => (await db.raw(q))[0].n;
+const docPerms = async id => (await db.raw('SELECT permissions_json FROM bqlda_pdf_docs WHERE id = ?', [id]))[0].permissions_json;
 
 async function call(user, action, payload = {}, extraHeaders = {}) {
   const headers = { host: '127.0.0.1:8790', origin: 'http://127.0.0.1:8790', ...extraHeaders };
@@ -139,7 +161,7 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
 
   // 1. Không đăng nhập -> 401 cho mọi action ngoài nhóm công khai
   console.log('1. Unauthenticated -> 401');
-  resetDb();
+  await resetDb();
   const PUBLIC = ['auth_status', 'auth_login', 'login_user', 'auth_google', 'google_login'];
   const actions = new Set();
   for (const m of src.matchAll(/action === '([a-z_]+)'/g)) actions.add(m[1]);
@@ -157,12 +179,12 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   check(`${nonPublic.length} action không công khai x 3 kiểu phiên (thiếu/sai/hết hạn) đều 401`, bad401.length === 0, bad401);
   const st = await call(null, 'auth_status');
   check('auth_status vẫn công khai (200, authenticated=false)', st.status === 200 && st.body.data.authenticated === false, st);
-  const lockedSql = db.state.log.filter(q => !/^(CREATE|DO |SELECT u\.username|SELECT u.username)/.test(q) && !/bqlda_sessions/.test(q));
+  const lockedSql = logged.filter(q => !/^(CREATE|INSERT OR IGNORE|DO )/.test(q) && !/bqlda_sessions/.test(q));
   check('không truy vấn dữ liệu nào trước khi xác thực', lockedSql.length === 0, lockedSql.slice(0, 5));
 
   // 2. Phân quyền ghi
   console.log('2. Role checks');
-  resetDb();
+  await resetDb();
   let r = await call('chi', 'anno_upsert', { doc_id: 'd1', items: [anno('c1', 1)] });
   check('Người xem anno_upsert -> 403', r.status === 403, r);
   r = await call('chi', 'anno_delete', { doc_id: 'd1', ids: ['c1'] });
@@ -194,7 +216,7 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
 
   // 3. Hai người cùng ghi đồng thời không mất gì
   console.log('3. Concurrent upserts');
-  resetDb(15);
+  await resetDb();
   const batches = [];
   for (let i = 0; i < 10; i++) {
     batches.push(call('an', 'anno_upsert', { doc_id: 'd1', items: Array.from({ length: 5 }, (_, k) => anno(`an_${i}_${k}`, 1 + (k % 3))) }));
@@ -208,8 +230,8 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   const revs = r.body.data.items.map(i => i.rev);
   check('rev tăng nghiêm ngặt và duy nhất', revs.every((v, i) => i === 0 || v > revs[i - 1]), revs.slice(0, 10));
   // Đối chứng: cách cũ (đọc cả khối rồi ghi đè) mất dữ liệu khi hai người cùng sửa
-  resetDb(15);
-  db.state.blobs.set('d1', { annos_json: [], comments_json: [], updated_by: 'an', updated_at: new Date() });
+  await resetDb();
+  await setAnnoBlob('d1', '[]', '[]');
   const legacyEdit = async (user, id) => {
     const g = await call(user, 'doc_get', { doc_id: 'd1' });
     return call(user, 'doc_save_annos', { doc_id: 'd1', annos: [...g.body.data.annos, { id, page: 1 }], comments: [] });
@@ -220,7 +242,7 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
 
   // 4. since chỉ trả thay đổi mới hơn; last-write-wins theo từng ghi chú
   console.log('4. since + last-write-wins');
-  resetDb();
+  await resetDb();
   await call('an', 'anno_upsert', { doc_id: 'd1', items: [anno('a1', 1), anno('a2', 1), anno('a3', 2)] });
   r = await call('binh', 'anno_changes', { doc_id: 'd1', since: 0 });
   const c1 = r.body.data.cursor;
@@ -245,8 +267,8 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   r = await call('an', 'anno_changes', { doc_id: 'd1', since: 'abc' });
   check('since sai -> 400', r.status === 400, r);
   // Nhập dữ liệu annos_json cũ một lần
-  db.state.docs.set('d2', { id: 'd2', title: 'cu.pdf', drive_file_id: null, owner_username: 'an', permissions_json: [], updated_at: new Date() });
-  db.state.blobs.set('d2', { annos_json: [{ id: 'old1', page: 2, type: 'ink' }, { page: 1, type: 'text' }], comments_json: [{ id: 'cm1', text: 'hi' }], updated_by: 'an', updated_at: new Date() });
+  await insertDoc({ id: 'd2', title: 'cu.pdf', drive_file_id: null, folder_name: 'Chung', owner_username: 'an', file_size: 0, page_count: 1, scale_ratio: '1:100', permissions_json: [] });
+  await setAnnoBlob('d2', [{ id: 'old1', page: 2, type: 'ink' }, { page: 1, type: 'text' }], [{ id: 'cm1', text: 'hi' }]);
   r = await call('an', 'anno_changes', { doc_id: 'd2', since: 0 });
   check('since=0 tự nhập annos_json/comments_json cũ (3 dòng)', r.body.data.items.map(i => i.id).sort().join() === 'cm1,legacy_a2,old1', r.body.data.items);
   r = await call('an', 'anno_changes', { doc_id: 'd2', since: 0 });
@@ -268,11 +290,11 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   console.log('6. Access requests');
   r = await call('em', 'doc_request_access', { doc_id: 'd1', requested_role: 'Người sửa', message: 'cho em sửa' });
   const reqId = r.body.data.request && r.body.data.request.id;
-  check('em gửi yêu cầu -> pending, lưu thật', r.status === 200 && r.body.data.request.status === 'pending' && db.state.requests.size === 1, r.body);
+  check('em gửi yêu cầu -> pending, lưu thật', r.status === 200 && r.body.data.request.status === 'pending' && (await countRows('SELECT COUNT(*) AS n FROM bqlda_pdf_access_requests')) === 1, r.body);
   r = await call('em', 'doc_request_access', { doc_id: 'd1', requested_role: 'Người nhận xét', message: 'thôi chỉ nhận xét' });
-  check('gửi lại cập nhật yêu cầu đang chờ (không tạo trùng)', r.body.data.request.id === reqId && db.state.requests.size === 1, r.body);
+  check('gửi lại cập nhật yêu cầu đang chờ (không tạo trùng)', r.body.data.request.id === reqId && (await countRows('SELECT COUNT(*) AS n FROM bqlda_pdf_access_requests')) === 1, r.body);
   r = await call('chi', 'doc_request_access', { doc_id: 'd1', requested_role: 'Người xem' });
-  check('đã có quyền đủ -> already=true, không tạo yêu cầu', r.body.data.already === true && db.state.requests.size === 1, r.body);
+  check('đã có quyền đủ -> already=true, không tạo yêu cầu', r.body.data.already === true && (await countRows('SELECT COUNT(*) AS n FROM bqlda_pdf_access_requests')) === 1, r.body);
   r = await call('em', 'doc_request_access', { doc_id: 'khong_co' });
   check('tài liệu không tồn tại -> 404', r.status === 404, r);
   r = await call('binh', 'doc_access_requests', { doc_id: 'd1' });
@@ -292,7 +314,7 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   check('xử lý lại yêu cầu đã duyệt -> 409', r.status === 409, r);
   r = await call('em', 'doc_access_my', { doc_id: 'd1' });
   check('doc_access_my báo approved', r.body.data.request.status === 'approved', r.body);
-  const perms = db.state.docs.get('d1').permissions_json;
+  const perms = await docPerms('d1');
   check('các quyền cũ còn nguyên (binh, chi, dung)', ['binh', 'chi', 'dung'].every(u => perms.some(p => p.username === u)), perms);
   r = await call('giang', 'doc_request_access', { doc_id: 'd1', requested_role: 'Người xem' });
   const req2 = r.body.data.request.id;
@@ -301,7 +323,7 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
 
   // 7. Tải lên tiếp nối + tải xuống file lớn (Google giả)
   console.log('7. Resumable upload + download (fake Google)');
-  resetDb();
+  await resetDb();
   r = await call('binh', 'upload_begin', { name: 'lon.pdf', size: 101 * 1024 * 1024 });
   check('upload_begin > 100 MB -> 400', r.status === 400, r);
   r = await call('binh', 'upload_begin', { name: 'lon.pdf', size: 20 }, { origin: 'https://ke-xau.example' });
@@ -359,9 +381,11 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
 
   // 8. Lược đồ: file migration khớp với lược đồ ensureDb
   console.log('8. Migration file');
-  const mig = fs.readFileSync(path.join(root, 'scripts', 'migrate-pdf-collab.sql'), 'utf8').replace(/\s+/g, ' ');
-  const missing = COLLAB_SCHEMA_STATEMENTS.filter(s => !mig.includes(s.replace(/\s+/g, ' ')));
-  check('migrate-pdf-collab.sql chứa đủ ' + COLLAB_SCHEMA_STATEMENTS.length + ' câu lệnh của api/_pdf_schema.js', missing.length === 0, missing.map(s => s.slice(0, 60)));
+  let schemaErr = null;
+  try {
+    for (const s of CORE_SCHEMA_STATEMENTS.concat(COLLAB_SCHEMA_STATEMENTS)) await db.raw(s);
+  } catch (e) { schemaErr = e.message; }
+  check('lược đồ SQLite áp dụng lại lần 2 không lỗi (idempotent)', schemaErr === null, schemaErr);
 
   console.log(results.join('\n'));
   console.log(`\nKết quả: ${pass} đạt, ${fail} lỗi`);

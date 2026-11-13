@@ -1,0 +1,9 @@
+name = "qlda-pdf-sql"
+main = "worker.mjs"
+compatibility_date = "2026-01-01"
+
+# D1 database đã tạo: qlda_pdf (tách khỏi qlda_core của app khác)
+[[d1_databases]]
+binding = "DB"
+database_name = "qlda_pdf"
+database_id = "333d30ee-81ee-4f02-8024-197e44644cf1"

@@ -1,18 +1,16 @@
 'use strict';
 /**
  * Serverless Backend API cho PDF QLDA trên Vercel.
- * Kết nối Neon Serverless PostgreSQL và Google Drive service.
+ * CSDL: Cloudflare D1 (SQLite) qua Worker cầu nối (SQL_URL, SQL_TOKEN), và Google Drive service.
  */
 const crypto = require('crypto');
 const { signToken, verifyToken } = require('./_auth_token');
-const { neon } = require('@neondatabase/serverless');
+const { sqlFromEnv, sqlLocal } = require('./_d1sql');
 const gdriveService = require('./_gdrive_service');
-const { COLLAB_SCHEMA_STATEMENTS } = require('./_pdf_schema');
-const { createMemSql } = require('./_pdf_memsql');
+const { CORE_SCHEMA_STATEMENTS, COLLAB_SCHEMA_STATEMENTS } = require('./_pdf_schema');
 
 let initPromise = null;
 let collabReady = false;
-const databaseUrl = () => process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || '';
 const hashPassword = value => crypto.createHash('sha256').update(`SALT_BNGUA_${value}`).digest('hex');
 
 const result = data => ({ ok: true, data, error: null });
@@ -29,10 +27,7 @@ const PRESENCE_TTL_SECONDS = 30;
 const ANNO_BATCH_MAX = 500;
 const ANNO_DATA_MAX_BYTES = 256 * 1024;
 
-let sqlFactory = () => {
-  const url = databaseUrl();
-  return url ? neon(url) : null;
-};
+let sqlFactory = () => sqlFromEnv();
 
 function sqlClient() {
   return sqlFactory();
@@ -49,11 +44,11 @@ function computeRole(user, doc) {
 const roleRank = role => (role ? (ROLE_RANK[role] || 1) : 0);
 
 /* ---------- Kho lưu trữ Drive riêng (tài khoản Google độc lập, do Admin đăng nhập 1 lần) ---------- */
+const SESSION_MS = 30 * 24 * 3600 * 1000;
 let storageCache = { at: 0, value: null };
 async function loadStorageToken(sql) {
   try {
     if (Date.now() - storageCache.at < 30000) return storageCache.value;
-    await sql`CREATE TABLE IF NOT EXISTS bqlda_settings (key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz DEFAULT now())`;
     const rows = await sql`SELECT value FROM bqlda_settings WHERE key = 'storage_drive' LIMIT 1`;
     const v = rows[0] ? (typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value) : null;
     storageCache = { at: Date.now(), value: v };
@@ -68,59 +63,16 @@ async function ensureDb() {
     const sql = sqlClient();
     if (!sql) return null;
 
-    // 1. Đảm bảo bảng bqlda_users và bqlda_sessions tồn tại (dùng chung với rpc.js)
-    await sql`CREATE TABLE IF NOT EXISTS bqlda_users (
-      username text PRIMARY KEY,
-      password_hash text NOT NULL,
-      status text NOT NULL DEFAULT 'Active',
-      data jsonb NOT NULL,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    )`;
-
-    await sql`CREATE TABLE IF NOT EXISTS bqlda_sessions (
-      token text PRIMARY KEY,
-      username text NOT NULL REFERENCES bqlda_users(username) ON DELETE CASCADE,
-      expires_at timestamptz NOT NULL
-    )`;
+    // 1. Bảng lõi (người dùng, phiên, cài đặt, tài liệu, ghi chú, tuỳ chọn): idempotent.
+    for (const stmt of CORE_SCHEMA_STATEMENTS) await sql.raw(stmt);
 
     
 
-    // 2. Bảng tài liệu PDF QLDA
-    await sql`CREATE TABLE IF NOT EXISTS bqlda_pdf_docs (
-      id text PRIMARY KEY,
-      title text NOT NULL,
-      drive_file_id text,
-      folder_name text DEFAULT 'Chung',
-      owner_username text NOT NULL,
-      file_size bigint DEFAULT 0,
-      page_count int DEFAULT 1,
-      scale_ratio text DEFAULT '1:100',
-      permissions_json jsonb DEFAULT '[]'::jsonb,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    )`;
-
-    // 3. Bảng ghi chú & bình luận PDF (đồng bộ real-time)
-    await sql`CREATE TABLE IF NOT EXISTS bqlda_pdf_annos (
-      doc_id text PRIMARY KEY,
-      annos_json jsonb NOT NULL DEFAULT '[]'::jsonb,
-      comments_json jsonb NOT NULL DEFAULT '[]'::jsonb,
-      updated_by text,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    )`;
-
-    // 4. Bảng cấu hình cá nhân Ribbon & Pick
-    await sql`CREATE TABLE IF NOT EXISTS bqlda_pdf_prefs (
-      username text PRIMARY KEY,
-      ribbon_json jsonb DEFAULT '{}'::jsonb,
-      recent_colors_json jsonb DEFAULT '[]'::jsonb,
-      pick_json jsonb DEFAULT '{}'::jsonb,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    )`;
 
     // 5. Bảng cộng tác (ghi chú từng dòng, hiện diện, xin quyền, phiên tải lên).
     // Tách riêng: nếu lỗi thì các action cũ vẫn chạy, action mới trả 503.
     try {
-      await sql.query('DO $pdfcollab$ BEGIN ' + COLLAB_SCHEMA_STATEMENTS.join('; ') + '; END $pdfcollab$');
+      for (const stmt of COLLAB_SCHEMA_STATEMENTS) await sql.raw(stmt);
       collabReady = true;
     } catch (error) {
       collabReady = false;
@@ -158,7 +110,7 @@ async function getSessionUser(sql, req) {
   if (tUser) return tUser;
   if (!sql) return null;
   try {
-    const rows = await sql`SELECT u.username,u.status,u.data FROM bqlda_sessions s JOIN bqlda_users u ON u.username=s.username WHERE s.token=${token} AND s.expires_at>now()`;
+    const rows = await sql`SELECT u.username,u.status,u.data FROM bqlda_sessions s JOIN bqlda_users u ON u.username=s.username WHERE s.token=${token} AND s.expires_at>${Date.now()}`;
     return publicUser(rows[0]);
   } catch (_) {
     return null;
@@ -365,8 +317,24 @@ async function trashDriveFile(fileId) {
   }
 }
 
-let memCollab = null; // DEMO (chạy thử trên máy, không CSDL): bảng cộng tác trong bộ nhớ
-const demoCollabSql = () => (memCollab ||= createMemSql({ docs: memDocs }));
+let memCollab = null; // DEMO (chạy thử trên máy, không CSDL cấu hình): SQLite trong bộ nhớ của Node
+let memCollabReady = null;
+const demoCollabSql = () => {
+  if (!memCollab) {
+    memCollab = sqlLocal(':memory:');
+    memCollabReady = (async () => {
+      for (const stmt of CORE_SCHEMA_STATEMENTS.concat(COLLAB_SCHEMA_STATEMENTS)) await memCollab.raw(stmt);
+    })();
+  }
+  return memCollab;
+};
+
+// Dành n số rev liên tiếp cho ghi chú (thay nextval của Postgres); trả về số đứng trước số đầu tiên.
+// Dòng thứ i trong lô nhận rev = base + i (i từ 1). D1 ghi tuần tự nên bộ đếm này an toàn.
+async function reserveRevs(db, n) {
+  const rows = await db`UPDATE bqlda_pdf_counters SET val = val + ${n} WHERE name = 'anno_rev' RETURNING val`;
+  return Number(rows[0].val) - n;
+}
 
 async function uploadToDrive(fileName, mimeType, buffer, parentFolderId) {
   const token = await gdriveService.getAccessToken();
@@ -461,7 +429,7 @@ module.exports = async function handler(req, res) {
       const pHash = hashPassword(password);
 
       if (sql) {
-        const rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE lower(username)=${identifier} OR lower(data->>'email')=${identifier} LIMIT 1`;
+        const rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE lower(username)=${identifier} OR lower(json_extract(data,'$.email'))=${identifier} LIMIT 1`;
         const row = rows[0];
         if (!row) return res.status(200).json(failure('Tài khoản không tồn tại trên hệ thống!'));
         if (row.status === 'Locked') return res.status(200).json(failure('Tài khoản này đã bị khóa bởi Quản trị viên!'));
@@ -472,8 +440,8 @@ module.exports = async function handler(req, res) {
         if (row.password_hash !== pHash) return res.status(200).json(failure('Sai mật khẩu đăng nhập!'));
 
         const token = crypto.randomBytes(32).toString('hex');
-        await sql`DELETE FROM bqlda_sessions WHERE expires_at<=now()`;
-        await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},now()+interval '30 days')`;
+        await sql`DELETE FROM bqlda_sessions WHERE expires_at<=${Date.now()}`;
+        await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},${Date.now() + SESSION_MS})`;
         return res.status(200).json({ ...result(publicUser(row)), session_token: token });
       } else {
         if (!DEMO) return res.status(503).json(failure("Máy chủ chưa kết nối cơ sở dữ liệu."));
@@ -510,7 +478,7 @@ module.exports = async function handler(req, res) {
       const username = email.split('@')[0].replace(/[^a-z0-9_]/g, '_');
 
       if (sql) {
-        let rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE lower(data->>'email')=${email} OR lower(username)=${username} LIMIT 1`;
+        let rows = await sql`SELECT username,password_hash,status,data FROM bqlda_users WHERE lower(json_extract(data,'$.email'))=${email} OR lower(username)=${username} LIMIT 1`;
         let row = rows[0];
         if (!row) {
           const newUser = {
@@ -526,7 +494,7 @@ module.exports = async function handler(req, res) {
             google_sub: String(profile.sub),
             created_at: new Date().toISOString()
           };
-          await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES (${username},${hashPassword(crypto.randomBytes(16).toString('hex'))},'Pending',${JSON.stringify(newUser)}::jsonb) ON CONFLICT (username) DO NOTHING`;
+          await sql`INSERT INTO bqlda_users (username,password_hash,status,data,updated_at) VALUES (${username},${hashPassword(crypto.randomBytes(16).toString('hex'))},'Pending',${JSON.stringify(newUser)},${Date.now()}) ON CONFLICT (username) DO NOTHING`;
           return res.status(200).json(failure('Đã ghi nhận tài khoản. Vui lòng chờ Quản trị viên phê duyệt.'));
         }
         const rdata = typeof row.data === 'string' ? JSON.parse(row.data) : (row.data || {});
@@ -536,18 +504,18 @@ module.exports = async function handler(req, res) {
           row.status = 'Active';
           rdata.role = 'Admin';
           rdata.status = 'Active';
-          await sql`UPDATE bqlda_users SET status='Active', data=jsonb_set(data, '{role}', '"Admin"'), updated_at=now() WHERE username=${row.username}`;
+          await sql`UPDATE bqlda_users SET status='Active', data=json_set(data, '$.role', 'Admin'), updated_at=${Date.now()} WHERE username=${row.username}`;
         }
         if (isMem && row.status !== 'Active') {
           row.status = 'Active';
           rdata.status = 'Active';
-          await sql`UPDATE bqlda_users SET status='Active', updated_at=now() WHERE username=${row.username}`;
+          await sql`UPDATE bqlda_users SET status='Active', updated_at=${Date.now()} WHERE username=${row.username}`;
         }
         if (rdata.google_sub && rdata.google_sub !== String(profile.sub)) return res.status(200).json(failure('Danh tính Google không khớp tài khoản đã liên kết.'));
         if (row.status === 'Locked') return res.status(200).json(failure('Tài khoản này đã bị khóa bởi Quản trị viên!'));
         if (row.status !== 'Active') return res.status(200).json(failure('Tài khoản đang chờ Quản trị viên phê duyệt.'));
         const token = crypto.randomBytes(32).toString('hex');
-        await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},now()+interval '30 days')`;
+        await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},${Date.now() + SESSION_MS})`;
         return res.status(200).json({ ...result(publicUser(row)), session_token: token });
       } else {
         if (!DEMO) return res.status(503).json(failure("Máy chủ chưa kết nối cơ sở dữ liệu."));
@@ -596,7 +564,7 @@ module.exports = async function handler(req, res) {
         if (newRole) data.role = newRole;
         const statusToSet = newStatus || row.status;
 
-        await sql`UPDATE bqlda_users SET status=${statusToSet}, data=${JSON.stringify(data)}::jsonb, updated_at=now() WHERE username=${targetUsername}`;
+        await sql`UPDATE bqlda_users SET status=${statusToSet}, data=${JSON.stringify(data)}, updated_at=${Date.now()} WHERE username=${targetUsername}`;
 
         // Nếu khoá tài khoản -> thu hồi toàn bộ session ngay lập tức!
         if (statusToSet === 'Locked' || statusToSet === 'lock') {
@@ -642,9 +610,8 @@ module.exports = async function handler(req, res) {
         email = String(ui.email || '');
       } catch (_) {}
       const val = { refresh_token: td.refresh_token, email, connected_by: currentUser.username, connected_at: new Date().toISOString() };
-      await sql`CREATE TABLE IF NOT EXISTS bqlda_settings (key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz DEFAULT now())`;
-      await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES ('storage_drive', ${JSON.stringify(val)}::jsonb, now())
-        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`;
+      await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES ('storage_drive', ${JSON.stringify(val)}, ${Date.now()})
+        ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`;
       storageCache = { at: Date.now(), value: val };
       gdriveService.setRefreshToken(val.refresh_token);
       return res.status(200).json(result({ connected: true, email }));
@@ -734,9 +701,9 @@ module.exports = async function handler(req, res) {
 
       if (sql) {
         await sql`INSERT INTO bqlda_pdf_docs (id,title,drive_file_id,folder_name,owner_username,file_size,page_count,scale_ratio,permissions_json,updated_at)
-          VALUES (${docItem.id}, ${docItem.title}, ${docItem.drive_file_id}, ${docItem.folder_name}, ${docItem.owner_username}, ${docItem.file_size}, ${docItem.page_count}, ${docItem.scale_ratio}, ${JSON.stringify(docItem.permissions_json)}::jsonb, now())`;
+          VALUES (${docItem.id}, ${docItem.title}, ${docItem.drive_file_id}, ${docItem.folder_name}, ${docItem.owner_username}, ${docItem.file_size}, ${docItem.page_count}, ${docItem.scale_ratio}, ${JSON.stringify(docItem.permissions_json)}, ${Date.now()})`;
         await sql`INSERT INTO bqlda_pdf_annos (doc_id, annos_json, comments_json, updated_by, updated_at)
-          VALUES (${docItem.id}, '[]'::jsonb, '[]'::jsonb, ${currentUser.username}, now()) ON CONFLICT (doc_id) DO NOTHING`;
+          VALUES (${docItem.id}, '[]', '[]', ${currentUser.username}, ${Date.now()}) ON CONFLICT (doc_id) DO NOTHING`;
       } else {
         memDocs.set(docId, docItem);
         memAnnos.set(docId, { doc_id: docId, annos_json: [], comments_json: [], updated_by: currentUser.username, updated_at: new Date().toISOString() });
@@ -795,13 +762,13 @@ module.exports = async function handler(req, res) {
 
       if (sql) {
         await sql`INSERT INTO bqlda_pdf_annos (doc_id, annos_json, comments_json, updated_by, updated_at)
-          VALUES (${docId}, ${JSON.stringify(annos)}::jsonb, ${JSON.stringify(comments)}::jsonb, ${currentUser.username}, now())
+          VALUES (${docId}, ${JSON.stringify(annos)}, ${JSON.stringify(comments)}, ${currentUser.username}, ${Date.now()})
           ON CONFLICT (doc_id) DO UPDATE SET
-            annos_json=EXCLUDED.annos_json,
-            comments_json=EXCLUDED.comments_json,
-            updated_by=EXCLUDED.updated_by,
-            updated_at=now()`;
-        await sql`UPDATE bqlda_pdf_docs SET updated_at=now() WHERE id=${docId}`;
+            annos_json=excluded.annos_json,
+            comments_json=excluded.comments_json,
+            updated_by=excluded.updated_by,
+            updated_at=excluded.updated_at`;
+        await sql`UPDATE bqlda_pdf_docs SET updated_at=${Date.now()} WHERE id=${docId}`;
       } else {
         memAnnos.set(docId, { doc_id: docId, annos_json: annos, comments_json: comments, updated_by: currentUser.username, updated_at: new Date().toISOString() });
       }
@@ -820,7 +787,7 @@ module.exports = async function handler(req, res) {
         .map(p => ({ username: p.username.trim().toLowerCase(), role: p.role }));
 
       if (sql) {
-        await sql`UPDATE bqlda_pdf_docs SET permissions_json=${JSON.stringify(permissions)}::jsonb, updated_at=now() WHERE id=${docId}`;
+        await sql`UPDATE bqlda_pdf_docs SET permissions_json=${JSON.stringify(permissions)}, updated_at=${Date.now()} WHERE id=${docId}`;
       } else if (memDocs.has(docId)) {
         const item = memDocs.get(docId);
         item.permissions_json = permissions;
@@ -838,10 +805,10 @@ module.exports = async function handler(req, res) {
       return res.status(503).json(failure('CSDL chưa có bảng cộng tác. Chạy scripts/migrate-pdf-collab.sql.'));
     }
     const db = sql || demoCollabSql();
+    if (!sql) await memCollabReady;
     const me = currentUser.username;
     const bad = msg => res.status(400).json(failure(msg));
     const deny = msg => res.status(403).json(failure(msg || 'Bạn không có quyền mở tài liệu này.'));
-    const lockKey = docId => 'pdfanno:' + docId;
 
     // Tài liệu đọc được hay không; trả về doc hoặc null (đã gửi phản hồi 403).
     const readableDoc = async docId => {
@@ -854,16 +821,17 @@ module.exports = async function handler(req, res) {
     const presenceTouch = async (doc, clientId, state) => {
       const stateJson = JSON.stringify(state && typeof state === 'object' && !Array.isArray(state) ? state : {});
       if (stateJson.length > 2048) throw new Error('state hiện diện vượt 2 KB.');
+      const nowMs = Date.now();
       await db`/*q:presence_upsert*/ INSERT INTO bqlda_pdf_presence (doc_id, username, client_id, fullname, state, last_seen)
-        VALUES (${doc.id}, ${me}, ${clientId}, ${currentUser.fullname || me}, ${stateJson}::jsonb, now())
-        ON CONFLICT (doc_id, username, client_id) DO UPDATE SET fullname = EXCLUDED.fullname, state = EXCLUDED.state, last_seen = now()`;
+        VALUES (${doc.id}, ${me}, ${clientId}, ${currentUser.fullname || me}, ${stateJson}, ${nowMs})
+        ON CONFLICT (doc_id, username, client_id) DO UPDATE SET fullname = excluded.fullname, state = excluded.state, last_seen = excluded.last_seen`;
       if (Math.random() < 0.02) {
-        await db`/*q:presence_gc*/ DELETE FROM bqlda_pdf_presence WHERE last_seen < now() - interval '10 minutes'`;
+        await db`/*q:presence_gc*/ DELETE FROM bqlda_pdf_presence WHERE last_seen < ${nowMs - 10 * 60 * 1000}`;
       }
     };
     const presenceList = async doc => {
       const rows = await db`/*q:presence_list*/ SELECT username, fullname, client_id, state, last_seen FROM bqlda_pdf_presence
-        WHERE doc_id = ${doc.id} AND last_seen > now() - make_interval(secs => ${PRESENCE_TTL_SECONDS}::double precision)
+        WHERE doc_id = ${doc.id} AND last_seen > ${Date.now() - PRESENCE_TTL_SECONDS * 1000}
         ORDER BY username, client_id`;
       return rows.map(r => ({ username: r.username, fullname: r.fullname || r.username, client_id: r.client_id, state: parseJson(r.state) || {}, last_seen: toIso(r.last_seen) }));
     };
@@ -877,14 +845,14 @@ module.exports = async function handler(req, res) {
       const parsed = parseAnnoItems(payload.items);
       if (parsed.error) return bad(parsed.error);
       const editAll = rank >= ROLE_RANK['Người sửa'];
-      const rows = await db`/*q:anno_upsert*/ WITH lk AS (SELECT pg_advisory_xact_lock(hashtextextended(${lockKey(doc.id)}, 0)) AS l),
-        src AS (SELECT x.id, x.page, x.data FROM lk CROSS JOIN jsonb_to_recordset(${JSON.stringify(parsed.items)}::jsonb) AS x(id text, page int, data jsonb))
-        INSERT INTO bqlda_pdf_anno_items AS t (doc_id, id, page, data, created_by, updated_by, updated_at, rev, deleted)
-        SELECT ${doc.id}, src.id, src.page, src.data, ${me}, ${me}, now(), nextval('bqlda_pdf_anno_rev_seq'), false FROM src
-        ON CONFLICT (doc_id, id) DO UPDATE SET page = EXCLUDED.page, data = EXCLUDED.data, updated_by = EXCLUDED.updated_by,
-          updated_at = now(), rev = EXCLUDED.rev, deleted = false
-        WHERE ${editAll}::boolean OR t.created_by = ${me}
-        RETURNING t.id, t.rev, t.updated_at`;
+      const base = await reserveRevs(db, parsed.items.length);
+      const rows = await db`/*q:anno_upsert*/ INSERT INTO bqlda_pdf_anno_items (doc_id, id, page, data, created_by, updated_by, updated_at, rev, deleted)
+        SELECT ${doc.id}, json_extract(value, '$.id'), json_extract(value, '$.page'), json_extract(value, '$.data'), ${me}, ${me}, ${Date.now()}, ${base} + key + 1, 0
+        FROM json_each(${JSON.stringify(parsed.items)}) WHERE 1 = 1
+        ON CONFLICT (doc_id, id) DO UPDATE SET page = excluded.page, data = excluded.data, updated_by = excluded.updated_by,
+          updated_at = excluded.updated_at, rev = excluded.rev, deleted = 0
+        WHERE ${editAll} OR bqlda_pdf_anno_items.created_by = ${me}
+        RETURNING id, rev, updated_at`;
       const applied = rows.map(r => ({ id: r.id, rev: Number(r.rev), updated_at: toIso(r.updated_at) }));
       const ok = new Set(applied.map(a => a.id));
       const rejected = parsed.items.filter(i => !ok.has(i.id)).map(i => i.id);
@@ -900,12 +868,13 @@ module.exports = async function handler(req, res) {
       const ids = Array.isArray(payload.ids) ? [...new Set(payload.ids.map(String))] : [];
       if (!ids.length || ids.length > ANNO_BATCH_MAX || !ids.every(i => ID_RE.test(i))) return bad('ids không hợp lệ.');
       const editAll = rank >= ROLE_RANK['Người sửa'];
-      const rows = await db`/*q:anno_delete*/ WITH lk AS (SELECT pg_advisory_xact_lock(hashtextextended(${lockKey(doc.id)}, 0)) AS l)
-        UPDATE bqlda_pdf_anno_items AS t SET deleted = true, updated_by = ${me}, updated_at = now(), rev = nextval('bqlda_pdf_anno_rev_seq')
-        FROM lk
-        WHERE t.doc_id = ${doc.id} AND t.id IN (SELECT jsonb_array_elements_text(${JSON.stringify(ids)}::jsonb))
-          AND t.deleted = false AND (${editAll}::boolean OR t.created_by = ${me})
-        RETURNING t.id, t.rev, t.updated_at`;
+      const base = await reserveRevs(db, ids.length);
+      // rev của mỗi id = base + thứ tự của id trong lô (theo thứ tự chuỗi), nên các rev khác nhau.
+      const rows = await db`/*q:anno_delete*/ UPDATE bqlda_pdf_anno_items SET deleted = 1, updated_by = ${me}, updated_at = ${Date.now()},
+          rev = ${base} + (SELECT COUNT(*) FROM json_each(${JSON.stringify(ids)}) j WHERE j.value <= bqlda_pdf_anno_items.id)
+        WHERE doc_id = ${doc.id} AND id IN (SELECT value FROM json_each(${JSON.stringify(ids)}))
+          AND deleted = 0 AND (${editAll} OR created_by = ${me})
+        RETURNING id, rev, updated_at`;
       const deleted = rows.map(r => ({ id: r.id, rev: Number(r.rev), updated_at: toIso(r.updated_at) }));
       const done = new Set(deleted.map(d => d.id));
       return res.status(200).json(result({ deleted, skipped: ids.filter(i => !done.has(i)) }));
@@ -920,30 +889,33 @@ module.exports = async function handler(req, res) {
       const since = Number(sinceRaw);
       const limit = Math.min(Math.max(Number(payload.limit) || 500, 1), 1000);
       if (since === 0) {
-        await db`/*q:anno_import_legacy*/ WITH lk AS (SELECT pg_advisory_xact_lock(hashtextextended(${lockKey(doc.id)}, 0)) AS l),
-          src AS (
-            SELECT COALESCE(NULLIF(a.elem->>'id', ''), 'legacy_a' || a.ord) AS id,
-                   CASE WHEN a.elem->>'page' ~ '^[0-9]{1,6}$' THEN GREATEST((a.elem->>'page')::int, 1) ELSE 1 END AS page,
-                   a.elem AS data
-            FROM lk CROSS JOIN bqlda_pdf_annos b
-            CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(b.annos_json) = 'array' THEN b.annos_json ELSE '[]'::jsonb END) WITH ORDINALITY AS a(elem, ord)
-            WHERE b.doc_id = ${doc.id} AND jsonb_typeof(a.elem) = 'object'
-            UNION ALL
-            SELECT COALESCE(NULLIF(c.elem->>'id', ''), 'legacy_c' || c.ord),
-                   CASE WHEN c.elem->>'page' ~ '^[0-9]{1,6}$' THEN GREATEST((c.elem->>'page')::int, 1) ELSE 1 END,
-                   c.elem || '{"_legacy_kind":"comment"}'::jsonb
-            FROM lk CROSS JOIN bqlda_pdf_annos b
-            CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(b.comments_json) = 'array' THEN b.comments_json ELSE '[]'::jsonb END) WITH ORDINALITY AS c(elem, ord)
-            WHERE b.doc_id = ${doc.id} AND jsonb_typeof(c.elem) = 'object'
-          )
-          INSERT INTO bqlda_pdf_anno_items (doc_id, id, page, data, created_by, updated_by, updated_at, rev, deleted)
-          SELECT ${doc.id}, src.id, src.page, src.data, ${doc.owner_username}, ${doc.owner_username}, now(), nextval('bqlda_pdf_anno_rev_seq'), false
-          FROM src WHERE NOT EXISTS (SELECT 1 FROM bqlda_pdf_anno_items e WHERE e.doc_id = ${doc.id})
+        const cnt = await db`SELECT COALESCE(json_array_length(annos_json), 0) + COALESCE(json_array_length(comments_json), 0) AS n
+          FROM bqlda_pdf_annos WHERE doc_id = ${doc.id}`;
+        const legacyN = Number(cnt[0] ? cnt[0].n : 0);
+        const base = legacyN > 0 ? await reserveRevs(db, legacyN) : 0;
+        await db`/*q:anno_import_legacy*/ INSERT INTO bqlda_pdf_anno_items (doc_id, id, page, data, created_by, updated_by, updated_at, rev, deleted)
+          SELECT ${doc.id}, src.id, src.page, src.data, ${doc.owner_username}, ${doc.owner_username}, ${Date.now()}, ${base} + src.rn, 0
+          FROM (
+            SELECT id, page, data, ROW_NUMBER() OVER () AS rn FROM (
+              SELECT COALESCE(NULLIF(json_extract(a.value, '$.id'), ''), 'legacy_a' || (a.key + 1)) AS id,
+                     MAX(1, COALESCE(CAST(json_extract(a.value, '$.page') AS INTEGER), 1)) AS page,
+                     a.value AS data
+              FROM bqlda_pdf_annos b, json_each(b.annos_json) a
+              WHERE b.doc_id = ${doc.id} AND json_type(b.annos_json) = 'array' AND json_type(a.value) = 'object'
+              UNION ALL
+              SELECT COALESCE(NULLIF(json_extract(c.value, '$.id'), ''), 'legacy_c' || (c.key + 1)),
+                     MAX(1, COALESCE(CAST(json_extract(c.value, '$.page') AS INTEGER), 1)),
+                     json_patch(c.value, '{"_legacy_kind":"comment"}')
+              FROM bqlda_pdf_annos b, json_each(b.comments_json) c
+              WHERE b.doc_id = ${doc.id} AND json_type(b.comments_json) = 'array' AND json_type(c.value) = 'object'
+            )
+          ) src
+          WHERE NOT EXISTS (SELECT 1 FROM bqlda_pdf_anno_items e WHERE e.doc_id = ${doc.id})
           ON CONFLICT (doc_id, id) DO NOTHING`;
       }
       const rows = await db`/*q:anno_changes*/ SELECT id, page, data, deleted, created_by, updated_by, updated_at, rev
         FROM bqlda_pdf_anno_items
-        WHERE doc_id = ${doc.id} AND rev > ${since}::bigint AND (${since}::bigint > 0 OR deleted = false)
+        WHERE doc_id = ${doc.id} AND rev > ${since} AND (${since} > 0 OR deleted = 0)
         ORDER BY rev ASC LIMIT ${limit + 1}`;
       const has_more = rows.length > limit;
       const items = rows.slice(0, limit).map(normAnno);
@@ -988,9 +960,9 @@ module.exports = async function handler(req, res) {
         return res.status(200).json(result({ already: true, my_role: myRole, request: null }));
       }
       const rows = await db`/*q:access_upsert*/ INSERT INTO bqlda_pdf_access_requests (id, doc_id, requester, requested_role, message, status, created_at)
-        VALUES (${'req_' + crypto.randomBytes(8).toString('hex')}, ${doc.id}, ${me}, ${requestedRole}, ${message}, 'pending', now())
+        VALUES (${'req_' + crypto.randomBytes(8).toString('hex')}, ${doc.id}, ${me}, ${requestedRole}, ${message}, 'pending', ${Date.now()})
         ON CONFLICT (doc_id, requester) WHERE status = 'pending'
-        DO UPDATE SET requested_role = EXCLUDED.requested_role, message = EXCLUDED.message, created_at = now()
+        DO UPDATE SET requested_role = excluded.requested_role, message = excluded.message, created_at = excluded.created_at
         RETURNING id, doc_id, requester, requested_role, message, status, decided_by, decided_role, decided_at, created_at`;
       return res.status(200).json(result({ already: false, my_role: myRole, request: normRequest(rows[0]) }));
     }
@@ -1012,15 +984,15 @@ module.exports = async function handler(req, res) {
       if (payload.doc_id) {
         const doc = await loadDoc(String(payload.doc_id));
         if (!doc || !canManage(doc)) return deny('Chỉ chủ sở hữu được xem yêu cầu xin quyền.');
-        rows = await db`/*q:access_list_doc*/ SELECT r.id, r.doc_id, d.title AS doc_title, r.requester, u.data->>'fullname' AS requester_fullname,
-            u.data->>'email' AS requester_email, r.requested_role, r.message, r.status, r.decided_by, r.decided_role, r.decided_at, r.created_at
+        rows = await db`/*q:access_list_doc*/ SELECT r.id, r.doc_id, d.title AS doc_title, r.requester, json_extract(u.data, '$.fullname') AS requester_fullname,
+            json_extract(u.data, '$.email') AS requester_email, r.requested_role, r.message, r.status, r.decided_by, r.decided_role, r.decided_at, r.created_at
           FROM bqlda_pdf_access_requests r JOIN bqlda_pdf_docs d ON d.id = r.doc_id LEFT JOIN bqlda_users u ON u.username = r.requester
           WHERE r.status = 'pending' AND r.doc_id = ${doc.id} ORDER BY r.created_at ASC LIMIT 200`;
       } else {
-        rows = await db`/*q:access_list_owner*/ SELECT r.id, r.doc_id, d.title AS doc_title, r.requester, u.data->>'fullname' AS requester_fullname,
-            u.data->>'email' AS requester_email, r.requested_role, r.message, r.status, r.decided_by, r.decided_role, r.decided_at, r.created_at
+        rows = await db`/*q:access_list_owner*/ SELECT r.id, r.doc_id, d.title AS doc_title, r.requester, json_extract(u.data, '$.fullname') AS requester_fullname,
+            json_extract(u.data, '$.email') AS requester_email, r.requested_role, r.message, r.status, r.decided_by, r.decided_role, r.decided_at, r.created_at
           FROM bqlda_pdf_access_requests r JOIN bqlda_pdf_docs d ON d.id = r.doc_id LEFT JOIN bqlda_users u ON u.username = r.requester
-          WHERE r.status = 'pending' AND (${isAdmin}::boolean OR d.owner_username = ${me}) ORDER BY r.created_at DESC LIMIT 200`;
+          WHERE r.status = 'pending' AND (${isAdmin} OR d.owner_username = ${me}) ORDER BY r.created_at DESC LIMIT 200`;
       }
       return res.status(200).json(result({ requests: rows.map(normRequest) }));
     }
@@ -1040,25 +1012,19 @@ module.exports = async function handler(req, res) {
         const role = payload.role || reqRow.requested_role;
         if (!SHARE_ROLES.includes(role)) return bad('Vai trò cấp không hợp lệ.');
         if (reqRow.requester === doc.owner_username) return bad('Người này đã là chủ sở hữu.');
-        const rows = await db`/*q:access_approve*/ WITH r AS (
-            UPDATE bqlda_pdf_access_requests SET status = 'approved', decided_by = ${me}, decided_role = ${role}, decided_at = now()
+        const claimed = await db`/*q:access_approve*/ UPDATE bqlda_pdf_access_requests SET status = 'approved', decided_by = ${me}, decided_role = ${role}, decided_at = ${Date.now()}
             WHERE id = ${reqId} AND status = 'pending'
-            RETURNING id, doc_id, requester, requested_role, message, status, decided_by, decided_role, decided_at, created_at
-          ), d AS (
-            UPDATE bqlda_pdf_docs AS doc SET permissions_json = COALESCE((
-                SELECT jsonb_agg(p) FROM jsonb_array_elements(CASE WHEN jsonb_typeof(doc.permissions_json) = 'array' THEN doc.permissions_json ELSE '[]'::jsonb END) AS p
-                WHERE p->>'username' IS DISTINCT FROM r.requester
-              ), '[]'::jsonb) || jsonb_build_array(jsonb_build_object('username', r.requester, 'role', r.decided_role)),
-              updated_at = now()
-            FROM r WHERE doc.id = r.doc_id
-            RETURNING doc.permissions_json
-          )
-          SELECT r.*, d.permissions_json FROM r LEFT JOIN d ON true`;
-        if (!rows[0]) return res.status(409).json(failure('Yêu cầu đã được xử lý trước đó.'));
-        const perms = (parseJson(rows[0].permissions_json) || []).filter(p => p && p.username !== doc.owner_username);
-        return res.status(200).json(result({ request: normRequest(rows[0]), permissions: perms }));
+            RETURNING id, doc_id, requester, requested_role, message, status, decided_by, decided_role, decided_at, created_at`;
+        if (!claimed[0]) return res.status(409).json(failure('Yêu cầu đã được xử lý trước đó.'));
+        const reqNow = claimed[0];
+        const current = (Array.isArray(doc.permissions_json) ? doc.permissions_json : (parseJson(doc.permissions_json) || []));
+        const nextPerms = current.filter(p => p && p.username !== reqNow.requester);
+        nextPerms.push({ username: reqNow.requester, role: reqNow.decided_role });
+        await db`/*q:access_perms_write*/ UPDATE bqlda_pdf_docs SET permissions_json = ${JSON.stringify(nextPerms)}, updated_at = ${Date.now()} WHERE id = ${doc.id}`;
+        const perms = nextPerms.filter(p => p && p.username !== doc.owner_username);
+        return res.status(200).json(result({ request: normRequest(reqNow), permissions: perms }));
       }
-      const rows = await db`/*q:access_reject*/ UPDATE bqlda_pdf_access_requests SET status = 'rejected', decided_by = ${me}, decided_at = now()
+      const rows = await db`/*q:access_reject*/ UPDATE bqlda_pdf_access_requests SET status = 'rejected', decided_by = ${me}, decided_at = ${Date.now()}
         WHERE id = ${reqId} AND status = 'pending'
         RETURNING id, doc_id, requester, requested_role, message, status, decided_by, decided_role, decided_at, created_at`;
       if (!rows[0]) return res.status(409).json(failure('Yêu cầu đã được xử lý trước đó.'));
@@ -1083,7 +1049,7 @@ module.exports = async function handler(req, res) {
       const pageCount = Math.max(1, Math.min(Number(payload.page_count) || 1, 100000));
       const scaleRatio = String(payload.scale_ratio || '1:100').slice(0, 20);
       await db`/*q:upload_insert*/ INSERT INTO bqlda_pdf_uploads (id, username, title, folder_name, folder_id, session_uri, file_size, page_count, scale_ratio, status, created_at, expires_at)
-        VALUES (${uploadId}, ${me}, ${name}, ${folderName}, ${folderId}, ${sessionUri}, ${size}, ${pageCount}, ${scaleRatio}, 'pending', now(), now() + interval '6 days')`;
+        VALUES (${uploadId}, ${me}, ${name}, ${folderName}, ${folderId}, ${sessionUri}, ${size}, ${pageCount}, ${scaleRatio}, 'pending', ${Date.now()}, ${Date.now() + 6 * 24 * 3600 * 1000})`;
       return res.status(200).json(result({ upload_id: uploadId, upload_url: sessionUri, chunk_size: UPLOAD_CHUNK_SIZE, size }));
     }
 
@@ -1136,14 +1102,14 @@ module.exports = async function handler(req, res) {
         return bad('File không phải PDF hợp lệ (đã chuyển vào thùng rác Drive).');
       }
       const docId = 'doc_' + crypto.randomBytes(8).toString('hex');
-      const rows = await db`/*q:upload_complete*/ WITH u AS (
-          UPDATE bqlda_pdf_uploads SET status = 'done', drive_file_id = ${fileId}, doc_id = ${docId}
-          WHERE id = ${up.id} AND username = ${me} AND status = 'pending' RETURNING *
-        )
-        INSERT INTO bqlda_pdf_docs (id, title, drive_file_id, folder_name, owner_username, file_size, page_count, scale_ratio, permissions_json, updated_at)
-        SELECT ${docId}, u.title, ${fileId}, u.folder_name, u.username, u.file_size, u.page_count, u.scale_ratio,
-          jsonb_build_array(jsonb_build_object('username', u.username, 'role', 'Chủ sở hữu')), now()
-        FROM u RETURNING *`;
+      const claimed = await db`/*q:upload_complete*/ UPDATE bqlda_pdf_uploads SET status = 'done', drive_file_id = ${fileId}, doc_id = ${docId}
+          WHERE id = ${up.id} AND username = ${me} AND status = 'pending' RETURNING *`;
+      if (!claimed[0]) return res.status(409).json(failure('Phiên tải lên đã được ghi nhận trước đó.'));
+      const u = claimed[0];
+      const rows = await db`/*q:upload_doc_insert*/ INSERT INTO bqlda_pdf_docs (id, title, drive_file_id, folder_name, owner_username, file_size, page_count, scale_ratio, permissions_json, updated_at)
+        VALUES (${docId}, ${u.title}, ${fileId}, ${u.folder_name}, ${u.username}, ${u.file_size}, ${u.page_count}, ${u.scale_ratio},
+          ${JSON.stringify([{ username: u.username, role: 'Chủ sở hữu' }])}, ${Date.now()})
+        RETURNING *`;
       if (!rows[0]) return res.status(409).json(failure('Phiên tải lên đã được ghi nhận trước đó.'));
       const newDoc = rows[0];
       if (!sql) memDocs.set(newDoc.id, newDoc);
@@ -1204,12 +1170,12 @@ module.exports = async function handler(req, res) {
 
       if (sql) {
         await sql`INSERT INTO bqlda_pdf_prefs (username, ribbon_json, recent_colors_json, pick_json, updated_at)
-          VALUES (${u}, ${JSON.stringify(ribbon)}::jsonb, ${JSON.stringify(recentColors)}::jsonb, ${JSON.stringify(pick)}::jsonb, now())
+          VALUES (${u}, ${JSON.stringify(ribbon)}, ${JSON.stringify(recentColors)}, ${JSON.stringify(pick)}, ${Date.now()})
           ON CONFLICT (username) DO UPDATE SET
-            ribbon_json=EXCLUDED.ribbon_json,
-            recent_colors_json=EXCLUDED.recent_colors_json,
-            pick_json=EXCLUDED.pick_json,
-            updated_at=now()`;
+            ribbon_json=excluded.ribbon_json,
+            recent_colors_json=excluded.recent_colors_json,
+            pick_json=excluded.pick_json,
+            updated_at=excluded.updated_at`;
       } else {
         memPrefs.set(u, { ribbon_json: ribbon, recent_colors_json: recentColors, pick_json: pick });
       }
