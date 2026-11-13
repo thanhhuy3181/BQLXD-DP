@@ -1831,6 +1831,7 @@ async function loadRealPdf(fileOrBytes, fileName, shouldUpload = false, targetPa
 
     // Đọc lại các annotation chuẩn (/Annots) có sẵn trong file PDF vào ANNO_MAP
     await readPdfAnnotationsOnLoad(pdfDoc, ps, paneIdx);
+    await loadCadLayers(pdfDoc, ps);
 
     if (paneIdx === S.focus) {
       PDF_STATE.name = fileName;
@@ -5341,7 +5342,7 @@ async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
 
   const MAX_CANVAS_DIM = 4096;
   const isPartial = (pageCssW * dpr > MAX_CANVAS_DIM) || (pageCssH * dpr > MAX_CANVAS_DIM);
-  const baseKey = `${isPartial ? 'part' : 'full'}_${ps.zoom}_${rot}_${dpr}`;
+  const baseKey = `${isPartial ? 'part' : 'full'}_${ps.zoom}_${rot}_${dpr}_oc${ps.ocRev || 0}`;
 
   let clipX = 0, clipY = 0, clipW = pageCssW, clipH = pageCssH;
   const existing = ps.renderedPages.get(pageNum);
@@ -5437,7 +5438,8 @@ async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
     const renderTask = page.render({
       canvasContext: ctx,
       viewport: vp,
-      annotationMode: (window.pdfjsLib && window.pdfjsLib.AnnotationMode) ? window.pdfjsLib.AnnotationMode.ENABLE : 1
+      annotationMode: (window.pdfjsLib && window.pdfjsLib.AnnotationMode) ? window.pdfjsLib.AnnotationMode.ENABLE : 1,
+      ...(ps.ocConfig ? { optionalContentConfigPromise: Promise.resolve(ps.ocConfig) } : {})
     });
     const myEntry = {
       key: renderKey,
@@ -7454,6 +7456,75 @@ $('#tabHeadProp').onclick=()=>switchRightTab('prop');
 if($('#tabHeadLayer'))$('#tabHeadLayer').onclick=()=>switchRightTab('layer');
 
 /* D12: Quản lý Layer đầy đủ */
+// Layer bản vẽ (OCG) trong file PDF, ví dụ xuất từ AutoCAD. Gộp các layer trùng tên (xref, nhiều trang).
+async function loadCadLayers(pdfDoc, ps) {
+  ps.ocConfig = null; ps.cadLayers = []; ps.ocRev = 0;
+  try {
+    const cfg = await pdfDoc.getOptionalContentConfig();
+    const groups = cfg && cfg.getGroups ? cfg.getGroups() : null;
+    if (!groups) return;
+    const byName = new Map();
+    for (const [id, g] of Object.entries(groups)) {
+      const name = String((g && g.name) || id).trim() || id;
+      if (!byName.has(name)) byName.set(name, { name, ids: [], visible: true });
+      const L = byName.get(name);
+      L.ids.push(id);
+      if (g && g.visible === false) L.visible = false;
+    }
+    ps.ocConfig = cfg;
+    ps.cadLayers = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true }));
+  } catch (err) { console.warn('loadCadLayers:', err.message); }
+  if (typeof renderLayerPanel === 'function') renderLayerPanel();
+}
+function setCadLayersVisible(ps, layers, visible) {
+  if (!ps || !ps.ocConfig) return;
+  layers.forEach(L => { L.visible = visible; L.ids.forEach(id => { try { ps.ocConfig.setVisibility(id, visible); } catch (_) {} }); });
+  ps.ocRev = (ps.ocRev || 0) + 1;
+  renderPanes();
+  renderLayerPanel();
+}
+function renderCadLayerSection(box) {
+  const ps = getActivePaneState();
+  const layers = (ps && ps.cadLayers) || [];
+  if (!layers.length) return;
+  const sec = el('div', 'cad-layers', '');
+  sec.style.cssText = 'margin-top:10px;padding-top:8px;border-top:1.5px dashed var(--line)';
+  const on = layers.filter(L => L.visible).length;
+  const head = el('div', '', '<b style="font-size:11.5px">Layer bản vẽ (CAD)</b> <small style="color:var(--muted)"></small>');
+  head.querySelector('small').textContent = on + '/' + layers.length + ' đang hiện';
+  const tools = el('div', '', '');
+  tools.style.cssText = 'display:flex;gap:4px;margin:6px 0';
+  const find = document.createElement('input');
+  find.className = 'field'; find.placeholder = 'Tìm layer...'; find.style.cssText = 'flex:1;font-size:11px;padding:3px 6px';
+  find.value = ps.cadFilter || '';
+  const bAll = el('button', 'btn sm ghost', 'Hiện hết'), bNone = el('button', 'btn sm ghost', 'Ẩn hết');
+  bAll.style.fontSize = bNone.style.fontSize = '11px';
+  tools.append(find, bAll, bNone);
+  const list = el('div', '', '');
+  const draw = () => {
+    list.replaceChildren();
+    const q = (find.value || '').toLowerCase();
+    layers.filter(L => !q || L.name.toLowerCase().includes(q)).forEach(L => {
+      const row = el('label', '', '');
+      row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 4px;font-size:11px;cursor:pointer;border-radius:4px';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = L.visible;
+      cb.onchange = () => setCadLayersVisible(ps, [L], cb.checked);
+      const nm = document.createElement('span');
+      nm.textContent = L.name; // tên layer lấy từ file: không chèn như HTML
+      nm.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + (L.visible ? '' : 'color:var(--muted);text-decoration:line-through');
+      row.append(cb, nm);
+      list.append(row);
+    });
+  };
+  find.oninput = () => { ps.cadFilter = find.value; draw(); };
+  const visibleNow = () => { const q = (find.value || '').toLowerCase(); return layers.filter(L => !q || L.name.toLowerCase().includes(q)); };
+  bAll.onclick = () => setCadLayersVisible(ps, visibleNow(), true);
+  bNone.onclick = () => setCadLayersVisible(ps, visibleNow(), false);
+  draw();
+  sec.append(head, tools, list);
+  box.append(sec);
+}
 function renderLayerPanel() {
   const box = $('#layerList');
   if (!box) return;
@@ -7609,6 +7680,7 @@ function renderLayerPanel() {
 
     box.append(row);
   });
+  renderCadLayerSection(box);
 }
 
 // Gắn sự kiện các nút trên thanh công cụ Layer
