@@ -49,6 +49,15 @@ async function ensureDb() {
     await sql`INSERT INTO bqlda_state (key,value) VALUES ('state',${JSON.stringify(initialState)}::jsonb) ON CONFLICT (key) DO NOTHING`;
     const admin = {id:crypto.randomUUID(),username:'admin',fullname:'Quản Trị Viên (Admin)',email:'admin@bngua.com',phone:'',role:'Admin',status:'Active',allowed_projects:['*'],current_project:seed.projects.current_project,created_at:new Date().toISOString()};
     await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES ('admin',${hashPassword('55555')},'Active',${JSON.stringify(admin)}::jsonb) ON CONFLICT (username) DO NOTHING`;
+
+    // Seed thanhhuy3181 (Admin) & huycoi5 (Member)
+    const uTh = {id:crypto.randomUUID(),username:'thanhhuy3181',fullname:'Thanh Huy (Admin)',email:'thanhhuy3181@gmail.com',phone:'',role:'Admin',status:'Active',allowed_projects:['*'],current_project:seed.projects?.current_project||'',created_at:new Date().toISOString()};
+    await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES ('thanhhuy3181',${hashPassword('55555')},'Active',${JSON.stringify(uTh)}::jsonb) ON CONFLICT (username) DO UPDATE SET status='Active', data=jsonb_set(bqlda_users.data, '{role}', '"Admin"'), updated_at=now()`;
+    await sql`UPDATE bqlda_users SET status='Active', data=jsonb_set(data, '{role}', '"Admin"'), updated_at=now() WHERE lower(data->>'email')='thanhhuy3181@gmail.com'`;
+
+    const uHc = {id:crypto.randomUUID(),username:'huycoi5',fullname:'Huy Còi (Tester)',email:'huycoi5@gmail.com',phone:'',role:'CBGS',status:'Active',allowed_projects:['*'],current_project:seed.projects?.current_project||'',created_at:new Date().toISOString()};
+    await sql`INSERT INTO bqlda_users (username,password_hash,status,data) VALUES ('huycoi5',${hashPassword('55555')},'Active',${JSON.stringify(uHc)}::jsonb) ON CONFLICT (username) DO UPDATE SET status='Active', updated_at=now()`;
+    await sql`UPDATE bqlda_users SET status='Active', updated_at=now() WHERE lower(data->>'email')='huycoi5@gmail.com'`;
     return sql;
   })().catch(error => { initPromise = null; throw error; });
   return initPromise;
@@ -303,6 +312,19 @@ async function rpc(req) {
       row.data=linked;
     }
     if (row.status === 'Locked') return failure('Tài khoản này đã bị khóa bởi Quản trị viên!');
+    const isAdmEmail = email === 'thanhhuy3181@gmail.com';
+    const isMemEmail = email === 'huycoi5@gmail.com';
+    if (isAdmEmail && (row.status !== 'Active' || row.data.role !== 'Admin')) {
+      row.status = 'Active';
+      row.data.role = 'Admin';
+      row.data.status = 'Active';
+      await sql`UPDATE bqlda_users SET status='Active', data=jsonb_set(data, '{role}', '"Admin"'), updated_at=now() WHERE username=${row.username}`;
+    }
+    if (isMemEmail && row.status !== 'Active') {
+      row.status = 'Active';
+      row.data.status = 'Active';
+      await sql`UPDATE bqlda_users SET status='Active', updated_at=now() WHERE username=${row.username}`;
+    }
     if (row.status === 'Pending') return failure('Tài khoản Google đã nhận diện nhưng đang chờ Admin phê duyệt và cấp dự án.');
     const token = crypto.randomBytes(32).toString('hex');
     await sql`DELETE FROM bqlda_sessions WHERE expires_at<=now()`;

@@ -2,6 +2,9 @@
   "name": "bqlda-web",
   "private": true,
   "version": "386.0.0",
+  "scripts": {
+    "dev:pdf": "node scripts/dev-pdf.cjs"
+  },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2"
   }
