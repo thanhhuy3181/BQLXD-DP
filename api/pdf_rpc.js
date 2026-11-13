@@ -80,6 +80,17 @@ function userFolderName(u) {
   const nick = email.includes('@') ? email.split('@')[0] : String((u && u.username) || '');
   return nick.replace(/[\/\\:*?"<>|]/g, '_').trim();
 }
+function treeFolderName(v) {
+  return String(v || '').replace(/[\/\\:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 100);
+}
+// Thư mục Drive đích: <gốc kho>/<nick tài khoản>/<thư mục đang chọn trên cây> (bỏ tầng cuối nếu không chọn).
+async function uploadTargetFolder(sql, user, treeFolder) {
+  const rootId = await rootFolderId(sql);
+  const userFolderId = rootId && await ensureDriveFolder(userFolderName(user), rootId);
+  if (!userFolderId) return null;
+  if (!treeFolder || treeFolder === userFolderName(user)) return userFolderId;
+  return ensureDriveFolder(treeFolder, userFolderId);
+}
 async function ensureUserFolder(sql, username) {
   try {
     const st = await loadStorageToken(sql);
@@ -821,7 +832,7 @@ module.exports = async function handler(req, res) {
     if (action === 'drive_upload_base64') {
       const fileName = String(payload.name || 'Tai-lieu.pdf').trim();
       const base64Data = payload.base64;
-      const folderName = userFolderName(currentUser);
+      const folderName = treeFolderName(payload.folder_name) || userFolderName(currentUser);
       const pageCount = Number(payload.page_count) || 1;
       const scaleRatio = payload.scale_ratio || '1:100';
 
@@ -833,9 +844,8 @@ module.exports = async function handler(req, res) {
       let driveFileId = null;
 
       try {
-        const rootId = await rootFolderId(sql);
-        const userFolderId = await ensureDriveFolder(folderName, rootId);
-        const driveRes = await uploadToDrive(fileName, 'application/pdf', buffer, userFolderId);
+        const targetId = await uploadTargetFolder(sql, currentUser, folderName);
+        const driveRes = await uploadToDrive(fileName, 'application/pdf', buffer, targetId);
         driveFileId = driveRes.id;
       } catch (err) {
         console.warn('Upload Google Drive không thành công, lưu bản ghi local:', err.message);
@@ -1196,9 +1206,8 @@ module.exports = async function handler(req, res) {
       if (size > MAX_UPLOAD_BYTES) return bad('File vượt quá 100 MB.');
       const origin = uploadOrigin(req);
       if (origin === undefined) return deny('Origin không được phép tải lên.');
-      const folderName = userFolderName(currentUser);
-      const rootId = await rootFolderId(sql);
-      const folderId = rootId && await ensureDriveFolder(folderName, rootId);
+      const folderName = treeFolderName(payload.folder_name) || userFolderName(currentUser);
+      const folderId = await uploadTargetFolder(sql, currentUser, folderName);
       if (!folderId) return res.status(502).json(failure('Không tạo được thư mục trên Google Drive.'));
       const uploadId = 'up_' + crypto.randomBytes(12).toString('hex');
       const sessionUri = await createResumableSession({ name, size, folderId, uploadId, username: me, origin });

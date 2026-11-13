@@ -204,6 +204,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .rgroup-collapse-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:61px;min-width:52px;padding:4px 6px;border-radius:5px;border:1.5px solid var(--line);background:var(--surface-2);font-size:10px;font-weight:600;cursor:pointer}
 .rgroup-pop{position:fixed;background:var(--surface);border:1.5px solid var(--hard);border-radius:8px;box-shadow:5px 5px 0 var(--hard);padding:8px;z-index:55;display:none;flex-direction:column;gap:4px;max-width:92vw;max-height:70vh;overflow:auto;transform-origin:var(--origin, top center);opacity:0;transform:scale(.96);transition:transform 160ms var(--out),opacity 160ms var(--out)}
 .rgroup-pop.show{display:flex;opacity:1;transform:scale(1)}
+.side.dragover{outline:2.5px dashed var(--hot);outline-offset:-4px}
+.folder-node.drop-hover>.tree-folder-header{background:rgba(249,115,22,.15)!important;border-color:var(--hot)!important}
 .split{position:relative;display:inline-flex}
 .split-mini .split-arrow{position:absolute;right:-3px;bottom:-3px;width:13px;height:12px;padding:0;border:0;border-radius:3px;background:var(--surface);font-size:9px;line-height:12px;color:var(--fg);cursor:pointer}
 .split-lg{flex-direction:column;align-items:stretch}
@@ -1690,7 +1692,8 @@ async function uploadPdfResumable(file) {
       name: file.name,
       size: file.size,
       page_count: PDF_STATE.numPages || 1,
-      scale_ratio: S.measureScale || '1:100'
+      scale_ratio: S.measureScale || '1:100',
+      folder_name: SELECTED_TREE_FOLDER || ''
     });
     if(!beginRes || !beginRes.ok || !beginRes.data) {
       throw new Error(beginRes?.error || 'Không thể khởi tạo phiên tải lên');
@@ -1866,7 +1869,7 @@ async function uploadPdfToCloud(uint8Arr, name, pageCount) {
     const res = await pdfApi('drive_upload_base64', {
       name,
       base64: b64,
-      folder_name: CURRENT_USER.username || 'ban',
+      folder_name: SELECTED_TREE_FOLDER || '',
       page_count: pageCount,
       scale_ratio: '1:100'
     });
@@ -9332,6 +9335,7 @@ async function renderTree() {
       }
     };
 
+    folderRow.dataset.folder = folderName;
     listContainer.append(folderRow, kids);
   });
 }
@@ -10276,7 +10280,11 @@ function start(){
   // Đã gỡ nút mô phỏng xin quyền khỏi thanh trạng thái
 
   /* Xử lý Mở file PDF thật & Kéo thả */
-  $('#btnUp').onclick=()=>openPdfFileInput(S.focus, 'open');
+  $('#btnUp').onclick=()=>{
+    if(!CURRENT_USER) return toast('Đăng nhập để tải PDF lên');
+    toast('Tải lên vào thư mục: ' + (SELECTED_TREE_FOLDER || 'thư mục của bạn'));
+    openPdfFileInput(S.focus, 'upload');
+  };
   async function uploadPdfInChunks(file, targetPane = S.focus){
     toast(`Bắt đầu tải lên: ${file.name} (${Math.round(file.size / 1024)} KB)...`, 3000);
     try {
@@ -10284,7 +10292,8 @@ function start(){
         name: file.name,
         size: file.size,
         page_count: 1,
-        scale_ratio: '1:100'
+        scale_ratio: '1:100',
+        folder_name: SELECTED_TREE_FOLDER || ''
       });
       if (!beginRes || !beginRes.ok || !beginRes.data) {
         throw new Error(beginRes?.error || 'Không khởi tạo được phiên tải lên');
@@ -10332,6 +10341,31 @@ function start(){
       }
     }
   };
+  // Kéo thả file PDF vào thanh bên trái: tải lên vào thư mục đang chọn (hoặc thư mục được thả lên).
+  const side=$('#side');
+  if(side){
+    side.addEventListener('dragover',e=>{
+      if(![...(e.dataTransfer?.types||[])].includes('Files'))return;
+      e.preventDefault();side.classList.add('dragover');
+      document.querySelectorAll('.folder-node.drop-hover').forEach(n=>n.classList.remove('drop-hover'));
+      e.target.closest?.('.folder-node')?.classList.add('drop-hover');
+    });
+    side.addEventListener('dragleave',e=>{ if(!side.contains(e.relatedTarget)){ side.classList.remove('dragover'); document.querySelectorAll('.folder-node.drop-hover').forEach(n=>n.classList.remove('drop-hover')); } });
+    side.addEventListener('drop',async e=>{
+      const files=[...(e.dataTransfer?.files||[])].filter(f=>f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf'));
+      e.preventDefault();side.classList.remove('dragover');
+      const node=e.target.closest?.('.folder-node');
+      document.querySelectorAll('.folder-node.drop-hover').forEach(n=>n.classList.remove('drop-hover'));
+      if(!files.length) return toast('Chỉ nhận file PDF');
+      if(!CURRENT_USER) return toast('Đăng nhập để tải PDF lên');
+      if(node && node.dataset.folder) SELECTED_TREE_FOLDER=node.dataset.folder;
+      for(const f of files){
+        toast('Tải "'+f.name+'" vào thư mục: '+(SELECTED_TREE_FOLDER||'thư mục của bạn'));
+        await uploadPdfInChunks(f, S.focus);
+      }
+      renderTree();
+    });
+  }
   const dropPanes=$('#panes');
   dropPanes.ondragover=e=>{e.preventDefault();dropPanes.classList.add('dragover')};
   dropPanes.ondragleave=()=>dropPanes.classList.remove('dragover');
