@@ -1079,6 +1079,13 @@ const P={
   undo:'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
   redo:'M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13'
 };
+Object.assign(P, {
+  ngon5:'M12 3l8.5 6.2-3.2 10H6.7L3.5 9.2z',
+  ngon6:'M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z',
+  ngon7:'M12 3l6.8 3.3 1.7 7.4-4.7 5.9H8.2l-4.7-5.9 1.7-7.4z',
+  ngon8:'M8.5 3h7L21 8.5v7L15.5 21h-7L3 15.5v-7z',
+  star:'M12 2.5l2.8 6.3 6.9.6-5.2 4.5 1.6 6.7L12 17l-6.1 3.6 1.6-6.7-5.2-4.5 6.9-.6z'
+});
 const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n]||P.rect}"/></svg>`;
 
 /* 40 Màu chuẩn kỹ thuật & CAD (5 hàng x 8 cột) */
@@ -1130,6 +1137,7 @@ try {
 } catch (_) {}
 
 const TOOLN={
+  ngon5:'Ngũ giác đều', ngon6:'Lục giác đều', ngon7:'Thất giác đều', ngon8:'Bát giác đều', star:'Ngôi sao',
   hand:'Kéo bản vẽ',cursor:'Chọn chữ',pick:'Chọn ghi chú',rect:'Hình chữ nhật',
   oval:'Hình Oval',cloud:'Đám mây sửa đổi',poly:'Đa giác',polyline:'Đường liên tiếp',arrow:'Mũi tên chỉ dẫn',
   line:'Đường thẳng',text:'Ô chữ',callout:'Chú dẫn mũi tên',note:'Ghi chú dán',
@@ -1153,7 +1161,7 @@ const RIB={
     ['Chữ',[['text','Ô chữ','tool','sm'],['callout','Chú dẫn','tool','sm']]],
     ['Ghi chú',[['note','Ghi chú dán','tool','sm'],['image','Chèn ảnh','insertImg','sm']]],
     ['Đánh dấu',[['hl','Tô chữ','tool','sm']]],
-    ['Vẽ',[['line','Đường thẳng','tool','mini'],['arrow','Mũi tên','tool','mini'],['rect','Chữ nhật','tool','mini'],['oval','Oval','tool','mini'],['polyline','Đường liên tiếp','tool','mini'],['poly','Đa giác','tool','mini'],['cloud','Đám mây','tool','mini'],['pen','Bút vẽ','tool','mini'],['eraser','Tẩy','tool','mini'],['stamp','Con dấu','tool','lg']]],
+    ['Vẽ',[['line','Đường thẳng','tool','mini'],['arrow','Mũi tên','tool','mini'],['rect','Chữ nhật','tool','mini'],['oval','Oval','tool','mini'],['polyline','Đường liên tiếp','tool','mini'],['poly','Đa giác','tool','mini'],['ngon5','Ngũ giác đều','tool','mini'],['ngon6','Lục giác đều','tool','mini'],['ngon7','Thất giác đều','tool','mini'],['ngon8','Bát giác đều','tool','mini'],['star','Ngôi sao','tool','mini'],['cloud','Đám mây','tool','mini'],['pen','Bút vẽ','tool','mini'],['eraser','Tẩy','tool','mini'],['stamp','Con dấu','tool','lg']]],
     ['Đo',[['ruler','Đo đạc','tool','lg'],['ruler','Tỷ lệ đo','setScale','sm']]],
     ['Màu sắc & Nét',[['colorBtn','Màu viền & Nền','colorWidget','widget']]]
   ],
@@ -4957,7 +4965,7 @@ function syncLayers() {
   if (typeof ACTIVE_POLY !== 'undefined' && ACTIVE_POLY && S.tool !== ACTIVE_POLY.type) {
     cancelActivePoly(true);
   }
-  const draw = !S.space && ['pick','rect','oval','cloud','poly','polyline','arrow','line','text','callout','note','stamp','ruler','crop','hl','redact','pen','eraser','check','form'].includes(S.tool);
+  const draw = !S.space && ['ngon5','ngon6','ngon7','ngon8','star','pick','rect','oval','cloud','poly','polyline','arrow','line','text','callout','note','stamp','ruler','crop','hl','redact','pen','eraser','check','form'].includes(S.tool);
   document.querySelectorAll('.layer').forEach(l => l.classList.toggle('draw', draw));
   document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('cursor-mode', S.tool === 'cursor'));
   $('#panes').classList.toggle('pan', S.space || S.tool === 'hand');
@@ -5448,6 +5456,42 @@ function pct(ly,e){
   ];
 }
 
+/* Hình vẽ kéo thả có thể ép vuông/tròn bằng Shift/Ctrl; đa giác đều & ngôi sao */
+const SHAPE_TOOLS = ['ngon5','ngon6','ngon7','ngon8','star'];
+const SQUARE_TOOLS = ['rect','oval','cloud','ngon5','ngon6','ngon7','ngon8','star'];
+function constrainDraw(ly, e, draft, startPt, pt) {
+  if (!draft || !(e.shiftKey || e.ctrlKey) || !SQUARE_TOOLS.includes(draft.shapeKind || draft.type)) return { pt, constrained: false };
+  const b = ly.getBoundingClientRect();
+  const dxPx = (pt[0] - startPt[0]) / 100 * b.width;
+  const dyPx = (pt[1] - startPt[1]) / 100 * b.height;
+  const side = Math.max(Math.abs(dxPx), Math.abs(dyPx));
+  const nx = startPt[0] + Math.sign(dxPx || 1) * side / b.width * 100;
+  const ny = startPt[1] + Math.sign(dyPx || 1) * side / b.height * 100;
+  return { pt: [Math.max(0, Math.min(100, nx)), Math.max(0, Math.min(100, ny))], constrained: true };
+}
+function shapePoints(kind, p0, p1, constrained) {
+  const left = Math.min(p0[0], p1[0]), top = Math.min(p0[1], p1[1]);
+  const w = Math.max(0.3, Math.abs(p1[0] - p0[0])), h = Math.max(0.3, Math.abs(p1[1] - p0[1]));
+  const isStar = kind === 'star';
+  const m = isStar ? 10 : parseInt(kind.replace('ngon', ''), 10);
+  const raw = [];
+  for (let i = 0; i < m; i++) {
+    const ang = -Math.PI / 2 + i * 2 * Math.PI / m;
+    const r = isStar ? (i % 2 ? 0.382 : 1) : 1;
+    raw.push([Math.cos(ang) * r, Math.sin(ang) * r]);
+  }
+  if (constrained) {
+    const cx = left + w / 2, cy = top + h / 2;
+    return raw.map(([ux, uy]) => [Number((cx + ux * w / 2).toFixed(3)), Number((cy + uy * h / 2).toFixed(3))]);
+  }
+  const xs = raw.map(p => p[0]), ys = raw.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  return raw.map(([ux, uy]) => [
+    Number((left + (ux - minX) / (maxX - minX) * w).toFixed(3)),
+    Number((top + (uy - minY) / (maxY - minY) * h).toFixed(3))
+  ]);
+}
+
 /* Hàm dùng chung đổi toạ độ chuột <-> điểm PDF <-> % trang */
 function clientToPageCoords(ly, paneIdx, pageNum, clientX, clientY){
   const [xPct, yPct] = pct(ly, { clientX, clientY });
@@ -5858,14 +5902,15 @@ function bindLayerInteraction(ly,paneIdx){
       ly.append(tempAnno);
       ly.setPointerCapture(e.pointerId);
       return;
-    }else if(['rect','oval','cloud','arrow','line','callout','ruler','hl','redact','text'].includes(S.tool)){
+    }else if(['rect','oval','cloud','arrow','line','callout','ruler','hl','redact','text','ngon5','ngon6','ngon7','ngon8','star'].includes(S.tool)){
       startPt=[x,y];
       const id='anno_'+Date.now()+'_'+Math.floor(Math.random()*1000);
       draftObj={
         id,
         pane:paneIdx,
         page:pageNum,
-        type:S.tool,
+        type:SHAPE_TOOLS.includes(S.tool)?'poly':S.tool,
+        shapeKind:SHAPE_TOOLS.includes(S.tool)?S.tool:undefined,
         x,y,w:0.2,h:0.2,
         x1:x,y1:y,x2:x,y2:y,
         stroke:S.strokeColor,
@@ -5987,6 +6032,8 @@ function bindLayerInteraction(ly,paneIdx){
       return;
     }
     if(tempAnno&&startPt){
+      const cd=constrainDraw(ly,e,draftObj,startPt,pct(ly,e));
+      const x=cd.pt[0], y=cd.pt[1];
       const left=Math.min(x,startPt[0]);
       const top=Math.min(y,startPt[1]);
       const w=Math.abs(x-startPt[0]);
@@ -6006,6 +6053,10 @@ function bindLayerInteraction(ly,paneIdx){
           const dxMm = (Math.abs(x - startPt[0]) / 100) * widthPt * PT_TO_MM;
           const dyMm = (Math.abs(y - startPt[1]) / 100) * heightPt * PT_TO_MM;
           draftObj.text = formatMeasureDistance(Math.hypot(dxMm, dyMm));
+        }
+        if(draftObj.shapeKind){
+          draftObj.points = shapePoints(draftObj.shapeKind, startPt, [x,y], cd.constrained);
+          recomputePointsBounds(draftObj);
         }
         renderAnnoItem(draftObj);
       }else{
@@ -6070,6 +6121,8 @@ function bindLayerInteraction(ly,paneIdx){
     }
 
     if(tempAnno&&startPt){
+      const cdUp=constrainDraw(ly,e,draftObj,startPt,[x,y]);
+      const x=cdUp.pt[0], y=cdUp.pt[1];
       if(draftObj){
         const rawW=Math.abs(x-startPt[0]);
         const rawH=Math.abs(y-startPt[1]);
@@ -6110,6 +6163,10 @@ function bindLayerInteraction(ly,paneIdx){
             const dxMm = (Math.abs(x - startPt[0]) / 100) * widthPt * PT_TO_MM;
             const dyMm = (Math.abs(y - startPt[1]) / 100) * heightPt * PT_TO_MM;
             draftObj.text = formatMeasureDistance(Math.hypot(dxMm, dyMm));
+          }
+          if(draftObj.shapeKind){
+            draftObj.points = shapePoints(draftObj.shapeKind, startPt, [x,y], cdUp.constrained);
+            recomputePointsBounds(draftObj);
           }
           ANNO_MAP.set(draftObj.id,draftObj);
           S.sel.clear();
