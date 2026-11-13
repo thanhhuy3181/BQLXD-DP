@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}/* Floating Search Bar */
-.search-bar{position:absolute;top:12px;right:24px;z-index:35;display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--fg);border-radius:6px;padding:4px 8px;box-shadow:4px 4px 0 var(--hard);font-family:var(--mono);font-size:12px}
+.search-bar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:120;display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--fg);border-radius:6px;padding:4px 8px;box-shadow:0 6px 18px rgba(0,0,0,.2),4px 4px 0 var(--hard);font-family:var(--mono);font-size:12px;max-width:calc(100% - 32px);pointer-events:auto}
 .search-bar[hidden]{display:none!important}
 .search-bar input{border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:12px;width:220px;background:var(--surface-2);color:var(--fg)}
 .search-bar input:focus{border-color:var(--accent);outline:none;background:var(--surface)}
@@ -243,7 +243,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .kids.shut{grid-template-rows:0fr}
 .kids>div{overflow:hidden;min-height:0}
 .badge{margin-left:auto;font-size:10px;background:var(--surface-2);color:var(--muted);border-radius:3px;padding:1px 6px;flex:none;font-family:var(--mono)}
-.work{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--canvas)}
+.work{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;background:var(--canvas);overflow:hidden}
 .panes{flex:1;display:flex;min-height:0;gap:1.5px;background:var(--fg)}
 .pane{flex:1 1 0;min-width:0;display:flex;flex-direction:column;background-color:var(--canvas);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px;animation:panein var(--mid)}
 @keyframes panein{from{flex-grow:.001;opacity:0}}
@@ -8992,7 +8992,8 @@ function start(){
   };
   $('#searchNext').onclick = searchNext;
   $('#searchPrev').onclick = searchPrev;
-  $('#searchClose').onclick = closeSearchBar;
+  $('#searchClose').onclick = (e) => { e.stopPropagation(); closeSearchBar(); };
+  $('#searchClose').onmousedown = (e) => { e.stopPropagation(); };
 
   // Tabs thanh bên trái (Thư mục / Trang thu nhỏ)
   $('#tabSideTree').onclick = () => switchSideTab('tree');
