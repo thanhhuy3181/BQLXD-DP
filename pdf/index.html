@@ -80,6 +80,7 @@ body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <script src="/pdf/pdf-lib.min.js"></script>
+<script src="/pdf/xuat.js" defer></script>
 <script src="/pdf/fontkit.umd.min.js"></script>
 <script>
   if (!window.PDFLib) {
@@ -1243,7 +1244,9 @@ const RIB={
     ['Biểu mẫu',[['form','Điền mẫu','tool','lg'],['check','Tạo ô','tool','lg']]]
   ],
   'Xuất':[
-    ['Tải về',[['dl','PDF kèm ghi chú','exportPdf','lg'],['dlimg','Xuất ảnh','exportPng','lg']]]
+    ['Tải về',[['dl','PDF kèm ghi chú','exportPdf','lg'],['dlflat','PDF phẳng (ảnh)','exportX','lg'],['dlimg','Ảnh trang','exportX','lg']]],
+    ['Office',[['dlword','Word (.docx)','exportX','sm'],['dlxls','Excel (.xlsx)','exportX','sm'],['dlppt','PowerPoint (.pptx)','exportX','sm']]],
+    ['Ghi chú',[['dlxfdf','Ghi chú (XFDF)','exportX','sm'],['dlcmt','Danh sách ghi chú','exportX','sm']]]
   ]
 };
 
@@ -2585,7 +2588,8 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
   annots.push(annotRef);
 }
 
-async function exportPdfWithAnnotations() {
+async function exportPdfWithAnnotations(opts = {}) {
+  const download = opts.download !== false; // false: chỉ dựng file (dùng cho các định dạng xuất khác)
   toast('Đang tổng hợp các ghi chú chuẩn PDF (/Annots) & xuất file...');
   try {
     if (!window.PDFLib) {
@@ -2739,6 +2743,7 @@ async function exportPdfWithAnnotations() {
 
     const pdfBytes = await pdfDoc.save();
     window.__lastExportedBytes = pdfBytes;
+    if (!download) return pdfBytes;
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -4443,7 +4448,8 @@ function act(id,kind,label){
   }
   if(kind==='signModal'||id==='sign'){openSignModal();return;}
   if(kind==='exportPdf'||id==='dl'){exportPdfWithAnnotations();return;}
-  if(kind==='exportPng'||id==='dlimg'||id==='exportImg'){exportPageAsPng();return;}
+  if(kind==='exportX'){ if(window.openExportDialog) openExportDialog(id); else toast('Đang tải công cụ xuất, thử lại sau giây lát'); return; }
+  if(kind==='exportPng'||id==='exportImg'){exportPageAsPng();return;}
   if(kind==='crop'){
     if(!PDF_STATE.isPdfReal || !PDF_STATE.bytes){
       toast('Vui lòng mở một file PDF trước khi thực hiện thao tác này');
