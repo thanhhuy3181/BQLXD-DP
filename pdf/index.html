@@ -2066,6 +2066,68 @@ function pdfUserToPctPt(ps, pageNum, xPdf, yPdf) {
   return [0, 0];
 }
 
+// Đọc các khoá gốc của từng ghi chú mà pdf.js không trả về (IT, DA, DS, CL, BE, LE, RD, C, IC, Subj, BS).
+// Tên hiển thị của ghi chú: ghi chú từ file giữ đúng tên gốc (Typewriter, Text Box, Callout, Stamp...).
+function annoLabel(a) {
+  if (!a) return '';
+  if (a.fromPdf && a.subject) return a.subject;
+  if (a.textKind === 'typewriter') return 'Typewriter';
+  if (a.textKind === 'textbox') return 'Text Box';
+  if (a.textKind === 'callout' || a.type === 'callout') return 'Callout';
+  return TOOLN[a.type] || a.type;
+}
+async function readRawAnnotDicts(bytes) {
+  const out = new Map();
+  if (!bytes || !window.PDFLib) return out;
+  try {
+    const { PDFDocument, PDFName, PDFDict, PDFArray, PDFNumber, PDFString, PDFHexString, PDFRef } = PDFLib;
+    const doc = await PDFDocument.load(bytes.slice ? bytes.slice(0) : bytes, { ignoreEncryption: true, updateMetadata: false });
+    const ctx = doc.context;
+    const look = v => (v instanceof PDFRef ? ctx.lookup(v) : v);
+    const str = v => { v = look(v); if (!v) return ''; if (v instanceof PDFString || v instanceof PDFHexString) return v.decodeText(); return String(v).replace(/^\//, ''); };
+    const nums = v => { v = look(v); if (!(v instanceof PDFArray)) return null; const a = []; for (let i = 0; i < v.size(); i++) { const n = look(v.get(i)); a.push(n instanceof PDFNumber ? n.asNumber() : Number(String(n))); } return a; };
+    const names = v => { v = look(v); if (!v) return []; if (v instanceof PDFArray) { const a = []; for (let i = 0; i < v.size(); i++) a.push(str(v.get(i))); return a; } return [str(v)]; };
+    for (const page of doc.getPages()) {
+      const annots = page.node.lookup(PDFName.of('Annots'));
+      if (!(annots instanceof PDFArray)) continue;
+      for (let i = 0; i < annots.size(); i++) {
+        const ref = annots.get(i);
+        const d = look(ref);
+        if (!(d instanceof PDFDict) || !(ref instanceof PDFRef)) continue;
+        const key = ref.generationNumber ? ref.objectNumber + 'R' + ref.generationNumber : ref.objectNumber + 'R';
+        const g = k => d.get(PDFName.of(k));
+        const be = look(g('BE')), bs = look(g('BS'));
+        out.set(key, {
+          subtype: str(g('Subtype')), it: str(g('IT')), subj: str(g('Subj')),
+          da: str(g('DA')), ds: str(g('DS')), cl: nums(g('CL')), rd: nums(g('RD')), le: names(g('LE')),
+          c: nums(g('C')), ic: nums(g('IC')), name: str(g('Name')),
+          beS: be instanceof PDFDict ? str(be.get(PDFName.of('S'))) : '',
+          beI: be instanceof PDFDict ? Number(String(look(be.get(PDFName.of('I'))) || 0)) : 0,
+          bsW: bs instanceof PDFDict && bs.get(PDFName.of('W')) != null ? Number(String(look(bs.get(PDFName.of('W'))))) : null
+        });
+      }
+    }
+  } catch (err) { console.warn('readRawAnnotDicts:', err.message); }
+  return out;
+}
+// Kiểu chữ của FreeText: ưu tiên DS (chuỗi kiểu CSS của PDF-XChange/Acrobat), rồi DA.
+function parseFreeTextStyle(r) {
+  const st = {};
+  const ds = String(r.ds || '');
+  const m = (re) => { const x = re.exec(ds); return x ? x[1].trim() : ''; };
+  const fam = m(/font-family:\s*([^;]+)/i); if (fam) st.fontFamily = fam.replace(/['"]/g, '');
+  const sz = m(/font-size:\s*([\d.]+)/i); if (sz) st.fontSize = Number(sz);
+  const fw = m(/font-weight:\s*([^;]+)/i); if (fw) st.fontBold = /bold|[6-9]00/i.test(fw);
+  const fs2 = m(/font-style:\s*([^;]+)/i); if (fs2) st.fontItalic = /italic|oblique/i.test(fs2);
+  const col = m(/(?:^|;)\s*color:\s*(#[0-9a-f]{6}|#[0-9a-f]{3})/i); if (col) st.textColor = col;
+  const al = m(/text-align:\s*([^;]+)/i); if (al) st.textAlign = al;
+  const da = String(r.da || '');
+  const tf = /\/[^\s]+\s+([\d.]+)\s+Tf/.exec(da); if (!st.fontSize && tf) st.fontSize = Number(tf[1]);
+  const rgb = (re) => { const x = re.exec(da); return x ? rgb01ToHex([Number(x[1]), Number(x[2]), Number(x[3])]) : null; };
+  const fill = rgb(/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+rg/); if (!st.textColor && fill) st.textColor = fill;
+  const stroke = rgb(/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+RG/); if (stroke) st.strokeColor = stroke;
+  return st;
+}
 async function readPdfAnnotationsOnLoad(pdfDoc, ps, paneIdx) {
   try {
     // Xoá các ghi chú cũ của khung này trước khi nạp file mới
@@ -2074,6 +2136,7 @@ async function readPdfAnnotationsOnLoad(pdfDoc, ps, paneIdx) {
     });
     S.sel.clear();
     S.prevSelCount = 0;
+    const RAW = await readRawAnnotDicts(ps.bytes);
 
     for (let pNum = 1; pNum <= pdfDoc.numPages; pNum++) {
       const pi = ps.pageInfos[pNum - 1];
@@ -2132,7 +2195,7 @@ async function readPdfAnnotationsOnLoad(pdfDoc, ps, paneIdx) {
           noFill: !hasFill && type !== 'hl' && type !== 'stamp',
           opacity: an.opacity != null ? Math.round(an.opacity * 100) : 100, // Giữ 100% nét rõ ràng
           borderWidth: an.borderStyle?.width != null ? an.borderStyle.width : (hasColor ? 1 : 0),
-          borderStyle: an.borderStyle?.dashArray?.length ? 'dashed' : 'solid',
+          borderStyle: an.borderStyle?.style === 2 ? 'dashed' : 'solid',
           dashScale: 1,
           radius: 0, // Không bo góc CAD/bản vẽ của người dùng
           rotate: 0,
@@ -2148,6 +2211,61 @@ async function readPdfAnnotationsOnLoad(pdfDoc, ps, paneIdx) {
           replies: [],
           popupOpen: false
         };
+
+        // --- Nhận đúng loại & kiểu như PDF-XChange (đọc từ điển gốc) ---
+        const r = RAW.get(an.id) || {};
+        if (r.subj) aObj.subject = r.subj;
+        if (sub === 'FreeText') {
+          const it = r.it || an.it || '';
+          const st = parseFreeTextStyle(r);
+          if (st.fontSize) aObj.fontSize = st.fontSize;
+          aObj.fontBold = !!st.fontBold;
+          aObj.fontItalic = !!st.fontItalic;
+          if (st.fontFamily) aObj.fontFamily = st.fontFamily;
+          if (st.textAlign) aObj.textAlign = st.textAlign;
+          aObj.textColor = st.textColor || '#000000';
+          // FreeText: /C là màu NỀN; màu viền nằm trong DA (RG), không có thì theo màu chữ.
+          const bg = Array.isArray(r.c) && r.c.length >= 3 ? rgb01ToHex(r.c) : null;
+          aObj.fill = bg || 'transparent';
+          aObj.noFill = !bg;
+          aObj.stroke = st.strokeColor || aObj.textColor;
+          aObj.borderWidth = r.bsW != null ? r.bsW : 1;
+          aObj.borderStyle = r.beS === 'C' ? (r.beI >= 2 ? 'cloud-lg' : 'cloud') : (an.borderStyle?.style === 2 ? 'dashed' : 'solid');
+          if (it === 'FreeTextTypewriter') {
+            aObj.type = 'text'; aObj.textKind = 'typewriter';
+            aObj.noFill = true; aObj.fill = 'transparent'; aObj.borderWidth = 0; aObj.noBorder = true; aObj.stroke = 'transparent';
+          } else if (it === 'FreeTextCallout') {
+            aObj.type = 'callout'; aObj.textKind = 'callout';
+            // Khung chữ = Rect thu vào theo RD; đường dẫn CL = [mũi tên, (khuỷu), điểm nối khung] (đơn vị PDF).
+            const rd = Array.isArray(r.rd) && r.rd.length === 4 ? r.rd : [0, 0, 0, 0];
+            const [bx1, by1] = pdfUserToPctPt(ps, pNum, rx1 + rd[0], ry1 + rd[1]);
+            const [bx2, by2] = pdfUserToPctPt(ps, pNum, rx2 - rd[2], ry2 - rd[3]);
+            const box = { x: Math.min(bx1, bx2), y: Math.min(by1, by2), w: Math.max(1, Math.abs(bx2 - bx1)), h: Math.max(1, Math.abs(by2 - by1)) };
+            Object.assign(aObj, { x: Number(box.x.toFixed(3)), y: Number(box.y.toFixed(3)), w: Number(box.w.toFixed(3)), h: Number(box.h.toFixed(3)) });
+            const cl = Array.isArray(r.cl) ? r.cl : null;
+            if (cl && cl.length >= 4) {
+              const pt = i => { const [px, py] = pdfUserToPctPt(ps, pNum, cl[i], cl[i + 1]); return [Number(((px - box.x) / box.w).toFixed(4)), Number(((py - box.y) / box.h).toFixed(4))]; };
+              const tip = pt(0);
+              const knee = cl.length >= 6 ? pt(2) : pt(cl.length - 2);
+              aObj.leader = [knee, tip];
+            }
+            aObj.lineEndEnding = (r.le && r.le[0]) ? r.le[0] : 'None';
+            aObj.lineEndScale = 1;
+          } else {
+            aObj.type = 'text'; aObj.textKind = 'textbox';
+          }
+        } else if (sub === 'Square' || sub === 'Circle' || sub === 'Polygon') {
+          // Hình: /C = viền, /IC = nền; BE S=C = viền mây.
+          if (Array.isArray(r.c) && r.c.length >= 3) aObj.stroke = rgb01ToHex(r.c);
+          if (Array.isArray(r.ic) && r.ic.length >= 3) { aObj.fill = rgb01ToHex(r.ic); aObj.noFill = false; } else { aObj.noFill = true; aObj.fill = 'transparent'; }
+          if (r.bsW != null) aObj.borderWidth = r.bsW;
+          if (r.beS === 'C') { if (sub === 'Square') aObj.type = 'cloud'; aObj.borderStyle = r.beI >= 2 ? 'cloud-lg' : 'cloud'; }
+        } else if (sub === 'Stamp') {
+          // Con dấu gốc: giữ hình /AP do PDF vẽ, không thay bằng con dấu "nghiệm thu" của app.
+          aObj.text = '';
+          aObj.stampName = r.name || '';
+          aObj.noFill = true;
+        }
 
         if ((type === 'line' || type === 'arrow') && Array.isArray(an.lineCoordinates) && an.lineCoordinates.length >= 4) {
           const [lx1, ly1] = pdfUserToPctPt(ps, pNum, an.lineCoordinates[0], an.lineCoordinates[1]);
@@ -5527,7 +5645,7 @@ function renderAnnoPopup(a, ly) {
   pop.style.borderColor = a.stroke || 'var(--fg)';
 
   const titleEl = pop.querySelector('.anno-popup-title');
-  if (titleEl) titleEl.textContent = `${a.author || 'Bạn'} · ${TOOLN[a.type] || a.type}`;
+  if (titleEl) titleEl.textContent = `${a.author || 'Bạn'} · ${annoLabel(a)}`;
 
   const txtEl = pop.querySelector('.anno-popup-text');
   if (txtEl && document.activeElement !== txtEl) {
@@ -7472,7 +7590,8 @@ function renderLayerPanel() {
       itemsList.style.cssText = 'display:flex;flex-direction:column;gap:2px;margin-left:24px;margin-top:4px;border-left:1px dashed var(--border);padding-left:8px';
       ANNO_MAP.forEach(a => {
         if (a.pane === S.focus && (a.layerName || 'Mặc định (0)') === layer.name) {
-          const itEl = el('div', '', `<span style="color:${a.stroke}">■</span> [${TOOLN[a.type] || a.type}] ${a.text || a.id.slice(0, 14)}`);
+          const itEl = el('div', '', `<span style="color:${a.stroke}">■</span> <span class="lbl"></span>`);
+          itEl.querySelector('.lbl').textContent = '[' + annoLabel(a) + '] ' + (a.text || a.id.slice(0, 14)); // chữ lấy từ PDF: không chèn như HTML
           itEl.style.cssText = 'padding:2px 4px;border-radius:3px;cursor:pointer;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--bg2)';
           itEl.onclick = (e) => {
             e.stopPropagation();
