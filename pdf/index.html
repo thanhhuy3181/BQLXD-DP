@@ -235,8 +235,13 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .rgroup-collapse-btn{height:80px;font-size:11.5px}
 
 /* Mobile Ribbon & Drawers (< 768px) */
+.drawer-close{display:none}
+@media (max-width:767px){.cmt.open-drawer .drawer-close{display:flex;position:fixed;top:calc(6px + env(safe-area-inset-top,0px));right:8px;z-index:70;align-items:center;gap:4px;height:36px;padding:0 12px;border:1.5px solid var(--fg);border-radius:8px;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:14px}}
+.zoom-step{display:inline-flex;align-items:center;gap:4px}
+.zoom-step button{min-width:30px;height:26px;border:1.5px solid var(--fg);border-radius:6px;background:var(--surface);color:var(--fg);font-size:16px;font-weight:700;line-height:1;padding:0 6px;cursor:pointer}
+@media (max-width:760px){.zoom-step button{min-width:38px;height:32px;font-size:20px}}
 .mobile-bar{display:none;border-top:1.5px solid var(--fg);background:var(--surface);padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px));gap:4px;align-items:center;justify-content:space-around;z-index:25;flex:none}
-.mobile-bar .mtool{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 6px;border-radius:6px;font-size:10px;font-weight:600;min-width:44px;min-height:40px;justify-content:center;border:1.5px solid transparent}
+.mobile-bar .mtool{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:6px;font-size:10px;font-weight:600;min-width:44px;min-height:40px;justify-content:center;border:1.5px solid transparent}
 .mobile-bar .mtool .i{width:17px;height:17px}
 .mobile-bar .mtool.on{background:var(--accent);color:var(--accent-fg);border-color:var(--fg)}
 .mobile-sheet{position:fixed;inset:auto 0 0 0;max-height:72vh;background:var(--surface);border-top:2px solid var(--fg);border-radius:12px 12px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25);z-index:60;display:none;flex-direction:column;padding:10px 12px 16px;overflow:auto}
@@ -658,7 +663,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
             <span id="stPage">Chưa có trang</span>
             <button id="btnNextPage" title="Trang sau">▶</button>
           </div>
-          <span id="stZoom">100%</span>
+          <span class="zoom-step"><button id="btnZoomOut" title="Thu nhỏ" aria-label="Thu nhỏ">−</button><span id="stZoom">100%</span><button id="btnZoomIn" title="Phóng to" aria-label="Phóng to">+</button></span>
           <span class="sp"></span>
           <span id="stOnline"></span>
         </div>
@@ -5136,11 +5141,18 @@ function renderMobileBar(){
     ['rect','Chữ nhật','tool'],
     ['cloud','Đám mây','tool'],
     ['text','Ô chữ','tool'],
+    ['gear','Sửa','mprop'],
     ['undo','Hoàn tác','undo']
   ];
   quick.forEach(([id,lbl,kind])=>{
     const b=el('button','mtool'+((kind==='tool'&&S.tool===id)?' on':''),ic(id)+`<span>${lbl}</span>`);
-    b.onclick=()=>act(id,kind,lbl);
+    b.onclick=()=>{
+      if(kind==='mprop'){
+        if(!S.sel.size){ toast('Chạm vào một ghi chú (công cụ Chọn) rồi bấm Sửa'); return; }
+        $('#cmt').classList.remove('closed'); $('#cmt').classList.add('open-drawer'); switchRightTab('prop'); return;
+      }
+      act(id,kind,lbl);
+    };
     bar.append(b);
   });
   const more=el('button','mtool',ic('menu')+'<span>Thêm</span>');
@@ -6123,7 +6135,7 @@ function bindLayerInteraction(ly,paneIdx){
 
   ly.onpointerdown=e=>{
     if(S.space||e.button!==0)return;
-    if(e.pointerType==='touch' && (window.PDF_TOUCH_N||0)>=1){
+    if(e.pointerType==='touch' && (window.PDF_TOUCH_BUSY || (window.PDF_TOUCH_N||0)>=2)){
       if(tempAnno){ tempAnno.remove(); tempAnno=null; draftObj=null; startPt=null; }
       return;
     }
@@ -6425,7 +6437,7 @@ function bindLayerInteraction(ly,paneIdx){
 
   ly.onpointermove=e=>{
     if (S.space) return;
-    if (e.pointerType==='touch' && (window.PDF_TOUCH_N||0)>=2) {
+    if (e.pointerType==='touch' && ((window.PDF_TOUCH_N||0)>=2 || window.PDF_TOUCH_BUSY)) {
       if (tempAnno) { tempAnno.remove(); tempAnno=null; draftObj=null; startPt=null; }
       return;
     }
@@ -6574,6 +6586,7 @@ function bindLayerInteraction(ly,paneIdx){
       return;
     }
 
+    if(e.pointerType==='touch' && (window.PDF_TOUCH_BUSY || Date.now()-(window.PDF_GESTURE_AT||0)<400) && tempAnno){ tempAnno.remove(); tempAnno=null; draftObj=null; startPt=null; return; }
     const upPtX=x, upPtY=y; /* toạ độ con trỏ ngoài khối (tránh che bởi let x bên trong) */
     if(tempAnno&&startPt){
       const cdUp=constrainDraw(ly,e,draftObj,startPt,[upPtX,upPtY]);
@@ -10479,51 +10492,80 @@ function start(){
   });
   if(window.innerWidth<768 && S.panes>1){S.panes=1;renderPanes();}
 
-  // (M) Cảm ứng di động: Chụm 2 ngón để zoom quanh điểm chụm & Nhấn giữ mở menu chuột phải
-  const touchPts=new Map();
-  let pinchInitDist=0, pinchInitZoom=100, longPressTimer=null, lpStart=[0,0];
-  $('#panes').addEventListener('pointerdown',e=>{
-    if(e.pointerType!=='touch')return;
-    touchPts.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    window.PDF_TOUCH_N=touchPts.size;
-    if(touchPts.size===2){
-      clearTimeout(longPressTimer);
-      const pts=Array.from(touchPts.values());
-      pinchInitDist=Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y)||1;
-      pinchInitZoom=getActivePaneState().zoom||100;
-    }else if(touchPts.size===1){
-      lpStart=[e.clientX,e.clientY];
-      clearTimeout(longPressTimer);
-      longPressTimer=setTimeout(()=>{
-        const ly=e.target.closest('.layer');
-        if(ly){
-          const fakeEv={clientX:lpStart[0],clientY:lpStart[1],target:e.target,preventDefault:()=>{},stopPropagation:()=>{}};
-          if(ACTIVE_POLY)openPolyDraftContextMenu(fakeEv);
-          else openContextMenu(fakeEv,ly,parseInt(ly.dataset.i,10)||0);
-        }
-      },520);
+  // (M) Cảm ứng di động (dùng touch events để Safari không cướp cử chỉ):
+  //  - Chụm 2 ngón: zoom quanh điểm giữa hai ngón.
+  //  - Chạm 2 lần rồi giữ ngón lần 2 & kéo xuống/lên: phóng to/thu nhỏ bằng 1 ngón (kiểu Google Maps).
+  //  - Nhấn giữ: mở menu chuột phải.
+  const T={pinch:null,qz:null,lastTap:null,down:null,lp:null,lpStart:[0,0]};
+  const scAt=(x,y)=>{const t=document.elementFromPoint(x,y);return t&&t.closest?t.closest('.scroll'):null;};
+  const setBusy=()=>{window.PDF_TOUCH_BUSY=!!(T.pinch||T.qz); if(T.pinch||T.qz)window.PDF_GESTURE_AT=Date.now();};
+  const panesEl=$('#panes');
+  panesEl.addEventListener('touchstart',e=>{
+    const n=e.touches.length; window.PDF_TOUCH_N=n; clearTimeout(T.lp);
+    const now=Date.now();
+    if(n>=2){
+      const a=e.touches[0], b=e.touches[1];
+      const mx=(a.clientX+b.clientX)/2, my=(a.clientY+b.clientY)/2;
+      const sc=scAt(mx,my)||scAt(a.clientX,a.clientY);
+      const ps=sc?paneStateOfScroll(sc):getActivePaneState();
+      T.pinch={d0:Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY)||1, z0:(ps&&ps.zoom)||100, sc};
+      T.qz=null;
+      e.preventDefault();
+    }else if(n===1){
+      const t=e.touches[0];
+      if(T.lastTap && now-T.lastTap.t<320 && Math.hypot(t.clientX-T.lastTap.x,t.clientY-T.lastTap.y)<40){
+        const sc=scAt(t.clientX,t.clientY); const ps=sc?paneStateOfScroll(sc):getActivePaneState();
+        T.qz={y0:t.clientY, x:t.clientX, z0:(ps&&ps.zoom)||100, sc};
+        T.lastTap=null;
+        e.preventDefault();
+      }else{
+        T.lpStart=[t.clientX,t.clientY];
+        const target=e.target;
+        T.lp=setTimeout(()=>{
+          const ly=target.closest&&target.closest('.layer');
+          if(ly&&!T.qz&&!T.pinch){
+            const fakeEv={clientX:T.lpStart[0],clientY:T.lpStart[1],target,preventDefault:()=>{},stopPropagation:()=>{}};
+            if(ACTIVE_POLY)openPolyDraftContextMenu(fakeEv);
+            else openContextMenu(fakeEv,ly,parseInt(ly.dataset.i,10)||0);
+          }
+        },520);
+      }
+      T.down={t:now,x:t.clientX,y:t.clientY};
     }
-  });
-  $('#panes').addEventListener('pointermove',e=>{
-    if(e.pointerType!=='touch')return;
-    if(touchPts.has(e.pointerId))touchPts.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(Math.hypot(e.clientX-lpStart[0],e.clientY-lpStart[1])>10)clearTimeout(longPressTimer);
-    if(touchPts.size===2&&pinchInitDist>0){
-      const pts=Array.from(touchPts.values());
-      const dist=Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
-      const nextZ=Math.max(25,Math.min(800,Math.round(pinchInitZoom*(dist/pinchInitDist))));
-      if(Math.abs(nextZ-(getActivePaneState().zoom||100))>=4)setZoom(nextZ);
+    setBusy();
+  },{capture:true,passive:false});
+  panesEl.addEventListener('touchmove',e=>{
+    const t0=e.touches[0];
+    if(t0&&Math.hypot(t0.clientX-T.lpStart[0],t0.clientY-T.lpStart[1])>10)clearTimeout(T.lp);
+    if(T.pinch&&e.touches.length>=2){
+      const a=e.touches[0], b=e.touches[1];
+      const d=Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY);
+      const nz=Math.max(25,Math.min(800,Math.round(T.pinch.z0*d/T.pinch.d0)));
+      if(T.pinch.sc) zoomScrollAt(T.pinch.sc,(a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2,nz);
+      e.preventDefault(); setBusy();
+    }else if(T.qz&&t0){
+      const dy=t0.clientY-T.qz.y0;
+      const nz=Math.max(25,Math.min(800,Math.round(T.qz.z0*Math.pow(2,dy/160))));   // kéo xuống = phóng to
+      if(T.qz.sc) zoomScrollAt(T.qz.sc,T.qz.x,T.qz.y0,nz);
+      e.preventDefault(); setBusy();
     }
-  });
+  },{capture:true,passive:false});
   const endTouch=e=>{
-    if(e.pointerType!=='touch')return;
-    touchPts.delete(e.pointerId);
-    window.PDF_TOUCH_N=touchPts.size;
-    clearTimeout(longPressTimer);
-    if(touchPts.size<2)pinchInitDist=0;
+    const n=e.touches.length; window.PDF_TOUCH_N=n;
+    clearTimeout(T.lp);
+    const wasGesture=!!(T.qz||T.pinch);
+    if(n<2)T.pinch=null;
+    if(n===0){
+      const c=e.changedTouches[0];
+      if(!wasGesture&&T.down&&c&&Date.now()-T.down.t<250&&Math.hypot(c.clientX-T.down.x,c.clientY-T.down.y)<12) T.lastTap={t:Date.now(),x:c.clientX,y:c.clientY};
+      else T.lastTap=null;
+      T.qz=null;
+    }
+    if(wasGesture)window.PDF_GESTURE_AT=Date.now();
+    setBusy();
   };
-  $('#panes').addEventListener('pointerup',endTouch);
-  $('#panes').addEventListener('pointercancel',endTouch);
+  panesEl.addEventListener('touchend',endTouch,{capture:true});
+  panesEl.addEventListener('touchcancel',endTouch,{capture:true});
 
   addEventListener('keydown',e=>{
     if(e.code!=='Space'||e.target.closest('input,textarea,select,button,a,[contenteditable="true"]'))return;
@@ -10547,6 +10589,30 @@ function start(){
     }
   });
 
+  window.paneStateOfScroll = sc => {
+    const pEl = sc.closest('.pane');
+    const pIdx = Array.from(document.querySelectorAll('.pane')).indexOf(pEl);
+    return PANE_STATES[pIdx >= 0 ? pIdx : S.focus];
+  };
+  window.zoomScrollAt = (sc, cx, cy, newZoom) => {
+    const pEl = sc.closest('.pane');
+    const pIdx = Array.from(document.querySelectorAll('.pane')).indexOf(pEl);
+    const ps = PANE_STATES[pIdx >= 0 ? pIdx : S.focus];
+    if (!ps || !ps.isPdfReal || !ps.numPages) return;
+    const oldZoom = ps.zoom;
+    if (newZoom === oldZoom) return;
+    const ratio = newZoom / oldZoom;
+    const hit = document.elementFromPoint(cx, cy);
+    const targetPg = (hit && hit.closest && hit.closest('.page')) || sc.querySelector(`.page[data-page="${ps.currentPage}"]`);
+    let relX = 0, relY = 0;
+    if (targetPg) { const r = targetPg.getBoundingClientRect(); relX = cx - r.left; relY = cy - r.top; }
+    ps.zoom = newZoom;
+    updatePanePagesCssSize(ps, sc);
+    if (targetPg) { const r2 = targetPg.getBoundingClientRect(); sc.scrollLeft += (r2.left + relX * ratio) - cx; sc.scrollTop += (r2.top + relY * ratio) - cy; }
+    if (pIdx === S.focus || pIdx < 0) { S.zoom = newZoom; $('#stZoom').textContent = newZoom + '%'; }
+    updatePtabMeta(pIdx >= 0 ? pIdx : S.focus);
+    scheduleHiDpiRerender(ps, sc, 140);
+  };
   $('#panes').addEventListener('wheel', e => {
     if (!e.ctrlKey) return;
     e.preventDefault();
@@ -11178,6 +11244,9 @@ function start(){
 
   // Lọc và tìm kiếm bình luận (K3)
   if($('#cmtSearch')) $('#cmtSearch').oninput = filterComments;
+  if($('#cmt') && !$('#cmt .drawer-close')){ const dc=el('button','drawer-close','✕ Đóng'); dc.title='Đóng bảng'; dc.onclick=()=>$('#cmt').classList.remove('open-drawer'); $('#cmt').append(dc); }
+  if($('#btnZoomIn')) $('#btnZoomIn').onclick = () => act('zin','zin','Phóng to');
+  if($('#btnZoomOut')) $('#btnZoomOut').onclick = () => act('zout','zout','Thu nhỏ');
   if($('#cmtSort')) $('#cmtSort').onchange = () => { sortComments(); filterComments(); };
   if($('#cmtFilterStatus')) $('#cmtFilterStatus').onchange = e => {
     filterComments();
