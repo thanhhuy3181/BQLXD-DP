@@ -962,7 +962,7 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
   <div class="veil" id="veilShare"><div class="dlg" role="dialog" aria-label="Chia sẻ">
     <h2>Chia sẻ tài liệu</h2>
     <div class="invite">
-      <input class="field" id="inEmail" placeholder="Nhập tên hoặc email đồng nghiệp">
+      <input class="field" id="inEmail" list="inEmailList" autocomplete="off" placeholder="Nhập tên hoặc email đồng nghiệp"><datalist id="inEmailList"></datalist>
       <select class="field" id="inRole" title="Quyền của người được chia sẻ"><option value="Người nhận xét" selected>Xem &amp; bình luận</option><option value="Người sửa">Sửa (vẽ, sửa mọi ghi chú)</option><option value="Chỉ xem">Chỉ xem</option></select>
       <button class="btn primary" id="btnInvite">Thêm</button>
     </div>
@@ -13392,20 +13392,48 @@ function start(){
     }catch(_){}
   }
 
+  // Gợi ý người dùng thật khi gõ; nhớ thông tin để Thêm đúng email/họ tên
+  window.USER_HITS = window.USER_HITS || new Map();
+  if (!$('#inEmail').dataset.sug) {
+    $('#inEmail').dataset.sug = '1';
+    let sugT = 0;
+    $('#inEmail').addEventListener('input', e => {
+      clearTimeout(sugT);
+      const q = e.target.value.trim();
+      if (!q) return;
+      sugT = setTimeout(async () => {
+        const r = await pdfApi('users_search', { q });
+        if (!r || !r.ok) return;
+        const dl = $('#inEmailList'); dl.innerHTML = '';
+        (r.data.users || []).forEach(u => {
+          window.USER_HITS.set(u.username, u);
+          const o = document.createElement('option');
+          o.value = u.username; o.label = u.fullname + (u.email ? ' – ' + u.email : '');
+          dl.append(o);
+        });
+      }, 250);
+    });
+  }
   $('#btnInvite').onclick = async () => {
     const v = $('#inEmail').value.trim();
     if(!v) return toast('Nhập tên hoặc email trước');
     const role = $('#inRole').value;
     const docId = PDF_STATE.docId;
     const uName = v.includes('@') ? v.split('@')[0] : v;
+    if (!window.USER_HITS.has(uName)) {
+      const chk = await pdfApi('users_search', { q: uName });
+      const hit = chk && chk.ok && (chk.data.users || []).find(u => u.username === uName);
+      if (!hit) return toast('Không có tài khoản "' + uName + '" trên hệ thống. Gõ đúng tên đăng nhập hoặc chọn từ gợi ý.');
+      window.USER_HITS.set(uName, hit);
+    }
     const existingIdx = CURRENT_DOC_PERMISSIONS.findIndex(p => p.username === uName || p.email === v);
     if(existingIdx !== -1){
       CURRENT_DOC_PERMISSIONS[existingIdx].role = (role === 'Chỉ xem' ? 'Người xem' : role);
     } else {
       CURRENT_DOC_PERMISSIONS.push({
         username: uName,
-        email: v.includes('@') ? v : (uName + '@congty.vn'),
-        fullname: uName,
+        email: (window.USER_HITS.get(uName) || {}).email || (v.includes('@') ? v : ''),
+        fullname: (window.USER_HITS.get(uName) || {}).fullname || uName,
         role: (role === 'Chỉ xem' ? 'Người xem' : role)
       });
     }

@@ -1489,6 +1489,17 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(result({ requests: rows.map(normRequest) }));
     }
 
+    // Gợi ý người dùng thật khi chia sẻ (chỉ tên, email; không trả mật khẩu)
+    if (action === 'users_search') {
+      const q = String(payload.q || '').trim().toLowerCase().slice(0, 60);
+      if (!q) return res.status(200).json(result({ users: [] }));
+      const like = '%' + q + '%';
+      const rows = await db`/*q:users_search*/ SELECT username, data FROM bqlda_users
+        WHERE status = 'Active' AND (lower(username) LIKE ${like} OR lower(json_extract(data, '$.fullname')) LIKE ${like} OR lower(json_extract(data, '$.email')) LIKE ${like})
+        ORDER BY username LIMIT 15`;
+      return res.status(200).json(result({ users: rows.map(r => { const d = parseJson(r.data) || {}; return { username: r.username, fullname: d.fullname || r.username, email: d.email || '' }; }) }));
+    }
+
     // G4. Duyệt (cấp vai trò vào permissions_json — cùng chỗ doc_share ghi) hoặc từ chối.
     if (action === 'doc_access_decide') {
       const reqId = String(payload.request_id || '');
