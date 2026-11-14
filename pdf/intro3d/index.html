@@ -20,7 +20,8 @@
     background:radial-gradient(rgba(227,236,233,.92) 40%,rgba(227,236,233,.6))}
   #endcard h1{margin:0;font-size:132px;letter-spacing:-.03em;color:#0f3d3a;line-height:1;opacity:0}
   .pdfb{color:#2563eb}
-  #endcard h1 .qlda{color:#f97316}
+  .qlda{color:#ffd000;-webkit-text-stroke:3px #2563eb;paint-order:stroke fill}
+  #title .qlda{-webkit-text-stroke-width:1.5px}
   .ec-board{position:relative;width:1320px;height:600px;margin-top:34px}
   .ec-board svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
   .chip{position:absolute;transform:translate(-50%,-50%);padding:14px 34px;border-radius:999px;color:#fff;font-size:44px;font-weight:700;white-space:nowrap;opacity:0;
@@ -67,7 +68,7 @@
 <div class="cap"><b>Cảnh 6 · Ba lớp đã vẽ xong chữ PDF</b><span>Bản vẽ (giao thông, trắng xám) · Layer công trình theo khu A–F (màu) · Ghi chú: CBGS vẽ P bằng chuột, ĐTGS vẽ D bằng bút, GĐ vẽ F bằng ngón tay, cùng nhiều người ghi chú</span></div>
 
 <div class="hint">Rê chuột để nghiêng, xoay 3D</div>
-<div id="title"><b><span class="pdfb">PDF</span> QLDA</b></div>
+<div id="title"><b><span class="pdfb">PDF</span> <span class="qlda">QLDA</span></b></div>
 <div id="endcard">
   <h1><span class="pdfb">PDF</span> <span class="qlda">QLDA</span></h1>
   <div class="ec-board" id="ecBoard">
@@ -307,14 +308,14 @@
     await fadeIn(handles, 250);
     await press(a, 'fill'); await move(a, 1000, 400, 1200); await fadeIn(fill, 500);
     await move(a, 925, 300, 500); await fadeIn(txt, 600);
-    await move(a, a.hx, a.hy, 700);
+    await move(a, 2120, -60, 1300);          // lùi về góc trên phải cho khỏi che
   }
   async function drawD(a) {        // ĐTGS: Bút — đường thẳng, đường cong, tô vùng
     const [fill, stem, curve, guide, handle] = gD.children;
     await press(a, 'line'); await move(a, 1115, 155, 1300); await drawPath(a, stem, 1000);
     await press(a, 'curve'); await move(a, 1115, 445, 1300); await fadeIn(guide, 300); await drawPath(a, curve, 1500); await fadeIn(handle, 300);
     await press(a, 'fill'); await move(a, 1240, 300, 1300); await fadeIn(fill, 600);
-    await move(a, a.hx, a.hy, 700);
+    await move(a, 2260, -60, 1300);
   }
   async function drawF(a) {        // GĐ: Ngón tay — quẹt 3 nét hơi lệch
     const under = gF.children[0].querySelectorAll('path'), ink = gF.children[1].querySelectorAll('path');
@@ -324,7 +325,7 @@
       await move(a, s.x, s.y, i ? 600 : 1300);
       await drawPath(a, p, 800, [under[i]]);
     }
-    await move(a, a.hx, a.hy, 700);
+    await move(a, 2400, -60, 1300);
   }
 
   // ---- Mọi người vẽ lại các ghi chú của chủ dự án ----
