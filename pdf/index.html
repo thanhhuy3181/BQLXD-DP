@@ -10490,7 +10490,7 @@ function start(){
   const panesEl=$('#panes');
   panesEl.addEventListener('touchstart',e=>{
     const n=e.touches.length; window.PDF_TOUCH_N=n; clearTimeout(T.lp);
-    const now=Date.now();
+    const now=performance.timeOrigin+e.timeStamp; // thời điểm ngón chạm thật (không phụ thuộc trang đang bận vẽ)
     if(n>=2){
       const a=e.touches[0], b=e.touches[1];
       const mx=(a.clientX+b.clientX)/2, my=(a.clientY+b.clientY)/2;
@@ -10501,9 +10501,9 @@ function start(){
       e.preventDefault();
     }else if(n===1){
       const t=e.touches[0];
-      if(T.lastTap && now-T.lastTap.t<320 && Math.hypot(t.clientX-T.lastTap.x,t.clientY-T.lastTap.y)<40){
+      if(T.lastTap && now-T.lastTap.t<400 && Math.hypot(t.clientX-T.lastTap.x,t.clientY-T.lastTap.y)<40){
         const sc=scAt(t.clientX,t.clientY); const ps=sc?paneStateOfScroll(sc):getActivePaneState();
-        T.qz={y0:t.clientY, x:t.clientX, z0:(ps&&ps.zoom)||100, sc};
+        T.qz={y0:t.clientY, x:t.clientX, z0:(ps&&ps.zoom)||100, sc, t:now, moved:false};
         T.lastTap=null;
         e.preventDefault();
       }else{
@@ -10533,6 +10533,8 @@ function start(){
       e.preventDefault(); setBusy();
     }else if(T.qz&&t0){
       const dy=t0.clientY-T.qz.y0;
+      if(Math.abs(dy)>6) T.qz.moved=true;
+      if(!T.qz.moved){ e.preventDefault(); return; }
       const nz=Math.max(25,Math.min(800,Math.round(T.qz.z0*Math.pow(2,dy/160))));   // kéo xuống = phóng to
       if(T.qz.sc) queueZoom(T.qz.sc,T.qz.x,T.qz.y0,nz);
       e.preventDefault(); setBusy();
@@ -10540,12 +10542,18 @@ function start(){
   },{capture:true,passive:false});
   const endTouch=e=>{
     const n=e.touches.length; window.PDF_TOUCH_N=n;
+    const nowE=performance.timeOrigin+e.timeStamp;
     clearTimeout(T.lp);
+    // Chạm 2 lần nhanh (không kéo) = bấm đúp: mở sửa chữ trong ghi chú tại chỗ chạm.
+    if(T.qz && !T.qz.moved && n===0 && nowE-T.qz.t<450){
+      const x=T.qz.x, y=T.qz.y0;
+      setTimeout(()=>{ const tg=document.elementFromPoint(x,y)||document.body; tg.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,cancelable:true,clientX:x,clientY:y})); },0);
+    }
     const wasGesture=!!(T.qz||T.pinch);
     if(n<2)T.pinch=null;
     if(n===0){
       const c=e.changedTouches[0];
-      if(!wasGesture&&T.down&&c&&Date.now()-T.down.t<250&&Math.hypot(c.clientX-T.down.x,c.clientY-T.down.y)<12) T.lastTap={t:Date.now(),x:c.clientX,y:c.clientY};
+      if(!wasGesture&&T.down&&c&&nowE-T.down.t<300&&Math.hypot(c.clientX-T.down.x,c.clientY-T.down.y)<12) T.lastTap={t:nowE,x:c.clientX,y:c.clientY};
       else T.lastTap=null;
       T.qz=null;
     }
