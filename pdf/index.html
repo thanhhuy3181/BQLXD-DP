@@ -763,6 +763,8 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
   .cmt.closed{height:0;width:100%;opacity:0;pointer-events:none}
 }
 /* ===== S1: Sân khấu 3D Chồng bản vẽ tách lớp ===== */
+.empty-intro3d{width:min(960px,92vw);aspect-ratio:16/9;margin:0 auto 6px;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px rgba(15,61,58,.15)}
+.empty-intro3d iframe{width:100%;height:100%;border:0;display:block}
 .empty-hero{perspective:1400px;min-height:360px;display:flex;align-items:center;justify-content:center;touch-action:pan-y;margin:auto;padding:24px 16px;max-width:100%;user-select:none}
 .empty-stack{--rx:56deg;--rz:-34deg;--gap:44px;position:relative;width:min(90vw,420px);aspect-ratio:1.414;transform-style:preserve-3d;transform:rotateX(var(--rx)) rotateZ(var(--rz));transition:transform .5s var(--out)}
 .empty-stage:hover .empty-stack,.empty-stack.open{--gap:88px}
@@ -6113,29 +6115,10 @@ function renderPanes() {
 
     if (!ps.isPdfReal || !ps.doc) {
       const empty = el('div', 'empty-state');
-      empty.style.cssText = 'margin:auto;text-align:center;padding:24px 16px;max-width:580px;background:transparent;border:none;box-shadow:none;display:flex;flex-direction:column;align-items:center;';
+      empty.style.cssText = 'margin:auto;text-align:center;padding:24px 16px;max-width:1000px;background:transparent;border:none;box-shadow:none;display:flex;flex-direction:column;align-items:center;';
       empty.innerHTML = `
-        <div class="empty-hero empty-stage" id="emptyStage_${i}" title="Rê chuột để nghiêng và tách lớp">
-          <div class="empty-stack" id="emptyStack_${i}">
-            <div class="empty-shadow"></div>
-            <div class="empty-sheet base" style="--i:0"><span class="empty-lbl">BẢN VẼ</span>
-              <svg class="empty-plan" viewBox="0 0 420 297" aria-hidden="true">
-                <rect pathLength="1" x="14" y="14" width="392" height="269"/>
-                <path pathLength="1" d="M40 60h130v70H40zM190 60h95v70h-95zM305 60h80v150h-80zM40 150h245v60H40zM40 230h345v36H40z"/>
-                <path class="thin" pathLength="1" d="M72 60v70M104 60v70M136 60v70M222 60v70M254 60v70M89 150v60M138 150v60M187 150v60M236 150v60M305 97h80M305 134h80M305 171h80M120 230v36M200 230v36M280 230v36"/>
-              </svg>
-            </div>
-            <div class="empty-sheet ann" style="--i:1"><span class="empty-lbl" style="background:var(--accent)">GHI CHÚ</span>
-              <svg viewBox="0 0 420 297" aria-hidden="true">
-                <path class="empty-mk" style="animation-delay:1.9s" d="M186 52q8-10 16 0 8-10 16 0 8-10 16 0 8-10 16 0 8-10 16 0 8-10 16 0q10 8 0 16 10 8 0 16 10 8 0 16 10 8 0 16 10 8 0 16-8 10-16 0-8 10-16 0-8 10-16 0-8 10-16 0-8 10-16 0-8 10-16 0-10-8 0-16-10-8 0-16-10-8 0-16-10-8 0-16z" fill="rgba(185,28,28,.08)" stroke="#b91c1c" stroke-width="1.6"/>
-                <g class="empty-mk" style="animation-delay:2.2s"><path d="M150 232L92 182" stroke="#0b7a71" stroke-width="2" fill="none"/><path d="M92 182l12 3-7 8z" fill="#0b7a71"/><rect x="150" y="222" width="96" height="24" rx="3" fill="#fbfefd" stroke="#0b7a71" stroke-width="1.5"/><text x="158" y="238" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700" fill="#12343b">Dời tường 200</text></g>
-                <rect class="empty-mk" style="animation-delay:2.5s" x="312" y="140" width="66" height="26" fill="rgba(249,115,22,.28)" stroke="#f97316" stroke-width="1.5"/>
-              </svg>
-            </div>
-            <div class="empty-sheet cmt" style="--i:2"><span class="empty-lbl" style="background:var(--hot);color:#1b1305">ĐANG CÙNG SỬA</span>
-              <span class="empty-cur a">Người A</span><span class="empty-cur b">Người B</span>
-            </div>
-          </div>
+        <div class="empty-intro3d">
+          <iframe src="/pdf/intro3d/index.html?embed" title="PDF QLDA: bản vẽ, layer, ghi chú — nhiều người cùng làm" loading="lazy" tabindex="-1"></iframe>
         </div>
         <h3 style="margin:8px 0 4px;font-size:16px;font-weight:700">Khung ${i + 1}: Chưa mở tài liệu</h3>
         <p style="margin:0 0 18px;color:var(--muted);font-size:13px;line-height:1.5;max-width:44ch">Mở PDF tới 100 MB, ghi chú theo lớp, nhiều người cùng làm việc một lúc.</p>

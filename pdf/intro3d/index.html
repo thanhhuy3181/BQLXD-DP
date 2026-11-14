@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>PDF QLDA – Bản vẽ · Layer · Ghi chú</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;700;900&family=JetBrains+Mono:wght@700&display=swap">
+<style>
+  html{margin:0;height:100%;overflow:hidden;background:#e3ece9}
+  body{margin:0;width:1920px;height:1080px;overflow:hidden;font-family:'Be Vietnam Pro',sans-serif;transform-origin:0 0;
+    background:#e3ece9;
+    background-image:linear-gradient(rgba(15,61,58,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(15,61,58,.07) 1px,transparent 1px);
+    background-size:32px 32px}
+  .scene{position:absolute;left:50%;top:61%;width:1040px;height:700px;margin:-350px 0 0 -520px;perspective:3600px}
+  :root{--rx:54deg;--rz:-30deg;--gap:1;--sc:.9}
+  .stack{position:absolute;inset:0;transform-style:preserve-3d;transform:scale3d(var(--sc),var(--sc),var(--sc)) rotateX(var(--rx)) rotateZ(var(--rz))}
+  body.m-video .cap,body.m-video .hint,body.m-embed .cap{display:none}
+  body.m-embed .hint{top:24px;right:24px;font-size:22px;padding:12px 20px}
+  body.m-embed .scene{top:59%}
+  #endcard{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;
+    background:radial-gradient(rgba(227,236,233,.92) 40%,rgba(227,236,233,.6))}
+  #endcard h1{margin:0;font-size:120px;letter-spacing:-.03em;color:#0f3d3a}
+  #endcard h1 span{color:#f97316}
+  #endcard p{margin:18px 0 0;font-size:34px;color:#36524e;font-weight:500}
+  #title{position:absolute;left:64px;top:48px;color:#0f3d3a;opacity:0}
+  #title b{display:block;font-size:44px;letter-spacing:-.02em}
+  #title span{font-size:22px;color:#55706c}
+  .layer{position:absolute;inset:0;transform-style:preserve-3d}
+  .area{position:absolute;left:30px;top:26px;width:980px;height:591px;transform-style:preserve-3d}
+  .area img,.area svg.plan{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .area svg.plan{overflow:visible}
+  .lrow .eye-off{display:none}
+  .lrow.off .eye-on{display:none}
+  .lrow.off .eye-off{display:inline}
+  .lrow.off text{fill:#94a3b8}
+  .bt{transition:transform .15s,stroke-width .15s}
+  .press .bt{stroke-width:14;transform:scale(.9)}
+  .l-base{transform:translateZ(0)}
+  .l-base .sheet{position:absolute;inset:0;background:#fff;border-radius:6px;box-shadow:0 0 0 1px rgba(15,61,58,.25)}
+  .l-shadow{position:absolute;inset:0;transform:translateZ(-2px) translate(26px,26px);background:rgba(15,61,58,.2);filter:blur(16px);border-radius:8px}
+  .frame{position:absolute;inset:0;width:100%;height:100%}
+  .l-mid{transform:translateZ(calc(143px * var(--gap)))}
+  .l-top{transform:translateZ(calc(285px * var(--gap)))}
+  .hint{position:absolute;right:56px;top:52px;font:700 14px 'Be Vietnam Pro';color:#0f3d3a;background:#fff;border:1.5px solid #0f3d3a;border-radius:8px;padding:8px 14px;box-shadow:3px 3px 0 #0f3d3a}
+  .glass{position:absolute;inset:0;border:1.5px dashed rgba(15,61,58,.5);border-radius:6px;background:rgba(240,253,250,.10)}
+  .tag{position:absolute;left:-6px;top:-34px;font:700 15px 'JetBrains Mono',monospace;letter-spacing:.12em;color:#fff;padding:5px 12px;border-radius:6px}
+  .t-base{background:#0f2f2c}.t-mid{background:#2563eb}.t-top{background:#0f9d8a}
+  .cap{position:absolute;left:56px;top:44px;color:#0f3d3a}
+  .cap b{display:block;font-size:30px;letter-spacing:-.01em}
+  .cap span{font-size:17px;color:#55706c}
+  /* Người vẽ: đặt đúng điểm trên lớp ghi chú, quay mặt về phía người xem */
+  /* nổi lên trên lớp ghi chú rồi mới quay mặt về người xem; bóng tròn đánh dấu điểm chạm trên lớp */
+  .bb{position:absolute;width:0;height:0;transform-style:preserve-3d;transform:translateZ(1px) rotateZ(calc(var(--rz) * -1)) rotateX(calc(var(--rx) * -1))}
+  .dot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:radial-gradient(rgba(15,47,44,.45),rgba(15,47,44,0) 70%);transform:translateZ(1px)}
+  .stem{position:absolute;width:2px;margin-left:-1px;background:linear-gradient(rgba(15,47,44,.0),rgba(15,47,44,.45));transform-origin:50% 100%}
+  .bb svg{position:absolute;filter:drop-shadow(0 8px 8px rgba(15,47,44,.28))}
+  .who{position:absolute;font:700 14px 'Be Vietnam Pro';color:#0f3d3a;background:#fff;border:1.5px solid #0f3d3a;border-radius:999px;padding:4px 12px;white-space:nowrap;box-shadow:3px 3px 0 #0f3d3a}
+  .who.sm{font-size:12px;padding:2px 9px;color:#fff;box-shadow:2px 2px 0 rgba(15,47,44,.5)}
+</style>
+</head>
+<body>
+<div class="cap"><b>Cảnh 6 · Ba lớp đã vẽ xong chữ PDF</b><span>Bản vẽ (giao thông, trắng xám) · Layer công trình theo khu A–F (màu) · Ghi chú: CBGS vẽ P bằng chuột, ĐTGS vẽ D bằng bút, GĐ vẽ F bằng ngón tay, cùng nhiều người ghi chú</span></div>
+
+<div class="hint">Rê chuột để nghiêng, xoay 3D</div>
+<div id="title"><b>PDF QLDA</b><span>Bản vẽ · Layer · Ghi chú — nhiều người cùng làm trên một bản vẽ</span></div>
+<div id="endcard"><h1>PDF <span>QLDA</span></h1><p>Bản vẽ · Layer · Ghi chú — cùng làm trên một bản vẽ</p></div>
+<div class="scene">
+  <div class="stack">
+
+    <!-- LỚP DƯỚI: BẢN VẼ — bình đồ thật, chỉ trắng xám, có khung bản vẽ -->
+    <div class="layer l-base">
+      <div class="l-shadow"></div>
+      <div class="sheet"></div>
+      <svg class="frame" viewBox="0 0 1040 700" aria-hidden="true">
+        <rect x="9" y="9" width="1022" height="682" fill="none" stroke="#475569" stroke-width="2.5"/>
+        <rect x="15" y="15" width="1010" height="670" fill="none" stroke="#475569" stroke-width=".8"/>
+        <g font-family="Be Vietnam Pro" fill="#64748b">
+          <rect x="770" y="630" width="250" height="50" fill="#fff" stroke="#475569"/>
+          <line x1="770" y1="650" x2="1020" y2="650" stroke="#475569"/><line x1="900" y1="650" x2="900" y2="680" stroke="#475569"/>
+          <text x="778" y="645" font-size="11" font-weight="700">MẶT BẰNG TỔNG THỂ</text>
+          <text x="778" y="670" font-size="10">HẠ TẦNG GIAO THÔNG</text>
+          <text x="908" y="670" font-size="10">TỶ LỆ 1/2000</text>
+        </g>
+      </svg>
+      <div class="area"><img src="base.jpg" alt=""></div>
+      <div class="tag t-base">BẢN VẼ</div>
+    </div>
+
+    <!-- LỚP GIỮA: LAYER CÔNG TRÌNH — màu theo khu, cảnh quan giữ màu -->
+    <div class="layer l-mid">
+      <div class="glass"></div>
+      <div class="area" id="midArea">
+        <img class="lay" id="lay-land" src="mid-land.png" alt="">
+        <img class="lay" id="lay-A" src="mid-A.png" alt=""><img class="lay" id="lay-B" src="mid-B.png" alt="">
+        <img class="lay" id="lay-C" src="mid-C.png" alt=""><img class="lay" id="lay-D" src="mid-D.png" alt="">
+        <img class="lay" id="lay-E" src="mid-E.png" alt=""><img class="lay" id="lay-F" src="mid-F.png" alt="">
+        <!-- bảng layer: nằm ngoài mép phải của mặt LAYER -->
+        <svg class="plan" viewBox="0 0 2400 1447" aria-hidden="true" id="layerPanel"></svg>
+      </div>
+      <div class="tag t-mid">LAYER</div>
+    </div>
+
+    <!-- LỚP TRÊN: GHI CHÚ -->
+    <div class="layer l-top">
+      <div class="glass"></div>
+      <div class="area" id="topArea">
+        <svg class="plan" viewBox="0 0 2400 1447" aria-hidden="true">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker>
+          </defs>
+          <g id="anno"></g>
+          <!-- bảng nút vẽ: nằm NGOÀI mép bản vẽ (bên trái), như thanh công cụ của app -->
+          <g id="toolbar">
+            <rect x="760" y="-480" width="1100" height="200" rx="28" fill="#fff" stroke="#0f3d3a" stroke-width="5"/>
+            <g fill="none" stroke="#0f3d3a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+<g id="btn-text" transform="translate(860 -380)"><rect class="bt" x="-62" y="-62" width="124" height="124" rx="22" fill="#ffedd5" stroke="#f97316"/><path d="M-34 -30h68M0 -30v64"/></g>
+<g id="btn-line" transform="translate(1000 -380)"><rect class="bt" x="-62" y="-62" width="124" height="124" rx="22" fill="#ccfbf1" stroke="#0d9488"/><path d="M-34 34L34 -34"/></g>
+<g id="btn-callout" transform="translate(1140 -380)"><rect class="bt" x="-62" y="-62" width="124" height="124" rx="22" fill="#fef3c7" stroke="#d97706"/><rect x="-6" y="-38" width="44" height="32" rx="4"/><path d="M-36 34L-6 -6"/></g>
+<g id="btn-pen" transform="translate(1280 -380)"><rect class="bt" x="-62" y="-62" width="124" height="124" rx="22" fill="#fee2e2" stroke="#dc2626"/><path d="M-28 30l8-24 34-34 16 16-34 34z"/></g>
+<g id="btn-fill" transform="translate(1420 -380)"><rect class="bt" x="-62" y="-62" width="124" height="124" rx="22" fill="#f1f5f9" stroke="#64748b"/><path d="M-30 -2l26-26 30 30-26 26z"/><path d="M30 14c8 10 8 20 0 22s-8-12 0-22z" fill="#0f3d3a"/></g>
+<g id="btn-curve" transform="translate(1560 -380)"><rect class="bt" x="-62" y="-62" width="124" height="124" rx="22" fill="#ccfbf1" stroke="#0d9488"/><path d="M-34 34C-34 -26 34 26 34 -34"/></g>
+            </g>
+            <circle cx="1690" cy="-380" r="17" fill="#f97316"/><circle cx="1735" cy="-380" r="17" fill="#14b8a6"/><circle cx="1780" cy="-380" r="17" fill="#dc2626"/>
+          </g>
+          <g id="live"></g>
+
+          <!-- P: chuột + Ô chữ + tô nền -->
+          <g id="gP">
+            <rect x="790" y="140" width="270" height="320" rx="10" fill="#fed7aa" fill-opacity=".88"/>
+            <text x="925" y="420" text-anchor="middle" font-family="Courier New, monospace" font-weight="700" font-size="460" fill="#111">P</text>
+            <rect x="790" y="140" width="270" height="320" rx="10" fill="none" stroke="#f97316" stroke-width="6" stroke-dasharray="16 10"/>
+            <g fill="#fff" stroke="#f97316" stroke-width="5">
+              <rect x="778" y="128" width="24" height="24"/><rect x="1048" y="128" width="24" height="24"/><rect x="778" y="448" width="24" height="24"/><rect x="1048" y="448" width="24" height="24"/>
+            </g>
+          </g>
+
+          <!-- D: bút + đường thẳng + đường cong + tô vùng -->
+          <g id="gD">
+            <path d="M1115 155 L1115 445 C1420 445 1420 155 1115 155Z" fill="#2dd4bf" fill-opacity=".6"/>
+            <path d="M1115 155 L1115 445" stroke="#111" stroke-width="44" stroke-linecap="round"/>
+            <path d="M1115 445 C1420 445 1420 155 1115 155" fill="none" stroke="#111" stroke-width="44" stroke-linecap="round"/>
+            <g stroke="#0d9488" stroke-width="5" stroke-dasharray="12 10" fill="none"><path d="M1115 155 L1420 155"/><path d="M1115 445 L1420 445"/></g>
+            <g fill="#fff" stroke="#0d9488" stroke-width="5"><circle cx="1115" cy="155" r="16"/><circle cx="1115" cy="445" r="16"/><rect x="1406" y="141" width="28" height="28"/><rect x="1406" y="431" width="28" height="28"/></g>
+          </g>
+
+          <!-- F: ngón tay quẹt hơi lệch -->
+          <g id="gF" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <g stroke="#fca5a5" stroke-width="110" opacity=".6">
+              <path d="M1500 160 q16 150 -10 290"/>
+              <path d="M1496 164 q120 -24 232 6"/>
+              <path d="M1502 300 q80 12 160 -10"/>
+            </g>
+            <g stroke="#111" stroke-width="50">
+              <path d="M1500 160 q16 150 -10 290"/>
+              <path d="M1496 164 q120 -24 232 6"/>
+              <path d="M1502 300 q80 12 160 -10"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div class="tag t-top">GHI CHÚ</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Mẫu hình người vẽ (được sao chép vào lớp ghi chú) -->
+<template id="tplMouse">
+<svg width="58" height="78" viewBox="0 0 58 78" aria-hidden="true">
+  <!-- lật dọc: mũi nhọn ở dưới chạm mặt phẳng, đuôi ở trên -->
+  <path transform="translate(0 78) scale(1 -1)" d="M4 4 L4 62 L18 49 L28 72 L38 67 L28 45 L48 45 Z" fill="#fff" stroke="#0f2f2c" stroke-width="3.5" stroke-linejoin="round"/>
+</svg>
+</template>
+<template id="tplPen">
+<svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">
+  <defs>
+    <linearGradient id="pcBody__" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#f1f5f9"/><stop offset="1" stop-color="#cbd5e1"/></linearGradient>
+    <linearGradient id="pcFade__" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".45" stop-color="#fff" stop-opacity="1"/></linearGradient>
+    <mask id="pcMask__"><rect x="40" y="0" width="40" height="120" fill="url(#pcFade__)"/></mask>
+  </defs>
+  <g transform="rotate(40 60 60)">
+    <g mask="url(#pcMask__)">
+      <rect x="49" y="2" width="22" height="80" fill="url(#pcBody__)" stroke="#cbd5e1" stroke-width="1"/>
+      <line x1="69" y1="2" x2="69" y2="82" stroke="#94a3b8" stroke-width="1.2"/>
+    </g>
+    <path d="M49 82 L71 82 L63.5 104 L56.5 104 Z" fill="#e5e7eb" stroke="#cbd5e1" stroke-width="1"/>
+    <path d="M56.5 104 L63.5 104 L61 112 L59 112 Z" fill="#6b7280"/>
+  </g>
+</svg>
+</template>
+<template id="tplFinger">
+<svg width="100" height="110" viewBox="0 0 100 110" aria-hidden="true">
+  <defs>
+    <linearGradient id="fgSkin__" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f3c4a3"/><stop offset=".5" stop-color="#f8d5bc"/><stop offset="1" stop-color="#e3a985"/></linearGradient>
+    <linearGradient id="fgFade__" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity="1"/></linearGradient>
+    <mask id="fgMask__"><rect x="20" y="0" width="60" height="110" fill="url(#fgFade__)"/></mask>
+  </defs>
+  <circle cx="26" cy="84" r="9" fill="none" stroke="#0f9d8a" stroke-width="2" opacity=".7"/>
+  <circle cx="26" cy="84" r="17" fill="none" stroke="#0f9d8a" stroke-width="1.5" opacity=".35"/>
+  <g transform="rotate(35 50 50)" mask="url(#fgMask__)">
+    <path d="M32 0 L32 62 Q32 92 50 92 Q68 92 68 62 L68 0 Z" fill="url(#fgSkin__)" stroke="#c98b67" stroke-width="1"/>
+    <path d="M38 60 Q38 82 50 82 Q62 82 62 60 Q50 55 38 60 Z" fill="#fbe7dc" stroke="#d9a589" stroke-width="1"/>
+  </g>
+</svg>
+</template>
+
+<script>
+  const NS = 'http://www.w3.org/2000/svg';
+  const anno = document.getElementById('anno');
+  function mk(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || anno).append(e); return e; }
+
+  // ================= NGƯỜI VẼ =================
+  const area = document.getElementById('topArea');
+  const TPL = { mouse: ['tplMouse', 4, 74], pen: ['tplPen', 27, 100], finger: ['tplFinger', 26, 84] };
+  let uid = 0;
+  function actor(kind, x, y, scale, label, color, lx, ly, where) {
+    const [tplId, tx, ty] = TPL[kind];
+    const bb = document.createElement('div'); bb.className = 'bb';
+    bb.innerHTML = document.getElementById(tplId).innerHTML.replace(/__/g, '_' + (++uid));
+    const svg = bb.querySelector('svg');
+    const w = +svg.getAttribute('width') * scale, h = +svg.getAttribute('height') * scale;
+    svg.setAttribute('width', w); svg.setAttribute('height', h);
+    svg.style.left = (-tx * scale) + 'px'; svg.style.top = (-ty * scale) + 'px';
+    if (label) {
+      const p = document.createElement('div'); p.className = 'who' + (color ? ' sm' : ''); p.textContent = label;
+      if (color) { p.style.background = color; p.style.borderColor = color; }
+      p.style.left = lx + 'px'; p.style.top = ly + 'px';
+      bb.append(p);
+    }
+    const dot = document.createElement('div'); dot.className = 'dot';
+    if (scale < 1) { dot.style.width = dot.style.height = '14px'; dot.style.margin = '-7px 0 0 -7px'; }
+    (where || area).append(dot); (where || area).append(bb);
+    const a = { bb, dot, hx: x, hy: y, color };
+    setPos(a, x, y);
+    return a;
+  }
+  function setPos(a, x, y) {
+    a.x = x; a.y = y;
+    a.bb.style.left = a.dot.style.left = (x / 2400 * 100) + '%';
+    a.bb.style.top = a.dot.style.top = (y / 1447 * 100) + '%';
+  }
+
+  // ================= HOẠT HÌNH =================
+  const qs0 = new URLSearchParams(location.search);
+  const STILL = qs0.has('still');
+  const VIDEO = qs0.has('video'), EMBED = qs0.has('embed');   // ?video = quay video; ?embed = nhúng vào trang web
+  document.body.classList.toggle('m-video', VIDEO); document.body.classList.toggle('m-embed', EMBED);                 // ?still = hiện ngay trạng thái đã vẽ xong (để chụp ảnh)
+  const SP = STILL ? 0.0001 : 1;
+  const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const wait = ms => new Promise(r => setTimeout(r, ms * SP));
+  const frames = (dur, fn) => new Promise(res => {
+    dur *= SP; if (dur < 1) { fn(1); return res(); }
+    const t0 = performance.now();
+    (function step(now) { const k = Math.min(1, (now - t0) / dur); fn(k); k < 1 ? requestAnimationFrame(step) : res(); })(t0);
+  });
+  const move = (a, x1, y1, ms) => { const x0 = a.x, y0 = a.y; return frames(ms, k => { const e = ease(k); setPos(a, x0 + (x1 - x0) * e, y0 + (y1 - y0) * e); }); };
+  const BTN = { text: [860, -380], line: [1000, -380], callout: [1140, -380], pen: [1280, -380], fill: [1420, -380], curve: [1560, -380] };
+  async function press(a, name) {
+    const [bx, by] = BTN[name];
+    await move(a, bx + 20, by + 34, 1200);
+    const b = document.getElementById('btn-' + name); b.classList.add('press'); await wait(260); b.classList.remove('press');
+  }
+  function hidePath(p) { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = L; return L; }
+  async function drawPath(a, p, dur, extra) {   // chuột/bút/tay đi theo nét đang vẽ
+    const L = hidePath(p); if (extra) extra.forEach(hidePath);
+    await frames(dur, k => {
+      p.style.strokeDashoffset = L * (1 - k);
+      if (extra) extra.forEach(e => { e.style.strokeDashoffset = e.getTotalLength() * (1 - k); });
+      const q = p.getPointAtLength(L * k); setPos(a, q.x, q.y);
+    });
+  }
+  async function typeText(t, s, ms) { for (let i = 1; i <= s.length; i++) { t.textContent = s.slice(0, i); await wait(ms); } }
+  const fadeIn = (el, ms) => frames(ms, k => el.style.opacity = k);
+
+  // ---- 3 người vẽ chính: P, D, F ----
+  const gP = document.getElementById('gP'), gD = document.getElementById('gD'), gF = document.getElementById('gF');
+  const mainP = actor('mouse', 1060, 460, 1, 'CBGS', null, 6, -104);
+  const mainD = actor('pen', 1344, 300, 1, 'ĐTGS', null, -10, -140);
+  const mainF = actor('finger', 1662, 290, 1, 'GĐ', null, 4, -120);
+  function resetLetters() {
+    [...gP.children].forEach(e => e.style.opacity = 0);
+    const dash = gP.children[2]; dash.setAttribute('width', 0); dash.setAttribute('height', 0);
+    const [dFill, dStem, dCurve, dGuide, dHandle] = gD.children;
+    dFill.style.opacity = 0; dGuide.style.opacity = 0; dHandle.style.opacity = 0; hidePath(dStem); hidePath(dCurve);
+    gF.querySelectorAll('path').forEach(hidePath);
+  }
+  async function drawP(a) {        // CBGS: Ô chữ — kéo khung, tô nền, gõ chữ P
+    await press(a, 'text');
+    await move(a, 790, 140, 1300);
+    const [fill, txt, dash, handles] = gP.children;
+    dash.style.opacity = 1;
+    await frames(1100, k => { dash.setAttribute('width', 270 * k); dash.setAttribute('height', 320 * k); setPos(a, 790 + 270 * k, 140 + 320 * k); });
+    await fadeIn(handles, 250);
+    await press(a, 'fill'); await move(a, 1000, 400, 1200); await fadeIn(fill, 500);
+    await move(a, 925, 300, 500); await fadeIn(txt, 600);
+    await move(a, a.hx, a.hy, 700);
+  }
+  async function drawD(a) {        // ĐTGS: Bút — đường thẳng, đường cong, tô vùng
+    const [fill, stem, curve, guide, handle] = gD.children;
+    await press(a, 'line'); await move(a, 1115, 155, 1300); await drawPath(a, stem, 1000);
+    await press(a, 'curve'); await move(a, 1115, 445, 1300); await fadeIn(guide, 300); await drawPath(a, curve, 1500); await fadeIn(handle, 300);
+    await press(a, 'fill'); await move(a, 1240, 300, 1300); await fadeIn(fill, 600);
+    await move(a, a.hx, a.hy, 700);
+  }
+  async function drawF(a) {        // GĐ: Ngón tay — quẹt 3 nét hơi lệch
+    const under = gF.children[0].querySelectorAll('path'), ink = gF.children[1].querySelectorAll('path');
+    await press(a, 'pen');
+    for (let i = 0; i < 3; i++) {
+      const p = ink[i], s = p.getPointAtLength(0);
+      await move(a, s.x, s.y, i ? 600 : 1300);
+      await drawPath(a, p, 800, [under[i]]);
+    }
+    await move(a, a.hx, a.hy, 700);
+  }
+
+  // ---- Mọi người vẽ lại các ghi chú của chủ dự án ----
+  // Vẽ trên mặt GHI CHÚ
+  const crew = [
+    ['Huy', '#ea580c', 432, 140], ['Minh', '#16a34a', 562, 520], ['Thế', '#db2777', 980, 820],
+    ['Thiệp', '#2563eb', 1160, 1080], ['Tuấn', '#0f9d8a', 760, 1180],
+  ].map(([n, c, x, y]) => actor('mouse', x, y, .5, n, c, 2, -62));
+
+  // ---- Bảng layer ngoài mép phải mặt LAYER + 2 chuột bật/tắt layer ----
+  const midArea = document.getElementById('midArea'), lp = document.getElementById('layerPanel');
+  const LAYERS = [['A', 'Khu A', '#d6ceee'], ['B', 'Khu B', '#cde0f6'], ['C', 'Khu C', '#ece4d2'], ['D', 'Khu D', '#ded2a8'],
+                  ['E', 'Khu E', '#f6c8d2'], ['F', 'Khu F', '#c4d6de'], ['land', 'Cảnh quan', '#86efac']];
+  const ROWY = i => 300 + i * 112;
+  mk('rect', { x: 2470, y: 200, width: 470, height: 112 * LAYERS.length + 110, rx: 26, fill: '#fff', stroke: '#2563eb', 'stroke-width': 5 }, lp);
+  mk('text', { x: 2510, y: 262, 'font-size': 40, 'font-weight': 700, 'font-family': 'Be Vietnam Pro, sans-serif', fill: '#1e3a8a' }, lp).textContent = 'Layer';
+  LAYERS.forEach(([id, name, col], i) => {
+    const g = mk('g', { class: 'lrow', id: 'row-' + id }, lp), y = ROWY(i);
+    mk('rect', { x: 2490, y: y - 44, width: 430, height: 92, rx: 16, fill: '#f8fafc', stroke: '#e2e8f0', 'stroke-width': 3 }, g);
+    const on = mk('g', { class: 'eye-on', fill: 'none', stroke: '#0f3d3a', 'stroke-width': 6 }, g);
+    mk('path', { d: `M2512 ${y} q38 -36 76 0 q-38 36 -76 0z` }, on); mk('circle', { cx: 2550, cy: y, r: 10, fill: '#0f3d3a' }, on);
+    const off = mk('g', { class: 'eye-off', fill: 'none', stroke: '#94a3b8', 'stroke-width': 6 }, g);
+    mk('path', { d: `M2512 ${y} q38 -36 76 0 q-38 36 -76 0z` }, off); mk('path', { d: `M2516 ${y + 26} L2584 ${y - 26}` }, off);
+    mk('rect', { x: 2610, y: y - 20, width: 40, height: 40, rx: 8, fill: col, stroke: '#64748b', 'stroke-width': 2 }, g);
+    mk('text', { x: 2672, y: y + 14, 'font-size': 38, 'font-weight': 700, 'font-family': 'Be Vietnam Pro, sans-serif', fill: '#0f172a' }, g).textContent = name;
+  });
+  const switchers = [['Việt', '#7c3aed', 2300, 560], ['Thiện', '#0891b2', 2300, 1000]]
+    .map(([n, c, x, y]) => actor('mouse', x, y, .5, n, c, 2, -62, midArea));
+  function setLayer(id, on) {   // tắt = mờ hẳn (trắng), bật = hiện lại; làm bằng JS để quay video đúng nhịp
+    const img = document.getElementById('lay-' + id), from = +(img.style.opacity || 1), to = on ? 1 : 0;
+    frames(450, k => img.style.opacity = (from + (to - from) * k).toFixed(3));
+    document.getElementById('row-' + id).classList.toggle('off', !on);
+  }
+  const offSet = new Set();
+  async function switcher(a, seq, delay) {
+    await wait(delay);
+    let i = 0;
+    while (!STILL && !window.__finale) {
+      const id = seq[i++ % seq.length], idx = LAYERS.findIndex(l => l[0] === id);
+      await move(a, 2540, ROWY(idx) + 6, 1400);           // chạy tới con mắt của layer đó
+      const row = document.getElementById('row-' + id); row.firstChild.setAttribute('fill', '#dbeafe'); await wait(220); row.firstChild.setAttribute('fill', '#f8fafc');
+      const turnOff = !offSet.has(id);
+      if (turnOff) offSet.add(id); else offSet.delete(id);
+      setLayer(id, !turnOff);
+      await wait(1400 + Math.random() * 900);
+    }
+  }
+  // Việt tắt/bật khu A, C, E; Thiện tắt/bật cảnh quan, khu B, D
+  switcher(switchers[0], ['A', 'C', 'A', 'E', 'C', 'E'], 2500);
+  switcher(switchers[1], ['land', 'B', 'land', 'D', 'B', 'D'], 3500);
+
+  const CALLOUTS = [['Khu E',300,40,403,214],['Khu C',640,40,688,207],['Khu A',1600,30,1697,176],['Khu A',1930,45,2010,199],
+    ['Khu B',2260,940,2225,868],['Khu B',1400,930,1560,811],['Khu F',290,1090,377,975],['Khu D',462,1090,564,1033]];
+  const LABELS = [['TTTM',150,300],['TMDV',225,440],['CX7',990,700],['CX6',1262,712],['CX5',1080,1048],['CX4',1348,1062],
+    ['Trường Liên cấp A-TH',1880,490],['01 tòa 22 tầng',1100,525],['HTKT01',620,1145],['CX1',1905,1210]];
+  function makeJobs() {
+    const jobs = [];
+    // Vùng chọn đa giác quanh Khu C (đường thẳng)
+    jobs.push({ btn: 'line', sx: 562, sy: 158, run: async a => {
+      const g = mk('g', {});
+      const p = mk('path', { d: 'M562 158 H1009 V632 H562 Z', fill: 'none', stroke: '#1e293b', 'stroke-width': 4 }, g);
+      await drawPath(a, p, 2200);
+      p.style.strokeDasharray = '14 10'; p.style.strokeDashoffset = 0; p.setAttribute('fill', 'rgba(30,41,59,.04)');
+      const h = mk('g', { opacity: 0 }, g);
+      [[562,158],[785,158],[1009,158],[1009,395],[1009,632],[785,632],[562,632]].forEach(([x,y]) => mk('rect', { x: x-11, y: y-11, width: 22, height: 22, fill: '#fde047', stroke: '#a16207', 'stroke-width': 3 }, h));
+      mk('circle', { cx: 562, cy: 395, r: 13, fill: '#4ade80', stroke: '#15803d', 'stroke-width': 3 }, h);
+      await fadeIn(h, 300);
+    } });
+    // Ghi chú khung đỏ + mũi tên (Khu A–F)
+    CALLOUTS.forEach(([t, x, y, tx, ty]) => jobs.push({ btn: 'callout', sx: tx, sy: ty, run: async a => {
+      const g = mk('g', {}), w = 132, h = 50, ax = x + w / 2, ay = ty < y ? y : y + h;
+      const p = mk('path', { d: `M${tx} ${ty} L${ax} ${ay}`, stroke: '#dc2626', 'stroke-width': 4, fill: 'none', 'marker-start': 'url(#arr)' }, g);
+      await drawPath(a, p, 700);
+      const r = mk('rect', { x, y, width: 0, height: h, fill: '#fff', stroke: '#dc2626', 'stroke-width': 4 }, g);
+      await frames(450, k => { r.setAttribute('width', w * k); setPos(a, x + w * k, y + h); });
+      const te = mk('text', { x: x + 16, y: y + 36, 'font-size': 30, 'font-family': 'Arial, sans-serif', fill: '#111' }, g);
+      await typeText(te, t, 120);
+    } }));
+    // Nhãn khung xanh (chữ)
+    LABELS.forEach(([t, x, y]) => jobs.push({ btn: 'text', sx: x, sy: y, run: async a => {
+      const g = mk('g', {}), w = t.length * 17 + 26;
+      const r = mk('rect', { x, y, width: 0, height: 40, fill: '#fff', stroke: '#2563eb', 'stroke-width': 3 }, g);
+      await frames(400, k => { r.setAttribute('width', w * k); setPos(a, x + w * k, y + 40); });
+      const te = mk('text', { x: x + 13, y: y + 29, 'font-size': 26, 'font-weight': 700, 'font-family': 'Times New Roman, serif', fill: '#1e3a8a', 'text-decoration': 'underline' }, g);
+      await typeText(te, t, 90);
+    } }));
+    // Trộn thứ tự cho tự nhiên (cố định để mỗi lần lặp giống nhau)
+    const order = [0, 1, 9, 3, 10, 5, 12, 2, 14, 7, 16, 4, 11, 6, 13, 8, 15, 17, 18];
+    return order.map(i => jobs[i]).filter(Boolean);
+  }
+  async function worker(a, queue, delay) {
+    await wait(delay);
+    while (queue.length) {
+      const job = queue.shift();
+      await press(a, job.btn);
+      await move(a, job.sx, job.sy, 1300);
+      await job.run(a);
+    }
+    await move(a, a.hx, a.hy, 1000);
+  }
+
+  // ---- Vòng lặp: trống -> mọi người vẽ -> đầy đủ ghi chú -> giữ -> mờ dần -> lặp lại ----
+  const layerTop = document.getElementById('anno');
+  async function cycle() {
+    while (true) {
+      anno.innerHTML = ''; resetLetters();
+      anno.style.opacity = 1; [gP, gD, gF].forEach(g => g.style.opacity = 1);
+      const queue = makeJobs();
+      await Promise.all([
+        drawP(mainP), wait(500).then(() => drawD(mainD)), wait(1000).then(() => drawF(mainF)),
+        ...crew.map((a, i) => worker(a, queue, 300 + i * 450)),
+      ]);
+      if (STILL) return;
+      if (VIDEO) { await finale(); return; }
+      await wait(5000);
+      await frames(900, k => { const o = 1 - k; anno.style.opacity = o; [gP, gD, gF].forEach(g => g.style.opacity = o); });
+      await wait(600);
+    }
+  }
+  // ---- Kết video: ba lớp gộp lại thành 2D, thấy chữ PDF nằm trong khu đô thị, rồi màn kết ----
+  let finaleAt = 0, camFrom = null;
+  async function finale() {
+    await wait(1500);
+    window.__finale = true;
+    ['A', 'B', 'C', 'D', 'E', 'F', 'land'].forEach(id => setLayer(id, true));
+    const fadeOut = [...document.querySelectorAll('.bb,.dot,.tag,#toolbar,#layerPanel,.glass')];
+    frames(900, k => fadeOut.forEach(e => e.style.opacity = (1 - k).toFixed(3)));
+    camFrom = { ...cur }; finaleAt = performance.now();
+    await wait(3400);            // gộp 3D -> 2D
+    await wait(2600);            // giữ hình 2D: chữ PDF giữa khu đô thị
+    const ec = document.getElementById('endcard');
+    await frames(1000, k => ec.style.opacity = k.toFixed(3));
+    await wait(3000);
+    window.__videoEnd = true;
+  }
+  cycle();
+
+  // ---- Góc nhìn: rê chuột để nghiêng/xoay; chế độ video có đường máy quay riêng ----
+  const root = document.documentElement.style;
+  const qs = new URLSearchParams(location.search);
+  const BASE_SC = EMBED ? 1.06 : .9;
+  const DEF = { rx: +(qs.get('rx') || 54), rz: +(qs.get('rz') || -30), gap: +(qs.get('gap') || 1), sc: BASE_SC };
+  let cur = { ...DEF }, goal = { ...DEF };
+  if (!VIDEO) {
+    window.addEventListener('pointermove', e => {
+      const x = e.clientX / innerWidth - 0.5, y = e.clientY / innerHeight - 0.5;
+      goal = { rx: 54 - y * 32, rz: -30 + x * 110, gap: 1 + Math.abs(x) * 0.3 + Math.max(0, -y) * 0.3, sc: BASE_SC };
+    });
+    document.addEventListener('pointerleave', () => { goal = { ...DEF }; });
+  }
+  const T0 = performance.now();
+  const titleEl = document.getElementById('title');
+  (function tick() {
+    if (VIDEO) {
+      const now = performance.now(), ts = (now - T0) / 1000;
+      if (!finaleAt) {
+        cur = { rx: 54 + 5 * Math.sin(ts * 0.22), rz: -30 + 14 * Math.sin(ts * 0.13), gap: 0.08 + 0.92 * ease(Math.min(1, ts / 3)), sc: .9 };
+        titleEl.style.opacity = Math.min(1, Math.max(0, ts - 0.3)).toFixed(3);
+      } else {
+        const e = ease(Math.min(1, (now - finaleAt) / 3200));
+        cur = { rx: camFrom.rx * (1 - e), rz: camFrom.rz * (1 - e), gap: camFrom.gap * (1 - e), sc: .9 + 0.22 * e };
+        titleEl.style.opacity = (1 - e).toFixed(3);
+      }
+    } else {
+      for (const k of ['rx', 'rz', 'gap', 'sc']) cur[k] += (goal[k] - cur[k]) * 0.08;
+    }
+    root.setProperty('--rx', cur.rx.toFixed(2) + 'deg'); root.setProperty('--rz', cur.rz.toFixed(2) + 'deg');
+    root.setProperty('--gap', cur.gap.toFixed(3)); root.setProperty('--sc', cur.sc.toFixed(3));
+    requestAnimationFrame(tick);
+  })();
+  // Co giãn vừa khung (dùng khi nhúng vào trang web)
+  function fit() {
+    const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    document.body.style.transform = `translate(${(innerWidth - 1920 * s) / 2}px, ${(innerHeight - 1080 * s) / 2}px) scale(${s})`;
+  }
+  addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>
