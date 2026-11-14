@@ -1151,6 +1151,7 @@ const P={
 Object.assign(P, {
   typewriter:'M4 5h16v4h-2V7h-5v10h2v2H9v-2h2V7H6v2H4z',
   textbox:'M3 4h18v16H3zM7 8h10M12 8v9',
+  cadlayer:'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5M3 16.5l9 5 9-5',
   calloutx:'M10 3h11v10H10zM13 6h5M15.5 6v5M10 11l-6 7m0 0v-4m0 4h4',
   ngon5:'M12 3l8.5 6.2-3.2 10H6.7L3.5 9.2z',
   ngon6:'M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z',
@@ -1257,7 +1258,7 @@ const RIB={
     ['Zoom',[['fit','Vừa trang','fit','sm'],['fitw','Vừa ngang','fitw','sm'],['zout','Thu nhỏ','zout','sm'],['zin','Phóng to','zin','sm'],['zoomBox','Zoom %','zoomBox','widget']]],
     ['Xoay',[['rot','Xoay +90°','rotView','lg']]],
     ['Chia khung',[['p1','1 khung','p1','sm'],['p2','2 khung','p2','sm'],['p3','3 khung','p3','sm']]],
-    ['Bảng bên',[['thumbs','Hình thu nhỏ','thumbs','sm'],['cmt','Bình luận & Thuộc tính','cmt','sm'],['full','Tràn viền','full','lg']]]
+    ['Bảng bên',[['thumbs','Hình thu nhỏ','thumbs','sm'],['cmt','Bình luận & Thuộc tính','cmt','sm'],['cadlayer','Layer bản vẽ','cadLayers','sm'],['full','Tràn viền','full','lg']]]
   ],
   'Trang':[
     ['Trang',[['add','Chèn','addPage','sm'],['del','Xoá','delPage','sm'],['rot','Xoay','rotPage','sm'],['extract','Trích','extractPage','sm'],['merge','Ghép','mergePdf','sm'],['split','Tách','splitPdf','sm']]],
@@ -4509,6 +4510,7 @@ function act(id,kind,label){
     renderTools(false);
     return;
   }
+  if(kind==='cadLayers'){ openCadLayerPanel(); return; }
   if(kind==='cmt'){
     if(window.innerWidth<768){$('#cmt').classList.toggle('open-drawer');}
     else{$('#cmt').classList.toggle('closed');}
@@ -7559,6 +7561,7 @@ async function loadCadLayers(pdfDoc, ps) {
     }
     ps.ocConfig = cfg;
     ps.cadLayers = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true }));
+    if (ps.cadLayers.length) setTimeout(() => toast('File có ' + ps.cadLayers.length + ' layer bản vẽ — bấm "Layer bản vẽ" (tab Xem) để bật/tắt'), 1200);
   } catch (err) { console.warn('loadCadLayers:', err.message); }
   if (typeof renderLayerPanel === 'function') renderLayerPanel();
 }
@@ -7569,12 +7572,22 @@ function setCadLayersVisible(ps, layers, visible) {
   renderPanes();
   renderLayerPanel();
 }
+function openCadLayerPanel() {
+  const cmt = $('#cmt');
+  if (cmt) {
+    if (window.innerWidth < 768) cmt.classList.add('open-drawer');
+    else cmt.classList.remove('closed');
+  }
+  switchRightTab('layer');
+  const ps = getActivePaneState();
+  if (!ps || !(ps.cadLayers || []).length) toast('File này không có layer bản vẽ (CAD)');
+}
 function renderCadLayerSection(box) {
   const ps = getActivePaneState();
   const layers = (ps && ps.cadLayers) || [];
   if (!layers.length) return;
   const sec = el('div', 'cad-layers', '');
-  sec.style.cssText = 'margin-top:10px;padding-top:8px;border-top:1.5px dashed var(--line)';
+  sec.style.cssText = 'margin-bottom:10px;padding-bottom:8px;border-bottom:1.5px dashed var(--line)';
   const on = layers.filter(L => L.visible).length;
   const head = el('div', '', '<b style="font-size:11.5px">Layer bản vẽ (CAD)</b> <small style="color:var(--muted)"></small>');
   head.querySelector('small').textContent = on + '/' + layers.length + ' đang hiện';
@@ -7615,6 +7628,7 @@ function renderLayerPanel() {
   const box = $('#layerList');
   if (!box) return;
   box.replaceChildren();
+  renderCadLayerSection(box);
 
   const totalLayers = LAYER_STATE.layers.length;
   if ($('#layerN')) $('#layerN').textContent = `(${totalLayers})`;
@@ -7766,7 +7780,6 @@ function renderLayerPanel() {
 
     box.append(row);
   });
-  renderCadLayerSection(box);
 }
 
 // Gắn sự kiện các nút trên thanh công cụ Layer
