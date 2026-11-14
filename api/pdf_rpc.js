@@ -554,6 +554,28 @@ module.exports = async function handler(req, res) {
     // Không bao giờ trả mã file Drive ra trình duyệt.
     const safeDoc = doc => { if (!doc) return null; const { drive_file_id, ...rest } = doc; return { ...rest, has_file: !!drive_file_id, my_role: roleOn(doc) }; };
 
+    // Danh sách người dùng được mở tài liệu (để gắn @tên trong bình luận). Ai đọc được tài liệu đều xem được.
+    if (action === 'doc_people') {
+      if (!currentUser) return res.status(401).json(failure('Cần đăng nhập.'));
+      const doc = await loadDoc(String(payload.doc_id || ''));
+      if (!doc || !canRead(doc)) return res.status(403).json(failure('Bạn không có quyền mở tài liệu này.'));
+      let perms = doc.permissions_json;
+      try { perms = Array.isArray(perms) ? perms : JSON.parse(perms || '[]'); } catch (_) { perms = []; }
+      const all = perms.some(p => p && p.username === '*');
+      const names = new Set([doc.owner_username, ...perms.map(p => p && p.username)].filter(u => u && u !== '*'));
+      let people = [];
+      if (sql) {
+        const rows = await sql`SELECT username,status,data FROM bqlda_users`;
+        people = rows.map(publicUser).filter(u => u && u.status === 'Active' && (all || names.has(u.username) || u.role === 'Admin'))
+          .map(u => ({ username: u.username, fullname: u.fullname || u.username }));
+      } else {
+        people = [...names].map(u => ({ username: u, fullname: u }));
+        if (!people.some(p => p.username === currentUser.username)) people.push({ username: currentUser.username, fullname: currentUser.fullname || currentUser.username });
+      }
+      people.sort((x, y) => String(x.fullname).localeCompare(String(y.fullname), 'vi'));
+      return res.status(200).json(result(people.slice(0, 500)));
+    }
+
     // 1. AUTH STATUS
     if (action === 'auth_status') {
       let user = currentUser;

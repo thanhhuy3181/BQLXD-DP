@@ -442,6 +442,39 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .cmt-filter-bar{display:flex;gap:6px;padding:6px 8px;border-bottom:1px dashed var(--line);background:var(--surface-2)}
 .cmt-filter-bar input{flex:1;padding:3px 6px;font-size:11px;border:1px solid var(--line);border-radius:4px}
 .cmt-filter-bar select{font-size:10.5px;border:1px solid var(--line);border-radius:4px;padding:2px}
+.cth{border:1.5px solid var(--fg);border-radius:6px;box-shadow:2px 2px 0 var(--hard);padding:7px 9px;background:var(--surface);display:flex;flex-direction:column;gap:5px;cursor:pointer}
+.cth.sel{outline:2.5px solid var(--accent);outline-offset:1px}
+.cth.pinned{border-color:#d97706;background:color-mix(in srgb,#fef3c7 55%,var(--surface))}
+.cth-h{display:flex;align-items:center;gap:6px;font-size:11.5px}
+.cth-h b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+.cth-h .pg{color:var(--muted);font-family:var(--mono);font-size:10px}
+.cth-h .sp{flex:1}
+.cth-ib{width:24px;height:24px;display:grid;place-items:center;border:1px solid transparent;border-radius:5px;background:none;color:var(--muted);cursor:pointer;padding:0}
+.cth-ib:hover{border-color:var(--line,#cbd5e1);color:var(--fg)}
+.cth-ib .i{width:15px;height:15px}
+.cth-ib.on.cpin{color:#d97706}.cth-ib.on.star{color:#eab308}.cth-ib.on .i{fill:currentColor}
+.cth-main{font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--fg);background:var(--surface-2,#f1f5f9);border-radius:4px;padding:4px 6px}
+.crp{display:flex;gap:6px;font-size:12px;align-items:flex-start}
+.crp .av{flex:none;width:20px;height:20px;font-size:8px;margin:0;border:1px solid var(--fg)}
+.crp .bd{flex:1;min-width:0}
+.crp .meta{display:flex;gap:6px;align-items:baseline;font-size:10.5px;color:var(--muted)}
+.crp .meta b{color:var(--fg);font-size:11.5px}
+.crp .tx{white-space:pre-wrap;word-break:break-word}
+.crp.me-mentioned .tx{background:color-mix(in srgb,#dbeafe 70%,transparent);border-radius:4px;padding:1px 4px}
+.mention{color:#2563eb;font-weight:700;background:color-mix(in srgb,#dbeafe 60%,transparent);border-radius:3px;padding:0 2px}
+.crp .del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px}
+.cth-in{display:flex;gap:4px;align-items:flex-end;position:relative}
+.cth-in textarea{flex:1;min-height:30px;max-height:120px;resize:vertical;font:inherit;font-size:12px;padding:4px 6px;border:1.5px solid var(--fg);border-radius:5px;background:var(--surface);color:var(--fg)}
+.cth-in button{flex:none}
+.mention-pop{position:absolute;left:0;right:40px;bottom:100%;margin-bottom:3px;background:var(--surface);border:1.5px solid var(--fg);border-radius:6px;box-shadow:2px 2px 0 var(--hard);max-height:180px;overflow:auto;z-index:50}
+.mention-pop div{padding:5px 8px;font-size:12px;cursor:pointer;display:flex;gap:6px}
+.mention-pop div small{color:var(--muted)}
+.mention-pop div.on,.mention-pop div:hover{background:var(--accent);color:var(--accent-fg,#fff)}
+.cmt-empty{font-size:12px;color:var(--muted);padding:12px 6px;line-height:1.5}
+.cmt-badge{position:absolute;right:-9px;top:-9px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#2563eb;color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;z-index:6;cursor:pointer;box-shadow:0 0 0 1.5px #fff;pointer-events:auto}
+.cmt-badge.mine{background:#dc2626}
+.mention-n{background:#dc2626;color:#fff;border-radius:8px;padding:0 5px;font-size:10px;font-weight:800;margin-left:3px}
+body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-cmts .anno-popup{display:none!important}
 .clist{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
 .c{border:1.5px solid var(--fg);border-radius:6px;box-shadow:2px 2px 0 var(--hard);padding:8px 10px;min-width:240px;background:var(--surface);transition:border-color var(--fast),transform var(--fast)}
 .c:hover{border-color:var(--fg);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--hard)}
@@ -735,7 +768,10 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
           <div class="cmt-filter-bar">
             <input type="text" id="cmtSearch" placeholder="Tìm bình luận...">
             <select id="cmtFilterStatus">
-              <option value="all">Tất cả TT</option>
+              <option value="all">Tất cả</option>
+              <option value="mention">@ Nhắc tới tôi</option>
+              <option value="pinned">📌 Đã ghim</option>
+              <option value="starred">★ Gắn sao</option>
               <option value="accepted">🟢 Đã nghiệm thu</option>
               <option value="review">🟠 Chờ sửa</option>
               <option value="rejected">🔴 Từ chối</option>
@@ -1213,6 +1249,12 @@ Object.assign(P, {
   ngon8:'M8.5 3h7L21 8.5v7L15.5 21h-7L3 15.5v-7z',
   star:'M12 2.5l2.8 6.3 6.9.6-5.2 4.5 1.6 6.7L12 17l-6.1 3.6 1.6-6.7-5.2-4.5 6.9-.6z'
 });
+Object.assign(P,{
+  cmtadd:'M4 4h16v11H9l-5 5zM12 7v5m-2.5-2.5h5',
+  at:'M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm0 0v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1',
+  eye:'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  cmtlist:'M4 4h16v11H9l-5 5zM8 8h8M8 11h5'
+});
 const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n]||P.rect}"/></svg>`;
 
 /* 40 Màu chuẩn kỹ thuật & CAD (5 hàng x 8 cột) */
@@ -1305,6 +1347,11 @@ const RIB={
     ['Vẽ',[['line','Đường thẳng','tool','mini'],['arrow','Mũi tên','tool','mini'],['rect','Chữ nhật','tool','mini'],['oval','Oval','tool','mini'],['polyline','Đường liên tiếp','tool','mini'],['poly','Đa giác','tool','mini'],['ngonPick','Đa giác đều / Ngôi sao','split','mini',[['ngon5','Ngũ giác đều'],['ngon6','Lục giác đều'],['ngon7','Thất giác đều'],['ngon8','Bát giác đều'],['star','Ngôi sao']]],['cloud','Đám mây','tool','mini'],['pen','Bút vẽ','tool','mini'],['eraser','Tẩy','tool','mini'],['bigDraw','Công cụ vẽ','split','lg',[['poly','Đa giác'],['line','Đường thẳng'],['arrow','Mũi tên'],['rect','Chữ nhật'],['oval','Oval'],['polyline','Đường liên tiếp'],['ngon5','Ngũ giác đều'],['ngon6','Lục giác đều'],['ngon7','Thất giác đều'],['ngon8','Bát giác đều'],['star','Ngôi sao'],['cloud','Đám mây'],['pen','Bút vẽ'],['stamp','Con dấu']]]]],
     ['Đo',[['ruler','Đo đạc','tool','lg'],['ruler','Tỷ lệ đo','setScale','sm']]],
     ['Màu sắc & Nét',[['colorBtn','Màu viền & Nền','colorWidget','widget']]]
+  ],
+  'Bình luận':[
+    ['Bình luận',[['cmtadd','Thêm bình luận','cmtAdd','lg'],['at','Gắn @tên','cmtMention','sm'],['note','Ghi chú dán','tool','sm']]],
+    ['Hiển thị',[['eye','Ẩn/hiện bình luận','cmtToggle','sm'],['cmtlist','Bảng bình luận','cmtPanel','sm']]],
+    ['Lọc nhanh',[['at','Nhắc tới tôi','cmtF_mention','sm'],['pin','Đã ghim','cmtF_pinned','sm'],['star','Gắn sao','cmtF_starred','sm'],['eye','Chưa xem','cmtF_unseen','sm'],['cmtlist','Tất cả','cmtF_all','sm']]]
   ],
   'Xem':[
     ['Công cụ',[['hand','Kéo','tool','sm'],['cursor','Chọn chữ','tool','sm'],['pick','Chọn ghi chú','tool','sm']]],
@@ -1650,6 +1697,7 @@ async function collabPollLoop(){
   try { await collabPollOnce(); } finally { collabPollLoop.busy = false; }
 }
 async function collabPollOnce(){
+  if (loadDocPeople.forDoc !== PDF_STATE.docId) { loadDocPeople.forDoc = PDF_STATE.docId; loadDocPeople().then(() => renderCommentPanel(true)); }
   const docId = PDF_STATE.docId;
   const curPage = PDF_STATE.currentPage || 1;
 
@@ -3837,6 +3885,7 @@ function renderAnnoItem(a){
 
 /* Đồng bộ toàn bộ Annotations lên đúng trang (.layer[data-i][data-page]) */
 function syncAllAnnotations(skipCloud = false, skipProps = false){
+  if (typeof scheduleCmtRender === 'function') scheduleCmtRender();
   if (!skipCloud) scheduleCollabScan();
   document.querySelectorAll('.layer').forEach(ly=>{
     const paneIdx=parseInt(ly.dataset.i,10);
@@ -4737,6 +4786,11 @@ function act(id,kind,label){
     return;
   }
   if(kind==='cadLayers'){ openCadLayerPanel(); return; }
+  if(kind==='cmtAdd'){ cmtAddAction(); return; }
+  if(kind==='cmtMention'){ cmtMentionAction(); return; }
+  if(kind==='cmtToggle'){ cmtToggleHidden(); return; }
+  if(kind==='cmtPanel'){ openCmtPanel(true); return; }
+  if(kind.startsWith('cmtF_')){ const f = kind.slice(5); const sel = $('#cmtFilterStatus'); if (sel) sel.value = f; openCmtPanel(); renderCommentPanel(true); if (f === 'mention') cmtMarkMentionsSeen(); return; }
   if(kind==='cmt'){
     if(window.innerWidth<768){$('#cmt').classList.toggle('open-drawer');}
     else{$('#cmt').classList.toggle('closed');}
@@ -5928,9 +5982,8 @@ function renderAnnoPopup(a, ly) {
       if (!val) return;
       if (!Array.isArray(a.replies)) a.replies = [];
       const who = CURRENT_USER?.fullname || CURRENT_USER?.username || a.author || 'Bạn';
-      a.replies.push({ author: who, text: val, time: fmtCmtTime(Date.now()), ts: Date.now() });
+      a.replies.push({ id: 'r' + Date.now().toString(36), author: who, user: cmtMe(), text: val, time: fmtCmtTime(Date.now()), ts: Date.now(), mentions: [] });
       replyInp.value = '';
-      addCmt(who, '#0b7a71', `[Trả lời ${TOOLN[a.type] || a.type}]: ${val}`, true, a.page, a.id);
       renderAnnoPopup(a, ly);
       triggerCloudSync();
       toast('Đã thêm trả lời vào ghi chú');
@@ -6756,7 +6809,7 @@ function bindLayerInteraction(ly,paneIdx){
       S.sel.clear();
       S.sel.add(id);
       syncAllAnnotations();
-      addCmt('Bạn','#2563eb',`Ghi chú mới tại trang ${pageNum}. Bấm đúp để nhập trao đổi.`,true,pageNum,id);
+      setTimeout(() => openCmtThread(id), 50);
     }else if(S.tool==='stamp'){
       pushUndoState();
       const id='anno_stp_'+Date.now()+'_'+Math.floor(Math.random()*1000);
@@ -9019,7 +9072,7 @@ async function performSearch(query) {
   });
 
   // Tìm trong bình luận
-  document.querySelectorAll('#clist .c p').forEach(cp => {
+  document.querySelectorAll('#clist .crp .tx, #clist .cth-main').forEach(cp => {
     if (cp.textContent && cp.textContent.toLowerCase().includes(q)) {
       searchMatches.push({ type: 'cmt', el: cp });
     }
@@ -10035,7 +10088,8 @@ function fmtCmtTime(ts){ if(!ts) return '—'; const d=new Date(ts); const p=n=>
 function fmtCmtFull(ts){ if(!ts) return 'Không có thông tin thời gian'; return new Date(ts).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
 function cmtUserKey(){ return (CURRENT_USER && (CURRENT_USER.username || CURRENT_USER.fullname)) || 'Bạn'; }
 function pdfDateToMs(s){ const m=/^D?:?(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?/.exec(String(s||'').trim()); if(!m) return 0; const t=new Date(+m[1],(+m[2]||1)-1,+m[3]||1,+m[4]||0,+m[5]||0,+m[6]||0).getTime(); return isNaN(t)?0:t; }
-function sortComments(){
+function sortComments(){ renderCommentPanel(true); }
+function sortCommentsOld(){
   const l = $('#clist'); if(!l) return;
   const mode = $('#cmtSort')?.value || 'new';
   const ord = {accepted:0, review:1, rejected:2, none:3};
@@ -10150,7 +10204,264 @@ function addCmt(who,color,text,isNew,pageNum=null,annoId=null,status='none',ts=n
   };
 }
 
-function filterComments(){
+/* ===== BÌNH LUẬN (lưu trong ghi chú => tự đồng bộ cho mọi người mở file) =====
+   a.replies = [{ id, author, user, text, ts, mentions:[username] }]
+   a.pinned (ghim chung, ai cũng thấy), a.starredBy = [username] (sao riêng từng người), a.seenBy = [username] */
+let DOC_PEOPLE = [];
+let CMT_SIG = '';
+let CMT_RENDER_T = 0;
+const CMT_DRAFT = new Map();
+const CMT_NOTIFIED = new Set();
+let CMT_LAST_KEY = 0;
+function cmtMe(){ return (CURRENT_USER && (CURRENT_USER.username || CURRENT_USER.fullname)) || 'ban'; }
+function cmtMeName(){ return (CURRENT_USER && (CURRENT_USER.fullname || CURRENT_USER.username)) || 'Bạn'; }
+function cmtNorm(t){ return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd'); }
+async function loadDocPeople(){
+  DOC_PEOPLE = [];
+  if (!PDF_STATE.docId || !CURRENT_USER) return;
+  try { const r = await pdfApi('doc_people', { doc_id: PDF_STATE.docId }); if (r && r.ok && Array.isArray(r.data)) DOC_PEOPLE = r.data; } catch (_) {}
+}
+function cmtPeople(){
+  const m = new Map();
+  DOC_PEOPLE.forEach(p => p && p.username && m.set(p.username, p.fullname || p.username));
+  ANNO_MAP.forEach(a => (a.replies || []).forEach(r => { if (r && r.user && !m.has(r.user)) m.set(r.user, r.author || r.user); }));
+  if (CURRENT_USER && CURRENT_USER.username && !m.has(CURRENT_USER.username)) m.set(CURRENT_USER.username, cmtMeName());
+  return [...m.entries()].map(([username, fullname]) => ({ username, fullname }));
+}
+function cmtFullName(u){ const p = cmtPeople().find(x => x.username === u); return p ? p.fullname : u; }
+function cmtColor(name){ let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return ['#2563eb','#059669','#d97706','#dc2626','#7c3aed','#0891b2','#be185d'][h % 7]; }
+function cmtMentionsMe(r){ const me = cmtMe(); return !!r && Array.isArray(r.mentions) && r.mentions.includes(me) && r.user !== me; }
+function cmtMentionSeenKey(){ return 'pdf_mention_seen_' + (PDF_STATE.docId || 'local') + '_' + cmtMe(); }
+function cmtMentionSeenTs(){ try { return +localStorage.getItem(cmtMentionSeenKey()) || 0; } catch (_) { return 0; } }
+function cmtMarkMentionsSeen(){ try { localStorage.setItem(cmtMentionSeenKey(), String(Date.now())); } catch (_) {} renderCommentPanel(true); }
+function cmtThreads(){
+  const me = cmtMe();
+  const out = [];
+  ANNO_MAP.forEach(a => {
+    if (!a || a.pane !== S.focus) return;
+    const reps = Array.isArray(a.replies) ? a.replies : [];
+    if (reps.length || a.type === 'note' || a.pinned || (a.starredBy || []).includes(me) || (S.sel.size === 1 && S.sel.has(a.id))) out.push(a);
+  });
+  return out;
+}
+function cmtLastTs(a){ const r = a.replies || []; return Math.max(Number(a.createdAt) || 0, ...r.map(x => Number(x.ts) || 0)); }
+function cmtRichText(el0, text){
+  // Chữ thường + @tên được tô màu (an toàn: chỉ dùng textContent)
+  const parts = String(text || '').split(/(@[A-Za-z0-9_.\-@]+)/g);
+  parts.forEach(p => {
+    if (!p) return;
+    if (p[0] === '@') {
+      const u = p.slice(1);
+      const known = cmtPeople().find(x => x.username === u);
+      if (known) { const sp = document.createElement('span'); sp.className = 'mention'; sp.textContent = '@' + known.fullname; sp.title = '@' + u; el0.append(sp); return; }
+    }
+    el0.append(document.createTextNode(p));
+  });
+}
+function cmtSig(){
+  const me = cmtMe();
+  return JSON.stringify([S.focus, [...S.sel].join(','), $('#cmtFilterStatus')?.value, $('#cmtSearch')?.value, $('#cmtSort')?.value, document.body.classList.contains('hide-cmts'), cmtMentionSeenTs(),
+    cmtThreads().map(a => [a.id, a.page, a.text, a.status, a.pinned, (a.starredBy || []).includes(me), (a.seenBy || []).includes(me), (a.replies || []).map(r => [r.id || r.ts, r.text])])]);
+}
+function scheduleCmtRender(){ clearTimeout(CMT_RENDER_T); CMT_RENDER_T = setTimeout(() => { renderCommentPanel(false); decorateCmtBadges(); }, 120); }
+function decorateCmtBadges(){
+  const me = cmtMe(), seenTs = cmtMentionSeenTs();
+  document.querySelectorAll('.cmt-badge').forEach(b => { const a = ANNO_MAP.get(b.dataset.for); if (!a || !(a.replies || []).length) b.remove(); });
+  ANNO_MAP.forEach(a => {
+    const n = (a.replies || []).length;
+    if (!n) return;
+    const host = document.getElementById(a.id);
+    if (!host) return;
+    let b = host.querySelector(':scope > .cmt-badge');
+    if (!b) {
+      b = document.createElement('div'); b.className = 'cmt-badge'; b.dataset.for = a.id;
+      b.onpointerdown = ev => ev.stopPropagation();
+      b.onclick = ev => { ev.stopPropagation(); openCmtThread(a.id); };
+      host.append(b);
+    }
+    b.textContent = n;
+    b.classList.toggle('mine', (a.replies || []).some(r => cmtMentionsMe(r) && (Number(r.ts) || 0) > seenTs));
+    b.title = n + ' bình luận — bấm để xem và trả lời';
+    b.style.transform = 'rotate(' + (-(a.rotate || 0)) + 'deg)';
+  });
+}
+function openCmtPanel(toggle){
+  const cmt = $('#cmt'); if (!cmt) return;
+  const mobile = window.innerWidth < 768;
+  if (toggle) { if (mobile) cmt.classList.toggle('open-drawer'); else cmt.classList.toggle('closed'); }
+  else { if (mobile) cmt.classList.add('open-drawer'); else cmt.classList.remove('closed'); }
+  $('#tabHeadCmt')?.click();
+}
+function openCmtThread(id, focusInput = true){
+  const a = ANNO_MAP.get(id); if (!a) return;
+  if (!(S.sel.size === 1 && S.sel.has(id))) { S.sel.clear(); S.sel.add(id); syncAllAnnotations(true); }
+  openCmtPanel();
+  renderCommentPanel(true);
+  const card = document.querySelector('.cth[data-id="' + CSS.escape(id) + '"]');
+  if (card) { card.scrollIntoView({ block: 'nearest' }); if (focusInput) setTimeout(() => card.querySelector('textarea')?.focus(), 30); }
+}
+function cmtAddAction(){
+  if (S.sel.size === 1) { openCmtThread([...S.sel][0]); return; }
+  act('note', 'tool', 'Ghi chú dán');
+  toast('Bấm vào một hình để bình luận vào hình đó, hoặc bấm lên bản vẽ để đặt ghi chú dán');
+}
+function cmtMentionAction(){
+  let ta = document.activeElement && document.activeElement.closest && document.activeElement.closest('.cth-in') ? document.activeElement : null;
+  if (!ta && S.sel.size === 1) { openCmtThread([...S.sel][0]); ta = document.querySelector('.cth.sel textarea'); }
+  if (!ta) { toast('Chọn một hình rồi bấm Gắn @tên để nhắc người cần trả lời'); return; }
+  const v = ta.value; const pos = ta.selectionStart ?? v.length;
+  const pre = v.slice(0, pos), add = (pre && !/\s$/.test(pre) ? ' @' : '@');
+  ta.value = pre + add + v.slice(pos); ta.focus(); const np = pos + add.length; ta.setSelectionRange(np, np);
+  ta.dispatchEvent(new Event('input'));
+}
+function cmtToggleHidden(){
+  const on = !document.body.classList.contains('hide-cmts');
+  document.body.classList.toggle('hide-cmts', on);
+  try { localStorage.setItem('pdf_cmt_hidden', on ? '1' : '0'); } catch (_) {}
+  toast(on ? 'Đã ẩn bình luận trên bản vẽ' : 'Đã hiện bình luận trên bản vẽ');
+}
+try { if (localStorage.getItem('pdf_cmt_hidden') === '1') document.body.classList.add('hide-cmts'); } catch (_) {}
+function cmtSaveAnno(a){ a.isModified = true; ANNO_MAP.set(a.id, a); syncAllAnnotations(true); renderCommentPanel(true); }
+function cmtSend(a, ta){
+  const text = ta.value.trim();
+  if (!text) return;
+  const people = cmtPeople();
+  const mentions = [...new Set((text.match(/@[A-Za-z0-9_.\-@]+/g) || []).map(t => t.slice(1)).filter(u => people.some(p => p.username === u)))];
+  if (!Array.isArray(a.replies)) a.replies = [];
+  a.replies.push({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), author: cmtMeName(), user: cmtMe(), text, ts: Date.now(), time: fmtCmtTime(Date.now()), mentions });
+  const set = new Set(a.seenBy || []); set.add(cmtMe()); a.seenBy = [...set];
+  ta.value = ''; CMT_DRAFT.delete(a.id);
+  cmtSaveAnno(a);
+  toast(mentions.length ? 'Đã gửi bình luận và nhắc ' + mentions.map(cmtFullName).join(', ') : 'Đã gửi bình luận — mọi người mở file đều thấy');
+}
+function cmtBindMention(ta, wrap){
+  let pop = null, idx = 0, items = [];
+  const close = () => { pop && pop.remove(); pop = null; };
+  const query = () => { const pos = ta.selectionStart ?? ta.value.length; const m = /(^|\s)@([^\s@]*)$/.exec(ta.value.slice(0, pos)); return m ? { q: m[2], start: pos - m[2].length - 1, end: pos } : null; };
+  const pick = p => { const q = query(); if (!q) return close(); const ins = '@' + p.username + ' '; ta.value = ta.value.slice(0, q.start) + ins + ta.value.slice(q.end); const np = q.start + ins.length; ta.setSelectionRange(np, np); close(); ta.focus(); CMT_DRAFT.set(wrap.dataset.id, ta.value); };
+  const show = () => {
+    const q = query(); if (!q) return close();
+    const nq = cmtNorm(q.q);
+    items = cmtPeople().filter(p => !nq || cmtNorm(p.fullname).includes(nq) || cmtNorm(p.username).includes(nq)).slice(0, 8);
+    if (!items.length) return close();
+    if (!pop) { pop = document.createElement('div'); pop.className = 'mention-pop'; ta.parentElement.append(pop); }
+    idx = Math.min(idx, items.length - 1);
+    pop.replaceChildren(...items.map((p, i) => { const d = document.createElement('div'); d.className = i === idx ? 'on' : ''; const b = document.createElement('b'); b.textContent = p.fullname; const sm = document.createElement('small'); sm.textContent = '@' + p.username; d.append(b, sm); d.onmousedown = ev => { ev.preventDefault(); pick(p); }; return d; }));
+  };
+  ta.addEventListener('input', () => { CMT_LAST_KEY = Date.now(); idx = 0; CMT_DRAFT.set(wrap.dataset.id, ta.value); show(); });
+  ta.addEventListener('blur', () => setTimeout(close, 150));
+  ta.addEventListener('keydown', ev => {
+    if (pop) {
+      if (ev.key === 'ArrowDown') { ev.preventDefault(); idx = (idx + 1) % items.length; show(); return; }
+      if (ev.key === 'ArrowUp') { ev.preventDefault(); idx = (idx - 1 + items.length) % items.length; show(); return; }
+      if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); pick(items[idx]); return; }
+      if (ev.key === 'Escape') { ev.preventDefault(); close(); return; }
+    }
+    if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); cmtSend(ANNO_MAP.get(wrap.dataset.id), ta); }
+  });
+}
+function renderCommentPanel(force){
+  const l = $('#clist'); if (!l) return;
+  const active = document.activeElement;
+  const typing = active && active.closest && active.closest('#clist') && active.tagName === 'TEXTAREA';
+  const sig = cmtSig();
+  if (!force && sig === CMT_SIG) return;
+  if (!force && typing && Date.now() - CMT_LAST_KEY < 1500) { scheduleCmtRender(); return; } // đang gõ dở: đợi chút
+  CMT_SIG = sig;
+  const focusId = typing ? active.closest('.cth')?.dataset.id : null;
+  const caret = typing ? active.selectionStart : 0;
+  const me = cmtMe(), seenTs = cmtMentionSeenTs();
+  const q = cmtNorm($('#cmtSearch')?.value || '').trim();
+  const f = $('#cmtFilterStatus')?.value || 'all';
+  const sort = $('#cmtSort')?.value || 'new';
+  let list = cmtThreads();
+  // Báo khi có người nhắc tới mình
+  let unseenMention = 0;
+  ANNO_MAP.forEach(a => (a.replies || []).forEach(r => {
+    if (!cmtMentionsMe(r) || (Number(r.ts) || 0) <= seenTs) return;
+    unseenMention++;
+    const key = a.id + '|' + (r.id || r.ts);
+    if (!CMT_NOTIFIED.has(key)) { CMT_NOTIFIED.add(key); if (CMT_NOTIFIED.size > 1 || Date.now() - (Number(r.ts) || 0) < 120000) toast((r.author || r.user) + ' nhắc tới bạn ở trang ' + (a.page || 1) + ': ' + String(r.text).slice(0, 60)); }
+  }));
+  list = list.filter(a => {
+    const reps = a.replies || [];
+    if (f === 'mention' && !reps.some(r => Array.isArray(r.mentions) && r.mentions.includes(me))) return false;
+    if (f === 'pinned' && !a.pinned) return false;
+    if (f === 'starred' && !(a.starredBy || []).includes(me)) return false;
+    if (f === 'unseen' && (a.seenBy || []).includes(me)) return false;
+    if (['accepted', 'review', 'rejected'].includes(f) && a.status !== f) return false;
+    if (q) { const hay = cmtNorm([a.text, a.author, ...reps.map(r => r.text + ' ' + r.author)].join(' ')); if (!hay.includes(q)) return false; }
+    return true;
+  });
+  const ordSt = { accepted: 0, review: 1, rejected: 2 };
+  list.sort((x, y) => (y.pinned ? 1 : 0) - (x.pinned ? 1 : 0)
+    || (sort === 'page' ? (x.page || 1) - (y.page || 1)
+      : sort === 'author' ? String(x.author || '').localeCompare(String(y.author || ''), 'vi')
+      : sort === 'status' ? (ordSt[x.status] ?? 3) - (ordSt[y.status] ?? 3)
+      : cmtLastTs(y) - cmtLastTs(x)));
+  const cards = list.map(a => {
+    const reps = Array.isArray(a.replies) ? a.replies : [];
+    const card = document.createElement('div');
+    card.className = 'cth' + (S.sel.has(a.id) ? ' sel' : '') + (a.pinned ? ' pinned' : '');
+    card.dataset.id = a.id;
+    const h = document.createElement('div'); h.className = 'cth-h';
+    const ttl = document.createElement('b'); ttl.textContent = (a.subject && a.subject !== 'Chỉ dẫn' ? a.subject : (TOOLN[a.type] || a.type)); ttl.title = 'Bấm để tới hình này';
+    const pg = document.createElement('span'); pg.className = 'pg'; pg.textContent = 'Tr.' + (a.page || 1);
+    const sp = document.createElement('span'); sp.className = 'sp';
+    const mkBtn = (cls, icon, on, tip, fn) => { const b = document.createElement('button'); b.className = 'cth-ib ' + cls + (on ? ' on' : ''); b.innerHTML = ic(icon); b.title = tip; b.onclick = ev => { ev.stopPropagation(); fn(); }; return b; };
+    const starred = (a.starredBy || []).includes(me), seen = (a.seenBy || []).includes(me);
+    h.append(ttl, pg, sp,
+      mkBtn('cpin', 'pin', a.pinned, a.pinned ? 'Bỏ ghim (đang ghim lên đầu cho mọi người)' : 'Ghim lên đầu cho mọi người', () => { a.pinned = !a.pinned; a.pinnedBy = a.pinned ? me : ''; cmtSaveAnno(a); }),
+      mkBtn('star', 'star', starred, starred ? 'Bỏ sao' : 'Gắn sao: lưu tin quan trọng của riêng bạn', () => { const st = new Set(a.starredBy || []); starred ? st.delete(me) : st.add(me); a.starredBy = [...st]; cmtSaveAnno(a); }),
+      mkBtn('seen', 'check', seen, seen ? 'Đã xem — bấm để đánh dấu chưa xem' : 'Đánh dấu đã xem', () => { const st = new Set(a.seenBy || []); seen ? st.delete(me) : st.add(me); a.seenBy = [...st]; cmtSaveAnno(a); }));
+    card.append(h);
+    if (a.text && String(a.text).trim()) { const mt = document.createElement('div'); mt.className = 'cth-main'; mt.textContent = a.text; card.append(mt); }
+    reps.forEach((r, i) => {
+      const row = document.createElement('div'); row.className = 'crp' + (cmtMentionsMe(r) ? ' me-mentioned' : '');
+      const av = document.createElement('span'); av.className = 'av'; av.style.background = cmtColor(r.user || r.author); av.textContent = ini(String(r.author || r.user || '?'));
+      const bd = document.createElement('div'); bd.className = 'bd';
+      const meta = document.createElement('div'); meta.className = 'meta';
+      const nm = document.createElement('b'); nm.textContent = r.author || r.user || 'Ẩn danh';
+      const tm = document.createElement('time'); tm.textContent = r.ts ? fmtCmtTime(r.ts) : (r.time || ''); tm.title = r.ts ? fmtCmtFull(r.ts) : '';
+      meta.append(nm, tm);
+      if ((r.user && r.user === me) || (!r.user && r.author === cmtMeName())) {
+        const del = document.createElement('button'); del.className = 'del'; del.textContent = 'Xoá'; del.title = 'Xoá bình luận của bạn';
+        del.onclick = ev => { ev.stopPropagation(); if (!confirm('Xoá bình luận này?')) return; a.replies.splice(i, 1); cmtSaveAnno(a); };
+        meta.append(del);
+      }
+      const tx = document.createElement('div'); tx.className = 'tx'; cmtRichText(tx, r.text);
+      bd.append(meta, tx); row.append(av, bd); card.append(row);
+    });
+    const inw = document.createElement('div'); inw.className = 'cth-in'; inw.dataset.id = a.id;
+    const ta = document.createElement('textarea'); ta.rows = 1; ta.placeholder = 'Viết bình luận… gõ @ để gắn tên (Enter gửi, Shift+Enter xuống dòng)';
+    ta.value = CMT_DRAFT.get(a.id) || '';
+    ta.onclick = ev => ev.stopPropagation();
+    const send = document.createElement('button'); send.className = 'btn primary sm'; send.textContent = 'Gửi';
+    send.onclick = ev => { ev.stopPropagation(); cmtSend(a, ta); };
+    inw.append(ta, send); card.append(inw);
+    cmtBindMention(ta, inw);
+    card.onclick = () => {
+      if (!(S.sel.size === 1 && S.sel.has(a.id))) { S.sel.clear(); S.sel.add(a.id); syncAllAnnotations(true); }
+      const dom = document.getElementById(a.id);
+      if (dom) dom.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+      if (!seen) { const st = new Set(a.seenBy || []); st.add(me); a.seenBy = [...st]; cmtSaveAnno(a); }
+    };
+    return card;
+  });
+  l.replaceChildren(...cards);
+  if (!cards.length) {
+    const em = document.createElement('div'); em.className = 'cmt-empty';
+    em.textContent = f === 'all' && !q
+      ? 'Chưa có bình luận. Chọn một hình trên bản vẽ (hoặc bấm Thêm bình luận ở tab Bình luận) rồi gõ vào ô bên dưới. Gõ @ để nhắc tên người cần trả lời.'
+      : 'Không có bình luận khớp bộ lọc.';
+    l.append(em);
+  }
+  const n = $('#cmtN');
+  if (n) { n.textContent = '(' + list.length + ')'; if (unseenMention) { const m = document.createElement('span'); m.className = 'mention-n'; m.textContent = '@' + unseenMention; m.title = unseenMention + ' lần có người nhắc tới bạn'; n.append(m); } }
+  if (focusId) { const t = l.querySelector('.cth[data-id="' + CSS.escape(focusId) + '"] textarea'); if (t) { t.focus(); try { t.setSelectionRange(caret, caret); } catch (_) {} } }
+}
+function filterComments(){ renderCommentPanel(true); }
+function filterCommentsOld(){
   const q = ($('#cmtSearch')?.value || '').trim().toLowerCase();
   const st = $('#cmtFilterStatus')?.value || 'all';
   const list = document.querySelectorAll('#clist .c');

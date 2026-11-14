@@ -412,6 +412,14 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   const exp = (await db.raw("SELECT expires_at FROM bqlda_sessions WHERE token='tok_binh'"))[0].expires_at;
   check('phiên sắp hết hạn được tự gia hạn khi còn dùng', exp - Date.now() > 100 * 24 * 3600e3, exp);
 
+  // 10. Danh sách người để gắn @tên trong bình luận
+  console.log('10. doc_people');
+  const pp = await call('chi', 'doc_people', { doc_id: 'd1' });
+  const ppNames = (pp.body.data || []).map(p => p.username);
+  check('người được chia sẻ lấy được danh sách người của tài liệu', pp.body.ok && ppNames.includes('an') && ppNames.includes('chi'), pp.body);
+  check('danh sách không lộ người ngoài tài liệu', !ppNames.includes('em'), ppNames);
+  check('người không được chia sẻ -> 403', (await call('em', 'doc_people', { doc_id: 'd1' })).status === 403);
+
   console.log(results.join('\n'));
   console.log(`\nKết quả: ${pass} đạt, ${fail} lỗi`);
   process.exit(fail ? 1 : 0);
