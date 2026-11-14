@@ -786,6 +786,9 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
 @keyframes emptyCa{0%,100%{translate:60px 40px}35%{translate:210px 110px}70%{translate:120px 190px}}
 @keyframes emptyCb{0%,100%{translate:300px 200px}40%{translate:250px 70px}75%{translate:90px 120px}}
 .empty-shadow{position:absolute;inset:6%;background:rgba(18,52,59,.22);filter:blur(26px);transform:translateZ(-70px)}
+@media (max-width:760px){
+  .empty-intro3d{width:calc(100% + 24px);margin:-12px -12px 4px;aspect-ratio:auto;height:50vh;min-height:300px;max-height:520px}
+}
 @media (max-width:480px){
   .empty-hero{min-height:300px;padding:12px 6px}
   .empty-stack{--gap:30px;width:290px}

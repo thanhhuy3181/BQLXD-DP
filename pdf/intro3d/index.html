@@ -10,15 +10,17 @@
     background:#e3ece9;
     background-image:linear-gradient(rgba(15,61,58,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(15,61,58,.07) 1px,transparent 1px);
     background-size:32px 32px}
-  .scene{position:absolute;left:50%;top:61%;width:1040px;height:700px;margin:-350px 0 0 -520px;perspective:3600px}
+  .scene{position:absolute;left:50%;top:61%;width:1040px;height:700px;margin:-350px 0 0 -520px;perspective:3600px;
+    transform:translate(var(--ox,0px),var(--oy,0px)) scale(var(--z,1));transform-origin:50% 50%}
+  html.m-embed,html.m-embed body{touch-action:pan-x pan-y}
   :root{--rx:54deg;--rz:-30deg;--gap:1;--sc:.9}
   .stack{position:absolute;inset:0;transform-style:preserve-3d;transform:scale3d(var(--sc),var(--sc),var(--sc)) rotateX(var(--rx)) rotateZ(var(--rz))}
   body.m-video .cap,body.m-video .hint,body.m-embed .cap{display:none}
   body.m-embed .hint{top:24px;right:24px;font-size:22px;padding:12px 20px}
   html.m-embed,html.m-embed body{background:transparent!important;background-image:none!important}
   @media (pointer:coarse){body.m-embed .hint{display:none}}
-  .gyro-btn{position:absolute;left:50%;top:40px;transform:translateX(-50%);z-index:30;font:700 64px 'Be Vietnam Pro',sans-serif;color:#fff;background:#2563eb;
-    border:0;border-radius:999px;padding:26px 60px;box-shadow:0 14px 30px -10px rgba(37,99,235,.6);cursor:pointer}
+  .gyro-btn{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:30;font:700 40px 'Be Vietnam Pro',sans-serif;color:#fff;background:#2563eb;
+    border:0;border-radius:999px;padding:16px 40px;box-shadow:0 14px 30px -10px rgba(37,99,235,.6);cursor:pointer}
   body.m-embed .scene{top:59%}
   #endcard{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;
     background:radial-gradient(rgba(227,236,233,.92) 40%,rgba(227,236,233,.6))}
@@ -71,7 +73,7 @@
 <body>
 <div class="cap"><b>Cảnh 6 · Ba lớp đã vẽ xong chữ PDF</b><span>Bản vẽ (giao thông, trắng xám) · Layer công trình theo khu A–F (màu) · Ghi chú: CBGS vẽ P bằng chuột, ĐTGS vẽ D bằng bút, GĐ vẽ F bằng ngón tay, cùng nhiều người ghi chú</span></div>
 
-<div class="hint">Rê chuột để nghiêng, xoay 3D</div>
+<div class="hint">Rê chuột để nghiêng, xoay 3D · Ctrl + lăn chuột để phóng to</div>
 <div id="title"><b><span class="pdfb">PDF</span> <span class="qlda">QLDA</span></b></div>
 <div id="endcard">
   <h1><span class="pdfb">PDF</span> <span class="qlda">QLDA</span></h1>
@@ -583,11 +585,46 @@
     requestAnimationFrame(tick);
   })();
   // Co giãn vừa khung (dùng khi nhúng vào trang web)
+  let bodyScale = 1;
   function fit() {
-    const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    let s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    // Khung đứng (điện thoại): phóng hình to hơn, cắt bớt hai bên trống
+    if (EMBED && innerHeight > innerWidth * 0.75) s = Math.min(innerHeight / 1080, innerWidth / 1920 * 1.75);
+    bodyScale = s;
     document.body.style.transform = `translate(${(innerWidth - 1920 * s) / 2}px, ${(innerHeight - 1080 * s) / 2}px) scale(${s})`;
   }
   addEventListener('resize', fit); fit();
+
+  // ---- Phóng to / thu nhỏ: Ctrl + lăn chuột (máy tính), 2 ngón tay (điện thoại); chạm đúp để về như cũ ----
+  if (!VIDEO) {
+    const sceneBox = document.querySelector('.scene');
+    let zoom = 1, ox = 0, oy = 0;
+    const applyZoom = () => { root.setProperty('--z', zoom.toFixed(3)); root.setProperty('--ox', ox.toFixed(1) + 'px'); root.setProperty('--oy', oy.toFixed(1) + 'px'); };
+    function zoomAt(f, px, py) {            // px, py: toạ độ màn hình của điểm cần giữ nguyên
+      const nz = Math.max(0.6, Math.min(3.5, zoom * f)); f = nz / zoom;
+      const r = sceneBox.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      ox += (px - cx) * (1 - f) / bodyScale; oy += (py - cy) * (1 - f) / bodyScale;
+      zoom = nz; applyZoom();
+    }
+    addEventListener('wheel', e => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      zoomAt(Math.exp(-e.deltaY * 0.0022), e.clientX, e.clientY);
+    }, { passive: false });
+    let pinch = null;
+    const two = t => ({ d: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY), x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
+    addEventListener('touchstart', e => { if (e.touches.length === 2) pinch = two(e.touches); }, { passive: true });
+    addEventListener('touchmove', e => {
+      if (e.touches.length !== 2 || !pinch) return;
+      e.preventDefault();
+      const p = two(e.touches);
+      zoomAt(p.d / pinch.d, p.x, p.y);
+      ox += (p.x - pinch.x) / bodyScale; oy += (p.y - pinch.y) / bodyScale; applyZoom();   // 2 ngón kéo = di chuyển hình
+      pinch = p;
+    }, { passive: false });
+    addEventListener('touchend', e => { if (e.touches.length < 2) pinch = null; });
+    addEventListener('dblclick', () => { zoom = 1; ox = 0; oy = 0; applyZoom(); });
+  }
 </script>
 </body>
 </html>
