@@ -3713,7 +3713,19 @@ function startInlineTextEdit(a){
   const curVal = (a.text === 'Nhập ghi chú...' || a.text === 'Văn bản...') ? '' : (a.text || '');
   ta.value = curVal;
   ta.placeholder = 'Nhập ghi chú...';
-  ta.style.fontSize = annoFontPx(a, 13) + 'px';
+  const edPx = annoFontPx(a, 13);
+  ta.style.fontSize = edPx + 'px';
+  // iPhone Safari tự phóng to cả trang khi gõ vào ô chữ < 16px. Trên máy cảm ứng: dùng chữ 16px rồi thu nhỏ
+  // khung bằng transform cho đúng cỡ thật => Safari không phóng to.
+  if (edPx < 16 && matchMedia('(pointer:coarse)').matches) {
+    const k = edPx / 16;
+    ta.style.fontSize = '16px';
+    ta.style.inset = 'auto';
+    ta.style.left = '0'; ta.style.top = '0';
+    ta.style.width = (100 / k) + '%'; ta.style.height = (100 / k) + '%';
+    ta.style.transformOrigin = '0 0';
+    ta.style.transform = 'scale(' + k + ')';
+  }
   ta.style.fontWeight = a.fontBold ? '700' : '500';
   ta.style.zIndex = '50';
   ta.style.pointerEvents = 'auto';
