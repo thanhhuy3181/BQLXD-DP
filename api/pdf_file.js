@@ -72,6 +72,13 @@ async function previewRoute(req, res, sp, doc, user, sendErr) {
     }
     const meta = await previewMeta(doc.id, page);
     if (!meta || !meta.file_id || meta.m !== m) return sendErr(404, 'Chưa có ảnh xem trước cho phiên bản này');
+    // Ảnh đã có trong /tmp của máy chủ đang chạy: trả ngay (Drive mất ~3 giây kể cả với ảnh nhỏ)
+    const pvTmp = pathMod.join(TMP_DIR, 'pv-' + String(meta.file_id).replace(/[^A-Za-z0-9_-]/g, '_'));
+    if (fsp.existsSync(pvTmp)) {
+      const buf = fsp.readFileSync(pvTmp);
+      res.statusCode = 200; res.setHeader('Content-Type', meta.mime || 'image/webp'); res.setHeader('Cache-Control', 'private, max-age=604800'); res.setHeader('Content-Length', String(buf.length));
+      return res.end(req.method === 'HEAD' ? undefined : buf);
+    }
     const token = await gdriveService.getAccessToken();
     const up = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(meta.file_id) + '?alt=media&supportsAllDrives=true',
       { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(60000) });
@@ -81,7 +88,10 @@ async function previewRoute(req, res, sp, doc, user, sendErr) {
     res.setHeader('Cache-Control', 'private, max-age=604800'); // đường dẫn có kèm phiên bản file
     const len = up.headers.get('content-length'); if (len) res.setHeader('Content-Length', len);
     if (req.method === 'HEAD') return res.end();
-    await pipeline(Readable.fromWeb(up.body), res);
+    const buf = Buffer.from(await up.arrayBuffer());
+    try { fsp.mkdirSync(TMP_DIR, { recursive: true }); fsp.writeFileSync(pvTmp, buf); } catch (_) {}
+    res.setHeader('Content-Length', String(buf.length));
+    return res.end(buf);
   } catch (err) {
     console.error('preview error:', err);
     if (!res.headersSent) return sendErr(502, 'Lỗi ảnh xem trước: ' + (err.message || err));

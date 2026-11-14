@@ -9766,6 +9766,7 @@ async function openCloudDoc(docId, docTitle, knownSize, modified) {
     if (cached && seq === OPEN_DOC_SEQ) {
       showLoadOverlay(docTitle, 100, 'Mở từ bản đã lưu trên máy...');
       setOpenProgress(docId, 'đang mở…');
+      window.__earlyBlock = seq; // file có sẵn trên máy: không để ảnh xem trước đè lên
       await loadRealPdf(cached, docTitle || 'tai-lieu.pdf', false);
       PDF_STATE.docId = docId;
       loadSharedPreviews(getActivePaneState(), docId);
