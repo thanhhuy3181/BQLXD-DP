@@ -38,7 +38,7 @@ function computeRole(user, doc) {
   if (user.role === 'Admin' || doc.owner_username === user.username) return 'Chủ sở hữu';
   const p = doc.permissions_json;
   const perms = Array.isArray(p) ? p : (typeof p === 'string' ? JSON.parse(p || '[]') : []);
-  const hit = perms.find(x => x && x.username === user.username);
+  const hit = perms.find(x => x && x.username === user.username) || perms.find(x => x && x.username === '*');
   return hit ? (hit.role || 'Người xem') : null;
 }
 const roleRank = role => (role ? (ROLE_RANK[role] || 1) : 0);
@@ -73,6 +73,29 @@ async function rootFolderId(sql) {
   return r ? r.id : ensureDriveFolder('PDF-QLDA');
 }
 const DRIVE_ID_RE = /^[A-Za-z0-9_-]{1,200}$/;
+const INTRO_DOC_ID = 'ban-la-ai';
+// Liệt kê thư mục con + file PDF trong một thư mục Drive (một trang tối đa 1000 mục).
+async function driveChildren(folderId) {
+  const token = await gdriveService.getAccessToken();
+  const out = [];
+  let pageToken = '';
+  for (let guard = 0; guard < 5; guard++) {
+    const qs = new URLSearchParams({
+      q: `'${folderId}' in parents and trashed = false and (mimeType = 'application/vnd.google-apps.folder' or mimeType = 'application/pdf')`,
+      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime)',
+      pageSize: '1000', orderBy: 'folder,name',
+      supportsAllDrives: 'true', includeItemsFromAllDrives: 'true'
+    });
+    if (pageToken) qs.set('pageToken', pageToken);
+    const r = await fetch('https://www.googleapis.com/drive/v3/files?' + qs, { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(15000) });
+    const j = await r.json();
+    if (!r.ok) throw new Error((j.error && j.error.message) || ('Drive HTTP ' + r.status));
+    out.push(...(j.files || []));
+    if (!j.nextPageToken) break;
+    pageToken = j.nextPageToken;
+  }
+  return out;
+}
 // Tạo sẵn (nếu chưa có) thư mục con của một tài khoản trong thư mục gốc của kho. Lỗi Drive không chặn đăng nhập.
 function userFolderName(u) {
   const data = u && typeof u.data === 'string' ? (() => { try { return JSON.parse(u.data); } catch (_) { return {}; } })() : ((u && u.data) || {});
@@ -84,7 +107,30 @@ function treeFolderName(v) {
   return String(v || '').replace(/[\/\\:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 100);
 }
 // Thư mục Drive đích: <gốc kho>/<nick tài khoản>/<thư mục đang chọn trên cây> (bỏ tầng cuối nếu không chọn).
-async function uploadTargetFolder(sql, user, treeFolder) {
+async function driveIsUnder(id, ancestorId) {
+  if (id === ancestorId) return true;
+  const token = await gdriveService.getAccessToken();
+  let cur = id;
+  for (let i = 0; i < 8 && cur; i++) {
+    const r = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(cur) + '?fields=parents&supportsAllDrives=true', { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return false;
+    const j = await r.json();
+    cur = (j.parents || [])[0] || '';
+    if (cur === ancestorId) return true;
+  }
+  return false;
+}
+// Thư mục Drive mà người dùng được phép ghi: Admin = mọi nơi trong gốc kho; thành viên = trong thư mục nick của mình.
+async function writableFolder(sql, user, folderId) {
+  if (!folderId || !DRIVE_ID_RE.test(folderId)) return null;
+  const rootId = await rootFolderId(sql);
+  if (!rootId) return null;
+  if (user && user.role === 'Admin') return (await driveIsUnder(folderId, rootId)) ? folderId : null;
+  const mine = await ensureDriveFolder(userFolderName(user), rootId);
+  return mine && (await driveIsUnder(folderId, mine)) ? folderId : null;
+}
+async function uploadTargetFolder(sql, user, treeFolder, folderId) {
+  if (folderId) { const ok = await writableFolder(sql, user, String(folderId)); if (ok) return ok; }
   const rootId = await rootFolderId(sql);
   const userFolderId = rootId && await ensureDriveFolder(userFolderName(user), rootId);
   if (!userFolderId) return null;
@@ -127,6 +173,9 @@ async function ensureDb() {
 
     
 
+
+    await sql`INSERT OR IGNORE INTO bqlda_pdf_docs (id,title,drive_file_id,folder_name,owner_username,file_size,page_count,scale_ratio,permissions_json,updated_at)
+      VALUES (${INTRO_DOC_ID}, 'Bạn là ai.pdf', NULL, '', 'admin', 0, 1, '1:1', ${JSON.stringify([{ username: '*', role: 'Người nhận xét' }])}, ${Date.now()})`;
 
     // 5. Bảng cộng tác (ghi chú từng dòng, hiện diện, xin quyền, phiên tải lên).
     // Tách riêng: nếu lỗi thì các action cũ vẫn chạy, action mới trả 503.
@@ -809,6 +858,92 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    if (action === 'drive_tree') {
+      const nodes = [];
+      const intro = await loadDoc(INTRO_DOC_ID);
+      const introNode = intro && canRead(intro) ? { id: INTRO_DOC_ID, name: intro.title, type: 'file', parent: null, doc_id: INTRO_DOC_ID, intro: true } : null;
+      const root = sql ? await storageRoot(sql) : null;
+      if (!root || !root.id) return res.status(200).json(result({ root: null, nodes: introNode ? [introNode] : [], note: 'Chưa chọn thư mục lưu trên Drive kho.' }));
+      try {
+        // Duyệt theo chiều rộng, tối đa 6 tầng / 80 thư mục để giữ thời gian phản hồi.
+        const queue = [{ id: root.id, depth: 0, top: null }];
+        let listed = 0;
+        while (queue.length && listed < 80) {
+          const f = queue.shift(); listed++;
+          const kids = await driveChildren(f.id);
+          for (const k of kids) {
+            const isFolder = k.mimeType === 'application/vnd.google-apps.folder';
+            const top = f.depth === 0 ? k.name : f.top;
+            nodes.push({ id: k.id, name: k.name, type: isFolder ? 'folder' : 'file', parent: f.id === root.id ? null : f.id, size: Number(k.size) || 0, modified: k.modifiedTime || '', top });
+            if (isFolder && f.depth < 5) queue.push({ id: k.id, depth: f.depth + 1, top });
+          }
+        }
+      } catch (err) {
+        return res.status(200).json(failure('Không đọc được cây thư mục Drive: ' + err.message));
+      }
+      // Ghép file Drive với tài liệu trong CSDL; file chưa có thì đăng ký (chủ = tài khoản có nick trùng thư mục cấp 1).
+      const docs = await sql`SELECT * FROM bqlda_pdf_docs`;
+      const byDrive = new Map(docs.filter(d => d.drive_file_id).map(d => [d.drive_file_id, d]));
+      const users = await sql`SELECT username, data FROM bqlda_users`;
+      const nickToUser = new Map(users.map(u => [userFolderName(u).toLowerCase(), u.username]));
+      for (const n of nodes) {
+        if (n.type !== 'file') continue;
+        let d = byDrive.get(n.id);
+        if (!d) {
+          const owner = nickToUser.get(String(n.top || '').toLowerCase()) || 'admin';
+          d = { id: 'd' + n.id.slice(0, 24), title: n.name, drive_file_id: n.id, folder_name: n.top || '', owner_username: owner, file_size: n.size, page_count: 1, scale_ratio: '1:100', permissions_json: [] };
+          await sql`INSERT OR IGNORE INTO bqlda_pdf_docs (id,title,drive_file_id,folder_name,owner_username,file_size,page_count,scale_ratio,permissions_json,updated_at)
+            VALUES (${d.id}, ${d.title}, ${d.drive_file_id}, ${d.folder_name}, ${d.owner_username}, ${d.file_size}, 1, '1:100', '[]', ${Date.now()})`;
+          byDrive.set(n.id, d);
+        }
+        n.doc_id = d.id;
+        n.readable = canRead(d);
+      }
+      // Lọc: Admin thấy hết. Thành viên thấy trọn thư mục của mình + file được chia sẻ (và các thư mục cha của chúng).
+      let visible = nodes;
+      if (!isAdmin) {
+        const myNick = userFolderName(currentUser).toLowerCase();
+        const keep = new Set();
+        const byId = new Map(nodes.map(n => [n.id, n]));
+        const keepUp = n => { while (n && !keep.has(n.id)) { keep.add(n.id); n = n.parent ? byId.get(n.parent) : null; } };
+        for (const n of nodes) {
+          if (String(n.top || '').toLowerCase() === myNick || (n.type === 'file' && n.readable)) keepUp(n);
+        }
+        visible = nodes.filter(n => keep.has(n.id) && (n.type === 'folder' || n.readable));
+      }
+      const out = visible.map(({ id, name, type, parent, size, modified, doc_id }) => ({ id, name, type, parent, size, modified, doc_id }));
+      return res.status(200).json(result({ root: { id: root.id, name: root.name || '', path: root.path || [] }, my_folder: userFolderName(currentUser), nodes: introNode ? [introNode, ...out] : out }));
+    }
+
+    // Tạo thư mục con trên Drive (trong thư mục đang chọn; mặc định thư mục của chính mình).
+    if (action === 'drive_mkdir') {
+      const name = treeFolderName(payload.name);
+      if (!name) return res.status(200).json(failure('Thiếu tên thư mục.'));
+      const root = await storageRoot(sql);
+      if (!root || !root.id) return res.status(200).json(failure('Admin chưa chọn thư mục lưu trên Drive kho.'));
+      let parent = String(payload.parent_id || '');
+      if (parent) { parent = await writableFolder(sql, currentUser, parent); if (!parent) return res.status(200).json(failure('Bạn chỉ được tạo thư mục trong thư mục của mình.')); }
+      else parent = isAdmin ? root.id : await ensureDriveFolder(userFolderName(currentUser), root.id);
+      const id = await ensureDriveFolder(name, parent);
+      return res.status(200).json(id ? result({ id, name }) : failure('Không tạo được thư mục trên Drive.'));
+    }
+
+    // Đổi tên / chuyển vào Thùng rác một mục trên Drive kho (thành viên: chỉ trong thư mục của mình).
+    if (action === 'drive_rename' || action === 'drive_trash') {
+      const id = String(payload.id || '');
+      const ok = await writableFolder(sql, currentUser, id);
+      if (!ok) return res.status(200).json(failure('Bạn không có quyền sửa mục này.'));
+      const root = await storageRoot(sql);
+      if (root && id === root.id) return res.status(200).json(failure('Không được sửa thư mục gốc của kho.'));
+      if (!isAdmin) { const mine = await ensureDriveFolder(userFolderName(currentUser), root.id); if (id === mine) return res.status(200).json(failure('Không được sửa thư mục tài khoản của bạn.')); }
+      const body = action === 'drive_trash' ? { trashed: true } : { name: treeFolderName(payload.name) };
+      if (action === 'drive_rename' && !body.name) return res.status(200).json(failure('Thiếu tên mới.'));
+      const token = await gdriveService.getAccessToken();
+      const r = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?supportsAllDrives=true', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); return res.status(200).json(failure('Drive: ' + ((j.error && j.error.message) || r.status))); }
+      return res.status(200).json(result({ id }));
+    }
+
     if (action === 'drive_list') {
       try {
 
@@ -844,7 +979,7 @@ module.exports = async function handler(req, res) {
       let driveFileId = null;
 
       try {
-        const targetId = await uploadTargetFolder(sql, currentUser, folderName);
+        const targetId = await uploadTargetFolder(sql, currentUser, folderName, payload.folder_id);
         const driveRes = await uploadToDrive(fileName, 'application/pdf', buffer, targetId);
         driveFileId = driveRes.id;
       } catch (err) {
@@ -1207,7 +1342,7 @@ module.exports = async function handler(req, res) {
       const origin = uploadOrigin(req);
       if (origin === undefined) return deny('Origin không được phép tải lên.');
       const folderName = treeFolderName(payload.folder_name) || userFolderName(currentUser);
-      const folderId = await uploadTargetFolder(sql, currentUser, folderName);
+      const folderId = await uploadTargetFolder(sql, currentUser, folderName, payload.folder_id);
       if (!folderId) return res.status(502).json(failure('Không tạo được thư mục trên Google Drive.'));
       const uploadId = 'up_' + crypto.randomBytes(12).toString('hex');
       const sessionUri = await createResumableSession({ name, size, folderId, uploadId, username: me, origin });

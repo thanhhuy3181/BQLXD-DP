@@ -12,6 +12,18 @@
 .side-tab:last-child{border-right:0}
 .side-tab.on{background:var(--surface);color:var(--fg);box-shadow:inset 0 -2px 0 var(--hot)}
 .side-thumbs{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
+.side-thumbs[hidden],.tree[hidden]{display:none!important}
+.tree-actions{display:flex;gap:4px;padding:6px;border-bottom:1.5px solid var(--line);background:var(--surface-2)}
+.tree-actions .tree-ib{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
+.tree-actions .tree-ib.danger{color:#dc2626}
+.tree-list{padding:4px 2px}
+.tree-folder-header{display:flex;align-items:center;gap:5px;padding:5px 6px;border-radius:5px;cursor:pointer;border:1px solid transparent;font-size:12px;font-weight:600}
+.tree-folder-header .tn,.tree-file .tn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.folder-node.selected-folder>.tree-folder-header{background:var(--surface-2);border-color:var(--line)}
+.tree-folder-header .i-chev{display:inline-flex;transition:transform var(--fast)}
+.tree-file{display:flex;align-items:center;gap:6px;width:100%;font-size:11.5px}
+.tree-intro{font-weight:700;color:var(--accent)}
+.tree-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 8px}
 .thumb-card{border:1.5px solid var(--line);border-radius:6px;padding:6px;cursor:pointer;background:var(--surface);transition:all var(--fast);display:flex;flex-direction:column;gap:4px;box-shadow:2px 2px 0 rgba(0,0,0,.08)}
 .thumb-card{transition:transform .18s var(--out),box-shadow .18s var(--out)}
 .thumb-card:hover{border-color:var(--fg);transform:translateY(-4px)!important;box-shadow:6px 6px 0 var(--hard)!important}
@@ -1138,7 +1150,7 @@ const P={
   thumbs:'M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z',cmt:'M4 5h16v11H9l-5 4z',
   full:'M4 9V4h5m6 0h5v5m0 6v5h-5m-6 0H4v-5',exit:'M9 4v5H4m11-5v5h5m0 6h-5v5m-6 0v-5H4',
   share:'M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 13a3 3 0 1 0 0-6M2 20c0-3 3-5 6-5m4 5c0-3 2-5 4-5s4 2 4 5',
-  up:'M12 16V4m-5 5 5-5 5 5M4 20h16',folder:'M3 6h6l2 2h10v11H3z',file:'M6 3h8l4 4v14H6zm8 0v4h4',
+  up:'M12 16V4m-5 5 5-5 5 5M4 20h16',folder:'M3 6h6l2 2h10v11H3z',filenew:'M6 3h8l4 4v14H6zm8 0v4h4M12 11v6m-3-3h6',folderadd:'M3 6h6l2 2h10v11H3zM12 11v6m-3-3h6',edit:'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',trash:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',refresh:'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',users:'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-6 7-6s7 2.5 7 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14c2.4.6 4 2.6 4 6',file:'M6 3h8l4 4v14H6zm8 0v4h4',
   chev:'M9 6l6 6-6 6',menu:'M4 6h16M4 12h16M4 18h16',add:'M12 5v14m-7-7h14',del:'M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13',
   merge:'M6 4v6l6 4 6-4V4m-6 10v6',split:'M12 4v6l-6 4v6m6-10 6 4v6',extract:'M6 3h8l4 4v14H6zm3 12h6m-3-3 3 3-3 3',
   sign:'M3 17c3-6 5-9 7-9s0 8 2 8 3-4 5-4 2 3 4 3M3 21h18',lock:'M6 11h12v9H6zm2 0V8a4 4 0 0 1 8 0v3',
@@ -1732,7 +1744,7 @@ async function uploadPdfResumable(file) {
       size: file.size,
       page_count: PDF_STATE.numPages || 1,
       scale_ratio: S.measureScale || '1:100',
-      folder_name: SELECTED_TREE_FOLDER || ''
+      folder_name: SELECTED_TREE_FOLDER_ID ? '' : (SELECTED_TREE_FOLDER || ''), folder_id: SELECTED_TREE_FOLDER_ID || ''
     });
     if(!beginRes || !beginRes.ok || !beginRes.data) {
       throw new Error(beginRes?.error || 'Không thể khởi tạo phiên tải lên');
@@ -1910,7 +1922,7 @@ async function uploadPdfToCloud(uint8Arr, name, pageCount) {
     const res = await pdfApi('drive_upload_base64', {
       name,
       base64: b64,
-      folder_name: SELECTED_TREE_FOLDER || '',
+      folder_name: SELECTED_TREE_FOLDER_ID ? '' : (SELECTED_TREE_FOLDER || ''), folder_id: SELECTED_TREE_FOLDER_ID || '',
       page_count: pageCount,
       scale_ratio: '1:100'
     });
@@ -8454,11 +8466,15 @@ async function openCloudDoc(docId, docTitle) {
   try {
     // Tải dạng stream qua /api/pdf_file (không bị giới hạn 25 MB như drive_download cũ).
     const tok = localStorage.getItem('bqlda_session_token') || localStorage.getItem('bqlda_web_session') || localStorage.getItem('awm_session') || sessionStorage.getItem('awm_session') || '';
-    const fr = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId), { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
+    const fr = docId === 'ban-la-ai' ? await fetch('/pdf/ban-la-ai.pdf') : await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId), { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
     if (fr.ok) {
       const ab = await fr.arrayBuffer();
       await loadRealPdf(new Uint8Array(ab), docTitle || 'tai-lieu.pdf', false);
       PDF_STATE.docId = docId;
+      COLLAB_CURSOR = 0;
+      if (typeof collabPollLoop === 'function') collabPollLoop();
+      if (docId === 'ban-la-ai' && typeof fitPage === 'function') setTimeout(fitPage, 200);
+      renderTree();
       toast(`Đã mở tài liệu: ${docTitle}`);
       return;
     }
@@ -9417,297 +9433,122 @@ async function createNewBlankPdf(){
   }
 }
 
-let SELECTED_TREE_FOLDER = 'Bản vẽ kỹ thuật';
+let SELECTED_TREE_FOLDER = '';      // tên thư mục đang chọn (hiển thị)
+let SELECTED_TREE_FOLDER_ID = '';   // ID thư mục Drive đang chọn (đích tải lên / tạo thư mục)
+let TREE_NODES = [];
+const TREE_SHUT = (() => { try { return new Set(JSON.parse(localStorage.getItem('pdf_tree_shut') || '[]')); } catch (_) { return new Set(); } })();
+const saveTreeShut = () => { try { localStorage.setItem('pdf_tree_shut', JSON.stringify([...TREE_SHUT])); } catch (_) {} };
 
-function getLocalFolders() {
-  try {
-    const raw = localStorage.getItem('pdf_folders');
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length) return arr;
-    }
-  } catch(e) {}
-  return ['Bản vẽ kỹ thuật', 'Hồ sơ pháp lý', 'Hiện trường & Ghi chú'];
+// Thanh nút chỉ có biểu tượng (rê chuột / nhấn giữ để xem tên).
+function treeIconBtn(icon, title, onClick, danger) {
+  const b = el('button', 'icon-btn tree-ib' + (danger ? ' danger' : ''), ic(icon));
+  b.title = title; b.setAttribute('aria-label', title);
+  b.onclick = onClick;
+  return b;
 }
 
-function saveLocalFolders(folders) {
-  try {
-    localStorage.setItem('pdf_folders', JSON.stringify(folders));
-  } catch(e) {}
+async function treeAction(action, payload, okMsg) {
+  const res = await pdfApi(action, payload);
+  if (!res || !res.ok) { toast((res && res.error) || 'Thao tác thất bại'); return null; }
+  if (okMsg) toast(okMsg);
+  await renderTree();
+  return res.data;
 }
 
 async function renderTree() {
   const box = $('#tree');
   if (!box) return;
-  box.replaceChildren();
 
-  // 1. THANH TÁC VỤ THƯ MỤC & FILE (Thêm, Sửa, Xóa thư mục + Tạo PDF trắng)
-  const topBar = el('div', 'tree-actions', `
-    <div style="padding:6px;border-bottom:1.5px solid var(--line);background:var(--surface-2);display:flex;flex-direction:column;gap:5px">
-      <div style="display:flex;gap:4px">
-        <button class="btn sm primary" id="btnNewBlankPdf" style="flex:1;padding:5px 6px;font-size:10.5px;font-weight:700" title="Tạo tài liệu PDF A4 trắng mới">${ic('add')} + PDF trắng</button>
-        <button class="btn sm ghost" id="btnNewFolder" style="flex:1;padding:5px 6px;font-size:10.5px;font-weight:700" title="Tạo thư mục mới">${ic('folder')} + Thư mục</button>
-      </div>
-      <div style="display:flex;gap:4px">
-        <button class="btn sm ghost" id="btnEditFolder" style="flex:1;padding:3px 6px;font-size:10.5px;font-weight:600" title="Đổi tên thư mục đang chọn">✏️ Đổi tên</button>
-        <button class="btn sm ghost" id="btnDeleteFolder" style="flex:1;padding:3px 6px;font-size:10.5px;font-weight:600;color:#ef4444" title="Xóa thư mục đang chọn">🗑️ Xóa</button>
-      </div>
-    </div>
-  `);
-  box.append(topBar);
+  // 1. Thanh nút biểu tượng
+  const bar = el('div', 'tree-actions', '');
+  const selName = () => SELECTED_TREE_FOLDER || 'thư mục của bạn';
+  bar.append(
+    treeIconBtn('filenew', 'Tạo PDF trắng mới', () => createNewBlankPdf()),
+    treeIconBtn('folderadd', 'Thư mục mới (trong thư mục đang chọn)', async () => {
+      const name = prompt('Tên thư mục mới trong "' + selName() + '":');
+      if (name && name.trim()) await treeAction('drive_mkdir', { name: name.trim(), parent_id: SELECTED_TREE_FOLDER_ID || '' }, 'Đã tạo thư mục "' + name.trim() + '"');
+    }),
+    treeIconBtn('edit', 'Đổi tên thư mục đang chọn', async () => {
+      if (!SELECTED_TREE_FOLDER_ID) return toast('Chọn một thư mục trước');
+      const name = prompt('Tên mới cho "' + SELECTED_TREE_FOLDER + '":', SELECTED_TREE_FOLDER);
+      if (name && name.trim() && name.trim() !== SELECTED_TREE_FOLDER) { SELECTED_TREE_FOLDER = name.trim(); await treeAction('drive_rename', { id: SELECTED_TREE_FOLDER_ID, name: name.trim() }, 'Đã đổi tên'); }
+    }),
+    treeIconBtn('trash', 'Xoá thư mục đang chọn (chuyển vào Thùng rác Drive)', async () => {
+      if (!SELECTED_TREE_FOLDER_ID) return toast('Chọn một thư mục trước');
+      if (!confirm('Chuyển thư mục "' + SELECTED_TREE_FOLDER + '" và mọi thứ bên trong vào Thùng rác của Google Drive?')) return;
+      const id = SELECTED_TREE_FOLDER_ID; SELECTED_TREE_FOLDER_ID = ''; SELECTED_TREE_FOLDER = '';
+      await treeAction('drive_trash', { id }, 'Đã chuyển vào Thùng rác Drive');
+    }, true),
+    treeIconBtn('refresh', 'Tải lại cây thư mục từ Drive', () => renderTree())
+  );
 
-  topBar.querySelector('#btnNewBlankPdf').onclick = () => createNewBlankPdf();
+  // 2. Dữ liệu cây thật từ Drive
+  const list = el('div', 'tree-list', '');
+  if (!CURRENT_USER) {
+    box.replaceChildren(bar, list);
+    list.innerHTML = '<div class="tree-empty">Đăng nhập để xem thư mục.</div>';
+    return;
+  }
+  let data = null;
+  try {
+    const res = await pdfApi('drive_tree');
+    if (res && res.ok) data = res.data;
+    else { const em = el('div', 'tree-empty', ''); em.textContent = (res && res.error) || 'Không đọc được thư mục'; list.append(em); }
+  } catch (err) { console.warn('renderTree:', err); }
+  TREE_NODES = (data && data.nodes) || [];
 
-  // Xử lý Thêm thư mục
-  topBar.querySelector('#btnNewFolder').onclick = () => {
-    const name = prompt('Nhập tên thư mục mới:');
-    if (name && name.trim()) {
-      const trimmed = name.trim();
-      const folders = getLocalFolders();
-      if (!folders.includes(trimmed)) {
-        folders.push(trimmed);
-        saveLocalFolders(folders);
-        SELECTED_TREE_FOLDER = trimmed;
-        toast(`Đã tạo thư mục: "${trimmed}"`);
-        renderTree();
-      } else {
-        toast(`Thư mục "${trimmed}" đã tồn tại`);
-      }
-    }
-  };
-
-  // Xử lý Đổi tên thư mục
-  topBar.querySelector('#btnEditFolder').onclick = () => {
-    const folders = getLocalFolders();
-    const cur = SELECTED_TREE_FOLDER || folders[0] || 'Bản vẽ kỹ thuật';
-    const newName = prompt(`Nhập tên mới cho thư mục "${cur}":`, cur);
-    if (newName && newName.trim() && newName.trim() !== cur) {
-      const trimmed = newName.trim();
-      const idx = folders.indexOf(cur);
-      if (idx !== -1) folders[idx] = trimmed;
-      else folders.push(trimmed);
-      saveLocalFolders(folders);
-      SELECTED_TREE_FOLDER = trimmed;
-      toast(`Đã đổi tên thư mục thành: "${trimmed}"`);
-      renderTree();
-    }
-  };
-
-  // Xử lý Xóa thư mục
-  topBar.querySelector('#btnDeleteFolder').onclick = () => {
-    const folders = getLocalFolders();
-    const cur = SELECTED_TREE_FOLDER || folders[0];
-    if (!cur) return toast('Không có thư mục nào để xóa');
-    if (folders.length <= 1) return toast('Cần giữ lại ít nhất 1 thư mục');
-    if (confirm(`Bạn có chắc chắn muốn xóa thư mục "${cur}"?`)) {
-      const idx = folders.indexOf(cur);
-      if (idx !== -1) folders.splice(idx, 1);
-      saveLocalFolders(folders);
-      SELECTED_TREE_FOLDER = folders[0] || '';
-      toast(`Đã xóa thư mục: "${cur}"`);
-      renderTree();
-    }
-  };
-
-  // 2. KHỐI HIỂN THỊ TÀI LIỆU ĐANG MỞ (HIỆN RÕ TÊN FILE ĐANG LÀM VIỆC)
   const ps = getActivePaneState();
-  const currentFileName = ps?.name || PDF_STATE.filename || PDF_STATE.name;
-  if (ps?.isPdfReal && currentFileName) {
-    const openCard = el('div', 'active-file-card', `
-      <div style="margin:6px;padding:8px 10px;background:var(--surface);border:1.5px solid var(--accent);border-radius:6px;box-shadow:2px 2px 0 var(--hard);display:flex;flex-direction:column;gap:5px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:0.5px;text-transform:uppercase;display:flex;align-items:center;gap:4px">
-            📌 Đang mở
-          </span>
-          <span style="font-size:9.5px;font-weight:700;background:var(--accent);color:var(--accent-fg);padding:1px 6px;border-radius:4px">
-            ${ps.numPages || 1} trang
-          </span>
-        </div>
-        <div style="font-size:12px;font-weight:700;color:var(--fg);word-break:break-all;line-height:1.3;display:flex;align-items:flex-start;gap:5px" title="${currentFileName}">
-          <span style="flex:none">${ic('file')}</span>
-          <span class="file-title-text" style="flex:1">${currentFileName}</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:var(--muted);padding-top:4px;border-top:1px dashed var(--line)">
-          <span>Khung ${ps.paneIdx + 1} · Zoom ${ps.zoom}%</span>
-          <div style="display:flex;gap:6px">
-            <button class="link btn-rename-open-doc" style="font-size:10.5px;padding:0;color:var(--accent)" title="Đổi tên file">✏️ Đổi tên</button>
-            <button class="link btn-save-open-doc" style="font-size:10.5px;padding:0" title="Tải file về máy">⬇ Tải về</button>
-          </div>
-        </div>
-      </div>
-    `);
+  const openDocId = PDF_STATE.docId || '';
+  const kidsOf = new Map();
+  TREE_NODES.forEach(n => { const k = n.parent || ''; if (!kidsOf.has(k)) kidsOf.set(k, []); kidsOf.get(k).push(n); });
+  const countFiles = id => (kidsOf.get(id) || []).reduce((t, n) => t + (n.type === 'file' ? 1 : countFiles(n.id)), 0);
 
-    // Nút đổi tên file
-    openCard.querySelector('.btn-rename-open-doc').onclick = (e) => {
-      e.stopPropagation();
-      const newName = prompt('Nhập tên mới cho file PDF:', currentFileName);
-      if (newName && newName.trim() && newName.trim() !== currentFileName) {
-        const trimmed = newName.trim().endsWith('.pdf') ? newName.trim() : (newName.trim() + '.pdf');
-        ps.name = trimmed;
-        PDF_STATE.name = trimmed;
-        PDF_STATE.filename = trimmed;
-        document.title = trimmed + ' - PDF QLDA';
-        const docTitleText = document.getElementById('docTitleText');
-        if (docTitleText) docTitleText.textContent = trimmed;
-        renderPanes();
-        renderTree();
-        toast(`Đã đổi tên file thành: ${trimmed}`);
-      }
-    };
-
-    // Nút tải file về máy
-    openCard.querySelector('.btn-save-open-doc').onclick = (e) => {
-      e.stopPropagation();
-      saveCurrentPdf(false);
-    };
-
-    box.append(openCard);
-  }
-
-  // 3. DANH SÁCH CÂY THƯ MỤC & TÀI LIỆU
-  const listContainer = el('div', 'tree-list', `
-    <div style="padding:4px 8px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;justify-content:space-between">
-      <span>Cây thư mục</span>
-      <span style="font-size:10px;font-weight:normal;color:var(--muted)">${CURRENT_USER ? 'Cloud' : 'Cục bộ'}</span>
-    </div>
-  `);
-  box.append(listContainer);
-
-  const localFolders = getLocalFolders();
-  let cloudDocs = [];
-
-  if (CURRENT_USER) {
-    try {
-      const res = await pdfApi('drive_list');
-      const rawDocs = (res && res.ok && Array.isArray(res.data?.db_docs)) ? res.data.db_docs : [];
-      cloudDocs = rawDocs.filter(d => d && d.has_file !== false);
-    } catch(err) {
-      console.warn('renderTree cloud error:', err);
-    }
-  }
-
-  // Gom các folder từ local + cloud
-  const allFolderNames = new Set(localFolders);
-  cloudDocs.forEach(d => {
-    if (d.folder_name) allFolderNames.add(d.folder_name);
-  });
-  if (!allFolderNames.size) allFolderNames.add('Bản vẽ kỹ thuật');
-
-  // Gán file đang mở vào thư mục hiện tại nếu có
-  const openDocItem = (ps?.isPdfReal && currentFileName) ? {
-    id: PDF_STATE.docId || 'current_doc',
-    title: currentFileName,
-    name: currentFileName,
-    folder_name: SELECTED_TREE_FOLDER || localFolders[0] || 'Bản vẽ kỹ thuật',
-    isOpen: true,
-    numPages: ps.numPages || 1
-  } : null;
-
-  allFolderNames.forEach(folderName => {
-    const isSelected = (folderName === SELECTED_TREE_FOLDER);
-    const folderFiles = cloudDocs.filter(d => (d.folder_name || 'Bản vẽ kỹ thuật') === folderName);
-    
-    // Thêm file đang mở vào folder nếu khớp
-    if (openDocItem && openDocItem.folder_name === folderName && !folderFiles.some(f => f.title === openDocItem.title || f.name === openDocItem.name)) {
-      folderFiles.unshift(openDocItem);
-    }
-
-    const folderRow = el('div', 'folder-node' + (isSelected ? ' selected-folder' : ''), `
-      <div class="tree-folder-header" style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;cursor:pointer;background:${isSelected ? 'var(--surface-2)' : 'transparent'};border:1px solid ${isSelected ? 'var(--line)' : 'transparent'};margin-bottom:2px">
-        <div class="folder-main-label" style="display:flex;align-items:center;gap:5px;min-width:0;flex:1">
-          <span class="i-chev" style="display:inline-flex;transform:rotate(90deg);transition:transform var(--fast)">${ic('chev')}</span>
-          ${ic('folder')}
-          <span style="font-size:11.5px;font-weight:600;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${folderName}</span>
-          <em class="badge" style="font-size:9.5px;padding:0 5px">${folderFiles.length}</em>
-        </div>
-        <div class="folder-actions" style="display:flex;gap:2px;align-items:center">
-          <button class="icon-btn xs btn-folder-rename" title="Đổi tên thư mục ${folderName}" style="padding:1px 3px;font-size:10px;line-height:1">✏️</button>
-          <button class="icon-btn xs btn-folder-del" title="Xóa thư mục ${folderName}" style="padding:1px 3px;font-size:10px;line-height:1;color:#ef4444">🗑️</button>
-        </div>
-      </div>
-    `);
-
-    const kids = el('div', 'kids');
-    const inner = el('div', 'kids-inner', '', { style: 'padding-left:18px' });
-
-    if (folderFiles.length === 0) {
-      inner.innerHTML = '<div style="font-size:10.5px;color:var(--muted);padding:4px 6px;font-style:italic">Thư mục trống</div>';
-    } else {
-      folderFiles.forEach(doc => {
-        const title = doc.title || doc.name || 'Tài liệu.pdf';
-        const isCurrent = doc.isOpen || (doc.id && doc.id === PDF_STATE.docId) || (title === currentFileName);
-        const fileNode = el('button', 'node' + (isCurrent ? ' on' : ''), `
-          ${ic('file')}
-          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${title}</span>
-          ${isCurrent ? '<span style="font-size:9px;background:var(--accent);color:var(--accent-fg);padding:0 4px;border-radius:2px;font-weight:700">Đang mở</span>' : ''}
-        `);
-        fileNode.onclick = (e) => {
-          e.stopPropagation();
-          document.querySelectorAll('.tree .node.on').forEach(z => z.classList.remove('on'));
-          fileNode.classList.add('on');
-          if (doc.id && doc.id !== 'current_doc') {
-            openCloudDoc(doc.id, title);
-          } else {
-            toast(`Đang hiển thị tài liệu: ${title}`);
-          }
-        };
-        inner.append(fileNode);
-      });
-    }
-
+  const fileRow = (n, depth) => {
+    const on = n.doc_id && n.doc_id === openDocId;
+    const row = el('button', 'node tree-file' + (on ? ' on' : '') + (n.intro ? ' tree-intro' : ''), ic(n.intro ? 'users' : 'file') + '<span class="tn"></span>');
+    row.style.paddingLeft = (8 + depth * 14) + 'px';
+    row.querySelector('.tn').textContent = n.name;
+    row.title = n.intro ? 'Trang giới thiệu chung — ai cũng ghi tên, ban, chức vụ của mình' : n.name;
+    row.onclick = e => { e.stopPropagation(); if (n.doc_id) openCloudDoc(n.doc_id, n.name); };
+    return row;
+  };
+  const folderRow = (n, depth) => {
+    const shut = TREE_SHUT.has(n.id);
+    const wrap = el('div', 'folder-node' + (n.id === SELECTED_TREE_FOLDER_ID ? ' selected-folder' : ''), '');
+    wrap.dataset.folder = n.name; wrap.dataset.folderId = n.id;
+    const head = el('div', 'tree-folder-header', '<span class="i-chev">' + ic('chev') + '</span>' + ic('folder') + '<span class="tn"></span><em class="badge"></em>');
+    head.style.paddingLeft = (4 + depth * 14) + 'px';
+    head.querySelector('.tn').textContent = n.name;
+    head.querySelector('.badge').textContent = countFiles(n.id);
+    head.querySelector('.i-chev').style.transform = shut ? 'rotate(0deg)' : 'rotate(90deg)';
+    const kids = el('div', 'kids' + (shut ? ' shut' : ''), '');
+    const inner = el('div', 'kids-inner', '');
+    (kidsOf.get(n.id) || []).forEach(c => inner.append(c.type === 'folder' ? folderRow(c, depth + 1) : fileRow(c, depth + 1)));
+    if (!(kidsOf.get(n.id) || []).length) { const em = el('div', 'tree-empty', 'Trống'); em.style.paddingLeft = (22 + depth * 14) + 'px'; inner.append(em); }
     kids.append(inner);
-
-    // Bấm chọn folder
-    const labelPart = folderRow.querySelector('.folder-main-label');
-    labelPart.onclick = () => {
-      SELECTED_TREE_FOLDER = folderName;
-      const isOpen = !kids.classList.contains('shut');
-      kids.classList.toggle('shut', isOpen);
-      folderRow.querySelector('.i-chev').style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-      document.querySelectorAll('.folder-node').forEach(fn => {
-        fn.querySelector('.tree-folder-header').style.background = 'transparent';
-        fn.querySelector('.tree-folder-header').style.borderColor = 'transparent';
-      });
-      folderRow.querySelector('.tree-folder-header').style.background = 'var(--surface-2)';
-      folderRow.querySelector('.tree-folder-header').style.borderColor = 'var(--line)';
+    head.onclick = () => {
+      SELECTED_TREE_FOLDER = n.name; SELECTED_TREE_FOLDER_ID = n.id;
+      if (TREE_SHUT.has(n.id)) TREE_SHUT.delete(n.id); else TREE_SHUT.add(n.id);
+      saveTreeShut();
+      document.querySelectorAll('.folder-node.selected-folder').forEach(x => x.classList.remove('selected-folder'));
+      wrap.classList.add('selected-folder');
+      const nowShut = TREE_SHUT.has(n.id);
+      kids.classList.toggle('shut', nowShut);
+      head.querySelector('.i-chev').style.transform = nowShut ? 'rotate(0deg)' : 'rotate(90deg)';
     };
+    wrap.append(head, kids);
+    return wrap;
+  };
 
-    // Nút đổi tên trên từng folder
-    folderRow.querySelector('.btn-folder-rename').onclick = (e) => {
-      e.stopPropagation();
-      const newName = prompt(`Nhập tên mới cho thư mục "${folderName}":`, folderName);
-      if (newName && newName.trim() && newName.trim() !== folderName) {
-        const trimmed = newName.trim();
-        const folders = getLocalFolders();
-        const idx = folders.indexOf(folderName);
-        if (idx !== -1) folders[idx] = trimmed;
-        else folders.push(trimmed);
-        saveLocalFolders(folders);
-        if (SELECTED_TREE_FOLDER === folderName) SELECTED_TREE_FOLDER = trimmed;
-        toast(`Đã đổi tên thư mục thành: "${trimmed}"`);
-        renderTree();
-      }
-    };
-
-    // Nút xóa trên từng folder
-    folderRow.querySelector('.btn-folder-del').onclick = (e) => {
-      e.stopPropagation();
-      const folders = getLocalFolders();
-      if (folders.length <= 1) return toast('Cần giữ lại ít nhất 1 thư mục');
-      if (confirm(`Bạn có chắc chắn muốn xóa thư mục "${folderName}"?`)) {
-        const idx = folders.indexOf(folderName);
-        if (idx !== -1) folders.splice(idx, 1);
-        saveLocalFolders(folders);
-        if (SELECTED_TREE_FOLDER === folderName) SELECTED_TREE_FOLDER = folders[0] || '';
-        toast(`Đã xóa thư mục: "${folderName}"`);
-        renderTree();
-      }
-    };
-
-    folderRow.dataset.folder = folderName;
-    listContainer.append(folderRow, kids);
-  });
+  (kidsOf.get('') || []).forEach(n => list.append(n.type === 'folder' ? folderRow(n, 0) : fileRow(n, 0)));
+  if (data && !data.root) {
+    const note = el('div', 'tree-empty', '');
+    note.textContent = isAdminUser() ? 'Chưa chọn thư mục lưu trên Drive kho (bánh răng → Kho lưu trữ).' : 'Kho lưu trữ chưa được Quản trị cài đặt.';
+    list.append(note);
+  }
+  box.replaceChildren(bar, list);
 }
+function isAdminUser() { return !!(CURRENT_USER && CURRENT_USER.role === 'Admin'); }
 
 const USERS=[];
 const ini=n=>n.slice(0,2).toUpperCase();
@@ -10764,7 +10605,7 @@ function start(){
         size: file.size,
         page_count: 1,
         scale_ratio: '1:100',
-        folder_name: SELECTED_TREE_FOLDER || ''
+        folder_name: SELECTED_TREE_FOLDER_ID ? '' : (SELECTED_TREE_FOLDER || ''), folder_id: SELECTED_TREE_FOLDER_ID || ''
       });
       if (!beginRes || !beginRes.ok || !beginRes.data) {
         throw new Error(beginRes?.error || 'Không khởi tạo được phiên tải lên');
@@ -10829,7 +10670,7 @@ function start(){
       document.querySelectorAll('.folder-node.drop-hover').forEach(n=>n.classList.remove('drop-hover'));
       if(!files.length) return toast('Chỉ nhận file PDF');
       if(!CURRENT_USER) return toast('Đăng nhập để tải PDF lên');
-      if(node && node.dataset.folder) SELECTED_TREE_FOLDER=node.dataset.folder;
+      if(node && node.dataset.folderId){ SELECTED_TREE_FOLDER=node.dataset.folder; SELECTED_TREE_FOLDER_ID=node.dataset.folderId; }
       for(const f of files){
         toast('Tải "'+f.name+'" vào thư mục: '+(SELECTED_TREE_FOLDER||'thư mục của bạn'));
         await uploadPdfInChunks(f, S.focus);
