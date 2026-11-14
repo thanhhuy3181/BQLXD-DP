@@ -25,7 +25,9 @@
     dlxls: { label: 'Excel (.xlsx) — danh sách ghi chú + chữ theo trang', ext: 'xlsx' },
     dlppt: { label: 'PowerPoint (.pptx) — mỗi trang một slide', ext: 'pptx' },
     dlxfdf: { label: 'Ghi chú XFDF (nhập được vào PDF-XChange/Acrobat)', ext: 'xfdf' },
-    dlcmt: { label: 'Danh sách ghi chú (Excel)', ext: 'xlsx' }
+    dlcmt: { label: 'Danh sách ghi chú (Excel)', ext: 'xlsx' },
+    dltxt: { label: 'Văn bản thuần (.txt) — chữ theo trang', ext: 'txt' },
+    dlhtml: { label: 'Trang web (.html) — chữ theo trang + ghi chú', ext: 'html' }
   };
 
   const baseName = () => {
@@ -113,14 +115,59 @@
         'Trạng thái': a.status || '',
         'Layer': a.layerName || '',
         'Màu viền': a.stroke || '',
-        'Trả lời': (a.replies || []).map(r => (r.author || '') + ': ' + (r.text || '')).join(' | ')
+        'Trả lời': (a.replies || []).map(r => (r.author || '') + ': ' + (r.text || '')).join(' | '),
+        'Thời gian': a.createdAt ? new Date(a.createdAt).toLocaleString('vi-VN') : ''
       });
     });
     rows.sort((x, y) => x['Trang'] - y['Trang']);
     return { ps, rows };
   }
 
+  // Chữ của một trang: ưu tiên chữ gốc (getTextContent); nếu trống thì dùng kết quả OCR (nếu đã nhận dạng).
+  async function pageLines(ps, n, page) {
+    const lines = await pageText(page);
+    if (lines.length) return { lines, ocr: false };
+    if (window.QLDA_OCR && typeof QLDA_OCR.linesFor === 'function') {
+      const ol = QLDA_OCR.linesFor(ps, n);
+      if (ol && ol.length) return { lines: ol, ocr: true };
+    }
+    return { lines: [], ocr: false };
+  }
+
   /* ---------- Từng định dạng ---------- */
+  async function doTxt(o) {
+    const ps = getActivePaneState();
+    const doc = ps && ps.doc;
+    if (!doc) throw new Error('Chưa mở tài liệu.');
+    const parts = [];
+    for (const n of parsePages(o.pages, doc.numPages)) {
+      toast('Đang trích chữ trang ' + n + '/' + doc.numPages + '...');
+      const r = await pageLines(ps, n, await doc.getPage(n));
+      parts.push('Trang ' + n + (r.ocr ? ' (chữ từ OCR)' : '') + '\r\n' + (r.lines.length ? r.lines.join('\r\n') : '(Trang không có chữ — bản vẽ dạng hình; dùng OCR để nhận chữ)'));
+    }
+    saveBlob(new Blob(['\ufeff' + parts.join('\r\n\r\n')], { type: 'text/plain;charset=utf-8' }), baseName() + '.txt');
+  }
+
+  async function doHtml(o) {
+    const ps = getActivePaneState();
+    const doc = ps && ps.doc;
+    if (!doc) throw new Error('Chưa mở tài liệu.');
+    const { rows } = annoRows();
+    const sec = [];
+    for (const n of parsePages(o.pages, doc.numPages)) {
+      toast('Đang dựng HTML trang ' + n + '/' + doc.numPages + '...');
+      const r = await pageLines(ps, n, await doc.getPage(n));
+      const mine = rows.filter(x => x['Trang'] === n);
+      let s = '<section id="trang-' + n + '"><h2>Trang ' + n + (r.ocr ? ' <small>(chữ từ OCR)</small>' : '') + '</h2>';
+      s += r.lines.length ? r.lines.map(t => '<p>' + xmlEsc(t) + '</p>').join('') : '<p class="trong">(Trang không có chữ — bản vẽ dạng hình)</p>';
+      if (mine.length) {
+        s += '<h3>Ghi chú</h3><ul class="ghichu">' + mine.map(x => '<li><b>' + xmlEsc(x['Loại']) + '</b>' + (x['Tác giả'] ? ' — ' + xmlEsc(x['Tác giả']) : '') + (x['Thời gian'] ? ' <small>' + xmlEsc(x['Thời gian']) + '</small>' : '') + (x['Nội dung'] ? ': ' + xmlEsc(x['Nội dung']) : '') + (x['Trả lời'] ? '<br><i>Trả lời: ' + xmlEsc(x['Trả lời']) + '</i>' : '') + '</li>').join('') + '</ul>';
+      }
+      sec.push(s + '</section>');
+    }
+    const html = '<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>' + xmlEsc(baseName()) + '</title><style>body{font-family:Arial,sans-serif;max-width:860px;margin:24px auto;padding:0 16px;line-height:1.5}section{border-top:2px solid #333;margin-top:20px;padding-top:6px}h2 small{font-weight:400;color:#666}.trong{color:#888;font-style:italic}.ghichu{background:#fffbe6;border:1px solid #e6d98a;padding:8px 8px 8px 28px}</style></head><body><h1>' + xmlEsc(baseName()) + '</h1>' + sec.join('') + '</body></html>';
+    saveBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), baseName() + '.html');
+  }
   async function doFlatPdf(o) {
     const { doc, oc } = await annotatedDoc();
     const out = await PDFLib.PDFDocument.create();
@@ -169,7 +216,7 @@
       const cx = 5943600, cy = Math.round(cx * r.hPx / r.wPx); // rộng 6.5 inch
       body.push(para('Trang ' + n, true));
       body.push(`<w:p><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${i}" name="Trang ${n}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${i}" name="trang${i}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rImg${i}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`);
-      (await pageText(r.page)).forEach(line => body.push(para(line)));
+      (await pageLines(getActivePaneState(), n, r.page)).lines.forEach(line => body.push(para(line)));
       body.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
     }
     zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
@@ -188,7 +235,7 @@
       const { doc } = await annotatedDoc();
       const lines = [];
       for (const n of parsePages(o.pages, doc.numPages)) {
-        (await pageText(await doc.getPage(n))).forEach(t => lines.push({ 'Trang': n, 'Nội dung': t }));
+        (await pageLines(getActivePaneState(), n, await doc.getPage(n))).lines.forEach(t => lines.push({ 'Trang': n, 'Nội dung': t }));
       }
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lines.length ? lines : [{ 'Trang': '', 'Nội dung': 'Trang không có chữ (bản vẽ dạng hình). Dùng OCR để nhận chữ.' }]), 'Chữ theo trang');
     }
@@ -298,6 +345,8 @@
         else if (f === 'dlcmt') await doExcel(o, true);
         else if (f === 'dlppt') await doPpt(o);
         else if (f === 'dlxfdf') await doXfdf();
+        else if (f === 'dltxt') await doTxt(o);
+        else if (f === 'dlhtml') await doHtml(o);
         toast('Đã xuất xong: ' + FORMATS[f].label);
       } catch (err) {
         console.error('Xuất lỗi:', err);
