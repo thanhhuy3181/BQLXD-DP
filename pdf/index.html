@@ -5932,7 +5932,8 @@ function pan(sc){
   sc.addEventListener('pointerdown',e=>{
     if(!(S.space||S.tool==='hand')||e.button!==0)return;
     if(e.pointerType==='touch')return; // cảm ứng: để trình duyệt tự cuộn (mượt, có quán tính)
-    if(e.target.closest('button, a, input, select, textarea, .empty-state, .anno-popup'))return;
+    if(e.target.closest('button, a, input, select, textarea, .empty-state, .anno-popup, .anno-inline-editor'))return;
+    if(e.__annoHit)return; // đang bấm vào ghi chú => chọn/di chuyển ghi chú
     st=[e.clientX,e.clientY,sc.scrollLeft,sc.scrollTop];
     sc.setPointerCapture(e.pointerId);
     $('#panes').classList.add('grabbing');
@@ -6376,7 +6377,8 @@ function bindLayerInteraction(ly,paneIdx){
       }
     }
     // Nếu hình chữ nhật không nền, click sâu trong ruột cho phép bỏ qua để quét chọn hoặc kéo trang
-    if(annoHit && !e.shiftKey && !e.ctrlKey && S.tool==='pick'){
+    const handPick = S.tool==='hand' && e.pointerType!=='touch';
+    if(annoHit && !e.shiftKey && !e.ctrlKey && (S.tool==='pick' || handPick)){
       const hitA = ANNO_MAP.get(annoHit.dataset.id);
       if(hitA && (hitA.type==='rect'||hitA.type==='oval') && (hitA.noFill||hitA.fill==='transparent'||hitA.fill==='none') && !hitA.text && !S.sel.has(hitA.id)){
         const ar = annoHit.getBoundingClientRect();
@@ -6386,8 +6388,9 @@ function bindLayerInteraction(ly,paneIdx){
         }
       }
     }
-    if(annoHit && (S.tool==='pick' || S.tool==='cursor' || S.tool==='form' || e.shiftKey || e.ctrlKey)){
+    if(annoHit && (S.tool==='pick' || S.tool==='cursor' || S.tool==='form' || handPick || e.shiftKey || e.ctrlKey)){
       const hitId=annoHit.dataset.id;
+      e.__annoHit = true; // báo cho pan() không kéo trang
       if(e.ctrlKey||e.shiftKey){
         if(S.sel.has(hitId))S.sel.delete(hitId);
         else S.sel.add(hitId);
