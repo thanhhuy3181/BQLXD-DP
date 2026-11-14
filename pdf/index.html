@@ -184,6 +184,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .seg a.on{background:var(--fg);color:var(--surface);box-shadow:none}
 .doc-title{min-width:0;flex:1;display:flex;align-items:center;gap:8px;color:var(--muted)}
 .doc-title strong{color:var(--fg);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-save{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-weight:600}
+.st-save[data-s=ok]{color:#16a34a}.st-save[data-s=busy]{color:#d97706}.st-save[data-s=err]{color:#dc2626}.st-save[data-s=off]{color:var(--muted)}
 .saved{display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap}
 .dot{width:7px;height:7px;border-radius:0;background:var(--ok)}
 .avatars{display:flex}
@@ -364,6 +366,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 /* Callout, Ruler, Stamp, Pin, Text */
 .anno-callout-line{position:absolute;pointer-events:none;z-index:1}
 .anno-stamp{display:grid;place-items:center;font-weight:800;letter-spacing:1px;text-transform:uppercase;border:2.5px solid;border-radius:5px;box-shadow:inset 0 0 0 1px currentColor;font-family:var(--mono);padding:4px 8px;transform:rotate(-4deg);text-align:center}
+.free-text{position:absolute;z-index:3;pointer-events:none;max-width:200%;width:max-content}
+.free-text-t{display:block;pointer-events:auto;cursor:grab;touch-action:none;user-select:none;background:rgba(255,255,255,.88);padding:.1em .35em;border-radius:2px;white-space:pre;line-height:1.25}
 .anno-ruler{display:flex;align-items:center;justify-content:center;position:absolute;inset:0}
 .anno-ruler-tag{background:var(--surface);border:1px solid var(--fg);font-family:var(--mono);font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;box-shadow:1px 1px 0 var(--hard)}
 .pin{position:absolute;width:22px;height:22px;margin:-22px 0 0 -4px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);animation:pop var(--mid);box-shadow:2px 2px 0 var(--hard);border:1.5px solid var(--fg);cursor:pointer}
@@ -454,6 +458,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .prop-sec-title{font-size:10.5px;text-transform:uppercase;font-weight:700;color:var(--muted);letter-spacing:.6px;font-family:var(--mono);display:flex;align-items:center;gap:4px;border-bottom:1px dashed var(--line);padding-bottom:4px}
 .prop-row{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px}
 .prop-row label{color:var(--muted);white-space:nowrap;min-width:95px}
+.prop-hint{font-size:10.5px;color:var(--muted);padding:2px 0 0}
 .prop-row input[type="range"]{flex:1;min-width:60px;accent-color:var(--accent)}
 .prop-row .val{font-family:var(--mono);font-size:11px;min-width:44px;text-align:right;white-space:nowrap;display:inline-block}
 .prop-num-box{width:52px;padding:2px 4px;font-size:11px;font-family:var(--mono);border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--fg);text-align:right}
@@ -708,6 +713,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
           </div>
           <span class="zoom-step"><button id="btnZoomOut" title="Thu nhỏ" aria-label="Thu nhỏ">−</button><span id="stZoom">100%</span><button id="btnZoomIn" title="Phóng to" aria-label="Phóng to">+</button></span>
           <span class="sp"></span>
+          <span id="stSave" class="st-save"></span>
           <span id="stOnline"></span>
         </div>
         <div class="mobile-bar" id="mobileBar"></div>
@@ -1621,25 +1627,48 @@ ANNO_MAP.delete = function(id){
   return _origAnnoDelete(id);
 };
 
+// Trạng thái tự lưu: ok | busy | err | off
+let SAVE_LAST_OK = 0;
+function setSaveStatus(kind, text, tip){
+  const st = document.getElementById('stSave');
+  if (st) { st.dataset.s = kind; st.textContent = text; st.title = tip || text; }
+  const sv = document.getElementById('docSavedStatus');
+  if (sv) sv.textContent = kind === 'off' ? '' : text;
+}
+function collabHasPending(){ return COLLAB_PENDING_UPSERTS.size > 0 || COLLAB_PENDING_DELETES.size > 0; }
+function savedLabel(){ return SAVE_LAST_OK ? 'Đã lưu ' + new Date(SAVE_LAST_OK).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Đã lưu'; }
 async function collabPollLoop(){
   // Chỉ đồng bộ khi đang mở một tài liệu thật và đã đăng nhập.
   if (!PDF_STATE.docId || !CURRENT_USER) {
-    const sv = document.getElementById('docSavedStatus');
-    if (sv) sv.innerHTML = '';
+    if (ANNO_MAP.size && !PDF_STATE.docId) setSaveStatus('off', 'Chưa lưu lên kho', 'File mở từ máy: ghi chú chỉ nằm trên trình duyệt này. Tải file lên kho để tự lưu và cùng sửa.');
+    else if (ANNO_MAP.size && !CURRENT_USER) setSaveStatus('err', 'Chưa đăng nhập – không tự lưu', 'Đăng nhập để ghi chú được tự lưu.');
+    else setSaveStatus('off', '');
     return;
   }
+  if (collabPollLoop.busy) return;
+  collabPollLoop.busy = true;
+  try { await collabPollOnce(); } finally { collabPollLoop.busy = false; }
+}
+async function collabPollOnce(){
   const docId = PDF_STATE.docId;
   const curPage = PDF_STATE.currentPage || 1;
 
   collabScanChanges();
-  // 1. Gửi các ghi chú đã thêm hoặc sửa (anno_upsert)
+  let saveErr = '', saveWarn = '';
+  const hadPending = collabHasPending();
+  if (hadPending) setSaveStatus('busy', 'Đang lưu…');
+  // 1. Gửi các ghi chú đã thêm hoặc sửa (anno_upsert). Lỗi => giữ lại để gửi lần sau (không mất).
   if(COLLAB_PENDING_UPSERTS.size > 0){
     const items = Array.from(COLLAB_PENDING_UPSERTS.values());
     COLLAB_PENDING_UPSERTS.clear();
-    try {
-      await pdfApi('anno_upsert', { doc_id: docId, items: items });
-    } catch(err){
-      console.warn('[collab] Lỗi anno_upsert:', err.message);
+    let r = null;
+    try { r = await pdfApi('anno_upsert', { doc_id: docId, items: items }); } catch(err){ r = { ok: false, error: err.message }; }
+    if (!r || !r.ok) {
+      items.forEach(it => { if (!COLLAB_PENDING_UPSERTS.has(it.id)) COLLAB_PENDING_UPSERTS.set(it.id, it); });
+      saveErr = (r && r.error) || 'Mất kết nối';
+    } else {
+      const rej = (r.data && r.data.rejected) || [];
+      if (rej.length) saveWarn = rej.length + ' ghi chú không lưu được (không có quyền sửa ghi chú của người khác, hoặc dữ liệu lỗi)';
     }
   }
 
@@ -1647,12 +1676,13 @@ async function collabPollLoop(){
   if(COLLAB_PENDING_DELETES.size > 0){
     const ids = Array.from(COLLAB_PENDING_DELETES);
     COLLAB_PENDING_DELETES.clear();
-    try {
-      await pdfApi('anno_delete', { doc_id: docId, ids: ids });
-    } catch(err){
-      console.warn('[collab] Lỗi anno_delete:', err.message);
-    }
+    let r = null;
+    try { r = await pdfApi('anno_delete', { doc_id: docId, ids: ids }); } catch(err){ r = { ok: false, error: err.message }; }
+    if (!r || !r.ok) { ids.forEach(i => COLLAB_PENDING_DELETES.add(i)); saveErr = saveErr || (r && r.error) || 'Mất kết nối'; }
   }
+  if (saveErr) setSaveStatus('err', 'Chưa lưu được – đang thử lại', 'Lỗi: ' + saveErr + '. Thay đổi vẫn được giữ và tự gửi lại.');
+  else if (saveWarn) setSaveStatus('err', 'Có ghi chú không lưu được', saveWarn);
+  else if (hadPending) { SAVE_LAST_OK = Date.now(); setSaveStatus('ok', '✓ ' + savedLabel()); }
 
   // 3. Lấy các thay đổi mới và nhịp tim hiện diện (anno_changes mỗi 1.5 giây)
   try {
@@ -1708,11 +1738,7 @@ async function collabPollLoop(){
         renderCollaboratorPresence(res.data.presence);
       }
 
-      const sv = document.querySelector('.saved');
-      if (sv) {
-        const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-        sv.innerHTML = `<svg class="save-check" viewBox="0 0 16 16"><path d="M2.5 8.5 L6 12 L13.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Đã đồng bộ ${time}`;
-      }
+      if (!saveErr && !saveWarn && !collabHasPending()) setSaveStatus('ok', '✓ ' + savedLabel(), 'Mọi thay đổi đã được lưu lên kho và chia sẻ cho người cùng mở');
     }
   } catch(pollErr){
     // Bỏ qua lỗi polling im lặng
@@ -1771,8 +1797,7 @@ function renderCollaboratorPresence(presenceList){
 }
 
 function triggerCloudSync() {
-  const sv = document.querySelector('.saved');
-  if (sv) sv.innerHTML = '<i class="dot" style="background:var(--warn)"></i>Đang đồng bộ...';
+  if (PDF_STATE.docId && CURRENT_USER) setSaveStatus('busy', 'Đang lưu…');
   clearTimeout(COLLAB_POLL_TIMER);
   COLLAB_POLL_TIMER = setTimeout(collabPollLoop, 200);
 }
@@ -1782,6 +1807,10 @@ setInterval(collabPollLoop, 1500);
 setTimeout(() => renderCollaboratorPresence([]), 200);
 
 // Giải phóng hiện diện khi đóng tab
+window.addEventListener('beforeunload', e => {
+  try { collabScanChanges(); } catch(_) {}
+  if (PDF_STATE.docId && CURRENT_USER && collabHasPending()) { e.preventDefault(); e.returnValue = ''; }
+});
 window.addEventListener('pagehide', () => {
   const docId = PDF_STATE.docId;
   if (!docId) return;
@@ -3098,6 +3127,7 @@ function getPagePdfSizePt(paneIdx = S.focus, pageNum = 1){
   }
   return { widthPt: 595.28, heightPt: 841.89 };
 }
+function annoK(a){ try { const p = getPagePdfSizePt(a.pane ?? S.focus, a.page ?? 1); return (p.widthPt || 1) / (p.heightPt || 1); } catch (_) { return 1; } }
 function pctBoxToMm(a){
   const { widthPt, heightPt } = getPagePdfSizePt(a.pane ?? S.focus, a.page ?? 1);
   const wMm = widthPt * PT_TO_MM, hMm = heightPt * PT_TO_MM;
@@ -3473,7 +3503,7 @@ function renderAnnoItem(a){
       : `<rect x="0" y="0" width="100%" height="100%" rx="${rx}" fill="${fillRgba}" stroke="${stroke}" stroke-width="${bw}" stroke-dasharray="${dashAttr}" vector-effect="non-scaling-stroke"/>`;
     elItem.innerHTML += `<svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:${a.noFill?'none':'auto'}" viewBox="0 0 100 100" preserveAspectRatio="none">${svgShape}</svg>`;
     if(a.text){
-      elItem.append(shapeTextEl(a, stroke));
+      elItem.append(a.type === 'oval' ? freeTextEl(a, stroke, elItem) : shapeTextEl(a, stroke));
     }
   }else if(a.type==='cloud'){
     elItem.style.border='none';
@@ -3690,10 +3720,7 @@ function renderAnnoItem(a){
         <polyline points="${svgPts}" fill="none" stroke="${stroke}" stroke-opacity="${op}" stroke-width="${bw}" stroke-dasharray="${dashAttr}" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
       </svg>`;
     }
-    if (a.text) {
-      const tag = el('div', 'anno-ruler', `<span class="anno-ruler-tag" style="color:${stroke}">${a.text}</span>`);
-      elItem.append(tag);
-    }
+    if (a.text) elItem.append(freeTextEl(a, stroke, elItem));
   }else{
     elItem.style.border=`${bw}px ${bs} ${stroke}`;
     elItem.style.backgroundColor=fill;
@@ -3880,8 +3907,8 @@ function updateSelectionOverlay(){
         const cp = el('div','ctrl-pt');
         cp.dataset.annoId = a.id;
         cp.title = label + ' (kéo để thay đổi)';
-        cp.style.left = (cx + rx*cs - ry*sn) + '%';
-        cp.style.top = (cy + rx*sn + ry*cs) + '%';
+        cp.style.left = (cx + rx*cs - ry*sn/annoK(a)) + '%';
+        cp.style.top = (cy + rx*sn*annoK(a) + ry*cs) + '%';
         bindLineEndDrag(cp, ly, a, i);
         ly.append(cp);
       });
@@ -3899,8 +3926,8 @@ function updateSelectionOverlay(){
         const cp = el('div', 'ctrl-pt');
         cp.dataset.annoId = a.id;
         cp.title = i ? 'Đầu mũi tên (kéo để đổi hướng chỉ)' : 'Điểm gấp (kéo để uốn đường dẫn)';
-        cp.style.left = (cx + rx * cs - ry * sn) + '%';
-        cp.style.top = (cy + rx * sn + ry * cs) + '%';
+        cp.style.left = (cx + rx * cs - ry * sn / annoK(a)) + '%';
+        cp.style.top = (cy + rx * sn * annoK(a) + ry * cs) + '%';
         bindCalloutPtDrag(cp, ly, a, i);
         ly.append(cp);
       });
@@ -3929,8 +3956,8 @@ function updateSelectionOverlay(){
           if (rotDeg !== 0) {
             const rx = px - cx;
             const ry = py - cy;
-            finalX = cx + (rx * cosR - ry * sinR);
-            finalY = cy + (rx * sinR + ry * cosR);
+            finalX = cx + (rx * cosR - ry * sinR / annoK(a));
+            finalY = cy + (rx * sinR * annoK(a) + ry * cosR);
           }
 
           cp.style.left = finalX + '%';
@@ -3956,8 +3983,8 @@ function bindCalloutPtDrag(cp, ly, a, idx) {
       const [nx, ny] = pct(ly, ev);
       const rad = -(a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
       const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
-      const lx = cx + (nx - cx) * cs - (ny - cy) * sn;
-      const ly2 = cy + (nx - cx) * sn + (ny - cy) * cs;
+      const lx = cx + (nx - cx) * cs - (ny - cy) * sn / annoK(a);
+      const ly2 = cy + (nx - cx) * sn * annoK(a) + (ny - cy) * cs;
       const nl = a.leader.map(f => [f[0], f[1]]);
       nl[idx] = [(lx - a.x) / Math.max(0.01, a.w), (ly2 - a.y) / Math.max(0.01, a.h)];
       a.leader = nl;
@@ -3986,7 +4013,7 @@ function bindLineEndDrag(cp, ly, a, endIdx) {
     const x2 = a.x2 != null ? a.x2 : a.x + a.w, y2 = a.y2 != null ? a.y2 : a.y + a.h;
     const rad = rotDeg * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
     const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
-    const rot = (px, py) => [cx + (px-cx)*cs - (py-cy)*sn, cy + (px-cx)*sn + (py-cy)*cs];
+    const rot = (px, py) => [cx + (px-cx)*cs - (py-cy)*sn/annoK(a), cy + (px-cx)*sn*annoK(a) + (py-cy)*cs];
     let P = [rot(x1, y1), rot(x2, y2)];
     a.rotate = 0;
     let changed = false;
@@ -4038,8 +4065,8 @@ function bindControlPointDrag(cp, ly, a, ptIdx) {
         const cy = a.y + a.h / 2;
         const rx = nx - cx;
         const ry = ny - cy;
-        localX = cx + (rx * cosR - ry * sinR);
-        localY = cy + (rx * sinR + ry * cosR);
+        localX = cx + (rx * cosR - ry * sinR / annoK(a));
+        localY = cy + (rx * sinR * annoK(a) + ry * cosR);
       }
 
       const clampedX = Math.max(0, Math.min(100, Number(localX.toFixed(3))));
@@ -5963,11 +5990,74 @@ function annoFontPx(a, def){
   } catch (_) {}
   return pt;
 }
+// Chữ đặt tự do (đa giác, đường liên tiếp, hình tròn): textPos = [fx, fy] theo khung hình (0..1), textRotate = độ.
+function isFreeTextShape(a){ return !!a && (a.type === 'poly' || a.type === 'polyline' || a.type === 'oval'); }
+function freeTextPos(a){ const p = Array.isArray(a.textPos) ? a.textPos : null; return p && isFinite(p[0]) && isFinite(p[1]) ? [+p[0], +p[1]] : [0.5, 0.5]; }
+// fx,fy trong khung (chưa xoay) -> % trên trang (đã xoay quanh tâm hình)
+function freeTextPagePct(a){
+  const [fx, fy] = freeTextPos(a);
+  const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+  const rad = (a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+  const rx = a.x + fx * a.w - cx, ry = a.y + fy * a.h - cy;
+  return [cx + rx * cs - ry * sn / annoK(a), cy + rx * sn * annoK(a) + ry * cs];
+}
+function freeTextPageMm(a){ const [px, py] = freeTextPagePct(a); const m = pctBoxToMm({ x: px, y: py, w: 0, h: 0, pane: a.pane, page: a.page }); return { x: m.x, y: m.y }; }
+function freeTextPosFromMm(a, xMm, yMm){
+  const p = mmBoxToPct({ x: xMm, y: yMm, w: 1, h: 1 }, a.pane ?? S.focus, a.page ?? 1);
+  const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+  const rad = -(a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+  const lx = cx + (p.x - cx) * cs - (p.y - cy) * sn / annoK(a), ly = cy + (p.x - cx) * sn * annoK(a) + (p.y - cy) * cs;
+  return [Number(((lx - a.x) / Math.max(0.01, a.w)).toFixed(4)), Number(((ly - a.y) / Math.max(0.01, a.h)).toFixed(4))];
+}
+function freeTextEl(a, defColor, elItem){
+  const [fx, fy] = freeTextPos(a);
+  const tag = document.createElement('div');
+  tag.className = 'free-text';
+  tag.style.left = (fx * 100) + '%';
+  tag.style.top = (fy * 100) + '%';
+  tag.style.transform = 'translate(-50%,-50%) rotate(' + (Number(a.textRotate) || 0) + 'deg)';
+  const t = document.createElement('span');
+  t.className = 'free-text-t';
+  const deco = [a.fontUnderline ? 'underline' : '', a.fontStrike ? 'line-through' : ''].filter(Boolean).join(' ') || 'none';
+  t.style.cssText = 'font-size:' + annoFontCss(a, 11) + ';font-family:' + (a.fontFamily || 'inherit')
+    + ';font-weight:' + (a.fontBold ? '700' : '500') + ';font-style:' + (a.fontItalic ? 'italic' : 'normal')
+    + ';text-decoration:' + deco + ';color:' + (a.textColor || defColor || '#0f172a') + ';text-align:' + (a.textAlign || 'center');
+  t.textContent = String(a.text);
+  t.title = 'Kéo để đặt chữ ở chỗ khác (ấn đúp để sửa chữ)';
+  tag.append(t);
+  // Kéo chữ độc lập với hình
+  t.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || a.locked) return;
+    if (e.pointerType === 'touch' && !S.sel.has(a.id)) return; // điện thoại: chọn hình trước rồi mới kéo chữ
+    e.stopPropagation(); e.preventDefault();
+    if (!S.sel.has(a.id) || S.sel.size !== 1) { S.sel.clear(); S.sel.add(a.id); syncAllAnnotations(true); }
+    const host = document.getElementById(a.id) || elItem;
+    const W = Math.max(1, host.offsetWidth), H = Math.max(1, host.offsetHeight);
+    const rad = (a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+    const sx = e.clientX, sy = e.clientY, start = freeTextPos(a);
+    const pre = captureAnnoSnapshot();
+    let moved = false;
+    const mv = ev => {
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (!moved && Math.hypot(dx, dy) < 3) return;
+      moved = true;
+      const lx = dx * cs + dy * sn, ly = -dx * sn + dy * cs;
+      a.textPos = [Number(Math.max(-0.5, Math.min(1.5, start[0] + lx / W)).toFixed(4)), Number(Math.max(-0.5, Math.min(1.5, start[1] + ly / H)).toFixed(4))];
+      syncAllAnnotations(true, true);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      if (moved) { a.isModified = true; pushUndoState(pre); syncAllAnnotations(false); }
+    };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  });
+  return tag;
+}
 function shapeTextEl(a, defColor){
   const wrap = document.createElement('div');
   wrap.className = 'shape-text';
   const al = a.textAlign || 'left';
-  wrap.style.cssText = 'position:absolute;inset:0;z-index:2;padding:3px 6px;box-sizing:border-box;overflow:hidden;pointer-events:none;display:flex;flex-direction:column;justify-content:flex-start';
+  wrap.style.cssText = 'position:absolute;inset:0;z-index:2;padding:3px 6px;box-sizing:border-box;overflow:hidden;pointer-events:none;display:flex;flex-direction:column;justify-content:' + ({ middle: 'center', bottom: 'flex-end' }[a.textVAlign] || 'flex-start');
   const t = document.createElement('div');
   const deco = [a.fontUnderline ? 'underline' : '', a.fontStrike ? 'line-through' : ''].filter(Boolean).join(' ') || 'none';
   t.style.cssText = 'white-space:pre-wrap;word-break:break-word;line-height:1.25;width:100%'
@@ -6006,12 +6096,12 @@ function calloutLeaderLocal(a) {
 function calloutLeaderAbs(a) {
   const rad = (a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
   const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
-  return calloutLeader(a).map(f => { const rx = a.x + f[0] * a.w - cx, ry = a.y + f[1] * a.h - cy; return [cx + rx * cs - ry * sn, cy + rx * sn + ry * cs]; });
+  return calloutLeader(a).map(f => { const rx = a.x + f[0] * a.w - cx, ry = a.y + f[1] * a.h - cy; return [cx + rx * cs - ry * sn / annoK(a), cy + rx * sn * annoK(a) + ry * cs]; });
 }
 function calloutLeaderFromAbs(a, abs) {
   const rad = -(a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
   const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
-  a.leader = abs.map(([X, Y]) => { const lx = cx + (X - cx) * cs - (Y - cy) * sn, ly = cy + (X - cx) * sn + (Y - cy) * cs; return [Number(((lx - a.x) / Math.max(0.01, a.w)).toFixed(4)), Number(((ly - a.y) / Math.max(0.01, a.h)).toFixed(4))]; });
+  a.leader = abs.map(([X, Y]) => { const lx = cx + (X - cx) * cs - (Y - cy) * sn / annoK(a), ly = cy + (X - cx) * sn * annoK(a) + (Y - cy) * cs; return [Number(((lx - a.x) / Math.max(0.01, a.w)).toFixed(4)), Number(((ly - a.y) / Math.max(0.01, a.h)).toFixed(4))]; });
 }
 function calloutLeaderPct(a) {
   const g = calloutLeaderLocal(a);
@@ -8402,24 +8492,26 @@ function syncPropertiesPanel(){
   // Phông & Cỡ chữ
   const rowFont = el('div', 'prop-row', `
     <label>Phông:</label>
-    <select class="field" id="propFontFamily" style="padding:2px 4px;font-size:11px;flex:1">
+    <select class="field" id="propFontFamily" style="padding:2px 4px;font-size:11px;flex:1;min-width:0;width:100%">
       <option value="Be Vietnam Pro, sans-serif" ${(obj.fontFamily||'').includes('Vietnam')?'selected':''}>Be Vietnam Pro</option>
       <option value="Arial, sans-serif" ${(obj.fontFamily||'').includes('Arial')?'selected':''}>Arial</option>
       <option value="'Times New Roman', serif" ${(obj.fontFamily||'').includes('Times')?'selected':''}>Times New Roman</option>
       <option value="'Courier New', monospace" ${(obj.fontFamily||'').includes('Courier')?'selected':''}>Courier New</option>
     </select>
-    <label style="margin-left:6px">Cỡ:</label>
-    <select class="field" id="propFontSize" style="padding:2px 4px;font-size:11px">
-      ${[9,10,11,12,13,14,16,18,20,24,28,32,36].map(s=>`<option value="${s}" ${(obj.fontSize||12)===s?'selected':''}>${s}pt</option>`).join('')}
+  `);
+  const rowSize = el('div', 'prop-row', `
+    <label>Cỡ chữ:</label>
+    <select class="field" id="propFontSize" style="padding:2px 4px;font-size:11px;flex:1;min-width:0;width:100%">
+      ${[...new Set([9,10,11,12,13,14,16,18,20,24,28,32,36,48,Number(obj.fontSize)||12])].sort((p,q)=>p-q).map(s=>`<option value="${s}" ${(Number(obj.fontSize)||12)===s?'selected':''}>${s} pt</option>`).join('')}
     </select>
   `);
   rowFont.querySelector('#propFontFamily').onchange = e => {
     applyPropertiesToSelection({ fontFamily: e.target.value });
   };
-  rowFont.querySelector('#propFontSize').onchange = e => {
+  rowSize.querySelector('#propFontSize').onchange = e => {
     applyPropertiesToSelection({ fontSize: +e.target.value });
   };
-  secTxt.append(rowFont);
+  secTxt.append(rowFont, rowSize);
 
   // Nút kiểu chữ & Căn lề
   const rowFmtBtns = el('div', 'prop-row', `
@@ -8430,13 +8522,18 @@ function syncPropertiesPanel(){
       <button class="btn sm ${obj.fontUnderline?'primary':'ghost'}" id="btnFmtUnderline" title="Gạch chân (Ctrl+U)" style="text-decoration:underline;padding:2px 6px">U</button>
       <button class="btn sm ${obj.fontStrike?'primary':'ghost'}" id="btnFmtStrike" title="Gạch ngang" style="text-decoration:line-through;padding:2px 6px">S</button>
     </div>
-    <label style="margin-left:auto">Căn:</label>
-    <div style="display:flex;gap:2px">
-      <button class="btn sm ${(obj.textAlign||'left')==='left'?'primary':'ghost'}" id="btnAlignLeft" title="Căn trái" style="padding:2px 6px">⇤</button>
-      <button class="btn sm ${obj.textAlign==='center'?'primary':'ghost'}" id="btnAlignCenter" title="Căn giữa" style="padding:2px 6px">≡</button>
-      <button class="btn sm ${obj.textAlign==='right'?'primary':'ghost'}" id="btnAlignRight" title="Căn phải" style="padding:2px 6px">⇥</button>
+  `);
+  const freeTxt = isFreeTextShape(obj);
+  const defAl = freeTxt ? 'center' : 'left';
+  const rowAlign = el('div', 'prop-row', `
+    <label>Căn ngang:</label>
+    <div style="display:flex;gap:3px">
+      <button class="btn sm ${(obj.textAlign||defAl)==='left'?'primary':'ghost'}" id="btnAlignLeft" title="Căn trái" style="padding:2px 6px">⇤</button>
+      <button class="btn sm ${(obj.textAlign||defAl)==='center'?'primary':'ghost'}" id="btnAlignCenter" title="Căn giữa" style="padding:2px 6px">≡</button>
+      <button class="btn sm ${(obj.textAlign||defAl)==='right'?'primary':'ghost'}" id="btnAlignRight" title="Căn phải" style="padding:2px 6px">⇥</button>
     </div>
   `);
+  rowFmtBtns.append(rowAlign);
   rowFmtBtns.querySelector('#btnFmtBold').onclick = () => applyPropertiesToSelection({ fontBold: !obj.fontBold });
   rowFmtBtns.querySelector('#btnFmtItalic').onclick = () => applyPropertiesToSelection({ fontItalic: !obj.fontItalic });
   rowFmtBtns.querySelector('#btnFmtUnderline').onclick = () => applyPropertiesToSelection({ fontUnderline: !obj.fontUnderline });
@@ -8444,7 +8541,43 @@ function syncPropertiesPanel(){
   rowFmtBtns.querySelector('#btnAlignLeft').onclick = () => applyPropertiesToSelection({ textAlign: 'left' });
   rowFmtBtns.querySelector('#btnAlignCenter').onclick = () => applyPropertiesToSelection({ textAlign: 'center' });
   rowFmtBtns.querySelector('#btnAlignRight').onclick = () => applyPropertiesToSelection({ textAlign: 'right' });
-  secTxt.append(rowFmtBtns);
+  rowAlign.remove();
+  secTxt.append(rowFmtBtns, rowAlign);
+  if (!freeTxt) {
+    // Hình chữ nhật / đám mây / chú dẫn / ô chữ: căn trên – giữa – dưới
+    const va = obj.textVAlign || 'top';
+    const rowV = el('div', 'prop-row', `
+      <label>Căn dọc:</label>
+      <div style="display:flex;gap:3px">
+        <button class="btn sm ${va==='top'?'primary':'ghost'}" data-va="top" title="Sát trên" style="padding:2px 6px">Trên</button>
+        <button class="btn sm ${va==='middle'?'primary':'ghost'}" data-va="middle" title="Giữa theo chiều dọc" style="padding:2px 6px">Giữa</button>
+        <button class="btn sm ${va==='bottom'?'primary':'ghost'}" data-va="bottom" title="Sát dưới" style="padding:2px 6px">Dưới</button>
+      </div>`);
+    rowV.querySelectorAll('button').forEach(b => b.onclick = () => applyPropertiesToSelection({ textVAlign: b.dataset.va }));
+    secTxt.append(rowV);
+  } else {
+    // Đa giác / đường liên tiếp / hình tròn: chữ đặt tự do — xoay + toạ độ (mm trên trang)
+    const rowTR = el('div', 'prop-row', `
+      <label>Xoay chữ:</label>
+      <input type="range" id="propTextRot" min="-180" max="180" value="${obj.textRotate||0}">
+      <span class="val" id="propTextRotVal">${obj.textRotate||0}°</span>`);
+    bindSmoothSlider(rowTR.querySelector('#propTextRot'), rowTR.querySelector('#propTextRotVal'), 'textRotate', '°');
+    const tp = freeTextPageMm(obj);
+    const rowTP = el('div', 'prop-row', `
+      <span>X chữ:<input class="prop-num" id="propTextX" value="${tp.x.toFixed(1)}">mm</span>
+      <span>Y chữ:<input class="prop-num" id="propTextY" value="${tp.y.toFixed(1)}">mm</span>
+      <button class="btn sm ghost" id="propTextCenter" title="Đưa chữ về giữa hình, bỏ xoay" style="padding:2px 6px">Về giữa</button>`);
+    const applyTP = () => {
+      const pos = freeTextPosFromMm(obj, +rowTP.querySelector('#propTextX').value || 0, +rowTP.querySelector('#propTextY').value || 0);
+      pushUndoState();
+      applyPropertiesToSelection({ textPos: pos });
+    };
+    rowTP.querySelector('#propTextX').onchange = applyTP;
+    rowTP.querySelector('#propTextY').onchange = applyTP;
+    rowTP.querySelector('#propTextCenter').onclick = () => { pushUndoState(); applyPropertiesToSelection({ textPos: [0.5, 0.5], textRotate: 0 }); };
+    secTxt.append(rowTR, rowTP);
+    secTxt.append(el('div', 'prop-hint', 'Mẹo: kéo trực tiếp phần chữ trên bản vẽ để đặt chỗ khác.'));
+  }
 
   targetBox.append(secTxt);
 }
