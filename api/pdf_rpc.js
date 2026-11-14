@@ -1659,6 +1659,74 @@ async function authorizeDocRead(req, docId) {
 }
 
 module.exports.authorizeDocRead = authorizeDocRead;
+
+/* ---------- Ảnh xem trước dùng chung (bản vẽ nặng) ----------
+   Người đầu tiên mở file vẽ xong thì gửi ảnh trang lên; người sau mở là thấy ngay trong lúc chờ nét vẽ.
+   Ảnh nằm trên Drive kho (thư mục riêng ngoài cây tài liệu), thông tin ở bqlda_settings key 'pv:<doc>:<trang>'.
+   Gắn với phiên bản file (m = thời điểm sửa file trên Drive): file đổi thì ảnh cũ bị bỏ qua và làm lại. */
+const PREVIEW_FOLDER = 'PDF-QLDA-xem-truoc';
+const PREVIEW_MAX_BYTES = 4 * 1024 * 1024;
+const pvKey = (docId, page) => 'pv:' + docId + ':' + page;
+const pvParse = v => { try { return typeof v === 'string' ? JSON.parse(v) : v; } catch (_) { return null; } };
+async function previewList(docId) {
+  const sql = await ensureDb();
+  if (!sql) return {};
+  const prefix = 'pv:' + docId + ':';
+  const rows = await sql`SELECT key, value FROM bqlda_settings WHERE key LIKE ${prefix + '%'}`;
+  const out = {};
+  for (const r of rows) {
+    if (!String(r.key).startsWith(prefix)) continue;
+    const page = Number(String(r.key).slice(prefix.length));
+    const v = pvParse(r.value);
+    if (page > 0 && v && v.file_id) out[page] = { m: v.m || '', w: v.w || 0, h: v.h || 0, mime: v.mime || '' };
+  }
+  return out;
+}
+async function previewMeta(docId, page) {
+  const sql = await ensureDb();
+  if (!sql) return null;
+  const rows = await sql`SELECT value FROM bqlda_settings WHERE key = ${pvKey(docId, page)} LIMIT 1`;
+  return rows[0] ? pvParse(rows[0].value) : null;
+}
+function previewMime(buf) {
+  if (buf.length > 12 && buf.slice(0, 4).toString('latin1') === 'RIFF' && buf.slice(8, 12).toString('latin1') === 'WEBP') return 'image/webp';
+  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  if (buf.length > 8 && buf[0] === 0x89 && buf.slice(1, 4).toString('latin1') === 'PNG') return 'image/png';
+  return null;
+}
+async function previewSave(doc, page, m, w, h, buf, username) {
+  const mime = previewMime(buf);
+  if (!mime) return { status: 400, error: 'Ảnh xem trước không hợp lệ (chỉ nhận WEBP/JPEG/PNG).' };
+  if (buf.length > PREVIEW_MAX_BYTES) return { status: 413, error: 'Ảnh xem trước quá lớn.' };
+  const sql = await ensureDb();
+  const old = await previewMeta(doc.id, page);
+  if (old && old.file_id && old.m === m) return { status: 200, data: { skipped: true } }; // đã có ảnh đúng phiên bản
+  const folder = await ensureDriveFolder(PREVIEW_FOLDER);
+  if (!folder) return { status: 502, error: 'Không tạo được thư mục ảnh xem trước trên Drive.' };
+  const ext = mime === 'image/webp' ? 'webp' : mime === 'image/png' ? 'png' : 'jpg';
+  const boundary = 'qlda' + crypto.randomBytes(8).toString('hex');
+  const metaJson = JSON.stringify({ name: doc.id + '_trang' + page + '.' + ext, parents: [folder], appProperties: { qlda_preview: doc.id + ':' + page } });
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metaJson}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`),
+    buf,
+    Buffer.from(`\r\n--${boundary}--`)
+  ]);
+  const up = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id', {
+    method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body
+  }, 60000);
+  const uj = await up.json().catch(() => ({}));
+  if (!up.ok || !uj.id) return { status: 502, error: 'Không lưu được ảnh xem trước lên Drive (HTTP ' + up.status + ').' };
+  const val = { file_id: uj.id, m, w, h, mime, size: buf.length, by: username, at: Date.now() };
+  await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES (${pvKey(doc.id, page)}, ${JSON.stringify(val)}, ${Date.now()})
+    ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`;
+  if (old && old.file_id) {
+    try { await driveFetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(old.file_id) + '?supportsAllDrives=true', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) }); } catch (_) {}
+  }
+  return { status: 200, data: { saved: true, page, m } };
+}
+module.exports.previewList = previewList;
+module.exports.previewMeta = previewMeta;
+module.exports.previewSave = previewSave;
 // Chỉ dùng trong scripts/test-pdf-rpc.cjs (gọi trong tiến trình, không lộ qua HTTP).
 module.exports.__setSqlFactoryForTests = factory => {
   sqlFactory = factory;

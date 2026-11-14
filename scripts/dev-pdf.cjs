@@ -437,6 +437,28 @@ const server = http.createServer(async (req, res) => {
     if (!docId) {
       return res.status(400).json({ ok: false, error: 'Thiếu tham số doc' });
     }
+    // Ảnh xem trước dùng chung (bản giả trong bộ nhớ, chỉ để chạy thử trên máy)
+    const pvQ = parsedUrl.searchParams;
+    if (pvQ.get('previews') != null || pvQ.get('preview') != null) {
+      global.__DEV_PV = global.__DEV_PV || new Map();
+      if (pvQ.get('previews') != null) {
+        const pages = {};
+        for (const [k, v] of global.__DEV_PV) if (k.startsWith(docId + ':')) pages[k.split(':')[1]] = { m: v.m, w: v.w, h: v.h };
+        return res.status(200).json({ ok: true, data: { pages } });
+      }
+      const key = docId + ':' + pvQ.get('preview');
+      if (req.method === 'PUT') {
+        const parts = []; for await (const c of req) parts.push(c);
+        const ex = global.__DEV_PV.get(key);
+        if (ex && ex.m === pvQ.get('m')) return res.status(200).json({ ok: true, data: { skipped: true } });
+        global.__DEV_PV.set(key, { m: pvQ.get('m'), w: +pvQ.get('w'), h: +pvQ.get('h'), type: req.headers['content-type'], bytes: Buffer.concat(parts) });
+        return res.status(200).json({ ok: true, data: { saved: true } });
+      }
+      const v = global.__DEV_PV.get(key);
+      if (!v || v.m !== pvQ.get('m')) return res.status(404).json({ ok: false, error: 'Chưa có ảnh' });
+      res.setHeader('Content-Type', v.type || 'image/webp');
+      return res.end(v.bytes);
+    }
     // File tài liệu tmb hoặc file thử nghiệm
     let filePath = path.resolve(root, '..', 'Phần mềm PDF', 'tmb_test.pdf');
     if (!fs.existsSync(filePath)) {

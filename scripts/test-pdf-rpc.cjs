@@ -42,6 +42,17 @@ global.fetch = async (url, opts = {}) => {
     fakeDrive.sessions.set(sid, { meta, size: Number(h['X-Upload-Content-Length']), origin: h.Origin, received: 0, fileId: null });
     return new Response(null, { status: 200, headers: { location: 'https://upload.fake/' + sid } });
   }
+  if (u.startsWith('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart') && method === 'POST') {
+    const raw = Buffer.from(opts.body);
+    const bnd = /boundary=([^;]+)/.exec(h['Content-Type'] || '')[1];
+    const parts = raw.toString('latin1').split('--' + bnd);
+    const meta = JSON.parse(parts[1].split('\r\n\r\n')[1]);
+    const head = parts[2].indexOf('\r\n\r\n') + 4;
+    const bytes = Buffer.from(parts[2].slice(head, parts[2].length - 2), 'latin1');
+    const id = 'pvfile_' + (nextFile++) + '_abcdefgh';
+    fakeDrive.files.set(id, { id, name: meta.name, bytes, parents: meta.parents, appProperties: meta.appProperties });
+    return json(200, { id });
+  }
   if (u.startsWith('https://upload.fake/')) {
     const s = fakeDrive.sessions.get(u.slice('https://upload.fake/'.length));
     if (!s) return json(404, {});
@@ -453,6 +464,55 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   check('2 người bình luận cùng lúc: giữ đủ cả 2', both.every(x => x.status === 200) && ['rc1', 'rc2'].every(id => hd.replies.some(r => r.id === id)), hd.replies);
   cr = await call('em', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'x' });
   check('người không được chia sẻ -> 403', cr.status === 403, cr.body);
+
+  /* 12. Ảnh xem trước dùng chung */
+  {
+    const { Readable } = require('stream');
+    const pv = async (user, method, q, body) => {
+      const headers = {};
+      if (user) headers.authorization = 'Bearer tok_' + user;
+      const req = body ? Readable.from([body]) : {};
+      Object.assign(req, { method, url: '/api/pdf_file?doc=d1&' + q, headers });
+      const res = new PassThrough();
+      res.statusCode = 200; res.headersMap = {};
+      res.setHeader = (k, v) => { res.headersMap[k.toLowerCase()] = v; };
+      Object.defineProperty(res, 'headersSent', { get: () => false });
+      const chunks = []; res.on('data', c => chunks.push(c));
+      const done = new Promise(r => res.on('finish', r));
+      await pdfFile(req, res); await done;
+      const b = Buffer.concat(chunks);
+      let j = null; try { j = JSON.parse(b.toString()); } catch (_) {}
+      return { status: res.statusCode, headers: res.headersMap, body: b, json: j };
+    };
+    const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0, 0, 0, 0]), Buffer.from('WEBPVP8 '), Buffer.alloc(40, 7)]);
+    const webp2 = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0, 0, 0, 0]), Buffer.from('WEBPVP8 '), Buffer.alloc(40, 9)]);
+    let r = await pv('chi', 'GET', 'previews=1');
+    check('ảnh xem trước: chưa có -> danh sách rỗng', r.status === 200 && Object.keys(r.json.data.pages).length === 0, r.json);
+    r = await pv('chi', 'PUT', 'preview=1&m=2026-01-01T00:00:00Z&w=1800&h=1272', webp);
+    check('Người xem gửi được ảnh xem trước', r.status === 200 && r.json.data.saved === true, r.json);
+    r = await pv('dung', 'GET', 'previews=1');
+    check('danh sách có trang 1 đúng phiên bản', r.status === 200 && r.json.data.pages[1] && r.json.data.pages[1].m === '2026-01-01T00:00:00Z' && r.json.data.pages[1].w === 1800, r.json);
+    r = await pv('dung', 'GET', 'preview=1&m=2026-01-01T00:00:00Z');
+    check('tải ảnh xem trước: đúng nội dung, kiểu image/webp, cho phép cache', r.status === 200 && r.body.equals(webp) && r.headers['content-type'] === 'image/webp' && /max-age/.test(r.headers['cache-control']), { s: r.status, h: r.headers });
+    r = await pv('dung', 'GET', 'preview=1&m=2026-02-02T00:00:00Z');
+    check('file đã đổi phiên bản -> 404 (không dùng ảnh cũ)', r.status === 404);
+    r = await pv('binh', 'PUT', 'preview=1&m=2026-01-01T00:00:00Z', webp2);
+    check('gửi lại cùng phiên bản -> bỏ qua, không ghi đè', r.status === 200 && r.json.data.skipped === true, r.json);
+    const oldId = pj((await db.raw("SELECT value FROM bqlda_settings WHERE key='pv:d1:1'"))[0].value).file_id;
+    r = await pv('binh', 'PUT', 'preview=1&m=2026-02-02T00:00:00Z', webp2);
+    const newId = pj((await db.raw("SELECT value FROM bqlda_settings WHERE key='pv:d1:1'"))[0].value).file_id;
+    check('phiên bản mới -> lưu ảnh mới, ảnh cũ vào thùng rác', r.status === 200 && newId !== oldId && fakeDrive.files.get(oldId).trashed === true, r.json);
+    r = await pv('binh', 'PUT', 'preview=2&m=x', Buffer.from('<script>alert(1)</script>'));
+    check('không phải ảnh -> 400', r.status === 400, r.json);
+    r = await pv('binh', 'PUT', 'preview=0&m=x', webp);
+    check('số trang sai -> 400', r.status === 400);
+    r = await pv('em', 'PUT', 'preview=1&m=x', webp);
+    check('người không được chia sẻ không gửi được ảnh -> 403', r.status === 403);
+    r = await pv(null, 'GET', 'previews=1');
+    check('chưa đăng nhập -> 401', r.status === 401);
+    r = await pv('chi', 'PUT', '', webp);
+    check('PUT vào file PDF gốc bị từ chối -> 405', r.status === 405);
+  }
 
   console.log(results.join('\n'));
   console.log(`\nKết quả: ${pass} đạt, ${fail} lỗi`);

@@ -495,7 +495,7 @@ body.layer-pick .page,body.layer-pick .page .layer,body.layer-pick #panes.pan .s
 .cth-in{display:flex;gap:4px;align-items:flex-end;position:relative}
 .cth-in textarea{flex:1;min-height:30px;max-height:120px;resize:vertical;font:inherit;font-size:12px;padding:4px 6px;border:1.5px solid var(--fg);border-radius:5px;background:var(--surface);color:var(--fg)}
 .cth-in button{flex:none}
-.mention-pop{position:absolute;left:0;right:40px;bottom:100%;margin-bottom:3px;background:var(--surface);border:1.5px solid var(--fg);border-radius:6px;box-shadow:2px 2px 0 var(--hard);max-height:180px;overflow:auto;z-index:50}
+.mention-pop{position:fixed;background:var(--surface);border:1.5px solid var(--fg);border-radius:6px;box-shadow:2px 2px 0 var(--hard);max-height:220px;overflow:auto;z-index:2000}
 .mention-pop div{padding:5px 8px;font-size:12px;cursor:pointer;display:flex;gap:6px}
 .mention-pop div small{color:var(--muted)}
 .mention-pop div.on,.mention-pop div:hover{background:var(--accent);color:var(--accent-fg,#fff)}
@@ -5859,6 +5859,7 @@ function pagePreviewFromCanvas(wrap, src, key) {
   try {
     const old = wrap.querySelector('canvas.pdf-base');
     if (old && old.dataset.k === key) return;
+    if (old && old.dataset.shared && old.dataset.k === key) return;
     const k = Math.min(1, PREVIEW_MAX / Math.max(src.width, src.height));
     const c = document.createElement('canvas');
     c.className = 'pdf-base'; c.dataset.k = key;
@@ -6153,6 +6154,7 @@ async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
     const baseKeyPv = `${rot}_oc${ps.ocRev || 0}`;
     if (!isPartial) pagePreviewFromCanvas(canvasWrap, nextCanvas, baseKeyPv);
     else ensurePagePreview(ps, page, pi, canvasWrap, baseKeyPv);
+    maybeSharePreview(ps, pageNum, page, pi);
 
     await renderTextLayerForPage(ps, page, pageNum, pageEl, pi);
 
@@ -9516,6 +9518,92 @@ function setOpenProgress(docId, text) {
     else if (tag) tag.remove();
   });
 }
+/* ===== Ảnh xem trước dùng chung (bản vẽ nặng) =====
+   Mở file: lấy ảnh trang đã có trên máy chủ (đúng phiên bản file) -> hiện ngay trong lúc nét vẽ đang dựng.
+   Chưa có: máy này vẽ xong thì tự làm ảnh ~3000 px và gửi lên cho người sau. */
+const PV_VERSION = new Map();      // docId -> phiên bản file (thời điểm sửa trên Drive)
+const PV_SENT = new Set();         // docId:trang đã gửi trong phiên này
+const PV_UPLOAD_MAX = 3000;
+function pdfAuthHeaders() {
+  const tok = localStorage.getItem('bqlda_session_token') || localStorage.getItem('bqlda_web_session') || localStorage.getItem('awm_session') || sessionStorage.getItem('awm_session') || '';
+  return tok ? { Authorization: 'Bearer ' + tok } : {};
+}
+function pvBaseKey(ps, pageNum) {
+  const pi = ps.pageInfos[pageNum - 1];
+  return `${pageRotation(pi && pi.page, pi)}_oc${ps.ocRev || 0}`;
+}
+async function loadSharedPreviews(ps, docId) {
+  const m = PV_VERSION.get(docId);
+  ps.pvPages = null;
+  if (!m || docId === 'ban-la-ai') return;
+  ps.pvListPromise = (async () => {
+    try {
+      const r = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&previews=1', { headers: pdfAuthHeaders() });
+      const j = await r.json();
+      return (j && j.ok && j.data && j.data.pages) || {};
+    } catch (_) { return {}; }
+  })();
+  const pages = await ps.pvListPromise;
+  if (ps.docId !== docId) return;
+  ps.pvPages = pages;
+  for (const [p, info] of Object.entries(pages)) {
+    if (!info || info.m !== m) continue;
+    const pageNum = +p;
+    try {
+      const r = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&preview=' + pageNum + '&m=' + encodeURIComponent(m), { headers: pdfAuthHeaders() });
+      if (!r.ok) continue;
+      const bmp = await createImageBitmap(await r.blob());
+      if (ps.docId !== docId) return;
+      const sc = document.querySelectorAll('.pane')[ps.paneIdx]?.querySelector('.scroll');
+      const wrap = sc && sc.querySelector(`.page[data-page="${pageNum}"] .canvas-wrap`);
+      if (!wrap) continue;
+      const c = document.createElement('canvas');
+      c.width = bmp.width; c.height = bmp.height;
+      c.getContext('2d').drawImage(bmp, 0, 0);
+      if (bmp.close) bmp.close();
+      c.className = 'pdf-base'; c.dataset.k = pvBaseKey(ps, pageNum); c.dataset.shared = '1';
+      c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;';
+      const old = wrap.querySelector('canvas.pdf-base');
+      if (old) { old.width = 1; old.height = 1; old.remove(); }
+      wrap.prepend(c);
+      const sk = wrap.querySelector('.page-loading-skeleton'); if (sk) sk.style.display = 'none';
+    } catch (_) {}
+  }
+}
+// Gọi sau khi một trang vẽ xong: trang nặng chưa có ảnh chung đúng phiên bản -> làm & gửi (một lần).
+async function maybeSharePreview(ps, pageNum, page, pi) {
+  try {
+    const docId = ps.docId, m = PV_VERSION.get(docId);
+    if (!docId || !m || docId === 'ban-la-ai' || !CURRENT_USER) return;
+    if ((ps.ocRev || 0) !== 0 || (pi && pi.rotate)) return; // chỉ ảnh mặc định (đủ layer, không xoay)
+    const key = docId + ':' + pageNum;
+    if (PV_SENT.has(key) || !displayIntentOf(page)) return; // chỉ trang nặng
+    PV_SENT.add(key);
+    const pages = ps.pvPages || (ps.pvListPromise ? await ps.pvListPromise : {});
+    if (pages[pageNum] && pages[pageNum].m === m) return;
+    await new Promise(r => setTimeout(r, 1500)); // nhường lượt vẽ chính
+    if (ps.docId !== docId) return;
+    const vp1 = pageViewport(page, pi, 1);
+    const k = PV_UPLOAD_MAX / Math.max(vp1.width, vp1.height);
+    const vp = pageViewport(page, pi, k);
+    const c = document.createElement('canvas');
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+    prepareFastRender(page, vp, c.width, c.height);
+    await page.render({ canvasContext: ctx, viewport: vp, annotationMode: pdfjsLib.AnnotationMode ? pdfjsLib.AnnotationMode.ENABLE : 1 }).promise;
+    const toBlob = (type, q) => new Promise(r => c.toBlob(r, type, q));
+    let blob = await toBlob('image/webp', 0.82);
+    if (!blob || blob.type !== 'image/webp' || blob.size > 3.8e6) blob = await toBlob('image/jpeg', 0.78);
+    if (blob && blob.size > 3.8e6) blob = await toBlob('image/jpeg', 0.55);
+    c.width = 1; c.height = 1;
+    if (!blob || blob.size > 4e6) return;
+    const q = '&preview=' + pageNum + '&m=' + encodeURIComponent(m) + '&w=' + Math.round(vp.width) + '&h=' + Math.round(vp.height);
+    const r = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + q, { method: 'PUT', headers: Object.assign({ 'Content-Type': blob.type }, pdfAuthHeaders()), body: blob });
+    if (r.ok && ps.pvPages) ps.pvPages[pageNum] = { m };
+  } catch (err) { console.warn('share preview:', err); }
+}
+
 const PDF_FILE_CACHE = 'pdf-files-v1';
 function pdfCacheKey(docId, size, modified) {
   const me = (typeof CURRENT_USER !== 'undefined' && CURRENT_USER && (CURRENT_USER.username || CURRENT_USER.user)) || '';
@@ -9616,6 +9704,7 @@ function restorePaneDoc(docId, paneIdx) {
   return true;
 }
 async function openCloudDoc(docId, docTitle, knownSize, modified) {
+  if (modified) PV_VERSION.set(docId, String(modified).slice(0, 64));
   const focusPs = getActivePaneState();
   if (focusPs.docId === docId && focusPs.doc) { toast('Đang mở sẵn: ' + docTitle); return; }
   // Lưu nốt ghi chú đang chờ của file hiện tại trước khi chuyển (không gửi nhầm sang file khác)
@@ -9641,6 +9730,7 @@ async function openCloudDoc(docId, docTitle, knownSize, modified) {
       setOpenProgress(docId, 'đang mở…');
       await loadRealPdf(cached, docTitle || 'tai-lieu.pdf', false);
       PDF_STATE.docId = docId;
+      loadSharedPreviews(getActivePaneState(), docId);
       COLLAB_CURSOR = 0;
       if (typeof collabPollLoop === 'function') collabPollLoop();
       showLoadOverlay(null);
@@ -9675,6 +9765,7 @@ async function openCloudDoc(docId, docTitle, knownSize, modified) {
       setOpenProgress(docId, 'đang mở…');
       await loadRealPdf(ab, docTitle || 'tai-lieu.pdf', false);
       PDF_STATE.docId = docId;
+      loadSharedPreviews(getActivePaneState(), docId);
       COLLAB_CURSOR = 0;
       if (typeof collabPollLoop === 'function') collabPollLoop();
       if (docId === 'ban-la-ai' && typeof fitPage === 'function') setTimeout(fitPage, 200);
@@ -11132,8 +11223,13 @@ function cmtBindMention(ta, wrap){
     const nq = cmtNorm(q.q);
     items = cmtPeople().filter(p => !nq || cmtNorm(p.fullname).includes(nq) || cmtNorm(p.username).includes(nq)).slice(0, 8);
     if (!items.length) return close();
-    if (!pop) { pop = document.createElement('div'); pop.className = 'mention-pop'; ta.parentElement.append(pop); }
+    if (!pop) { pop = document.createElement('div'); pop.className = 'mention-pop'; document.body.append(pop); }
     idx = Math.min(idx, items.length - 1);
+    // Khung nổi trên cả trang (không bị bảng bình luận cắt): hiện dưới ô gõ, hết chỗ thì hiện lên trên
+    { const r = ta.getBoundingClientRect(); const below = innerHeight - r.bottom, above = r.top; const h = Math.min(220, items.length * 30 + 6);
+      pop.style.left = Math.max(4, Math.min(r.left, innerWidth - Math.max(220, r.width) - 4)) + 'px'; pop.style.width = Math.max(220, r.width) + 'px';
+      if (below >= h + 8 || below >= above) { pop.style.top = (r.bottom + 3) + 'px'; pop.style.bottom = 'auto'; pop.style.maxHeight = Math.max(90, below - 10) + 'px'; }
+      else { pop.style.top = 'auto'; pop.style.bottom = (innerHeight - r.top + 3) + 'px'; pop.style.maxHeight = Math.max(90, above - 10) + 'px'; } }
     pop.replaceChildren(...items.map((p, i) => { const d = document.createElement('div'); d.className = i === idx ? 'on' : ''; const b = document.createElement('b'); b.textContent = p.fullname; const sm = document.createElement('small'); sm.textContent = '@' + p.username; d.append(b, sm); d.onmousedown = ev => { ev.preventDefault(); pick(p); }; return d; }));
   };
   ta.addEventListener('input', () => { CMT_LAST_KEY = Date.now(); idx = 0; CMT_DRAFT.set(wrap.dataset.id, ta.value); show(); });
@@ -11156,6 +11252,7 @@ function renderCommentPanel(force){
   if (!force && sig === CMT_SIG) return;
   if (!force && typing && Date.now() - CMT_LAST_KEY < 1500) { scheduleCmtRender(); return; } // đang gõ dở: đợi chút
   CMT_SIG = sig;
+  document.querySelectorAll('body > .mention-pop').forEach(p => p.remove()); // ô gõ cũ sắp bị dựng lại
   const focusId = typing ? active.closest('.cth')?.dataset.id : null;
   const caret = typing ? active.selectionStart : 0;
   const me = cmtMe(), seenTs = cmtMentionSeenTs();
