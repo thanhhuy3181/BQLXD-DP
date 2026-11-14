@@ -26,6 +26,20 @@
 .tree-folder-header .i-chev{display:inline-flex;transition:transform var(--fast)}
 .tree-file{display:flex;align-items:center;gap:6px;width:100%;font-size:11.5px}
 .tree-intro{font-weight:700;color:var(--accent)}
+.load-ov{position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:9500;display:flex;justify-content:center;padding:0 12px;pointer-events:none}
+.load-ov .load-card{pointer-events:auto;padding:10px 12px;gap:6px}
+.tree-file.loading{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 22%,transparent) var(--p,0%),transparent var(--p,0%));transition:background .2s}
+.tree-file.loading.indet{background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 22%,transparent),transparent);background-size:50% 100%;background-repeat:no-repeat;animation:rowScan 1.2s linear infinite}
+@keyframes rowScan{0%{background-position:-50% 0}100%{background-position:150% 0}}
+.load-card{width:min(360px,100%);background:var(--surface);border:1.5px solid var(--fg);border-radius:10px;box-shadow:4px 4px 0 var(--hard);padding:16px;display:flex;flex-direction:column;gap:10px}
+.load-card .lt{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbar{height:12px;border:1.5px solid var(--fg);border-radius:6px;overflow:hidden;background:var(--surface-2)}
+.lbar i{display:block;height:100%;background:var(--accent);transition:width .2s}
+.lbar.indet i{animation:lbarMove 1.1s ease-in-out infinite}
+@keyframes lbarMove{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+.lrow{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.lrow .lp{font-size:20px;font-weight:800;color:var(--fg)}
+.load-card .lx{align-self:flex-end}
 .tf-prog{flex:none;font-size:10px;font-weight:700;background:var(--accent);color:var(--accent-fg);padding:1px 5px;border-radius:4px}
 .tree-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 8px}
 .thumb-card{border:1.5px solid var(--line);border-radius:6px;padding:6px;cursor:pointer;background:var(--surface);transition:all var(--fast);display:flex;flex-direction:column;gap:4px;box-shadow:2px 2px 0 rgba(0,0,0,.08)}
@@ -8476,25 +8490,46 @@ window.addEventListener('dblclick',e=>{
 /* ---------- Cây thư mục & Quản lý tài liệu Cloud ---------- */
 let OPEN_DOC_SEQ = 0;
 // Hiện tiến độ tải ngay trên tab "Trang" và trên dòng file trong cây (mạng chậm / file lớn vẫn thấy đang chạy).
+// Khung tiến độ lớn giữa màn hình khi mở file từ Drive (để người dùng biết phải đợi bao lâu).
+function showLoadOverlay(title, pct, detail) {
+  let ov = document.getElementById('loadOverlay');
+  if (title === null) { if (ov) ov.remove(); return; }
+  if (!ov) {
+    ov = el('div', 'load-ov', '<div class="load-card"><b class="lt"></b><div class="lbar"><i></i></div><div class="lrow"><span class="lp"></span><span class="ld"></span></div><button class="btn ghost sm lx">Huỷ</button></div>');
+    ov.id = 'loadOverlay';
+    ov.querySelector('.lx').onclick = () => { OPEN_DOC_SEQ++; showLoadOverlay(null); const c = $('#sideThumbsCount'); if (c) c.textContent = (getActivePaneState()?.numPages || 0); document.querySelectorAll('#tree .tf-prog').forEach(t => t.remove()); };
+    document.body.append(ov);
+  }
+  ov.querySelector('.lt').textContent = 'Đang mở "' + title + '"';
+  ov.querySelector('.lbar i').style.width = (pct == null ? 30 : pct) + '%';
+  ov.querySelector('.lbar').classList.toggle('indet', pct == null);
+  ov.querySelector('.lp').textContent = pct == null ? '' : pct + '%';
+  ov.querySelector('.ld').textContent = detail || '';
+}
 function setOpenProgress(docId, text) {
   const c = $('#sideThumbsCount'); if (c) c.textContent = text;
+  const pm = /^(\d+)%$/.exec(String(text || ''));
   document.querySelectorAll('#tree .tree-file').forEach(b => {
     const mine = b.dataset.docId === docId;
+    const loading = mine && text && text !== 'lỗi';
+    b.classList.toggle('loading', !!loading);
+    b.classList.toggle('indet', !!loading && !pm && text !== 'đang mở…');
+    b.style.setProperty('--p', loading ? (pm ? pm[1] : (text === 'đang mở…' ? 100 : 0)) + '%' : '0%');
     let tag = b.querySelector('.tf-prog');
     if (mine && text) { if (!tag) { tag = el('span', 'tf-prog', ''); b.append(tag); } tag.textContent = text; }
     else if (tag) tag.remove();
   });
 }
-async function openCloudDoc(docId, docTitle) {
+async function openCloudDoc(docId, docTitle, knownSize) {
   const seq = ++OPEN_DOC_SEQ;
   setOpenProgress(docId, 'đang tải…');
-  toast(`Đang tải "${docTitle}"...`);
+  showLoadOverlay(docTitle, null, 'Đang kết nối Google Drive...');
   try {
     // Tải dạng stream qua /api/pdf_file (không bị giới hạn 25 MB như drive_download cũ).
     const tok = localStorage.getItem('bqlda_session_token') || localStorage.getItem('bqlda_web_session') || localStorage.getItem('awm_session') || sessionStorage.getItem('awm_session') || '';
     const fr = docId === 'ban-la-ai' ? await fetch('/pdf/ban-la-ai.pdf') : await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId), { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
     if (fr.ok) {
-      const total = Number(fr.headers.get('content-length')) || 0;
+      const total = Number(fr.headers.get('content-length')) || Number(knownSize) || 0;
       let ab;
       if (fr.body && fr.body.getReader) {
         const rd = fr.body.getReader(); const parts = []; let got = 0;
@@ -8502,27 +8537,32 @@ async function openCloudDoc(docId, docTitle) {
           const { done, value } = await rd.read();
           if (done) break;
           parts.push(value); got += value.length;
-          if (seq === OPEN_DOC_SEQ) setOpenProgress(docId, total ? Math.min(99, Math.round(got * 100 / total)) + '%' : (got / 1048576).toFixed(1) + ' MB');
+          if (seq !== OPEN_DOC_SEQ) { try { rd.cancel(); } catch (_) {} return; }
+          const pct = total ? Math.min(99, Math.round(got * 100 / total)) : null;
+          setOpenProgress(docId, pct != null ? pct + '%' : (got / 1048576).toFixed(1) + ' MB');
+          showLoadOverlay(docTitle, pct, (got / 1048576).toFixed(1) + (total ? ' / ' + (total / 1048576).toFixed(1) : '') + ' MB');
         }
         ab = new Uint8Array(got); let o = 0; for (const p of parts) { ab.set(p, o); o += p.length; }
       } else ab = new Uint8Array(await fr.arrayBuffer());
-      if (seq !== OPEN_DOC_SEQ) return; // người dùng đã bấm file khác
+      if (seq !== OPEN_DOC_SEQ) return; // người dùng đã bấm file khác hoặc bấm Huỷ
+      showLoadOverlay(docTitle, 100, 'Đang dựng trang...');
       setOpenProgress(docId, 'đang mở…');
       await loadRealPdf(ab, docTitle || 'tai-lieu.pdf', false);
       PDF_STATE.docId = docId;
       COLLAB_CURSOR = 0;
       if (typeof collabPollLoop === 'function') collabPollLoop();
       if (docId === 'ban-la-ai' && typeof fitPage === 'function') setTimeout(fitPage, 200);
+      showLoadOverlay(null);
       renderTree();
       toast(`Đã mở tài liệu: ${docTitle}`);
       return;
     }
     const errJ = await fr.json().catch(() => ({}));
-    setOpenProgress(docId, 'lỗi');
+    setOpenProgress(docId, 'lỗi'); showLoadOverlay(null);
     toast('Không mở được "' + docTitle + '": ' + (errJ.error || ('HTTP ' + fr.status)));
   } catch (err) {
     console.error('openCloudDoc error:', err);
-    setOpenProgress(docId, 'lỗi');
+    setOpenProgress(docId, 'lỗi'); showLoadOverlay(null);
     toast('Lỗi tải "' + docTitle + '": ' + err.message);
   }
 }
@@ -9551,7 +9591,7 @@ async function renderTree() {
     row.querySelector('.tn').textContent = n.name;
     if (n.doc_id) row.dataset.docId = n.doc_id;
     row.title = n.intro ? 'Trang giới thiệu chung — ai cũng ghi tên, ban, chức vụ của mình' : n.name;
-    row.onclick = e => { e.stopPropagation(); if (n.doc_id) openCloudDoc(n.doc_id, n.name); };
+    row.onclick = e => { e.stopPropagation(); if (n.doc_id) openCloudDoc(n.doc_id, n.name, n.size); };
     return row;
   };
   const folderRow = (n, depth) => {
