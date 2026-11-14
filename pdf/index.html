@@ -335,8 +335,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .ptab-btn{flex:none;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:2px 8px;border:1px solid var(--fg);border-radius:4px;background:var(--surface-2);font-size:11px;font-weight:600;box-shadow:1px 1px 0 var(--hard)}
 .ptab-btn:hover{background:var(--accent-soft)}
 .pane.focus .ptab{box-shadow:inset 0 -3px 0 var(--hot)}
-.scroll{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;align-items:safe center;gap:14px}
-.page{position:relative;width:calc(var(--zoom,100)*1%);max-width:none;flex:none;background:#fff;box-shadow:5px 5px 0 var(--hard);outline:1.5px solid var(--hard);touch-action:pan-y;user-select:none}
+.scroll{flex:1;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;align-items:safe center;gap:14px}
+.page{position:relative;width:calc(var(--zoom,100)*1%);max-width:none;flex:none;background:#fff;box-shadow:5px 5px 0 var(--hard);outline:1.5px solid var(--hard);touch-action:pan-x pan-y;user-select:none}
 .layer{position:absolute;inset:0;overflow:hidden}
 .layer.draw{cursor:crosshair;touch-action:none}
 
@@ -5879,6 +5879,7 @@ function pan(sc){
   const end=()=>{st=null;$('#panes').classList.remove('grabbing')};
   sc.addEventListener('pointerdown',e=>{
     if(!(S.space||S.tool==='hand')||e.button!==0)return;
+    if(e.pointerType==='touch')return; // cảm ứng: để trình duyệt tự cuộn (mượt, có quán tính)
     if(e.target.closest('button, a, input, select, textarea, .empty-state, .anno-popup'))return;
     st=[e.clientX,e.clientY,sc.scrollLeft,sc.scrollTop];
     sc.setPointerCapture(e.pointerId);
@@ -10460,6 +10461,9 @@ function start(){
   const T={pinch:null,qz:null,lastTap:null,down:null,lp:null,lpStart:[0,0]};
   const scAt=(x,y)=>{const t=document.elementFromPoint(x,y);return t&&t.closest?t.closest('.scroll'):null;};
   const setBusy=()=>{window.PDF_TOUCH_BUSY=!!(T.pinch||T.qz); if(T.pinch||T.qz)window.PDF_GESTURE_AT=Date.now();};
+  // Gom thay đổi zoom: tối đa 1 lần mỗi khung hình (mượt hơn khi chụm/kéo).
+  let ZQ=null, ZRAF=0;
+  const queueZoom=(sc,x,y,z)=>{ ZQ=[sc,x,y,z]; if(!ZRAF) ZRAF=requestAnimationFrame(()=>{ ZRAF=0; const q=ZQ; ZQ=null; if(q) zoomScrollAt(q[0],q[1],q[2],q[3]); }); };
   const panesEl=$('#panes');
   panesEl.addEventListener('touchstart',e=>{
     const n=e.touches.length; window.PDF_TOUCH_N=n; clearTimeout(T.lp);
@@ -10502,12 +10506,12 @@ function start(){
       const a=e.touches[0], b=e.touches[1];
       const d=Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY);
       const nz=Math.max(25,Math.min(800,Math.round(T.pinch.z0*d/T.pinch.d0)));
-      if(T.pinch.sc) zoomScrollAt(T.pinch.sc,(a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2,nz);
+      if(T.pinch.sc) queueZoom(T.pinch.sc,(a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2,nz);
       e.preventDefault(); setBusy();
     }else if(T.qz&&t0){
       const dy=t0.clientY-T.qz.y0;
       const nz=Math.max(25,Math.min(800,Math.round(T.qz.z0*Math.pow(2,dy/160))));   // kéo xuống = phóng to
-      if(T.qz.sc) zoomScrollAt(T.qz.sc,T.qz.x,T.qz.y0,nz);
+      if(T.qz.sc) queueZoom(T.qz.sc,T.qz.x,T.qz.y0,nz);
       e.preventDefault(); setBusy();
     }
   },{capture:true,passive:false});
