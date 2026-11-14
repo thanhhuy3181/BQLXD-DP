@@ -346,7 +346,34 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .ptab-btn{flex:none;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:2px 8px;border:1px solid var(--fg);border-radius:4px;background:var(--surface-2);font-size:11px;font-weight:600;box-shadow:1px 1px 0 var(--hard)}
 .ptab-btn:hover{background:var(--accent-soft)}
 .pane.focus .ptab{box-shadow:inset 0 -3px 0 var(--hot)}
-.scroll{flex:1;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;align-items:safe center;gap:14px}
+body.layer-pick .page,body.layer-pick .page .layer{cursor:crosshair!important}
+.pen-picker{display:flex;flex-direction:column;gap:6px}
+.pen-h{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.pen-kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.pen-kind{display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 2px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg);cursor:pointer;font-size:10px;color:var(--fg);min-height:44px}
+.pen-kind svg{width:100%;height:16px}
+.pen-kind.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent);background:color-mix(in srgb,var(--accent) 10%,var(--bg))}
+.pen-colors{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+.pen-sw{aspect-ratio:1;min-width:22px;border-radius:50%;border:1.5px solid var(--line);cursor:pointer;padding:0}
+.pen-sw.on{outline:2.5px solid var(--accent);outline-offset:1.5px}
+.pen-custom{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);-webkit-appearance:none;appearance:none;width:100%;height:auto;min-height:0;box-sizing:border-box}
+.pen-custom::-webkit-color-swatch-wrapper{padding:0}
+.pen-custom::-webkit-color-swatch{border:none;border-radius:50%;opacity:0}
+.pen-w{display:flex;align-items:center;gap:6px;font-size:11px}
+.pen-w label{min-width:52px}.pen-w input{flex:1}.pen-w b{min-width:44px;text-align:right;font-family:var(--mono);font-size:10.5px}
+#penDock{position:fixed;left:8px;right:8px;bottom:calc(64px + env(safe-area-inset-bottom));z-index:60;background:var(--panel,var(--bg));border:1.5px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-height:42vh;overflow:auto}
+#penDock .pen-kinds{grid-template-columns:repeat(8,minmax(56px,1fr));overflow-x:auto}
+#penDock .pen-colors{grid-template-columns:repeat(17,minmax(26px,1fr));overflow-x:auto}
+.cad-row{display:flex;align-items:center;gap:6px;padding:3px 4px;font-size:11px;border-radius:4px;user-select:none}
+.cad-row .cad-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.cad-row:hover{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.cad-row.sel{background:color-mix(in srgb,var(--accent) 30%,transparent);box-shadow:inset 3px 0 0 var(--accent)}
+.cad-row.flash{animation:cadFlash 1.2s ease}
+@keyframes cadFlash{0%,40%{background:var(--accent);color:#fff}100%{}}
+.cad-acts{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px}
+.cad-acts .btn{font-size:11px}
+.cad-acts .btn.on{background:var(--accent);color:#fff}
+.scroll{flex:1;overflow:auto;overflow-anchor:none;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;align-items:safe center;gap:14px}
 .page{position:relative;container-type:inline-size;width:calc(var(--zoom,100)*1%);max-width:none;flex:none;background:#fff;box-shadow:5px 5px 0 var(--hard);outline:1.5px solid var(--hard);touch-action:pan-x pan-y;user-select:none}
 .layer{position:absolute;inset:0;overflow:hidden}
 .layer.draw{cursor:crosshair;touch-action:none}
@@ -1242,6 +1269,11 @@ Object.assign(P, {
   typewriter:'M4 5h16v4h-2V7h-5v10h2v2H9v-2h2V7H6v2H4z',
   textbox:'M3 4h18v16H3zM7 8h10M12 8v9',
   cadlayer:'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5M3 16.5l9 5 9-5',
+  lpick:'M10 3l8 4.5-8 4.5-8-4.5zM2 11.5l8 4.5 3-1.7M16 14v8M12 18h8',
+  liso:'M12 4l9 5-9 5-9-5zM3 15l9 5 9-5M9 9h6',
+  lhide:'M12 4l9 5-9 5-9-5zM3 15l9 5 9-5M4 3l16 16',
+  lall:'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5M3 16.5l9 5 9-5M17 2v4M15 4h4',
+  lclear:'M12 4l9 5-9 5-9-5zM3 15l9 5 9-5M15 18l5 5M20 18l-5 5',
   calloutx:'M10 3h11v10H10zM13 6h5M15.5 6v5M10 11l-6 7m0 0v-4m0 4h4',
   ngon5:'M12 3l8.5 6.2-3.2 10H6.7L3.5 9.2z',
   ngon6:'M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z',
@@ -1322,7 +1354,7 @@ const RIB={
   'Trang chủ':[
     ['Công cụ',[['hand','Kéo','tool','lg'],['cursor','Chọn chữ','tool','sm'],['pick','Chọn ghi chú','tool','sm'],['search','Tìm','search','sm'],['undo','Hoàn tác','undo','sm'],['redo','Làm lại','redo','sm']]],
     ['Xem',[['zout','Thu nhỏ','zout','sm'],['zin','Phóng to','zin','sm'],['fit','Vừa trang','fit','sm'],['fitw','Vừa ngang','fitw','sm'],['rot','Xoay +90°','rotView','sm'],['zoomBox','Zoom %','zoomBox','widget']]],
-    ['Ghi chú nhanh',[['rect','Tô vùng','tool','sm'],['cloud','Đám mây','tool','sm'],['callout','Chú dẫn','tool','sm'],['text','Ô chữ','tool','sm'],['note','Ghi chú dán','tool','sm'],['arrow','Mũi tên','tool','sm'],['stamp','Con dấu','tool','lg']]],
+    ['Ghi chú nhanh',[['line','Đường thẳng','tool','sm'],['arrow','Mũi tên','tool','sm'],['callout','Callout','tool','sm'],['rect','Chữ nhật','tool','sm'],['poly','Đa giác','tool','sm'],['eraser','Xoá (tẩy)','tool','sm'],['pen','Bút vẽ','tool','lg']]],
     ['Màu sắc & Nét',[['colorBtn','Màu viền & Nền','colorWidget','widget']]],
     ['Chia sẻ',[['share','Chia sẻ','openShare','lg']]]
   ],
@@ -1344,7 +1376,7 @@ const RIB={
         ['Viền xanh, chấm tròn',{stroke:'#2563eb',fill:'#ffffff',noFill:false,lineEndEnding:'Circle',textColor:'#000000'}]]]]],
     ['Ghi chú',[['note','Ghi chú dán','tool','sm'],['image','Chèn ảnh','insertImg','sm']]],
     ['Đánh dấu',[['hl','Tô chữ','tool','sm']]],
-    ['Vẽ',[['line','Đường thẳng','tool','mini'],['arrow','Mũi tên','tool','mini'],['rect','Chữ nhật','tool','mini'],['oval','Oval','tool','mini'],['polyline','Đường liên tiếp','tool','mini'],['poly','Đa giác','tool','mini'],['ngonPick','Đa giác đều / Ngôi sao','split','mini',[['ngon5','Ngũ giác đều'],['ngon6','Lục giác đều'],['ngon7','Thất giác đều'],['ngon8','Bát giác đều'],['star','Ngôi sao']]],['cloud','Đám mây','tool','mini'],['pen','Bút vẽ','tool','mini'],['eraser','Tẩy','tool','mini'],['bigDraw','Công cụ vẽ','split','lg',[['poly','Đa giác'],['line','Đường thẳng'],['arrow','Mũi tên'],['rect','Chữ nhật'],['oval','Oval'],['polyline','Đường liên tiếp'],['ngon5','Ngũ giác đều'],['ngon6','Lục giác đều'],['ngon7','Thất giác đều'],['ngon8','Bát giác đều'],['star','Ngôi sao'],['cloud','Đám mây'],['pen','Bút vẽ'],['stamp','Con dấu']]]]],
+    ['Vẽ',[['line','Đường thẳng','tool','mini'],['arrow','Mũi tên','tool','mini'],['rect','Chữ nhật','tool','mini'],['oval','Oval','tool','mini'],['polyline','Đường liên tiếp','tool','mini'],['poly','Đa giác','tool','mini'],['ngonPick','Đa giác đều / Ngôi sao','split','mini',[['ngon5','Ngũ giác đều'],['ngon6','Lục giác đều'],['ngon7','Thất giác đều'],['ngon8','Bát giác đều'],['star','Ngôi sao']]],['cloud','Đám mây','tool','mini'],['pen','Bút vẽ','tool','mini'],['eraser','Tẩy','tool','mini'],['stamp','Con dấu','tool','mini'],['bigDraw','Công cụ vẽ','split','lg',[['poly','Đa giác'],['line','Đường thẳng'],['arrow','Mũi tên'],['rect','Chữ nhật'],['oval','Oval'],['polyline','Đường liên tiếp'],['ngon5','Ngũ giác đều'],['ngon6','Lục giác đều'],['ngon7','Thất giác đều'],['ngon8','Bát giác đều'],['star','Ngôi sao'],['cloud','Đám mây'],['pen','Bút vẽ'],['stamp','Con dấu']]]]],
     ['Đo',[['ruler','Đo đạc','tool','lg'],['ruler','Tỷ lệ đo','setScale','sm']]],
     ['Màu sắc & Nét',[['colorBtn','Màu viền & Nền','colorWidget','widget']]]
   ],
@@ -1359,7 +1391,8 @@ const RIB={
     ['Zoom',[['fit','Vừa trang','fit','sm'],['fitw','Vừa ngang','fitw','sm'],['zout','Thu nhỏ','zout','sm'],['zin','Phóng to','zin','sm'],['zoomBox','Zoom %','zoomBox','widget']]],
     ['Xoay',[['rot','Xoay +90°','rotView','lg']]],
     ['Chia khung',[['p1','1 khung','p1','sm'],['p2','2 khung','p2','sm'],['p3','3 khung','p3','sm']]],
-    ['Bảng bên',[['thumbs','Hình thu nhỏ','thumbs','sm'],['cmt','Bình luận & Thuộc tính','cmt','sm'],['cadlayer','Layer bản vẽ','cadLayers','sm'],['full','Tràn viền','full','lg']]]
+    ['Bảng bên',[['thumbs','Hình thu nhỏ','thumbs','sm'],['cmt','Bình luận & Thuộc tính','cmt','sm'],['cadlayer','Layer bản vẽ','cadLayers','sm'],['full','Tràn viền','full','lg']]],
+    ['Layer',[['lpick','Chọn layer','layerPick','lg']]]
   ],
   'Trang':[
     ['Trang',[['add','Chèn','addPage','sm'],['del','Xoá','delPage','sm'],['rot','Xoay','rotPage','sm'],['extract','Trích','extractPage','sm'],['merge','Ghép','mergePdf','sm'],['split','Tách','splitPdf','sm']]],
@@ -1382,6 +1415,14 @@ const RIB={
 };
 
 const CTX_RIB_TABS = ['Định dạng', 'Văn bản', 'Sắp xếp'];
+// Tab "Layer" hiện ra khi bấm Chọn layer: thao tác riêng với layer bản vẽ CAD.
+const LAYER_TAB = 'Layer bản vẽ';
+const LAYER_RIB = [
+  ['Chọn', [['lpick', 'Chọn layer trên bản vẽ', 'layerPick', 'lg'], ['lclear', 'Bỏ chọn', 'layerClear', 'sm'], ['cadlayer', 'Bảng layer', 'cadLayers', 'sm']]],
+  ['Hiển thị', [['liso', 'Chỉ hiện layer chọn', 'layerIso', 'lg'], ['lhide', 'Ẩn layer chọn', 'layerHideSel', 'sm'], ['lall', 'Hiện hết', 'layerShowAll', 'sm']]],
+  ['Công cụ', [['hand', 'Kéo', 'tool', 'sm'], ['zoomBox', 'Zoom %', 'zoomBox', 'widget']]],
+  ['Đóng', [['lclear', 'Đóng tab Layer', 'layerTabClose', 'sm']]]
+];
 const ANNO_PRESETS = [
   { name: 'Đỏ chuẩn', stroke: '#dc2626', fill: '#fee2e2', noFill: false, opacity: 80 },
   { name: 'Tím', stroke: '#7c3aed', fill: '#ede9fe', noFill: false, opacity: 80 },
@@ -1414,6 +1455,10 @@ function addRecentColor(c){
   renderRecentColors();
 }
 
+function syncZoomUi(z){
+  const st = $('#stZoom'); if (st) st.textContent = z + '%';
+  const inp = document.getElementById('ribZoomInp'); if (inp && document.activeElement !== inp) inp.value = z;
+}
 function setZoom(z){
   const ps = getActivePaneState();
   const oldZoom = ps.zoom || 100;
@@ -1440,10 +1485,10 @@ function setZoom(z){
       sc.scrollLeft += (newPgRect.left + relX * ratio) - (newScRect.left + sc.clientWidth / 2);
       sc.scrollTop += (newPgRect.top + relY * ratio) - (newScRect.top + sc.clientHeight / 2);
     }
-    renderVisiblePagesInPane(ps, sc);
+    scheduleHiDpiRerender(ps, sc, 220);
   }
   updatePtabMeta(ps.paneIdx);
-  $('#stZoom').textContent = nz + '%';
+  syncZoomUi(nz);
 }
 function toast(m, dur = 1900){
   const t = $('#toast');
@@ -1952,7 +1997,7 @@ function switchFocusPane(idx) {
   if (titleStrong) titleStrong.textContent = ps.name || 'Chưa mở tài liệu';
   if (ps.name) document.title = ps.name + ' - PDF QLDA';
   S.zoom = ps.zoom;
-  $('#stZoom').textContent = ps.zoom + '%';
+  syncZoomUi(ps.zoom);
   updatePageNav();
   renderSideThumbs();
   renderTree();
@@ -1993,6 +2038,7 @@ async function loadRealPdf(fileOrBytes, fileName, shouldUpload = false, targetPa
     // Luôn slice(0) để ps.bytes không bị Worker detach
     const loadingTask = pdfjsLib.getDocument({ data: data.slice(0) });
     const pdfDoc = await loadingTask.promise;
+    try { installFastOps(await pdfDoc.getPage(1)); } catch (_) {}
     ps.doc = pdfDoc;
     ps.numPages = pdfDoc.numPages;
     ps.currentPage = 1;
@@ -3762,7 +3808,9 @@ function renderAnnoItem(a){
     elItem.style.background='none';
     elItem.style.opacity=op;
     if(a.svgPath){
-      elItem.innerHTML=`<svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 ${a.w} ${a.h}" preserveAspectRatio="none"><path d="${a.svgPath}" fill="none" stroke="${stroke}" stroke-width="${bw}" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+      const pk=penKindOf(a); const pa=penStrokeAttrs(a,stroke,bw,'');
+      if(pk.blend) elItem.style.mixBlendMode=pk.blend;
+      elItem.innerHTML=`<svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 ${a.w} ${a.h}" preserveAspectRatio="none"><path d="${a.svgPath}" fill="none" stroke="${stroke}" stroke-width="${bw}" stroke-linecap="${pa['stroke-linecap']}" stroke-linejoin="${pa['stroke-linejoin']}" ${pa.filter?`filter="${pa.filter}"`:''} vector-effect="non-scaling-stroke"/></svg>`;
     }
   }else if(a.type==='image'||a.type==='sign'){
     elItem.style.border=a.type==='sign'?'none':`${bw}px ${bs} ${stroke}`;
@@ -4382,6 +4430,92 @@ function updateStatusSelection(){
 }
 
 /* Áp dụng thuộc tính tức thời (Live Update) cho các đối tượng đang chọn */
+/* ===== Bút vẽ: loại bút + bảng màu ===== */
+const PEN_KINDS = {
+  bi:      { name: 'Bút bi',    w: 1.5, op: 100, cap: 'round' },
+  kim:     { name: 'Bút kim',   w: 0.8, op: 100, cap: 'round' },
+  chi:     { name: 'Bút chì',   w: 1.6, op: 80,  cap: 'round', filter: 'penPencil' },
+  long:    { name: 'Bút lông',  w: 7,   op: 92,  cap: 'round', filter: 'penBrush' },
+  sap:     { name: 'Bút sáp',   w: 6,   op: 95,  cap: 'round', filter: 'penCrayon' },
+  da:      { name: 'Bút dạ',    w: 4,   op: 90,  cap: 'square' },
+  daquang: { name: 'Dạ quang',  w: 16,  op: 40,  cap: 'butt', blend: 'multiply' },
+  phan:    { name: 'Phấn',      w: 5,   op: 85,  cap: 'round', filter: 'penChalk' }
+};
+const PEN_COLORS = ['#0f172a','#dc2626','#ea580c','#f59e0b','#facc15','#16a34a','#0d9488','#2563eb','#7c3aed','#db2777','#78350f','#64748b','#ffffff','#22d3ee','#a3e635','#f472b6'];
+function penKindOf(a) { return PEN_KINDS[(a && a.penKind) || S.penKind || 'bi'] || PEN_KINDS.bi; }
+// Bộ lọc tạo vân nét (chì, sáp, phấn, lông) — dùng chung cho mọi nét bút.
+(function ensurePenFilters() {
+  if (document.getElementById('penFilterDefs')) return;
+  const d = document.createElement('div');
+  d.innerHTML = '<svg id="penFilterDefs" width="0" height="0" style="position:absolute;width:0;height:0" aria-hidden="true"><defs>' +
+    '<filter id="penPencil" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6"/></filter>' +
+    '<filter id="penCrayon" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.7" result="m"/><feComposite in="SourceGraphic" in2="m" operator="in"/></filter>' +
+    '<filter id="penChalk" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="1" seed="11" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3 2.1" result="m"/><feComposite in="SourceGraphic" in2="m" operator="in"/></filter>' +
+    '<filter id="penBrush" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.35" numOctaves="1" seed="5" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.2"/></filter>' +
+    '</defs></svg>';
+  document.body.append(d.firstChild);
+})();
+function penStrokeAttrs(a, color, width, opacity) {
+  const k = penKindOf(a);
+  return { stroke: color, 'stroke-width': width, 'stroke-linecap': k.cap, 'stroke-linejoin': k.cap === 'square' ? 'miter' : 'round', opacity: opacity, filter: k.filter ? 'url(#' + k.filter + ')' : '' };
+}
+// Bảng chọn bút: dùng trong Thuộc tính (máy tính) và thanh nổi (điện thoại).
+function buildPenPicker(obj) {
+  const box = el('div', 'pen-picker', '');
+  const cur = obj || { penKind: S.penKind || 'bi', stroke: S.strokeColor, borderWidth: S.strokeWidth, opacity: S.opacity };
+  const apply = (props, toolProps) => {
+    Object.assign(S, toolProps);
+    try { localStorage.setItem('pdf_pen_pref', JSON.stringify({ penKind: S.penKind, strokeColor: S.strokeColor, strokeWidth: S.strokeWidth, opacity: S.opacity })); } catch (_) {}
+    if (obj) applyPropertiesToSelection(props);
+    refreshPenUi();
+  };
+  const kinds = el('div', 'pen-kinds', '');
+  Object.entries(PEN_KINDS).forEach(([key, k]) => {
+    const b = el('button', 'pen-kind' + ((cur.penKind || 'bi') === key ? ' on' : ''), '');
+    b.type = 'button'; b.title = k.name;
+    const col = (cur.stroke && cur.stroke !== 'transparent') ? cur.stroke : '#0f172a';
+    b.innerHTML = '<svg viewBox="0 0 60 18" aria-hidden="true"><path d="M4 12 C 16 2, 26 18, 38 8 S 52 6, 56 10" fill="none" stroke="' + col + '" stroke-width="' + Math.min(9, Math.max(1.2, k.w * 0.8)) + '" stroke-linecap="' + k.cap + '" opacity="' + (k.op / 100) + '"' + (k.filter ? ' filter="url(#' + k.filter + ')"' : '') + (k.blend ? ' style="mix-blend-mode:' + k.blend + '"' : '') + '/></svg><span></span>';
+    b.querySelector('span').textContent = k.name;
+    b.onclick = () => apply({ penKind: key, borderWidth: k.w, opacity: k.op }, { penKind: key, strokeWidth: k.w, opacity: k.op });
+    kinds.append(b);
+  });
+  const sw = el('div', 'pen-colors', '');
+  PEN_COLORS.forEach(c => {
+    const b = el('button', 'pen-sw' + ((cur.stroke || '').toLowerCase() === c ? ' on' : ''), '');
+    b.type = 'button'; b.title = c; b.style.background = c;
+    b.onclick = () => { apply({ stroke: c }, { strokeColor: c }); try { addRecentColor(c); } catch (_) {} };
+    sw.append(b);
+  });
+  const custom = document.createElement('input');
+  custom.type = 'color'; custom.className = 'pen-sw pen-custom'; custom.title = 'Màu khác';
+  custom.value = /^#[0-9a-f]{6}$/i.test(cur.stroke || '') ? cur.stroke : '#0f172a';
+  custom.onchange = () => apply({ stroke: custom.value }, { strokeColor: custom.value });
+  sw.append(custom);
+  const wRow = el('div', 'pen-w', '<label>Độ dày</label><input type="range" min="0.5" max="30" step="0.5"><b></b>');
+  const rg = wRow.querySelector('input'), wv = wRow.querySelector('b');
+  rg.value = cur.borderWidth || S.strokeWidth || 2; wv.textContent = rg.value + ' px';
+  rg.oninput = () => { wv.textContent = rg.value + ' px'; S.strokeWidth = +rg.value; if (obj) applyPropertiesToSelection({ borderWidth: +rg.value }, { live: true }); };
+  rg.onchange = () => apply({ borderWidth: +rg.value }, { strokeWidth: +rg.value });
+  const oRow = el('div', 'pen-w', '<label>Độ đậm</label><input type="range" min="10" max="100" step="5"><b></b>');
+  const ro = oRow.querySelector('input'), ov = oRow.querySelector('b');
+  ro.value = cur.opacity || 100; ov.textContent = ro.value + '%';
+  ro.oninput = () => { ov.textContent = ro.value + '%'; S.opacity = +ro.value; if (obj) applyPropertiesToSelection({ opacity: +ro.value }, { live: true }); };
+  ro.onchange = () => apply({ opacity: +ro.value }, { opacity: +ro.value });
+  box.append(el('div', 'pen-h', 'Loại bút'), kinds, el('div', 'pen-h', 'Màu'), sw, wRow, oRow);
+  return box;
+}
+function refreshPenUi() {
+  if (typeof syncPropertiesPanel === 'function') syncPropertiesPanel();
+  const dock = document.getElementById('penDock');
+  const mobile = matchMedia('(max-width:760px)').matches;
+  if (S.tool === 'pen' && mobile) {
+    let d = dock;
+    if (!d) { d = el('div', '', ''); d.id = 'penDock'; document.body.append(d); }
+    d.replaceChildren(buildPenPicker(null));
+  } else if (dock) dock.remove();
+}
+try { const pp = JSON.parse(localStorage.getItem('pdf_pen_pref') || 'null'); if (pp && pp.penKind) S.penKind = pp.penKind; } catch (_) {}
+
 function applyPropertiesToSelection(props, opts = {}){
   if(S.sel.size>0){
     if(!opts.live && !opts.skipUndo) pushUndoState();
@@ -4673,11 +4807,15 @@ function act(id,kind,label){
     else if(id==='poly')toast('Đa giác: Bấm từng đỉnh trên trang. Hoàn tất bằng Enter, bấm đúp hoặc chuột phải → Hoàn tất (giữ Space để kéo trang)');
     else if(id==='polyline')toast('Đường liên tiếp: Bấm từng đỉnh trên trang. Hoàn tất bằng Enter, bấm đúp hoặc chuột phải → Hoàn tất (giữ Space để kéo trang)');
     else if(id==='hl')toast('Kéo chuột trên trang để tô sáng dải màu lên văn bản');
-    else if(id==='pen')toast('Kéo vẽ tự do bằng chuột hoặc bút cảm ứng');
+    else if(id==='pen'){
+      toast('Kéo vẽ tự do bằng chuột hoặc bút cảm ứng — chọn loại bút & màu ở bảng Thuộc tính');
+      if(!matchMedia('(max-width:760px)').matches){ $('#cmt')?.classList.remove('closed'); if(typeof switchRightTab==='function') switchRightTab('prop'); }
+    }
     else if(id==='eraser')toast('Bấm hoặc rê chuột qua ghi chú để tẩy xoá');
     else if(id==='redact')toast('Kéo khung che xoá bảo mật trên vùng nhạy cảm');
     else if(id==='check')toast('Click hoặc kéo để tạo ô tích kiểm [✓] nghiệm thu');
     else if(id==='form')toast('Chế độ điền mẫu: Bấm vào ô chữ hoặc ô tích để sửa nhanh');
+    refreshPenUi();
     return;
   }
   if(kind==='setScale'){open('#veilScale');return;}
@@ -4786,6 +4924,12 @@ function act(id,kind,label){
     return;
   }
   if(kind==='cadLayers'){ openCadLayerPanel(); return; }
+  if(kind==='layerPick'){ toggleLayerPick(); return; }
+  if(kind==='layerClear'){ const ps=getActivePaneState(); if(ps.cadSel) ps.cadSel.clear(); renderLayerPanel(); return; }
+  if(kind==='layerIso'){ cadIsolateSelected(); return; }
+  if(kind==='layerHideSel'){ cadHideSelected(); return; }
+  if(kind==='layerShowAll'){ const ps=getActivePaneState(); cadSetVisibility(ps, () => true); return; }
+  if(kind==='layerTabClose'){ S.layerTab=false; setLayerPick(false); S.tab=S.lastRegularTab||'Xem'; renderTabs(); renderTools(false); return; }
   if(kind==='cmtAdd'){ cmtAddAction(); return; }
   if(kind==='cmtMention'){ cmtMentionAction(); return; }
   if(kind==='cmtToggle'){ cmtToggleHidden(); return; }
@@ -4912,7 +5056,7 @@ function toolBtn(item){
   const szClass=size==='lg'?'lg':size==='mini'?'mini':'sm';
   const b=el('button',`tool ${szClass}`,ic(id)+'<span>'+label+'</span>');
   b.title=label;
-  if((kind==='tool'&&S.tool===id)||(kind==='crop'&&S.tool==='crop')||(kind===('p'+S.panes)))b.classList.add('on');
+  if((kind==='tool'&&S.tool===id)||(kind==='crop'&&S.tool==='crop')||(kind===('p'+S.panes))||(kind==='layerPick'&&S.layerPick))b.classList.add('on');
   b.onclick=()=>{act(id,kind,label);$('#rgroupPop')?.classList.remove('show');};
   return b;
 }
@@ -4934,6 +5078,7 @@ function buildRibbonGroup(name, items){
   const flushMinis=()=>{
     if(!minis.length)return;
     const grid=el('div','rgrid');
+    if(minis.length>9) grid.style.gridTemplateColumns=`repeat(${Math.ceil(minis.length/3)},auto)`; // 3 hàng, đủ cột
     minis.forEach(btn=>grid.append(btn));
     body.append(grid);
     minis.length=0;
@@ -5327,7 +5472,8 @@ function renderTools(anim=true){
       return;
     }
   }
-  for(const [name,items] of RIB[S.tab]){
+  if(S.tab===LAYER_TAB && !S.layerTab) S.tab=S.lastRegularTab||'Xem';
+  for(const [name,items] of (S.tab===LAYER_TAB ? LAYER_RIB : RIB[S.tab])){
     box.append(buildRibbonGroup(name, items));
   }
   const mine=(custom[S.tab]||[]).filter(k=>CAT[k]);
@@ -5363,6 +5509,14 @@ function renderTabs(){
     };
     box.append(b);
   });
+  if(S.layerTab){
+    const isAct = (S.tab===LAYER_TAB);
+    const b=el('button','rtab ctx-tab'+(isAct?' on':''),LAYER_TAB);
+    b.setAttribute('role','tab');
+    if(isAct) activeBtn = b;
+    b.onclick=()=>{ if(S.tab===LAYER_TAB) return; S.tab=LAYER_TAB; fadeSwitchRibbon(() => { renderTabs(); renderTools(); }); };
+    box.append(b);
+  }
   if(S.sel.size>0){
     CTX_RIB_TABS.forEach(t=>{
       const isAct = (t===S.tab);
@@ -5413,6 +5567,7 @@ function renderMobileBar(){
   const quick=[
     ['hand','Kéo','tool'],
     ['pick','Chọn','tool'],
+    ['pen','Bút','tool'],
     ['rect','Chữ nhật','tool'],
     ['cloud','Đám mây','tool'],
     ['text','Ô chữ','tool'],
@@ -5664,6 +5819,10 @@ function setupPaneObserver(ps, sc) {
       } else {
         const bounds = entry.boundingClientRect;
         const rootBounds = entry.rootBounds || sc.getBoundingClientRect();
+        // Zoom sâu: phần thấy được < 1% trang vẫn là "đang xem" — chỉ xoá khi trang thật sự ở xa khung nhìn.
+        const near = bounds.bottom > rootBounds.top - 700 && bounds.top < rootBounds.bottom + 700 &&
+          bounds.right > rootBounds.left - 700 && bounds.left < rootBounds.right + 700;
+        if (near) { renderPageInPane(ps, pNum, pEl); return; }
         const dist = Math.min(Math.abs(bounds.bottom - rootBounds.top), Math.abs(bounds.top - rootBounds.bottom));
         if (dist > 700) {
           destroyPageCanvas(ps, pNum, pEl);
@@ -5680,15 +5839,167 @@ function destroyPageCanvas(ps, pNum, pEl) {
   if (existing?.renderTask) {
     try { existing.renderTask.cancel(); } catch (_) {}
   }
-  const canvas = pEl.querySelector('canvas.pdf-canvas');
-  if (canvas) {
+  pEl.querySelectorAll('canvas.pdf-canvas, canvas.pdf-base').forEach(canvas => {
     canvas.width = 1;
     canvas.height = 1;
     canvas.remove();
-  }
+  });
   const skeleton = pEl.querySelector('.page-loading-skeleton');
   if (skeleton) skeleton.style.display = 'flex';
   ps.renderedPages.delete(pNum);
+}
+
+// Ảnh xem trước cả trang (độ phân giải vừa phải) nằm dưới nét vẽ chi tiết:
+// khi zoom/kéo bản vẽ nặng, phần chưa vẽ lại vẫn thấy hình (hơi mờ) thay vì trang trắng.
+const PREVIEW_MAX = 1800;
+function pagePreviewFromCanvas(wrap, src, key) {
+  try {
+    const old = wrap.querySelector('canvas.pdf-base');
+    if (old && old.dataset.k === key) return;
+    const k = Math.min(1, PREVIEW_MAX / Math.max(src.width, src.height));
+    const c = document.createElement('canvas');
+    c.className = 'pdf-base'; c.dataset.k = key;
+    c.width = Math.max(1, Math.round(src.width * k)); c.height = Math.max(1, Math.round(src.height * k));
+    c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;';
+    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+    if (old) { old.width = 1; old.height = 1; old.remove(); }
+    wrap.prepend(c);
+  } catch (_) {}
+}
+async function ensurePagePreview(ps, page, pi, wrap, key) {
+  const old = wrap.querySelector('canvas.pdf-base');
+  if ((old && old.dataset.k === key) || wrap.dataset.pvPending === key) return;
+  wrap.dataset.pvPending = key;
+  try {
+    const vp1 = pageViewport(page, pi, 1);
+    const sc = PREVIEW_MAX / Math.max(vp1.width, vp1.height);
+    const vp = pageViewport(page, pi, sc);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(vp.width)); c.height = Math.max(1, Math.round(vp.height));
+    prepareFastRender(page, vp, c.width, c.height);
+    await page.render({
+      canvasContext: c.getContext('2d'), viewport: vp,
+      annotationMode: (window.pdfjsLib && window.pdfjsLib.AnnotationMode) ? window.pdfjsLib.AnnotationMode.ENABLE : 1,
+      ...(ps.ocConfig ? { optionalContentConfigPromise: Promise.resolve(ps.ocConfig) } : {})
+    }).promise;
+    if (wrap.isConnected) pagePreviewFromCanvas(wrap, c, key);
+    c.width = 1; c.height = 1;
+  } catch (_) {
+  } finally { if (wrap.dataset.pvPending === key) delete wrap.dataset.pvPending; }
+}
+
+
+/* ===== Vẽ nhanh bản vẽ CAD nặng (hàng triệu nét) =====
+   pdf.js vẽ từng nét một (bản vẽ 4 triệu nét ~26 giây mỗi lần zoom). Ở đây:
+   1) Gộp các nét liền nhau cùng kiểu thành một lần vẽ (nhanh ~5 lần, hình như cũ).
+   2) Khi zoom sâu chỉ vẽ phần đang nhìn: bỏ các nét nằm ngoài ô đang xem (chia ô theo màn hình),
+      nên càng zoom sâu càng vẽ nhanh.
+   Chỉ bật cho trang có trên HEAVY_OPS lệnh vẽ; file thường giữ nguyên cách vẽ của pdf.js. */
+const HEAVY_OPS = 150000;
+let FAST_OPS_INSTALLED = false;
+function installFastOps(page) {
+  if (FAST_OPS_INSTALLED || !page) return;
+  const proto = Object.getPrototypeOf(page);
+  const orig = proto && proto._renderPageChunk;
+  if (typeof orig !== 'function') return;
+  FAST_OPS_INSTALLED = true;
+  proto._renderPageChunk = function (chunk, d) {
+    try {
+      const acc = d.__acc || (d.__acc = { fn: [], args: [] });
+      for (let i = 0, n = chunk.length; i < n; i++) { acc.fn.push(chunk.fnArray[i]); acc.args.push(chunk.argsArray[i]); }
+      if (!chunk.lastChunk) return; // gom đủ rồi mới vẽ (để biết trang nặng hay nhẹ)
+      d.__acc = null;
+      let fn = acc.fn, args = acc.args;
+      if (fn.length > HEAVY_OPS) {
+        d.__heavy = { fn, args };
+        const m = mergeStrokeOps(fn, args);
+        d.__merged = m; fn = m.fn; args = m.args;
+      }
+      return orig.call(this, { fnArray: fn, argsArray: args, length: fn.length, lastChunk: true, separateAnnots: chunk.separateAnnots }, d);
+    } catch (err) {
+      console.warn('fastOps:', err);
+      return orig.call(this, chunk, d);
+    }
+  };
+}
+function mergeStrokeOps(fn, args) {
+  const O = pdfjsLib.OPS, CP = O.constructPath, ST = O.stroke, LW = O.setLineWidth, SV = O.save, RS = O.restore;
+  const nf = [], na = []; let lw;
+  for (let i = 0, n = fn.length; i < n; i++) {
+    const f = fn[i];
+    if (f === CP && fn[i + 1] === ST) {
+      let ops = args[i][0], ar = args[i][1], mm = args[i][2], merged = false, j = i + 2, cnt = 1;
+      for (;;) {
+        let k = j;
+        if (fn[k] === LW && lw !== undefined && args[k][0] === lw) k++;
+        if (fn[k] === CP && fn[k + 1] === ST && cnt < 4000) {
+          if (!merged) { ops = Array.from(ops); ar = Array.from(ar); mm = Array.from(mm || [Infinity, -Infinity, Infinity, -Infinity]); merged = true; }
+          const a = args[k];
+          for (const x of a[0]) ops.push(x);
+          for (const x of a[1]) ar.push(x);
+          const q = a[2];
+          if (q) { if (q[0] < mm[0]) mm[0] = q[0]; if (q[1] > mm[1]) mm[1] = q[1]; if (q[2] < mm[2]) mm[2] = q[2]; if (q[3] > mm[3]) mm[3] = q[3]; }
+          j = k + 2; cnt++;
+        } else break;
+      }
+      nf.push(CP, ST); na.push([ops, ar, mm], args[i + 1]); i = j - 1; continue;
+    }
+    if (f === LW) lw = args[i][0]; else if (f === SV || f === RS) lw = undefined;
+    nf.push(f); na.push(args[i]);
+  }
+  return { fn: nf, args: na };
+}
+// Bỏ các nét/ảnh nằm hẳn ngoài vùng [x0,y0,x1,y1] (toạ độ PDF của trang).
+function cullOpsToRect(fn, args, R) {
+  const O = pdfjsLib.OPS;
+  const CP = O.constructPath, TR = O.transform, SV = O.save, RS = O.restore, LW = O.setLineWidth;
+  const FB = O.paintFormXObjectBegin, FE = O.paintFormXObjectEnd;
+  const PAINT = new Set([O.stroke, O.closeStroke, O.fill, O.eoFill, O.fillStroke, O.eoFillStroke, O.closeFillStroke, O.closeEOFillStroke]);
+  const IMG = new Set([O.paintImageXObject, O.paintInlineImageXObject, O.paintImageMaskXObject, O.paintSolidColorImageMask].filter(x => x != null));
+  let m = [1, 0, 0, 1, 0, 0], lw = 1; const st = [];
+  const mul = (a, b) => [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]];
+  const outside = (x0, x1, y0, y1, pad) => {
+    const xs = [m[0] * x0 + m[2] * y0 + m[4], m[0] * x1 + m[2] * y0 + m[4], m[0] * x0 + m[2] * y1 + m[4], m[0] * x1 + m[2] * y1 + m[4]];
+    const ys = [m[1] * x0 + m[3] * y0 + m[5], m[1] * x1 + m[3] * y0 + m[5], m[1] * x0 + m[3] * y1 + m[5], m[1] * x1 + m[3] * y1 + m[5]];
+    return Math.max(...xs) + pad < R[0] || Math.min(...xs) - pad > R[2] || Math.max(...ys) + pad < R[1] || Math.min(...ys) - pad > R[3];
+  };
+  const nf = [], na = [];
+  for (let i = 0, n = fn.length; i < n; i++) {
+    const f = fn[i], a = args[i];
+    if (f === CP && PAINT.has(fn[i + 1]) && a[2] && isFinite(a[2][0])) {
+      const sc = Math.hypot(m[0], m[1]) + Math.hypot(m[2], m[3]);
+      if (outside(a[2][0], a[2][1], a[2][2], a[2][3], (Math.abs(lw) || 1) * sc + 2)) { i++; continue; }
+    } else if (IMG.has(f)) {
+      if (outside(0, 1, 0, 1, 2)) continue;
+    } else if (f === TR) m = mul(m, a);
+    else if (f === SV) st.push([m, lw]);
+    else if (f === RS) { const p = st.pop(); if (p) { m = p[0]; lw = p[1]; } }
+    else if (f === LW) lw = a[0];
+    else if (f === FB) { st.push([m, lw]); if (a && a[0]) m = mul(m, a[0]); }
+    else if (f === FE) { const p = st.pop(); if (p) { m = p[0]; lw = p[1]; } }
+    nf.push(f); na.push(a);
+  }
+  return mergeStrokeOps(nf, na);
+}
+function displayIntentOf(page) {
+  try { for (const d of page._intentStates.values()) if (d && d.__heavy) return d; } catch (_) {}
+  return null;
+}
+// Gọi ngay trước page.render: chuẩn bị danh sách lệnh vẽ cho đúng vùng canvas này.
+function prepareFastRender(page, vp, w, h) {
+  const d = displayIntentOf(page);
+  if (!d || !d.displayReadyCapability) return;
+  let list = d.__merged;
+  try {
+    const p0 = vp.convertToPdfPoint(0, 0), p1 = vp.convertToPdfPoint(w, h);
+    const R = [Math.min(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.max(p0[0], p1[0]), Math.max(p0[1], p1[1])];
+    const v = page.view || [0, 0, 1e9, 1e9];
+    const frac = ((R[2] - R[0]) * (R[3] - R[1])) / Math.max(1, (v[2] - v[0]) * (v[3] - v[1]));
+    if (frac < 0.6) list = cullOpsToRect(d.__heavy.fn, d.__heavy.args, R);
+  } catch (err) { console.warn('cull:', err); }
+  if (!list) return;
+  // Đối tượng mới: lượt vẽ đang chạy vẫn giữ danh sách cũ của nó.
+  d.operatorList = { fnArray: list.fn, argsArray: list.args, lastChunk: true, separateAnnots: d.operatorList && d.operatorList.separateAnnots };
 }
 
 async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
@@ -5794,10 +6105,11 @@ async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
     if (isPartial) {
       nextCanvas.style.cssText = `position:absolute;left:${clipX}px;top:${clipY}px;width:${clipW}px;height:${clipH}px;display:block;`;
     } else {
-      nextCanvas.style.cssText = `position:absolute;left:0;top:0;width:${pageCssW}px;height:${pageCssH}px;display:block;`;
+      nextCanvas.style.cssText = `position:absolute;left:0;top:0;width:100%;height:100%;display:block;`;
     }
 
     const ctx = nextCanvas.getContext('2d');
+    prepareFastRender(page, vp, nextCanvas.width, nextCanvas.height);
     const renderTask = page.render({
       canvasContext: ctx,
       viewport: vp,
@@ -5835,6 +6147,9 @@ async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
 
     const skeleton = canvasWrap.querySelector('.page-loading-skeleton');
     if (skeleton) skeleton.style.display = 'none';
+    const baseKeyPv = `${rot}_oc${ps.ocRev || 0}`;
+    if (!isPartial) pagePreviewFromCanvas(canvasWrap, nextCanvas, baseKeyPv);
+    else ensurePagePreview(ps, page, pi, canvasWrap, baseKeyPv);
 
     await renderTextLayerForPage(ps, page, pageNum, pageEl, pi);
 
@@ -6700,14 +7015,16 @@ function bindLayerInteraction(ly,paneIdx){
       penPts=[[x,y]];
       tempPenSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
       tempPenSvg.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:10;overflow:visible';
+      tempPenSvg.setAttribute('viewBox','0 0 100 100');
+      tempPenSvg.setAttribute('preserveAspectRatio','none');
+      const pk=penKindOf(null);
+      if(pk.blend) tempPenSvg.style.mixBlendMode=pk.blend;
       tempPenPoly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
       tempPenPoly.setAttribute('points',`${x},${y}`);
-      tempPenPoly.setAttribute('stroke',S.strokeColor);
-      tempPenPoly.setAttribute('stroke-width',S.strokeWidth);
+      const pa=penStrokeAttrs(null,S.strokeColor,S.strokeWidth,(S.opacity/100).toFixed(2));
+      Object.entries(pa).forEach(([k,v])=>{ if(v!=='') tempPenPoly.setAttribute(k,v); });
       tempPenPoly.setAttribute('fill','none');
-      tempPenPoly.setAttribute('stroke-linecap','round');
-      tempPenPoly.setAttribute('stroke-linejoin','round');
-      tempPenPoly.setAttribute('opacity',(S.opacity/100).toFixed(2));
+      tempPenPoly.setAttribute('vector-effect','non-scaling-stroke');
       tempPenSvg.appendChild(tempPenPoly);
       ly.appendChild(tempPenSvg);
       ly.setPointerCapture(e.pointerId);
@@ -6951,8 +7268,8 @@ function bindLayerInteraction(ly,paneIdx){
           id,pane:paneIdx,page:pageNum,type:'pen',
           x:minX,y:minY,w,h,svgPath:d,
           stroke:S.strokeColor,fill:'none',noFill:true,
-          opacity:S.opacity,borderWidth:S.strokeWidth,borderStyle:'solid',
-          rotate:0,locked:false,printable:true,layerName:'Mặc định (0)',replies:[],popupOpen:false,author:'Bạn',subject:'Bút vẽ tay'
+          opacity:S.opacity,borderWidth:S.strokeWidth,borderStyle:'solid',penKind:S.penKind||'bi',
+          rotate:0,locked:false,printable:true,layerName:'Mặc định (0)',replies:[],popupOpen:false,author:'Bạn',subject:(PEN_KINDS[S.penKind||'bi']||PEN_KINDS.bi).name
         };
         ANNO_MAP.set(id,aObj);
         S.sel.clear();
@@ -7975,6 +8292,143 @@ function setCadLayersVisible(ps, layers, visible) {
   renderPanes();
   renderLayerPanel();
 }
+function cadSetVisibility(ps, pred) {
+  if (!ps || !ps.ocConfig) return;
+  (ps.cadLayers || []).forEach(L => { const v = !!pred(L); L.visible = v; L.ids.forEach(id => { try { ps.ocConfig.setVisibility(id, v); } catch (_) {} }); });
+  ps.ocRev = (ps.ocRev || 0) + 1;
+  renderPanes();
+  renderLayerPanel();
+}
+function cadIsolateSelected() {
+  const ps = getActivePaneState();
+  if (!ps.cadSel || !ps.cadSel.size) { toast('Chưa chọn layer nào. Bấm "Chọn layer" rồi bấm vào nét trên bản vẽ, hoặc bấm tên layer bên phải.'); return; }
+  cadSetVisibility(ps, L => ps.cadSel.has(L.name));
+  toast('Chỉ hiện ' + ps.cadSel.size + ' layer đã chọn. Bấm "Hiện hết" để xem lại tất cả.');
+}
+function cadHideSelected() {
+  const ps = getActivePaneState();
+  if (!ps.cadSel || !ps.cadSel.size) { toast('Chưa chọn layer nào.'); return; }
+  cadSetVisibility(ps, L => L.visible && !ps.cadSel.has(L.name));
+}
+function setLayerPick(on) {
+  S.layerPick = !!on;
+  document.body.classList.toggle('layer-pick', S.layerPick);
+  const st = $('#stTool'); if (st) st.textContent = 'Công cụ: ' + (S.layerPick ? 'Chọn layer' : (TOOLN[S.tool] || S.tool));
+}
+function toggleLayerPick() {
+  const ps = getActivePaneState();
+  if (!ps || !(ps.cadLayers || []).length) { toast('File này không có layer bản vẽ (CAD)'); return; }
+  const on = !S.layerPick;
+  setLayerPick(on);
+  if (on) {
+    if (S.tool !== 'hand') act('hand', 'tool', 'Kéo');
+    S.layerTab = true;
+    if (S.tab !== LAYER_TAB) { S.tab = LAYER_TAB; }
+    openCadLayerPanel();
+    toast('Bấm vào một nét trên bản vẽ để chọn layer của nó. Giữ Shift/Ctrl để chọn thêm. Esc để thôi.');
+  }
+  renderTabs(); renderTools(false); renderLayerPanel();
+}
+// Tìm layer của nét gần điểm (x, y) nhất (toạ độ PDF), trong bán kính tol.
+async function cadLayerAt(ps, pageNum, x, y, tol) {
+  const pi = ps.pageInfos[pageNum - 1];
+  const page = pi && pi.page;
+  if (!page) return null;
+  let fn, args;
+  const d = displayIntentOf(page);
+  if (d) { fn = d.__heavy.fn; args = d.__heavy.args; }
+  else { const ol = await page.getOperatorList(); fn = ol.fnArray; args = ol.argsArray; }
+  const O = pdfjsLib.OPS;
+  const CP = O.constructPath, TR = O.transform, SV = O.save, RS = O.restore;
+  const BMP = O.beginMarkedContentProps, BM = O.beginMarkedContent, EM = O.endMarkedContent;
+  const FB = O.paintFormXObjectBegin, FE = O.paintFormXObjectEnd;
+  let m = [1, 0, 0, 1, 0, 0]; const st = []; const oc = [];
+  const mul = (a, b) => [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]];
+  let best = tol, bestOc = null;
+  const segD = (ax, ay, bx, by) => {
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    let t = L2 ? ((x - ax) * dx + (y - ay) * dy) / L2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return Math.hypot(x - (ax + t * dx), y - (ay + t * dy));
+  };
+  const curOc = () => { for (let k = oc.length - 1; k >= 0; k--) if (oc[k]) return oc[k]; return null; };
+  for (let i = 0, n = fn.length; i < n; i++) {
+    const f = fn[i], a = args[i];
+    if (f === CP) {
+      const mm = a[2];
+      if (mm && isFinite(mm[0])) {
+        const xs = [m[0] * mm[0] + m[2] * mm[2] + m[4], m[0] * mm[1] + m[2] * mm[2] + m[4], m[0] * mm[0] + m[2] * mm[3] + m[4], m[0] * mm[1] + m[2] * mm[3] + m[4]];
+        const ys = [m[1] * mm[0] + m[3] * mm[2] + m[5], m[1] * mm[1] + m[3] * mm[2] + m[5], m[1] * mm[0] + m[3] * mm[3] + m[5], m[1] * mm[1] + m[3] * mm[3] + m[5]];
+        if (x < Math.min(...xs) - best || x > Math.max(...xs) + best || y < Math.min(...ys) - best || y > Math.max(...ys) + best) continue;
+      }
+      const ops = a[0], ar = a[1];
+      let j = 0, cx = 0, cy = 0, sx = 0, sy = 0;
+      const P = (px, py) => [m[0] * px + m[2] * py + m[4], m[1] * px + m[3] * py + m[5]];
+      const to = (px, py) => { const p = P(px, py); const dd = segD(cx, cy, p[0], p[1]); if (dd < best) { best = dd; bestOc = curOc(); } cx = p[0]; cy = p[1]; };
+      for (const op of ops) {
+        if (op === 13) { const p = P(ar[j], ar[j + 1]); cx = sx = p[0]; cy = sy = p[1]; j += 2; }
+        else if (op === 14) { to(ar[j], ar[j + 1]); j += 2; }
+        else if (op === 15) { to(ar[j], ar[j + 1]); to(ar[j + 2], ar[j + 3]); to(ar[j + 4], ar[j + 5]); j += 6; }
+        else if (op === 16 || op === 17) { to(ar[j], ar[j + 1]); to(ar[j + 2], ar[j + 3]); j += 4; }
+        else if (op === 18) { to2(); }
+        else if (op === 19) {
+          const rx = ar[j], ry = ar[j + 1], rw = ar[j + 2], rh = ar[j + 3]; j += 4;
+          const p = P(rx, ry); cx = sx = p[0]; cy = sy = p[1];
+          to(rx + rw, ry); to(rx + rw, ry + rh); to(rx, ry + rh); to(rx, ry);
+        }
+      }
+      function to2() { const dd = segD(cx, cy, sx, sy); if (dd < best) { best = dd; bestOc = curOc(); } cx = sx; cy = sy; }
+    } else if (f === TR) m = mul(m, a);
+    else if (f === SV) st.push(m);
+    else if (f === RS) { const p = st.pop(); if (p) m = p; }
+    else if (f === FB) { st.push(m); if (a && a[0]) m = mul(m, a[0]); }
+    else if (f === FE) { const p = st.pop(); if (p) m = p; }
+    else if (f === BMP) {
+      const pr = a && a[1];
+      oc.push(a && a[0] === 'OC' && pr ? (pr.id || (pr.ids && pr.ids[0]) || null) : null);
+    } else if (f === BM) oc.push(null);
+    else if (f === EM) oc.pop();
+  }
+  if (!bestOc) return null;
+  return (ps.cadLayers || []).find(L => L.ids.includes(bestOc)) || null;
+}
+let LAYER_PICK_DOWN = null;
+document.addEventListener('pointerdown', e => {
+  if (!S.layerPick) return;
+  const pg = e.target.closest && (e.target.closest('.page') || e.target.closest('.scroll'));
+  LAYER_PICK_DOWN = pg ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.layerPick) { setLayerPick(false); renderTools(false); renderLayerPanel(); } });
+document.addEventListener('click', async e => {
+  if (!S.layerPick || !LAYER_PICK_DOWN) return;
+  const dn = LAYER_PICK_DOWN; LAYER_PICK_DOWN = null;
+  if (Math.hypot(e.clientX - dn.x, e.clientY - dn.y) > 5) return; // đang kéo bản vẽ
+  // Công cụ Kéo giữ chuột (pointer capture) nên e.target là khung cuộn: dò trang theo vị trí chuột.
+  const hits = document.elementsFromPoint(e.clientX, e.clientY);
+  if (hits.some(h => h.closest && h.closest('.anno-item'))) return;
+  const pg = hits.map(h => h.closest && h.closest('.page')).find(Boolean);
+  if (!pg) return;
+  e.stopPropagation(); e.preventDefault();
+  const paneIdx = +pg.dataset.pane || 0, pageNum = +pg.dataset.page || 1;
+  const ps = PANE_STATES[paneIdx];
+  const pi = ps.pageInfos[pageNum - 1];
+  if (!pi || !pi.page) return;
+  const r = pg.getBoundingClientRect();
+  const vp = pageViewport(pi.page, pi, 1);
+  const pt = vp.convertToPdfPoint((e.clientX - r.left) / r.width * vp.width, (e.clientY - r.top) / r.height * vp.height);
+  const tol = 6 * vp.width / r.width; // ~6 điểm ảnh trên màn hình
+  const st = $('#stTool'); if (st) st.textContent = 'Đang tìm layer…';
+  const L = await cadLayerAt(ps, pageNum, pt[0], pt[1], tol);
+  if (st) st.textContent = 'Công cụ: Chọn layer';
+  if (!L) { toast('Không có nét nào của layer bản vẽ ở chỗ này — bấm sát vào nét hơn hoặc phóng to.'); return; }
+  if (!ps.cadSel) ps.cadSel = new Set();
+  if (e.shiftKey || e.ctrlKey || e.metaKey) { if (ps.cadSel.has(L.name)) ps.cadSel.delete(L.name); else ps.cadSel.add(L.name); }
+  else { ps.cadSel.clear(); ps.cadSel.add(L.name); }
+  ps.cadFlash = L.name;
+  const fi = $('.cad-layers input.field'); if (fi && ps.cadFilter) { ps.cadFilter = ''; }
+  openCadLayerPanel();
+  renderLayerPanel();
+  toast('Layer: ' + L.name + (L.visible ? '' : ' (đang ẩn)') + (ps.cadSel.size > 1 ? ' · đã chọn ' + ps.cadSel.size + ' layer' : ''));
+}, true);
 function openCadLayerPanel() {
   const cmt = $('#cmt');
   if (cmt) {
@@ -8003,29 +8457,85 @@ function renderCadLayerSection(box) {
   bAll.style.fontSize = bNone.style.fontSize = '11px';
   tools.append(find, bAll, bNone);
   const list = el('div', '', '');
+  if (!ps.cadSel) ps.cadSel = new Set();
+  const sel = ps.cadSel;
+  const acts = el('div', 'cad-acts', '');
+  const bPick = el('button', 'btn sm ghost' + (S.layerPick ? ' on' : ''), 'Chọn trên bản vẽ');
+  bPick.title = 'Bấm vào nét trên bản vẽ để biết nó thuộc layer nào (giữ Shift/Ctrl để chọn thêm)';
+  bPick.onclick = () => toggleLayerPick();
+  const bIso = el('button', 'btn sm ghost', 'Chỉ hiện layer chọn');
+  bIso.onclick = () => cadIsolateSelected();
+  const bHideSel = el('button', 'btn sm ghost', 'Ẩn layer chọn');
+  bHideSel.onclick = () => cadHideSelected();
+  const bClr = el('button', 'btn sm ghost', 'Bỏ chọn');
+  bClr.onclick = () => { sel.clear(); draw(); updSelInfo(); };
+  const selInfo = el('small', '', '');
+  selInfo.style.cssText = 'color:var(--muted);align-self:center';
+  const updSelInfo = () => {
+    selInfo.textContent = sel.size ? 'Đã chọn ' + sel.size : 'Bấm tên để chọn, kéo để bôi nhiều';
+    bIso.disabled = bHideSel.disabled = bClr.disabled = !sel.size;
+  };
+  acts.append(bPick, bIso, bHideSel, bClr, selInfo);
+  let anchor = null, painting = false;
+  const shown = () => { const q = (find.value || '').toLowerCase(); return layers.filter(L => !q || L.name.toLowerCase().includes(q)); };
+  const selectRange = (a, b, add) => {
+    const arr = shown(); const i = arr.indexOf(a), j = arr.indexOf(b);
+    if (i < 0 || j < 0) return;
+    if (!add) sel.clear();
+    for (let k = Math.min(i, j); k <= Math.max(i, j); k++) sel.add(arr[k].name);
+  };
+  let paintBase = null;
   const draw = () => {
     list.replaceChildren();
-    const q = (find.value || '').toLowerCase();
-    layers.filter(L => !q || L.name.toLowerCase().includes(q)).forEach(L => {
-      const row = el('label', '', '');
-      row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 4px;font-size:11px;cursor:pointer;border-radius:4px';
+    shown().forEach(L => {
+      const row = el('div', 'cad-row' + (sel.has(L.name) ? ' sel' : ''), '');
+      row.dataset.name = L.name;
       const cb = document.createElement('input');
-      cb.type = 'checkbox'; cb.checked = L.visible;
+      cb.type = 'checkbox'; cb.checked = L.visible; cb.title = 'Bật/tắt hiển thị layer';
       cb.onchange = () => setCadLayersVisible(ps, [L], cb.checked);
       const nm = document.createElement('span');
+      nm.className = 'cad-nm';
       nm.textContent = L.name; // tên layer lấy từ file: không chèn như HTML
-      nm.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + (L.visible ? '' : 'color:var(--muted);text-decoration:line-through');
+      nm.title = L.name + ' — bấm để chọn; Ctrl: chọn thêm; Shift hoặc kéo: bôi nhiều dòng';
+      if (!L.visible) nm.style.cssText = 'color:var(--muted);text-decoration:line-through';
+      nm.onpointerdown = e => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        const add = e.ctrlKey || e.metaKey;
+        if (e.shiftKey && anchor) selectRange(anchor, L, add);
+        else if (add) { if (sel.has(L.name)) sel.delete(L.name); else sel.add(L.name); anchor = L; }
+        else { sel.clear(); sel.add(L.name); anchor = L; }
+        painting = true; paintBase = add ? new Set(sel) : null;
+        window.addEventListener('pointerup', endPaint, { once: true });
+        draw(); updSelInfo();
+      };
+      row.onpointerenter = () => {
+        if (!painting || !anchor) return;
+        if (paintBase) { sel.clear(); paintBase.forEach(n => sel.add(n)); selectRange(anchor, L, true); }
+        else selectRange(anchor, L, false);
+        list.querySelectorAll('.cad-row').forEach(r => r.classList.toggle('sel', sel.has(r.dataset.name)));
+        updSelInfo();
+      };
       row.append(cb, nm);
       list.append(row);
     });
   };
+  const endPaint = () => { painting = false; paintBase = null; };
+  list.onpointerleave = () => {};
+  updSelInfo();
   find.oninput = () => { ps.cadFilter = find.value; draw(); };
   const visibleNow = () => { const q = (find.value || '').toLowerCase(); return layers.filter(L => !q || L.name.toLowerCase().includes(q)); };
   bAll.onclick = () => setCadLayersVisible(ps, visibleNow(), true);
   bNone.onclick = () => setCadLayersVisible(ps, visibleNow(), false);
   draw();
-  sec.append(head, tools, list);
+  sec.append(head, tools, acts, list);
   box.append(sec);
+  // Dòng vừa được chọn từ bản vẽ: cuộn tới và nháy sáng
+  if (ps.cadFlash) {
+    const r = [...list.querySelectorAll('.cad-row')].find(x => x.dataset.name === ps.cadFlash);
+    ps.cadFlash = null;
+    if (r) { r.classList.add('flash'); requestAnimationFrame(() => r.scrollIntoView({ block: 'center', behavior: 'smooth' })); }
+  }
 }
 function renderLayerPanel() {
   const box = $('#layerList');
@@ -8279,6 +8789,13 @@ function syncPropertiesPanel(){
   $('#propN').textContent=`(${S.sel.size})`;
   targetBox.replaceChildren();
 
+  if(S.sel.size===0 && S.tool==='pen'){
+    const sec=el('div','prop-sec');
+    sec.append(el('div','prop-sec-title','▼ Bút vẽ (nét tiếp theo)'));
+    sec.append(buildPenPicker(null));
+    targetBox.append(sec);
+    return;
+  }
   if(S.sel.size===0){
     targetBox.append(el('div','',`<p class="hint" style="text-align:center;padding:24px 8px">Chưa chọn đối tượng nào.<br>Hãy bấm vào 1 ghi chú trên bản vẽ hoặc kéo quét khung chọn để xem thuộc tính.</p>`));
     return;
@@ -8292,6 +8809,12 @@ function syncPropertiesPanel(){
   const titleText=S.sel.size===1?`Đang chọn: 1 [${TOOLN[obj.type]||obj.type}]`:`Đang chọn: ${S.sel.size} đối tượng (Chỉnh sửa hàng loạt)`;
   const head=el('div','',`<div style="font-weight:700;font-size:12px;color:var(--accent);margin-bottom:4px">${titleText}</div>`);
   targetBox.append(head);
+  if(obj.type==='pen' && [...S.sel].every(id=>ANNO_MAP.get(id)?.type==='pen')){
+    const sec=el('div','prop-sec');
+    sec.append(el('div','prop-sec-title','▼ Bút vẽ'));
+    sec.append(buildPenPicker(obj));
+    targetBox.append(sec);
+  }
 
   // MỤC 1: CHUNG (GENERAL - CHUẨN PDF-XCHANGE)
   const secGen=el('div','prop-sec');
@@ -8914,10 +9437,55 @@ function setOpenProgress(docId, text) {
     else if (tag) tag.remove();
   });
 }
-async function openCloudDoc(docId, docTitle, knownSize) {
+const PDF_FILE_CACHE = 'pdf-files-v1';
+function pdfCacheKey(docId, size, modified) {
+  const me = (typeof CURRENT_USER !== 'undefined' && CURRENT_USER && (CURRENT_USER.username || CURRENT_USER.user)) || '';
+  if (!me || !modified || !size || !window.caches) return null;
+  return '/__pdfcache/' + encodeURIComponent(me) + '/' + encodeURIComponent(docId) + '?s=' + size + '&m=' + encodeURIComponent(modified);
+}
+async function pdfCacheGet(key) {
+  if (!key) return null;
+  try {
+    const c = await caches.open(PDF_FILE_CACHE);
+    const r = await c.match(key);
+    return r ? new Uint8Array(await r.arrayBuffer()) : null;
+  } catch (_) { return null; }
+}
+async function pdfCachePut(key, docId, bytes) {
+  if (!key || bytes.length > 200 * 1048576) return;
+  try {
+    const c = await caches.open(PDF_FILE_CACHE);
+    const prefix = key.split('?')[0];
+    for (const req of await c.keys()) { if (new URL(req.url).pathname === prefix) await c.delete(req); }
+    await c.put(key, new Response(bytes, { headers: { 'Content-Type': 'application/pdf', 'X-Saved': String(Date.now()) } }));
+    // Giữ tối đa 12 file gần nhất
+    const all = await c.keys();
+    if (all.length > 12) {
+      const withT = await Promise.all(all.map(async q => ({ q, t: Number((await c.match(q))?.headers.get('X-Saved')) || 0 })));
+      withT.sort((a, b) => a.t - b.t).slice(0, all.length - 12).forEach(x => c.delete(x.q));
+    }
+  } catch (_) {}
+}
+async function openCloudDoc(docId, docTitle, knownSize, modified) {
   const seq = ++OPEN_DOC_SEQ;
   setOpenProgress(docId, 'đang tải…');
   showLoadOverlay(docTitle, null, 'Đang kết nối Google Drive...');
+  const cacheKey = docId === 'ban-la-ai' ? null : pdfCacheKey(docId, knownSize, modified);
+  try {
+    const cached = await pdfCacheGet(cacheKey);
+    if (cached && seq === OPEN_DOC_SEQ) {
+      showLoadOverlay(docTitle, 100, 'Mở từ bản đã lưu trên máy...');
+      setOpenProgress(docId, 'đang mở…');
+      await loadRealPdf(cached, docTitle || 'tai-lieu.pdf', false);
+      PDF_STATE.docId = docId;
+      COLLAB_CURSOR = 0;
+      if (typeof collabPollLoop === 'function') collabPollLoop();
+      showLoadOverlay(null);
+      renderTree();
+      toast(`Đã mở tài liệu: ${docTitle} (bản lưu trên máy, mở nhanh)`);
+      return;
+    }
+  } catch (_) {}
   try {
     // Tải dạng stream qua /api/pdf_file (không bị giới hạn 25 MB như drive_download cũ).
     const tok = localStorage.getItem('bqlda_session_token') || localStorage.getItem('bqlda_web_session') || localStorage.getItem('awm_session') || sessionStorage.getItem('awm_session') || '';
@@ -8939,6 +9507,7 @@ async function openCloudDoc(docId, docTitle, knownSize) {
         ab = new Uint8Array(got); let o = 0; for (const p of parts) { ab.set(p, o); o += p.length; }
       } else ab = new Uint8Array(await fr.arrayBuffer());
       if (seq !== OPEN_DOC_SEQ) return; // người dùng đã bấm file khác hoặc bấm Huỷ
+      pdfCachePut(cacheKey, docId, ab);
       showLoadOverlay(docTitle, 100, 'Đang dựng trang...');
       setOpenProgress(docId, 'đang mở…');
       await loadRealPdf(ab, docTitle || 'tai-lieu.pdf', false);
@@ -10022,7 +10591,7 @@ async function renderTree() {
     row.querySelector('.tn').textContent = n.name;
     if (n.doc_id) row.dataset.docId = n.doc_id;
     row.title = n.intro ? 'Trang giới thiệu chung — ai cũng ghi tên, ban, chức vụ của mình' : n.name;
-    row.onclick = e => { e.stopPropagation(); if (!n.intro) SELECTED_TREE_ITEM = { id: n.id, name: n.name, type: 'file' }; if (n.doc_id) openCloudDoc(n.doc_id, n.name, n.size); };
+    row.onclick = e => { e.stopPropagation(); if (!n.intro) SELECTED_TREE_ITEM = { id: n.id, name: n.name, type: 'file' }; if (n.doc_id) openCloudDoc(n.doc_id, n.name, n.size, n.modified); };
     if (!n.intro) {
       row.draggable = true;
       row.addEventListener('dragstart', ev => { ev.dataTransfer.setData(TREE_DRAG_MIME, JSON.stringify({ id: n.id, name: n.name, type: 'file' })); ev.dataTransfer.effectAllowed = 'move'; });
@@ -11350,7 +11919,7 @@ function start(){
     ps.zoom = newZoom;
     updatePanePagesCssSize(ps, sc);
     if (targetPg) { const r2 = targetPg.getBoundingClientRect(); sc.scrollLeft += (r2.left + relX * ratio) - cx; sc.scrollTop += (r2.top + relY * ratio) - cy; }
-    if (pIdx === S.focus || pIdx < 0) { S.zoom = newZoom; $('#stZoom').textContent = newZoom + '%'; }
+    if (pIdx === S.focus || pIdx < 0) { S.zoom = newZoom; syncZoomUi(newZoom); }
     updatePtabMeta(pIdx >= 0 ? pIdx : S.focus);
     scheduleHiDpiRerender(ps, sc, 140);
   };
@@ -11401,7 +11970,7 @@ function start(){
 
     if (pIdx === S.focus) {
       S.zoom = newZoom;
-      $('#stZoom').textContent = newZoom + '%';
+      syncZoomUi(newZoom);
     }
     updatePtabMeta(pIdx);
     scheduleHiDpiRerender(ps, sc, 70);
@@ -11802,6 +12371,7 @@ function start(){
     btnLogout.onclick = async () => {
       await pdfApi('logout_user');
       localStorage.removeItem('bqlda_session_token');
+      try { window.caches && caches.delete('pdf-files-v1'); } catch (_) {}
       localStorage.removeItem('bqlda_web_session');
       localStorage.removeItem('awm_session');
       sessionStorage.removeItem('awm_session');
