@@ -4466,9 +4466,13 @@ function bindCalloutPtDrag(cp, ly, a, idx) {
     const preSnap = captureAnnoSnapshot();
     a.leader = calloutLeader(a).map(f => [f[0], f[1]]);
     let changed = false;
+    const sx0 = e.clientX, sy0 = e.clientY;
     const onMove = ev => {
       changed = true;
-      const [nx, ny] = pct(ly, ev);
+      // Giữ Ctrl: khoá theo phương ngang hoặc dọc (theo hướng kéo nhiều hơn)
+      let px = ev.clientX, py = ev.clientY;
+      if (ev.ctrlKey || ev.metaKey) { if (Math.abs(px - sx0) >= Math.abs(py - sy0)) py = sy0; else px = sx0; }
+      const [nx, ny] = pct(ly, { clientX: px, clientY: py });
       const rad = -(a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
       const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
       const lx = cx + (nx - cx) * cs - (ny - cy) * sn / annoK(a);
@@ -4599,7 +4603,8 @@ function bindSelectionDrag(box,ly,initBoxX,initBoxY){
           x:a.x,y:a.y,w:a.w,h:a.h,rot:a.rotate||0,
           x1:a.x1,y1:a.y1,x2:a.x2,y2:a.y2,
           points:Array.isArray(a.points)?a.points.map(p=>[...p]):null,
-          leaderAbs:a.type==='callout'?calloutLeaderAbs(a):null
+          leaderAbs:a.type==='callout'?calloutLeaderAbs(a):null,
+          leaderLocal:a.type==='callout'?calloutLeader(a).map(f=>[f[0],f[1]]):null
         });
       }
     });
@@ -4676,6 +4681,11 @@ function bindSelectionDrag(box,ly,initBoxX,initBoxY){
           a.x=nx; a.y=ny;
           if(old.x1!=null){a.x1=old.x1+adx;a.y1=old.y1+ady;a.x2=old.x2+adx;a.y2=old.y2+ady;}
           if(old.points){a.points=old.points.map(([px,py])=>[Number((px+adx).toFixed(3)),Number((py+ady).toFixed(3))]);}
+          if(old.leaderLocal){
+            // Chú dẫn: giữ Ctrl -> chỉ khung chữ (và điểm gấp) đi theo, đầu mũi tên đứng yên tại chỗ đang chỉ
+            if(ev.ctrlKey||ev.metaKey){ const k=old.leaderAbs[0], t=old.leaderAbs[1]; a.leader=old.leaderLocal.map(f=>[f[0],f[1]]); calloutLeaderFromAbs(a,[[k[0]+adx,k[1]+ady],[t[0],t[1]]]); }
+            else a.leader=old.leaderLocal.map(f=>[f[0],f[1]]);
+          }
         });
       }
       syncAllAnnotations(true, true);
