@@ -21,6 +21,19 @@ const CORE_SCHEMA_STATEMENTS = [
     expires_at INTEGER NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS bqlda_sessions_user ON bqlda_sessions (username)`,
+  `CREATE TABLE IF NOT EXISTS bqlda_devices (
+    username TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    name TEXT,
+    user_agent TEXT,
+    first_seen INTEGER NOT NULL DEFAULT 0,
+    last_seen INTEGER NOT NULL DEFAULT 0,
+    last_ip TEXT,
+    active_days INTEGER NOT NULL DEFAULT 1,
+    hits INTEGER NOT NULL DEFAULT 0,
+    last_day TEXT,
+    PRIMARY KEY (username, device_id)
+  )`,
   `CREATE TABLE IF NOT EXISTS bqlda_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,

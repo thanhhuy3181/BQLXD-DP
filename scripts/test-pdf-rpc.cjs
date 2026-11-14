@@ -393,6 +393,25 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   } catch (e) { schemaErr = e.message; }
   check('lược đồ SQLite áp dụng lại lần 2 không lỗi (idempotent)', schemaErr === null, schemaErr);
 
+  // 9. Nhớ phiên + danh sách thiết bị
+  console.log('9. Phiên & thiết bị');
+  await resetDb();
+  const iphone = { 'x-device-id': 'dv_iphone_test_01', 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit Version/17.0 Mobile Safari/604.1' };
+  const pc = { 'x-device-id': 'dv_pc_test_000002', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit Chrome/120.0 Safari/537.36' };
+  await call('an', 'auth_status', {}, iphone);
+  await call('an', 'auth_status', {}, pc);
+  await call('an', 'auth_status', {}, iphone); // trong 5 phút: không ghi thêm
+  let devs = await db.raw("SELECT * FROM bqlda_devices WHERE username='an' ORDER BY name");
+  check('ghi nhận 2 thiết bị của một người', devs.length === 2, devs);
+  check('tên thiết bị dễ đọc (iPhone · Safari, Windows · Chrome)', devs.some(d => d.name === 'iPhone · Safari') && devs.some(d => d.name === 'Máy tính Windows · Chrome'), devs.map(d => d.name));
+  check('Thành viên không xem được danh sách thiết bị', (await call('an', 'devices_list')).status === 403);
+  const devList = await call('admin', 'devices_list');
+  check('Quản trị xem được thiết bị của mọi người', devList.body.ok && devList.body.data.filter(d => d.username === 'an').length === 2, devList.body);
+  await db.raw("UPDATE bqlda_sessions SET expires_at = ? WHERE token = 'tok_binh'", [Date.now() + 3600e3]);
+  await call('binh', 'auth_status');
+  const exp = (await db.raw("SELECT expires_at FROM bqlda_sessions WHERE token='tok_binh'"))[0].expires_at;
+  check('phiên sắp hết hạn được tự gia hạn khi còn dùng', exp - Date.now() > 100 * 24 * 3600e3, exp);
+
   console.log(results.join('\n'));
   console.log(`\nKết quả: ${pass} đạt, ${fail} lỗi`);
   process.exit(fail ? 1 : 0);

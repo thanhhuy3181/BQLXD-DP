@@ -13,6 +13,9 @@
 .side-tab.on{background:var(--surface);color:var(--fg);box-shadow:inset 0 -2px 0 var(--hot)}
 .side-thumbs{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
 .side-thumbs[hidden],.tree[hidden]{display:none!important}
+.dev-list{margin:2px 0 8px 40px;padding:6px 8px;border-left:2px solid var(--accent);font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.dev-row{display:flex;flex-direction:column;gap:1px}
+.dev-row .dn{color:var(--fg);font-size:12px}
 .tree-actions{display:flex;gap:4px;padding:6px;border-bottom:1.5px solid var(--line);background:var(--surface-2)}
 .tree-actions .tree-ib{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
 .tree-actions .tree-ib.danger{color:#dc2626}
@@ -1150,7 +1153,7 @@ const P={
   thumbs:'M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z',cmt:'M4 5h16v11H9l-5 4z',
   full:'M4 9V4h5m6 0h5v5m0 6v5h-5m-6 0H4v-5',exit:'M9 4v5H4m11-5v5h5m0 6h-5v5m-6 0v-5H4',
   share:'M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 13a3 3 0 1 0 0-6M2 20c0-3 3-5 6-5m4 5c0-3 2-5 4-5s4 2 4 5',
-  up:'M12 16V4m-5 5 5-5 5 5M4 20h16',folder:'M3 6h6l2 2h10v11H3z',filenew:'M6 3h8l4 4v14H6zm8 0v4h4M12 11v6m-3-3h6',folderadd:'M3 6h6l2 2h10v11H3zM12 11v6m-3-3h6',edit:'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',trash:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',refresh:'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',users:'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-6 7-6s7 2.5 7 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14c2.4.6 4 2.6 4 6',file:'M6 3h8l4 4v14H6zm8 0v4h4',
+  up:'M12 16V4m-5 5 5-5 5 5M4 20h16',folder:'M3 6h6l2 2h10v11H3z',monitor:'M3 4h18v12H3zM8 20h8M12 16v4',filenew:'M6 3h8l4 4v14H6zm8 0v4h4M12 11v6m-3-3h6',folderadd:'M3 6h6l2 2h10v11H3zM12 11v6m-3-3h6',edit:'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',trash:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',refresh:'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',users:'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-6 7-6s7 2.5 7 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14c2.4.6 4 2.6 4 6',file:'M6 3h8l4 4v14H6zm8 0v4h4',
   chev:'M9 6l6 6-6 6',menu:'M4 6h16M4 12h16M4 18h16',add:'M12 5v14m-7-7h14',del:'M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13',
   merge:'M6 4v6l6 4 6-4V4m-6 10v6',split:'M12 4v6l-6 4v6m6-10 6 4v6',extract:'M6 3h8l4 4v14H6zm3 12h6m-3-3 3 3-3 3',
   sign:'M3 17c3-6 5-9 7-9s0 8 2 8 3-4 5-4 2 3 4 3M3 21h18',lock:'M6 11h12v9H6zm2 0V8a4 4 0 0 1 8 0v3',
@@ -1487,6 +1490,14 @@ const PDF_STATE = new Proxy({}, {
   }
 });
 
+// Mã định danh thiết bị (sinh 1 lần, lưu trên máy) để Quản trị xem danh sách thiết bị của từng người.
+const DEVICE_ID = (() => {
+  try {
+    let d = localStorage.getItem('pdf_device_id');
+    if (!d) { d = 'dv_' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join(''); localStorage.setItem('pdf_device_id', d); }
+    return d;
+  } catch (_) { return ''; }
+})();
 async function pdfApi(action, payload = {}) {
   const token = localStorage.getItem('bqlda_session_token') ||
                 localStorage.getItem('bqlda_web_session') ||
@@ -1497,7 +1508,8 @@ async function pdfApi(action, payload = {}) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : ''
+        'Authorization': token ? `Bearer ${token}` : '',
+        'X-Device-Id': DEVICE_ID
       },
       body: JSON.stringify({ action, payload })
     });
@@ -9793,9 +9805,38 @@ async function loadShareDialogData(){
 // Danh sách tài khoản: chỉ nạp từ máy chủ (users_list) khi Quản trị viên đăng nhập; không ghi cứng trong mã.
 const ACC=[];
 const STN={ok:'Đang dùng',wait:'Chờ duyệt',lock:'Đã khoá'};
+let DEVICES = null;
+async function loadDevices(){
+  const r = await pdfApi('devices_list');
+  DEVICES = (r && r.ok && Array.isArray(r.data)) ? r.data : [];
+  renderAcc();
+}
+function fmtAgo(ms){
+  if(!ms) return '—';
+  const m = Math.round((Date.now() - ms) / 60000);
+  if (m < 2) return 'vừa xong';
+  if (m < 60) return m + ' phút trước';
+  if (m < 1440) return Math.round(m / 60) + ' giờ trước';
+  return Math.round(m / 1440) + ' ngày trước';
+}
+function deviceListEl(list){
+  const box = el('div', 'dev-list', '');
+  if (!list.length) { box.textContent = 'Chưa ghi nhận thiết bị nào (ghi nhận từ lần đăng nhập/mở web tiếp theo).'; return box; }
+  list.forEach(d => {
+    const r = el('div', 'dev-row', '<b class="dn"></b><span class="dm"></span>');
+    r.querySelector('.dn').textContent = d.name || 'Thiết bị';
+    const d1 = new Date(Number(d.first_seen)).toLocaleDateString('vi-VN');
+    r.querySelector('.dm').textContent = 'Dùng lần cuối ' + fmtAgo(Number(d.last_seen)) + ' · ' + d.active_days + ' ngày có dùng · ' + d.hits + ' lượt hoạt động · từ ' + d1 + (d.last_ip ? ' · IP ' + d.last_ip : '');
+    r.title = 'Mã thiết bị: ' + d.device_id;
+    box.append(r);
+  });
+  return box;
+}
+const DEV_OPEN = new Set();
 function renderAcc(){
   const q=($('#accFind').value||'').toLowerCase(),box=$('#accList');
   box.replaceChildren();
+  if (DEVICES === null && CURRENT_USER && CURRENT_USER.role === 'Admin') { DEVICES = []; loadDevices(); }
   ACC.filter(a=>(a[0]+a[1]).toLowerCase().includes(q)).forEach(a=>{
     const [n,m,r,st,c]=a,me=n==='Bạn';
     const row=el('div','row',`<span class="av" style="background:${c}">${ini(n)}</span><span class="who"><b>${n}${me?' (bạn)':''}</b><small>${m}</small></span><span class="tag ${st}">${STN[st]}</span>`);
@@ -9842,7 +9883,15 @@ function renderAcc(){
       };
       row.append(btnDel);
     }
+    const uname = (a[5] || n).toLowerCase();
+    const myDevs = (DEVICES || []).filter(d => String(d.username).toLowerCase() === uname);
+    const bDev = el('button', 'btn ghost', ic('monitor') + ' ' + myDevs.length);
+    bDev.title = 'Thiết bị đã dùng của ' + n + ' (' + myDevs.length + ')';
+    bDev.style.padding = '4px 8px';
+    bDev.onclick = () => { if (DEV_OPEN.has(uname)) DEV_OPEN.delete(uname); else DEV_OPEN.add(uname); renderAcc(); };
+    row.append(bDev);
     box.append(row);
+    if (DEV_OPEN.has(uname)) box.append(deviceListEl(myDevs));
   });
 }
 
@@ -10995,7 +11044,18 @@ function start(){
   // Init Google button after brief delay
   setTimeout(initGoogleAuthInPdf, 500);
 
-  pdfApi('auth_status').then(res=>{
+  (async () => {
+    const hasTok = !!(localStorage.getItem('bqlda_session_token') || localStorage.getItem('bqlda_web_session') || localStorage.getItem('awm_session'));
+    let res = null;
+    for (let i = 0; i < 5; i++) {
+      res = await pdfApi('auth_status');
+      if (res && res.ok) break;
+      if (!hasTok) break;
+      if (i === 0) toast('Đang khôi phục phiên đăng nhập...');
+      await new Promise(r => setTimeout(r, 800 * Math.pow(2, i)));
+    }
+    return res;
+  })().then(res=>{
     if(res&&res.ok&&res.data?.authenticated){
       CURRENT_USER=res.data.user;
       updateUserBadgeAndRole();

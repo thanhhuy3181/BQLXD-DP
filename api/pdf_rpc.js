@@ -44,7 +44,36 @@ function computeRole(user, doc) {
 const roleRank = role => (role ? (ROLE_RANK[role] || 1) : 0);
 
 /* ---------- Kho lưu trữ Drive riêng (tài khoản Google độc lập, do Admin đăng nhập 1 lần) ---------- */
-const SESSION_MS = 30 * 24 * 3600 * 1000;
+// Phiên đăng nhập nhớ trên thiết bị 180 ngày và tự gia hạn khi còn dùng (không bắt đăng nhập lại sau mỗi lần cập nhật web).
+const SESSION_MS = 180 * 24 * 3600 * 1000;
+const DEVICE_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
+const deviceSeen = new Map();
+function deviceName(ua) {
+  ua = String(ua || '');
+  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? ((/Mobile/.test(ua) ? 'Điện thoại' : 'Máy tính bảng') + ' Android') :
+    /Windows/.test(ua) ? 'Máy tính Windows' : /Macintosh|Mac OS X/.test(ua) ? 'Máy Mac' : /Linux/.test(ua) ? 'Máy Linux' : 'Thiết bị khác';
+  const br = /Edg\//.test(ua) ? 'Edge' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Trình duyệt khác';
+  return os + ' · ' + br;
+}
+// Ghi nhận thiết bị đang dùng (mã thiết bị do trình duyệt tự sinh, lưu ở máy). Ghi tối đa 5 phút/lần/thiết bị.
+async function touchDevice(sql, username, req, force) {
+  try {
+    const dev = String(req.headers?.['x-device-id'] || '');
+    if (!sql || !username || !DEVICE_ID_RE.test(dev)) return;
+    const key = username + '|' + dev, now = Date.now();
+    if (!force && now - (deviceSeen.get(key) || 0) < 5 * 60 * 1000) return;
+    deviceSeen.set(key, now);
+    const ua = String(req.headers?.['user-agent'] || '').slice(0, 300);
+    const ip = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim().slice(0, 64);
+    const day = new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    await sql`INSERT INTO bqlda_devices (username, device_id, name, user_agent, first_seen, last_seen, last_ip, active_days, hits, last_day)
+      VALUES (${username}, ${dev}, ${deviceName(ua)}, ${ua}, ${now}, ${now}, ${ip}, 1, 1, ${day})
+      ON CONFLICT(username, device_id) DO UPDATE SET last_seen = excluded.last_seen, name = excluded.name, user_agent = excluded.user_agent,
+        last_ip = excluded.last_ip, hits = bqlda_devices.hits + 1,
+        active_days = bqlda_devices.active_days + (CASE WHEN bqlda_devices.last_day = excluded.last_day THEN 0 ELSE 1 END),
+        last_day = excluded.last_day`;
+  } catch (err) { console.warn('touchDevice:', err.message); }
+}
 // Chỉ hai tài khoản này là Quản trị; mọi tài khoản khác là thành viên (CBGS).
 const OWNER_ADMINS = ['admin', 'thanhhuy3181'];
 const isOwnerAdmin = username => OWNER_ADMINS.includes(String(username || '').toLowerCase());
@@ -217,12 +246,11 @@ async function getSessionUser(sql, req) {
   const tUser = verifyToken(token);
   if (tUser) return tUser;
   if (!sql) return null;
-  try {
-    const rows = await sql`SELECT u.username,u.status,u.data FROM bqlda_sessions s JOIN bqlda_users u ON u.username=s.username WHERE s.token=${token} AND s.expires_at>${Date.now()}`;
-    return publicUser(rows[0]);
-  } catch (_) {
-    return null;
+  const rows = await sql`SELECT u.username,u.status,u.data,s.expires_at FROM bqlda_sessions s JOIN bqlda_users u ON u.username=s.username WHERE s.token=${token} AND s.expires_at>${Date.now()}`;
+  if (rows[0] && Number(rows[0].expires_at) - Date.now() < SESSION_MS / 2) {
+    try { await sql`UPDATE bqlda_sessions SET expires_at=${Date.now() + SESSION_MS} WHERE token=${token}`; } catch (_) {}
   }
+  return publicUser(rows[0]);
 }
 
 // Memory fallback store khi chưa cấu hình database
@@ -504,6 +532,15 @@ module.exports = async function handler(req, res) {
     }
     const isAdmin = !!currentUser && currentUser.role === 'Admin';
     if (currentUser && sql) await loadStorageToken(sql);
+    if (currentUser && sql) await touchDevice(sql, currentUser.username, req, false);
+
+    // Danh sách thiết bị đã dùng của các tài khoản (chỉ Quản trị).
+    if (action === 'devices_list') {
+      if (!isAdmin) return res.status(403).json(failure('Chỉ Quản trị xem được.'));
+      if (!sql) return res.status(200).json(result([]));
+      const rows = await sql`SELECT username, device_id, name, first_seen, last_seen, last_ip, active_days, hits FROM bqlda_devices ORDER BY last_seen DESC`;
+      return res.status(200).json(result(rows));
+    }
     const roleOn = doc => computeRole(currentUser, doc);
     const canRead = doc => !!roleOn(doc);
     const canWrite = doc => { const r = roleOn(doc); return !!r && r !== 'Người xem'; };
@@ -550,6 +587,7 @@ module.exports = async function handler(req, res) {
         const token = crypto.randomBytes(32).toString('hex');
         await sql`DELETE FROM bqlda_sessions WHERE expires_at<=${Date.now()}`;
         await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},${Date.now() + SESSION_MS})`;
+        await touchDevice(sql, row.username, req, true);
         await ensureUserFolder(sql, userFolderName(row));
         return res.status(200).json({ ...result(publicUser(row)), session_token: token });
       } else {
@@ -632,6 +670,7 @@ module.exports = async function handler(req, res) {
         if (row.status !== 'Active') return res.status(200).json(failure('Tài khoản đang chờ Quản trị viên phê duyệt.'));
         const token = crypto.randomBytes(32).toString('hex');
         await sql`INSERT INTO bqlda_sessions (token,username,expires_at) VALUES (${token},${row.username},${Date.now() + SESSION_MS})`;
+        await touchDevice(sql, row.username, req, true);
         await ensureUserFolder(sql, userFolderName(row));
         return res.status(200).json({ ...result(publicUser(row)), session_token: token });
       } else {
