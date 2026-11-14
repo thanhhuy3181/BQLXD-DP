@@ -21,6 +21,7 @@
   #endcard h1{margin:0;font-size:120px;letter-spacing:-.03em;color:#0f3d3a}
   #endcard h1 span{color:#f97316}
   #endcard p{margin:18px 0 0;font-size:34px;color:#36524e;font-weight:500}
+  #endcard p.p2{margin-top:10px}
   #title{position:absolute;left:64px;top:48px;color:#0f3d3a;opacity:0}
   #title b{display:block;font-size:44px;letter-spacing:-.02em}
   #title span{font-size:22px;color:#55706c}
@@ -61,8 +62,8 @@
 <div class="cap"><b>Cảnh 6 · Ba lớp đã vẽ xong chữ PDF</b><span>Bản vẽ (giao thông, trắng xám) · Layer công trình theo khu A–F (màu) · Ghi chú: CBGS vẽ P bằng chuột, ĐTGS vẽ D bằng bút, GĐ vẽ F bằng ngón tay, cùng nhiều người ghi chú</span></div>
 
 <div class="hint">Rê chuột để nghiêng, xoay 3D</div>
-<div id="title"><b>PDF QLDA</b><span>Bản vẽ · Layer · Ghi chú — nhiều người cùng làm trên một bản vẽ</span></div>
-<div id="endcard"><h1>PDF <span>QLDA</span></h1><p>Bản vẽ · Layer · Ghi chú — cùng làm trên một bản vẽ</p></div>
+<div id="title"><b>PDF QLDA</b><span>Bản vẽ · Layer · Ghi chú — nhiều người cùng trên một file PDF</span></div>
+<div id="endcard"><h1>PDF <span>QLDA</span></h1><p>Bản vẽ · Layer · Ghi chú — cùng trên một file PDF</p><p class="p2">Nhân sự · Ghi chú · Bình luận — cùng trên một file PDF</p></div>
 <div class="scene">
   <div class="stack">
 
@@ -441,7 +442,8 @@
     await wait(3400);            // gộp 3D -> 2D
     await wait(2600);            // giữ hình 2D: chữ PDF giữa khu đô thị
     const ec = document.getElementById('endcard');
-    await frames(1000, k => ec.style.opacity = k.toFixed(3));
+    const sceneEl = document.querySelector('.scene');
+    await frames(1200, k => { ec.style.opacity = k.toFixed(3); sceneEl.style.opacity = (1 - k).toFixed(3); });   // cảnh 3D mờ hẳn khi chữ kết hiện
     await wait(3000);
     window.__videoEnd = true;
   }
