@@ -11062,10 +11062,16 @@ async function loadDocPeople(){
 }
 function cmtPeople(){
   const m = new Map();
-  DOC_PEOPLE.forEach(p => p && p.username && m.set(p.username, p.fullname || p.username));
-  ANNO_MAP.forEach(a => (a.replies || []).forEach(r => { if (r && r.user && !m.has(r.user)) m.set(r.user, r.author || r.user); }));
-  if (CURRENT_USER && CURRENT_USER.username && !m.has(CURRENT_USER.username)) m.set(CURRENT_USER.username, cmtMeName());
-  return [...m.entries()].map(([username, fullname]) => ({ username, fullname }));
+  DOC_PEOPLE.forEach(p => p && p.username && m.set(p.username, { fullname: p.fullname || p.username, nick: p.nick || '' }));
+  ANNO_MAP.forEach(a => (a.replies || []).forEach(r => { if (r && r.user && !m.has(r.user)) m.set(r.user, { fullname: r.author || r.user, nick: '' }); }));
+  if (CURRENT_USER && CURRENT_USER.username && !m.has(CURRENT_USER.username)) m.set(CURRENT_USER.username, { fullname: cmtMeName(), nick: '' });
+  return [...m.entries()].map(([username, v]) => ({ username, fullname: v.fullname, nick: v.nick || (String(username).includes('@') ? String(username).split('@')[0] : username) }));
+}
+// Tìm người được nhắc trong nội dung: "@Tên hiển thị" (cách mới) hoặc "@username" (bình luận cũ).
+function cmtFindMentions(text, people){
+  const t = String(text || '');
+  const has = tok => { let k = t.indexOf(tok); while (k >= 0) { if (!/[A-Za-z0-9_]/.test(t[k + tok.length] || '')) return true; k = t.indexOf(tok, k + 1); } return false; };
+  return people.filter(p => (p.fullname && has('@' + p.fullname)) || has('@' + p.username));
 }
 function cmtFullName(u){ const p = cmtPeople().find(x => x.username === u); return p ? p.fullname : u; }
 function cmtColor(name){ let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return ['#2563eb','#059669','#d97706','#dc2626','#7c3aed','#0891b2','#be185d'][h % 7]; }
@@ -11084,18 +11090,29 @@ function cmtThreads(){
   return out;
 }
 function cmtLastTs(a){ const r = a.replies || []; return Math.max(Number(a.createdAt) || 0, ...r.map(x => Number(x.ts) || 0)); }
-function cmtRichText(el0, text){
-  // Chữ thường + @tên được tô màu (an toàn: chỉ dùng textContent)
-  const parts = String(text || '').split(/(@[A-Za-z0-9_.\-@]+)/g);
-  parts.forEach(p => {
-    if (!p) return;
-    if (p[0] === '@') {
-      const u = p.slice(1);
-      const known = cmtPeople().find(x => x.username === u);
-      if (known) { const sp = document.createElement('span'); sp.className = 'mention'; sp.textContent = '@' + known.fullname; sp.title = '@' + u; el0.append(sp); return; }
-    }
-    el0.append(document.createTextNode(p));
+function cmtRichText(el0, text, mentions){
+  // Chữ thường + @Tên được tô màu (an toàn: chỉ dùng textContent). Nhận cả "@Tên hiển thị" và "@username" cũ.
+  const people = cmtPeople();
+  const toks = [];
+  people.forEach(p => {
+    if (p.fullname) toks.push({ s: '@' + p.fullname, p });
+    toks.push({ s: '@' + p.username, p });
   });
+  toks.sort((a, b) => b.s.length - a.s.length);
+  const t = String(text || '');
+  let i = 0, buf = '';
+  while (i < t.length) {
+    if (t[i] === '@') {
+      const hit = toks.find(k => t.startsWith(k.s, i) && !/[A-Za-z0-9_]/.test(t[i + k.s.length] || ''));
+      if (hit) {
+        if (buf) { el0.append(document.createTextNode(buf)); buf = ''; }
+        const sp = document.createElement('span'); sp.className = 'mention'; sp.textContent = '@' + hit.p.fullname; sp.title = '@' + hit.p.nick;
+        el0.append(sp); i += hit.s.length; continue;
+      }
+    }
+    buf += t[i++];
+  }
+  if (buf) el0.append(document.createTextNode(buf));
 }
 function cmtSig(){
   const me = cmtMe();
@@ -11203,7 +11220,7 @@ function cmtSend(a, ta){
   const text = ta.value.trim();
   if (!text) return;
   const people = cmtPeople();
-  const mentions = [...new Set((text.match(/@[A-Za-z0-9_.\-@]+/g) || []).map(t => t.slice(1)).filter(u => people.some(p => p.username === u)))];
+  const mentions = cmtFindMentions(text, people).map(p => p.username);
   if (!cmtCan('comment')) { toast('Bạn đang có quyền Chỉ xem nên chưa bình luận được. Nhờ chủ file cấp quyền "Xem & bình luận".'); return; }
   const reply_id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   ta.value = ''; CMT_DRAFT.delete(a.id);
@@ -11217,11 +11234,11 @@ function cmtBindMention(ta, wrap){
   let pop = null, idx = 0, items = [];
   const close = () => { pop && pop.remove(); pop = null; };
   const query = () => { const pos = ta.selectionStart ?? ta.value.length; const m = /(^|\s)@([^\s@]*)$/.exec(ta.value.slice(0, pos)); return m ? { q: m[2], start: pos - m[2].length - 1, end: pos } : null; };
-  const pick = p => { const q = query(); if (!q) return close(); const ins = '@' + p.username + ' '; ta.value = ta.value.slice(0, q.start) + ins + ta.value.slice(q.end); const np = q.start + ins.length; ta.setSelectionRange(np, np); close(); ta.focus(); CMT_DRAFT.set(wrap.dataset.id, ta.value); };
+  const pick = p => { const q = query(); if (!q) return close(); const ins = '@' + (p.fullname || p.username) + ' '; ta.value = ta.value.slice(0, q.start) + ins + ta.value.slice(q.end); const np = q.start + ins.length; ta.setSelectionRange(np, np); close(); ta.focus(); CMT_DRAFT.set(wrap.dataset.id, ta.value); };
   const show = () => {
     const q = query(); if (!q) return close();
     const nq = cmtNorm(q.q);
-    items = cmtPeople().filter(p => !nq || cmtNorm(p.fullname).includes(nq) || cmtNorm(p.username).includes(nq)).slice(0, 8);
+    items = cmtPeople().filter(p => !nq || cmtNorm(p.fullname).includes(nq) || cmtNorm(p.nick).includes(nq) || cmtNorm(p.username).includes(nq)).slice(0, 8);
     if (!items.length) return close();
     if (!pop) { pop = document.createElement('div'); pop.className = 'mention-pop'; document.body.append(pop); }
     idx = Math.min(idx, items.length - 1);
@@ -11230,7 +11247,7 @@ function cmtBindMention(ta, wrap){
       pop.style.left = Math.max(4, Math.min(r.left, innerWidth - Math.max(220, r.width) - 4)) + 'px'; pop.style.width = Math.max(220, r.width) + 'px';
       if (below >= h + 8 || below >= above) { pop.style.top = (r.bottom + 3) + 'px'; pop.style.bottom = 'auto'; pop.style.maxHeight = Math.max(90, below - 10) + 'px'; }
       else { pop.style.top = 'auto'; pop.style.bottom = (innerHeight - r.top + 3) + 'px'; pop.style.maxHeight = Math.max(90, above - 10) + 'px'; } }
-    pop.replaceChildren(...items.map((p, i) => { const d = document.createElement('div'); d.className = i === idx ? 'on' : ''; const b = document.createElement('b'); b.textContent = p.fullname; const sm = document.createElement('small'); sm.textContent = '@' + p.username; d.append(b, sm); d.onmousedown = ev => { ev.preventDefault(); pick(p); }; return d; }));
+    pop.replaceChildren(...items.map((p, i) => { const d = document.createElement('div'); d.className = i === idx ? 'on' : ''; const b = document.createElement('b'); b.textContent = p.fullname; const sm = document.createElement('small'); sm.textContent = '@' + p.nick; d.append(b, sm); d.onmousedown = ev => { ev.preventDefault(); pick(p); }; return d; }));
   };
   ta.addEventListener('input', () => { CMT_LAST_KEY = Date.now(); idx = 0; CMT_DRAFT.set(wrap.dataset.id, ta.value); show(); });
   ta.addEventListener('blur', () => setTimeout(close, 150));

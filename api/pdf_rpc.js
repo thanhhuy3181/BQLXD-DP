@@ -568,8 +568,10 @@ module.exports = async function handler(req, res) {
       let people = [];
       if (sql) {
         const rows = await sql`SELECT username,status,data FROM bqlda_users`;
-        people = rows.map(publicUser).filter(u => u && u.status === 'Active' && (all || names.has(u.username) || u.role === 'Admin'))
-          .map(u => ({ username: u.username, fullname: u.fullname || u.username }));
+        // nick = tên thư mục / phần trước @ của email (vd huycoi5) — để gõ @nick cũng tìm ra người
+        people = rows.map(r => ({ u: publicUser(r), nick: userFolderName(r) }))
+          .filter(({ u }) => u && u.status === 'Active' && (all || names.has(u.username) || u.role === 'Admin'))
+          .map(({ u, nick }) => ({ username: u.username, fullname: u.fullname || u.username, nick: nick || u.username }));
       } else {
         people = [...names].map(u => ({ username: u, fullname: u }));
         if (!people.some(p => p.username === currentUser.username)) people.push({ username: currentUser.username, fullname: currentUser.fullname || currentUser.username });

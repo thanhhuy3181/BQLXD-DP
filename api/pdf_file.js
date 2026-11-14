@@ -107,7 +107,9 @@ module.exports = async function pdfFile(req, res) {
     const token = await gdriveService.getAccessToken();
     tm.push('token;dur=' + (Date.now() - t1)); t1 = Date.now();
     const upstream = await fetch(
-      'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(doc.drive_file_id) + '?alt=media&supportsAllDrives=true',
+      sp.get('via') === 'uc' // thử đường tải khác của Google để so tốc độ
+        ? 'https://drive.usercontent.google.com/download?id=' + encodeURIComponent(doc.drive_file_id) + '&export=download&confirm=t'
+        : 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(doc.drive_file_id) + '?alt=media&supportsAllDrives=true',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer ' + token, ...(range ? { Range: range } : {}) },
