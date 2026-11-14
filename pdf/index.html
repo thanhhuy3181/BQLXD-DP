@@ -26,6 +26,7 @@
 .tree-folder-header .i-chev{display:inline-flex;transition:transform var(--fast)}
 .tree-file{display:flex;align-items:center;gap:6px;width:100%;font-size:11.5px}
 .tree-intro{font-weight:700;color:var(--accent)}
+.tf-prog{flex:none;font-size:10px;font-weight:700;background:var(--accent);color:var(--accent-fg);padding:1px 5px;border-radius:4px}
 .tree-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 8px}
 .thumb-card{border:1.5px solid var(--line);border-radius:6px;padding:6px;cursor:pointer;background:var(--surface);transition:all var(--fast);display:flex;flex-direction:column;gap:4px;box-shadow:2px 2px 0 rgba(0,0,0,.08)}
 .thumb-card{transition:transform .18s var(--out),box-shadow .18s var(--out)}
@@ -8473,15 +8474,41 @@ window.addEventListener('dblclick',e=>{
 });
 
 /* ---------- Cây thư mục & Quản lý tài liệu Cloud ---------- */
+let OPEN_DOC_SEQ = 0;
+// Hiện tiến độ tải ngay trên tab "Trang" và trên dòng file trong cây (mạng chậm / file lớn vẫn thấy đang chạy).
+function setOpenProgress(docId, text) {
+  const c = $('#sideThumbsCount'); if (c) c.textContent = text;
+  document.querySelectorAll('#tree .tree-file').forEach(b => {
+    const mine = b.dataset.docId === docId;
+    let tag = b.querySelector('.tf-prog');
+    if (mine && text) { if (!tag) { tag = el('span', 'tf-prog', ''); b.append(tag); } tag.textContent = text; }
+    else if (tag) tag.remove();
+  });
+}
 async function openCloudDoc(docId, docTitle) {
-  toast(`Đang tải tài liệu "${docTitle}" từ Google Drive...`);
+  const seq = ++OPEN_DOC_SEQ;
+  setOpenProgress(docId, 'đang tải…');
+  toast(`Đang tải "${docTitle}"...`);
   try {
     // Tải dạng stream qua /api/pdf_file (không bị giới hạn 25 MB như drive_download cũ).
     const tok = localStorage.getItem('bqlda_session_token') || localStorage.getItem('bqlda_web_session') || localStorage.getItem('awm_session') || sessionStorage.getItem('awm_session') || '';
     const fr = docId === 'ban-la-ai' ? await fetch('/pdf/ban-la-ai.pdf') : await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId), { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
     if (fr.ok) {
-      const ab = await fr.arrayBuffer();
-      await loadRealPdf(new Uint8Array(ab), docTitle || 'tai-lieu.pdf', false);
+      const total = Number(fr.headers.get('content-length')) || 0;
+      let ab;
+      if (fr.body && fr.body.getReader) {
+        const rd = fr.body.getReader(); const parts = []; let got = 0;
+        for (;;) {
+          const { done, value } = await rd.read();
+          if (done) break;
+          parts.push(value); got += value.length;
+          if (seq === OPEN_DOC_SEQ) setOpenProgress(docId, total ? Math.min(99, Math.round(got * 100 / total)) + '%' : (got / 1048576).toFixed(1) + ' MB');
+        }
+        ab = new Uint8Array(got); let o = 0; for (const p of parts) { ab.set(p, o); o += p.length; }
+      } else ab = new Uint8Array(await fr.arrayBuffer());
+      if (seq !== OPEN_DOC_SEQ) return; // người dùng đã bấm file khác
+      setOpenProgress(docId, 'đang mở…');
+      await loadRealPdf(ab, docTitle || 'tai-lieu.pdf', false);
       PDF_STATE.docId = docId;
       COLLAB_CURSOR = 0;
       if (typeof collabPollLoop === 'function') collabPollLoop();
@@ -8491,10 +8518,12 @@ async function openCloudDoc(docId, docTitle) {
       return;
     }
     const errJ = await fr.json().catch(() => ({}));
-    toast('Không thể tải tài liệu: ' + (errJ.error || ('HTTP ' + fr.status)));
+    setOpenProgress(docId, 'lỗi');
+    toast('Không mở được "' + docTitle + '": ' + (errJ.error || ('HTTP ' + fr.status)));
   } catch (err) {
     console.error('openCloudDoc error:', err);
-    toast('Lỗi tải tài liệu: ' + err.message);
+    setOpenProgress(docId, 'lỗi');
+    toast('Lỗi tải "' + docTitle + '": ' + err.message);
   }
 }
 
@@ -9520,6 +9549,7 @@ async function renderTree() {
     const row = el('button', 'node tree-file' + (on ? ' on' : '') + (n.intro ? ' tree-intro' : ''), ic(n.intro ? 'users' : 'file') + '<span class="tn"></span>');
     row.style.paddingLeft = (8 + depth * 14) + 'px';
     row.querySelector('.tn').textContent = n.name;
+    if (n.doc_id) row.dataset.docId = n.doc_id;
     row.title = n.intro ? 'Trang giới thiệu chung — ai cũng ghi tên, ban, chức vụ của mình' : n.name;
     row.onclick = e => { e.stopPropagation(); if (n.doc_id) openCloudDoc(n.doc_id, n.name); };
     return row;
