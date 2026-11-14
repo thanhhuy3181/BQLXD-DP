@@ -12052,7 +12052,8 @@ function renderPendingAccessRequests(requests){
   if(btnOk){
     btnOk.onclick = async () => {
       try {
-        await pdfApi('doc_access_decide', { request_id: firstReq.id, decision: 'approve', role: firstReq.requested_role });
+        const rr = await pdfApi('doc_access_decide', { request_id: firstReq.id, decision: 'approve', role: firstReq.requested_role });
+        if (!rr || !rr.ok) throw new Error((rr && rr.error) || 'Máy chủ không xử lý được');
         toast('Đã duyệt yêu cầu của ' + (firstReq.requester_fullname || firstReq.requester));
         loadShareDialogData();
       } catch(e){ toast('Lỗi duyệt: ' + e.message); }
@@ -12062,7 +12063,8 @@ function renderPendingAccessRequests(requests){
   if(btnNo){
     btnNo.onclick = async () => {
       try {
-        await pdfApi('doc_access_decide', { request_id: firstReq.id, decision: 'reject' });
+        const rr = await pdfApi('doc_access_decide', { request_id: firstReq.id, decision: 'reject' });
+        if (!rr || !rr.ok) throw new Error((rr && rr.error) || 'Máy chủ không xử lý được');
         toast('Đã từ chối yêu cầu của ' + (firstReq.requester_fullname || firstReq.requester));
         loadShareDialogData();
       } catch(e){ toast('Lỗi từ chối: ' + e.message); }
