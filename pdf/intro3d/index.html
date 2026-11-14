@@ -17,6 +17,8 @@
   body.m-embed .hint{top:24px;right:24px;font-size:22px;padding:12px 20px}
   html.m-embed,html.m-embed body{background:transparent!important;background-image:none!important}
   @media (pointer:coarse){body.m-embed .hint{display:none}}
+  .gyro-btn{position:absolute;left:50%;top:40px;transform:translateX(-50%);z-index:30;font:700 64px 'Be Vietnam Pro',sans-serif;color:#fff;background:#2563eb;
+    border:0;border-radius:999px;padding:26px 60px;box-shadow:0 14px 30px -10px rgba(37,99,235,.6);cursor:pointer}
   body.m-embed .scene{top:59%}
   #endcard{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;
     background:radial-gradient(rgba(227,236,233,.92) 40%,rgba(227,236,233,.6))}
@@ -537,6 +539,28 @@
       goal = { rx: 54 - y * 32, rz: -30 + x * 110, gap: 1 + Math.abs(x) * 0.3 + Math.max(0, -y) * 0.3, sc: BASE_SC };
     });
     document.addEventListener('pointerleave', () => { goal = { ...DEF }; });
+  }
+  // Điện thoại: nghiêng máy thì hình xoay 3D theo (cảm biến nghiêng). Tư thế lúc bắt đầu = góc mặc định.
+  if (!VIDEO && matchMedia('(pointer: coarse)').matches && 'DeviceOrientationEvent' in window) {
+    let base = null;
+    const clamp = (v, m) => Math.max(-m, Math.min(m, v));
+    const onTilt = e => {
+      if (e.beta == null || e.gamma == null) return;
+      if (!base) base = { b: e.beta, g: e.gamma };
+      const db = clamp(e.beta - base.b, 35), dg = clamp(e.gamma - base.g, 35);
+      goal = { rx: 54 + db * 0.9, rz: -30 + dg * 1.9, gap: 1 + Math.abs(dg) / 35 * 0.3 + Math.abs(db) / 35 * 0.2, sc: BASE_SC };
+    };
+    addEventListener('orientationchange', () => { base = null; });
+    const startTilt = () => addEventListener('deviceorientation', onTilt);
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      // iPhone: phải chạm một lần để cho phép dùng cảm biến
+      const b = document.createElement('button'); b.className = 'gyro-btn'; b.textContent = 'Chạm để xoay 3D theo điện thoại';
+      b.addEventListener('click', async () => {
+        try { if (await DeviceOrientationEvent.requestPermission() === 'granted') { startTilt(); b.remove(); } else b.textContent = 'Chưa được phép dùng cảm biến nghiêng'; }
+        catch (_) { b.textContent = 'Không bật được cảm biến nghiêng'; }
+      });
+      document.body.append(b);
+    } else startTilt();
   }
   const T0 = performance.now();
   const titleEl = document.getElementById('title');
