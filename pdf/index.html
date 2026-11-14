@@ -111,6 +111,8 @@ body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after
 <title>PDF QLDA</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro&family=Oswald&family=Anton&family=Fjalla+One&family=Saira+Extra+Condensed&family=Barlow+Condensed&family=Roboto+Condensed&family=Big+Shoulders+Display&family=League+Gothic&family=Alumni+Sans&family=Archivo+Narrow&family=Yanone+Kaffeesatz&family=Smooch+Sans&family=Asap+Condensed&family=Encode+Sans+Condensed&family=IBM+Plex+Sans+Condensed&family=Alfa+Slab+One&family=Black+Ops+One&family=Bungee&family=Bungee+Shade&family=Dela+Gothic+One&family=Francois+One&family=Paytone+One&family=Sigmar+One&family=Bangers&family=Gluten&family=Cherry+Bomb+One&family=Oi&family=Unica+One&family=Mansalva&family=Mali&family=Mynerve&family=Patrick+Hand&family=Playpen+Sans&family=Amatic+SC&family=Itim&family=Pangolin&family=Bad+Script&family=Merienda&family=Dongle&family=Dancing+Script&family=Pacifico&family=Lobster&family=Great+Vibes&family=Allura&family=Alex+Brush&family=Pinyon+Script&family=Arizonia&family=Style+Script&family=Playball&family=Italianno&family=Ballet&family=Birthstone&family=Luxurious+Script&family=Sansita+Swashed&family=Ephesis&family=Fleur+De+Leah&family=Gwendolyn&family=Imperial+Script&family=Meow+Script&family=Ruthie&family=Corinthia&family=Cormorant+Garamond&family=EB+Garamond&family=Crimson+Text&family=Spectral&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display&family=Lora&family=Vollkorn&family=Philosopher&family=Prata&family=Trirong&family=Yeseva+One&family=Old+Standard+TT&family=Cormorant+SC&family=Alegreya&family=Aleo&family=Faustina&family=Rasa&family=Rokkitt&family=Noto+Serif+Display&family=Crimson+Pro&family=Literata&family=Newsreader&family=Noticia+Text&family=Source+Serif+4&family=Merriweather&family=Gelasio&family=Petrona&family=Tinos&family=Roboto+Slab&family=Podkova&family=Bitter&family=VT323&family=Major+Mono+Display&family=Tektur&family=Jura&family=Goldman&family=Exo&family=Exo+2&family=Chakra+Petch&family=Space+Mono&family=Roboto+Mono&family=IBM+Plex+Mono&family=Tiny5&family=Saira&family=Inconsolata&family=Source+Code+Pro&family=Baloo+2&family=Varela+Round&family=Coiny&family=Potta+One&family=M+PLUS+1p&family=Dosis&family=Be+Vietnam+Pro&family=Montserrat&family=Nunito&family=Quicksand&family=Lexend&family=Prompt&family=Kanit&family=Sarabun&family=Mulish&family=Inter&family=Manrope&family=Plus+Jakarta+Sans&family=Work+Sans&family=Space+Grotesk&family=Raleway&family=Open+Sans&family=Noto+Sans&family=Roboto&display=swap">
 <!-- Thư viện chuẩn GitHub: Mozilla PDF.js, pdf-lib -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
@@ -574,6 +576,7 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
 .prop-sec-title{font-size:10.5px;text-transform:uppercase;font-weight:700;color:var(--muted);letter-spacing:.6px;font-family:var(--mono);display:flex;align-items:center;gap:4px;border-bottom:1px dashed var(--line);padding-bottom:4px}
 .prop-row{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px}
 .prop-row label{color:var(--muted);white-space:nowrap;min-width:95px}
+.prop-row .c-chip{flex:0 0 40px;width:40px;height:28px;box-sizing:border-box;border-radius:6px}
 .prop-hint{font-size:10.5px;color:var(--muted);padding:2px 0 0}
 .prop-row input[type="range"]{flex:1;min-width:60px;accent-color:var(--accent)}
 .prop-row .val{font-family:var(--mono);font-size:11px;min-width:44px;text-align:right;white-space:nowrap;display:inline-block}
@@ -1825,10 +1828,38 @@ function updatePanePagesCssSize(ps, sc) {
   });
 }
 
+// Điện thoại: bộ nhớ Safari rất hạn chế. Chỉ vẽ trang đang nhìn thấy, lần lượt từng trang,
+// và GIẢI PHÓNG canvas + bộ nhớ pdf.js của trang ngoài màn hình (tránh tab bị "Đã có sự cố" khi zoom).
+const TOUCH_LOW_MEM = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+function releasePageCanvas(ps, pNum, pg) {
+  const e = ps.renderedPages.get(pNum);
+  if (e && e.renderTask) { try { e.renderTask.cancel(); } catch (_) {} }
+  ps.renderedPages.delete(pNum);
+  const cw = pg.querySelector('.canvas-wrap');
+  if (cw) cw.querySelectorAll('canvas.pdf-canvas').forEach(c => { c.width = 1; c.height = 1; c.remove(); });
+  const pi = ps.pageInfos[pNum - 1];
+  if (pi && pi.page && typeof pi.page.cleanup === 'function') { try { pi.page.cleanup(); } catch (_) {} }
+}
+async function renderVisiblePagesTouch(ps, pages, scRect) {
+  ps.touchRenderToken = (ps.touchRenderToken || 0) + 1;
+  const tok = ps.touchRenderToken;
+  const vis = [];
+  pages.forEach(pg => {
+    const r = pg.getBoundingClientRect();
+    const pNum = parseInt(pg.dataset.page, 10);
+    if (r.bottom >= scRect.top - 120 && r.top <= scRect.bottom + 120) vis.push([pNum, pg]);
+    else releasePageCanvas(ps, pNum, pg);
+  });
+  for (const [pNum, pg] of vis) {
+    if (ps.touchRenderToken !== tok) return;
+    await renderPageInPane(ps, pNum, pg);
+  }
+}
 function renderVisiblePagesInPane(ps, sc) {
   if (!ps.doc || !ps.isPdfReal || !sc) return;
   const scRect = sc.getBoundingClientRect();
   const pages = sc.querySelectorAll('.page');
+  if (TOUCH_LOW_MEM) { renderVisiblePagesTouch(ps, pages, scRect); return; }
   pages.forEach(pg => {
     const r = pg.getBoundingClientRect();
     if (r.bottom >= scRect.top - 350 && r.top <= scRect.bottom + 350) {
@@ -2087,6 +2118,9 @@ async function collabPollOnce(){
             const existing = ANNO_MAP.get(item.id);
             // Tiếng vọng của chính thay đổi mình vừa gửi: chỉ ghi số phiên bản, không vẽ lại.
             if(existing && COLLAB_FP.get(item.id) === annoFp(Object.assign({}, item.data, { id: item.id }))){ existing.rev = item.rev; return; }
+            // Ghi chú đang có thay đổi chưa gửi (đang kéo / vừa sửa): không ghi đè bằng bản cũ từ server (tránh giật lùi).
+            const dirty = existing && (COLLAB_PENDING_UPSERTS.has(item.id) || COLLAB_FP.get(item.id) !== annoFp(existing));
+            if(dirty) return;
             if(!existing || existing.rev !== item.rev){
               window._suppressCollabHook = true;
               ANNO_MAP.set(item.id, Object.assign({}, item.data, { id: item.id, rev: item.rev }));
@@ -4760,6 +4794,19 @@ function penKindOf(a) { return PEN_KINDS[(a && a.penKind) || S.penKind || 'bi'] 
     '</defs></svg>';
   document.body.append(d.firstChild);
 })();
+// Nét bút mượt: nối điểm bằng đường cong bậc hai qua trung điểm (không còn góc gãy, đầu/cuối êm hơn).
+function penSmoothD(pts, ox, oy) {
+  const P = pts.map(([x, y]) => [x - ox, y - oy]);
+  const f = v => v.toFixed(2);
+  if (P.length < 3) return P.map((p, i) => (i ? 'L' : 'M') + ' ' + f(p[0]) + ' ' + f(p[1])).join(' ');
+  let d = 'M ' + f(P[0][0]) + ' ' + f(P[0][1]);
+  for (let i = 1; i < P.length - 1; i++) {
+    const mx = (P[i][0] + P[i + 1][0]) / 2, my = (P[i][1] + P[i + 1][1]) / 2;
+    d += ' Q ' + f(P[i][0]) + ' ' + f(P[i][1]) + ' ' + f(mx) + ' ' + f(my);
+  }
+  const L = P[P.length - 1]; d += ' L ' + f(L[0]) + ' ' + f(L[1]);
+  return d;
+}
 function penStrokeAttrs(a, color, width, opacity) {
   const k = penKindOf(a);
   return { stroke: color, 'stroke-width': width, 'stroke-linecap': k.cap, 'stroke-linejoin': k.cap === 'square' ? 'miter' : 'round', opacity: opacity, filter: k.filter ? 'url(#' + k.filter + ')' : '' };
@@ -5578,11 +5625,7 @@ function buildContextualRibbon(tabName){
 
     const selFamily = el('select','field', `
       <option value="inherit">Mặc định hệ thống</option>
-      <option value="'Be Vietnam Pro', sans-serif" ${obj.fontFamily?.includes('Vietnam')?'selected':''}>Be Vietnam Pro</option>
-      <option value="'Segoe UI', sans-serif" ${obj.fontFamily?.includes('Segoe')?'selected':''}>Segoe UI</option>
-      <option value="Arial, sans-serif" ${obj.fontFamily==='Arial, sans-serif'?'selected':''}>Arial</option>
-      <option value="'Times New Roman', serif" ${obj.fontFamily?.includes('Times')?'selected':''}>Times New Roman</option>
-      <option value="'JetBrains Mono', monospace" ${obj.fontFamily?.includes('JetBrains')?'selected':''}>JetBrains Mono</option>
+      ${fontOptionsHtml(obj.fontFamily)}
     `);
     selFamily.style.fontSize = '11px';
     selFamily.style.padding = '2px 4px';
@@ -6384,14 +6427,16 @@ async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
   const pi = ps.pageInfos[pageNum - 1] || { rotate: 0 };
   const page = pi.page || await ps.doc.getPage(pageNum);
   if (!pi.page) pi.page = page;
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  // Điện thoại (iPhone dpr 3): giới hạn độ phân giải canvas để không vượt bộ nhớ Safari (tab bị "Đã có sự cố").
+  const IS_TOUCH_DEV = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+  const dpr = Math.min(IS_TOUCH_DEV ? 2 : 3, Math.max(1, window.devicePixelRatio || 1));
   const rot = pageRotation(page, pi);
   const cssScale = (ps.zoom / 100) * 1.333;
   const cssVp = pageViewport(page, pi, cssScale);
   const pageCssW = Math.max(1, Math.round(cssVp.width));
   const pageCssH = Math.max(1, Math.round(cssVp.height));
 
-  const MAX_CANVAS_DIM = 4096;
+  const MAX_CANVAS_DIM = IS_TOUCH_DEV ? 2560 : 4096;
   const isPartial = (pageCssW * dpr > MAX_CANVAS_DIM) || (pageCssH * dpr > MAX_CANVAS_DIM);
   const baseKey = `${isPartial ? 'part' : 'full'}_${ps.zoom}_${rot}_${dpr}_oc${ps.ocRev || 0}`;
 
@@ -6826,6 +6871,9 @@ function pan(sc){
 }
 
 // Cỡ chữ lưu theo pt trên giấy (như PDF-XChange); hiển thị theo tỉ lệ bề rộng trang => tự to/nhỏ khi zoom.
+const FONT_CHOICES = [{"n":"Be Vietnam Pro","f":"'Be Vietnam Pro', sans-serif"},{"n":"Arial","f":"Arial, sans-serif"},{"n":"Times New Roman","f":"'Times New Roman', serif"},{"n":"Courier New","f":"'Courier New', monospace"},{"n":"Segoe UI","f":"'Segoe UI', sans-serif"},{"n":"Oswald","f":"'Oswald', sans-serif"},{"n":"Anton","f":"'Anton', sans-serif"},{"n":"Fjalla One","f":"'Fjalla One', sans-serif"},{"n":"Saira Extra Condensed","f":"'Saira Extra Condensed', sans-serif"},{"n":"Barlow Condensed","f":"'Barlow Condensed', sans-serif"},{"n":"Roboto Condensed","f":"'Roboto Condensed', sans-serif"},{"n":"Big Shoulders Display","f":"'Big Shoulders Display', sans-serif"},{"n":"League Gothic","f":"'League Gothic', sans-serif"},{"n":"Alumni Sans","f":"'Alumni Sans', sans-serif"},{"n":"Archivo Narrow","f":"'Archivo Narrow', sans-serif"},{"n":"Yanone Kaffeesatz","f":"'Yanone Kaffeesatz', sans-serif"},{"n":"Smooch Sans","f":"'Smooch Sans', sans-serif"},{"n":"Asap Condensed","f":"'Asap Condensed', sans-serif"},{"n":"Encode Sans Condensed","f":"'Encode Sans Condensed', sans-serif"},{"n":"IBM Plex Sans Condensed","f":"'IBM Plex Sans Condensed', sans-serif"},{"n":"Alfa Slab One","f":"'Alfa Slab One', sans-serif"},{"n":"Black Ops One","f":"'Black Ops One', sans-serif"},{"n":"Bungee","f":"'Bungee', sans-serif"},{"n":"Bungee Shade","f":"'Bungee Shade', sans-serif"},{"n":"Dela Gothic One","f":"'Dela Gothic One', sans-serif"},{"n":"Francois One","f":"'Francois One', sans-serif"},{"n":"Paytone One","f":"'Paytone One', sans-serif"},{"n":"Sigmar One","f":"'Sigmar One', sans-serif"},{"n":"Bangers","f":"'Bangers', sans-serif"},{"n":"Gluten","f":"'Gluten', sans-serif"},{"n":"Cherry Bomb One","f":"'Cherry Bomb One', sans-serif"},{"n":"Oi","f":"'Oi', sans-serif"},{"n":"Unica One","f":"'Unica One', sans-serif"},{"n":"Mansalva","f":"'Mansalva', cursive"},{"n":"Mali","f":"'Mali', cursive"},{"n":"Mynerve","f":"'Mynerve', cursive"},{"n":"Patrick Hand","f":"'Patrick Hand', cursive"},{"n":"Playpen Sans","f":"'Playpen Sans', cursive"},{"n":"Amatic SC","f":"'Amatic SC', cursive"},{"n":"Itim","f":"'Itim', cursive"},{"n":"Pangolin","f":"'Pangolin', cursive"},{"n":"Bad Script","f":"'Bad Script', cursive"},{"n":"Merienda","f":"'Merienda', cursive"},{"n":"Dongle","f":"'Dongle', cursive"},{"n":"Dancing Script","f":"'Dancing Script', cursive"},{"n":"Pacifico","f":"'Pacifico', cursive"},{"n":"Lobster","f":"'Lobster', cursive"},{"n":"Great Vibes","f":"'Great Vibes', cursive"},{"n":"Allura","f":"'Allura', cursive"},{"n":"Alex Brush","f":"'Alex Brush', cursive"},{"n":"Pinyon Script","f":"'Pinyon Script', cursive"},{"n":"Arizonia","f":"'Arizonia', cursive"},{"n":"Style Script","f":"'Style Script', cursive"},{"n":"Playball","f":"'Playball', cursive"},{"n":"Italianno","f":"'Italianno', cursive"},{"n":"Ballet","f":"'Ballet', cursive"},{"n":"Birthstone","f":"'Birthstone', cursive"},{"n":"Luxurious Script","f":"'Luxurious Script', cursive"},{"n":"Sansita Swashed","f":"'Sansita Swashed', cursive"},{"n":"Ephesis","f":"'Ephesis', cursive"},{"n":"Fleur De Leah","f":"'Fleur De Leah', cursive"},{"n":"Gwendolyn","f":"'Gwendolyn', cursive"},{"n":"Imperial Script","f":"'Imperial Script', cursive"},{"n":"Meow Script","f":"'Meow Script', cursive"},{"n":"Ruthie","f":"'Ruthie', cursive"},{"n":"Corinthia","f":"'Corinthia', cursive"},{"n":"Cormorant Garamond","f":"'Cormorant Garamond', serif"},{"n":"EB Garamond","f":"'EB Garamond', serif"},{"n":"Crimson Text","f":"'Crimson Text', serif"},{"n":"Spectral","f":"'Spectral', serif"},{"n":"Playfair Display","f":"'Playfair Display', serif"},{"n":"Lora","f":"'Lora', serif"},{"n":"Vollkorn","f":"'Vollkorn', serif"},{"n":"Philosopher","f":"'Philosopher', serif"},{"n":"Prata","f":"'Prata', serif"},{"n":"Trirong","f":"'Trirong', serif"},{"n":"Yeseva One","f":"'Yeseva One', serif"},{"n":"Old Standard TT","f":"'Old Standard TT', serif"},{"n":"Cormorant SC","f":"'Cormorant SC', serif"},{"n":"Alegreya","f":"'Alegreya', serif"},{"n":"Aleo","f":"'Aleo', serif"},{"n":"Faustina","f":"'Faustina', serif"},{"n":"Rasa","f":"'Rasa', serif"},{"n":"Rokkitt","f":"'Rokkitt', serif"},{"n":"Noto Serif Display","f":"'Noto Serif Display', serif"},{"n":"Crimson Pro","f":"'Crimson Pro', serif"},{"n":"Literata","f":"'Literata', serif"},{"n":"Newsreader","f":"'Newsreader', serif"},{"n":"Noticia Text","f":"'Noticia Text', serif"},{"n":"Source Serif 4","f":"'Source Serif 4', serif"},{"n":"Merriweather","f":"'Merriweather', serif"},{"n":"Gelasio","f":"'Gelasio', serif"},{"n":"Petrona","f":"'Petrona', serif"},{"n":"Tinos","f":"'Tinos', serif"},{"n":"Roboto Slab","f":"'Roboto Slab', serif"},{"n":"Podkova","f":"'Podkova', serif"},{"n":"Bitter","f":"'Bitter', serif"},{"n":"VT323","f":"'VT323', monospace"},{"n":"Major Mono Display","f":"'Major Mono Display', monospace"},{"n":"Tektur","f":"'Tektur', monospace"},{"n":"Jura","f":"'Jura', monospace"},{"n":"Goldman","f":"'Goldman', monospace"},{"n":"Exo","f":"'Exo', monospace"},{"n":"Exo 2","f":"'Exo 2', monospace"},{"n":"Chakra Petch","f":"'Chakra Petch', monospace"},{"n":"Space Mono","f":"'Space Mono', monospace"},{"n":"Roboto Mono","f":"'Roboto Mono', monospace"},{"n":"IBM Plex Mono","f":"'IBM Plex Mono', monospace"},{"n":"Tiny5","f":"'Tiny5', monospace"},{"n":"Saira","f":"'Saira', monospace"},{"n":"Inconsolata","f":"'Inconsolata', monospace"},{"n":"Source Code Pro","f":"'Source Code Pro', monospace"},{"n":"Baloo 2","f":"'Baloo 2', sans-serif"},{"n":"Varela Round","f":"'Varela Round', sans-serif"},{"n":"Coiny","f":"'Coiny', sans-serif"},{"n":"Potta One","f":"'Potta One', sans-serif"},{"n":"M PLUS 1p","f":"'M PLUS 1p', sans-serif"},{"n":"Dosis","f":"'Dosis', sans-serif"},{"n":"Montserrat","f":"'Montserrat', sans-serif"},{"n":"Nunito","f":"'Nunito', sans-serif"},{"n":"Quicksand","f":"'Quicksand', sans-serif"},{"n":"Lexend","f":"'Lexend', sans-serif"},{"n":"Prompt","f":"'Prompt', sans-serif"},{"n":"Kanit","f":"'Kanit', sans-serif"},{"n":"Sarabun","f":"'Sarabun', sans-serif"},{"n":"Mulish","f":"'Mulish', sans-serif"},{"n":"Inter","f":"'Inter', sans-serif"},{"n":"Manrope","f":"'Manrope', sans-serif"},{"n":"Plus Jakarta Sans","f":"'Plus Jakarta Sans', sans-serif"},{"n":"Work Sans","f":"'Work Sans', sans-serif"},{"n":"Space Grotesk","f":"'Space Grotesk', sans-serif"},{"n":"Raleway","f":"'Raleway', sans-serif"},{"n":"Open Sans","f":"'Open Sans', sans-serif"},{"n":"Noto Sans","f":"'Noto Sans', sans-serif"},{"n":"Roboto","f":"'Roboto', sans-serif"}];
+function fontFamKey(v){ return String(v||"").replace(/['"]/g,"").split(",")[0].trim().toLowerCase(); }
+function fontOptionsHtml(cur){ const k = fontFamKey(cur); return FONT_CHOICES.map(c => '<option value="' + c.f.replace(/"/g,"&quot;") + '"' + (fontFamKey(c.f) === k ? " selected" : "") + '>' + c.n + '</option>').join(""); }
 function annoFontCss(a, def){
   const pt = Number(a.fontSize) || def || 12;
   let wPt = 612;
@@ -7399,8 +7447,8 @@ function bindLayerInteraction(ly,paneIdx){
       tempPenSvg.setAttribute('preserveAspectRatio','none');
       const pk=penKindOf(null);
       if(pk.blend) tempPenSvg.style.mixBlendMode=pk.blend;
-      tempPenPoly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
-      tempPenPoly.setAttribute('points',`${x},${y}`);
+      tempPenPoly=document.createElementNS('http://www.w3.org/2000/svg','path');
+      tempPenPoly.setAttribute('d', 'M ' + x + ' ' + y);
       const pa=penStrokeAttrs(null,S.strokeColor,S.strokeWidth*annoZs({pane:S.focus}),(S.opacity/100).toFixed(2));
       Object.entries(pa).forEach(([k,v])=>{ if(v!=='') tempPenPoly.setAttribute(k,v); });
       tempPenPoly.setAttribute('fill','none');
@@ -7575,7 +7623,7 @@ function bindLayerInteraction(ly,paneIdx){
     }
     if(isDrawingPen&&tempPenPoly){
       penPts.push([x,y]);
-      tempPenPoly.setAttribute('points', penPts.map(p=>p.join(',')).join(' '));
+      tempPenPoly.setAttribute('d', penSmoothD(penPts, 0, 0));
       return;
     }
     if(isMarquee&&marqueeEl&&startPt){
@@ -7643,7 +7691,7 @@ function bindLayerInteraction(ly,paneIdx){
           if(py<minY)minY=py;if(py>maxY)maxY=py;
         });
         const w=Math.max(1, maxX-minX), h=Math.max(1, maxY-minY);
-        const d=penPts.map(([px,py],idx)=>(idx===0?'M':'L')+` ${(px-minX).toFixed(2)} ${(py-minY).toFixed(2)}`).join(' ');
+        const d=penSmoothD(penPts, minX, minY);
         const id='anno_pen_'+Date.now()+'_'+Math.floor(Math.random()*1000);
         const aObj={
           id,pane:paneIdx,page:pageNum,type:'pen',
@@ -9652,10 +9700,7 @@ function syncPropertiesPanel(){
   const rowFont = el('div', 'prop-row', `
     <label>Phông:</label>
     <select class="field" id="propFontFamily" style="padding:2px 4px;font-size:11px;flex:1;min-width:0;width:100%">
-      <option value="Be Vietnam Pro, sans-serif" ${(obj.fontFamily||'').includes('Vietnam')?'selected':''}>Be Vietnam Pro</option>
-      <option value="Arial, sans-serif" ${(obj.fontFamily||'').includes('Arial')?'selected':''}>Arial</option>
-      <option value="'Times New Roman', serif" ${(obj.fontFamily||'').includes('Times')?'selected':''}>Times New Roman</option>
-      <option value="'Courier New', monospace" ${(obj.fontFamily||'').includes('Courier')?'selected':''}>Courier New</option>
+      ${fontOptionsHtml(obj.fontFamily)}
     </select>
   `);
   const rowSize = el('div', 'prop-row', `
