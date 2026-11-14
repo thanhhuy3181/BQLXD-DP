@@ -469,6 +469,24 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   cr = await call('em', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'x' });
   check('người không được chia sẻ -> 403', cr.status === 403, cr.body);
 
+  /* 14. Khoá tài liệu (tạm dừng sửa) */
+  {
+    let r = await call('binh', 'doc_lock', { doc_id: 'd1', value: true });
+    check('Người sửa không khoá được (chỉ chủ file/Quản trị)', r.status === 403, r.body);
+    r = await call('an', 'doc_lock', { doc_id: 'd1', value: true });
+    check('chủ file khoá được', r.status === 200 && r.body.data.locked === true, r.body);
+    r = await call('binh', 'anno_upsert', { doc_id: 'd1', items: [{ id: 'lk1', page: 1, data: { type: 'rect' } }] });
+    check('đang khoá: không thêm/sửa ghi chú được', r.status === 403 && /khoá/.test(r.body.error), r.body);
+    r = await call('binh', 'anno_delete', { doc_id: 'd1', ids: ['h1'] });
+    check('đang khoá: không xoá ghi chú được', r.status === 403, r.body);
+    r = await call('dung', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'vẫn bình luận được khi khoá', reply_id: 'rlk' });
+    check('đang khoá: vẫn bình luận được', r.status === 200, r.body);
+    r = await call('chi', 'doc_people', { doc_id: 'd1' });
+    check('doc_people báo đang khoá', r.status === 200 && r.body.data.locked === true, r.body);
+    r = await call('an', 'doc_lock', { doc_id: 'd1', value: false });
+    r = await call('binh', 'anno_upsert', { doc_id: 'd1', items: [{ id: 'lk1', page: 1, data: { type: 'rect' } }] });
+    check('mở khoá: sửa lại bình thường', r.status === 200, r.body);
+  }
   /* 13. Kho con dấu riêng */
   {
     let r = await call('an', 'stamps_get');

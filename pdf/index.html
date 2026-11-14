@@ -349,6 +349,14 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 body.layer-pick .page,body.layer-pick .page .layer,body.layer-pick #panes.pan .scroll{cursor:crosshair!important}
 .layer-quet{position:fixed;display:none;z-index:80;pointer-events:none;border:1.5px solid #2563eb;background:rgba(37,99,235,.12)}
 .layer-quet.cross{border-style:dashed;border-color:#16a34a;background:rgba(22,163,74,.12)}
+.tree-menu{position:fixed;z-index:9600;min-width:210px;background:var(--surface);color:var(--fg);border:1.5px solid var(--hard);border-radius:8px;box-shadow:4px 4px 0 var(--hard);padding:4px;display:flex;flex-direction:column}
+.tree-menu .tm-head{font-size:11px;color:var(--muted);padding:5px 9px 6px;border-bottom:1px solid var(--line);margin-bottom:3px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-menu .tm-item{text-align:left;padding:9px 10px;border:0;background:none;border-radius:6px;cursor:pointer;font-size:13px;color:inherit;min-height:38px}
+.tree-menu .tm-item:hover{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.tree-menu .tm-item.danger{color:#dc2626}
+.tree-file{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.tf-lock{margin-left:auto;font-size:11px;opacity:.85}
+.lock-tag{margin-left:8px;font-size:11px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;white-space:nowrap}
 #penCursor{position:fixed;left:0;top:0;display:none;pointer-events:none;z-index:9000;box-shadow:0 0 0 1px rgba(255,255,255,.9),0 0 0 2px rgba(15,23,42,.55);will-change:transform}
 body.pen-cursor #panes .page,body.pen-cursor #panes .page .layer.draw{cursor:none!important}
 .pen-picker{display:flex;flex-direction:column;gap:6px}
@@ -5092,6 +5100,7 @@ function act(id,kind,label){
       open('#veilScale');
       return;
     }
+    if(DOC_LOCKED && !['hand','cursor','pick','search','note'].includes(id)){ toast('File đang khoá (tạm dừng sửa) — chỉ xem & bình luận. Nhờ chủ file mở khoá.'); return; }
     if(ACTIVE_POLY && S.tool!==id)cancelActivePoly(true);
     if(S.layerPick && id!=='hand' && typeof setLayerPick==='function') setLayerPick(false);
     S.tool=id;
@@ -11188,6 +11197,56 @@ function treeIconBtn(icon, title, onClick, danger) {
   return b;
 }
 
+/* Menu file ở cây thư mục: chuột phải (máy tính) hoặc giữ lâu (điện thoại) */
+function closeTreeMenu() { document.getElementById('treeMenu')?.remove(); }
+function showTreeMenu(n, x, y) {
+  closeTreeMenu();
+  const m = el('div', 'tree-menu', ''); m.id = 'treeMenu';
+  const head = el('div', 'tm-head', ''); head.textContent = n.name; m.append(head);
+  const item = (label, fn, cls) => { const b = el('button', 'tm-item' + (cls ? ' ' + cls : ''), ''); b.type = 'button'; b.textContent = label; b.onclick = ev => { ev.stopPropagation(); closeTreeMenu(); fn(); }; m.append(b); };
+  item('Sửa tên', async () => {
+    let name = prompt('Tên mới cho file:', n.name);
+    if (!name || !name.trim() || name.trim() === n.name) return;
+    name = name.trim(); if (!/\.pdf$/i.test(name)) name += '.pdf';
+    await treeAction('drive_rename', { id: n.id, name }, 'Đã đổi tên thành "' + name + '"');
+  });
+  item('Nhân bản', async () => { toast('Đang nhân bản "' + n.name + '"…'); await treeAction('drive_copy', { id: n.id }, 'Đã tạo bản sao của "' + n.name + '"'); });
+  if (n.doc_id) item('Chia sẻ… (xem / bình luận / sửa)', async () => {
+    if (PDF_STATE.docId !== n.doc_id) await openCloudDoc(n.doc_id, n.name, n.size, n.modified);
+    if (PDF_STATE.docId === n.doc_id) act('share', 'openShare', 'Chia sẻ');
+  });
+  if (n.doc_id) item(n.locked ? 'Mở khoá (cho sửa lại)' : 'Khoá (tạm dừng sửa)', async () => {
+    const r = await pdfApi('doc_lock', { doc_id: n.doc_id, value: !n.locked });
+    if (!r || !r.ok) { toast((r && r.error) || 'Không khoá được'); return; }
+    toast(r.data.locked ? 'Đã khoá "' + n.name + '": mọi người chỉ xem & bình luận' : 'Đã mở khoá "' + n.name + '"');
+    if (PDF_STATE.docId === n.doc_id) setDocLocked(r.data.locked);
+    renderTree();
+  });
+  item('Xoá', async () => {
+    if (!confirm('Chuyển "' + n.name + '" vào Thùng rác Google Drive?\n(Khôi phục được trong Thùng rác Drive trong 30 ngày.)')) return;
+    await treeAction('drive_trash', { id: n.id }, 'Đã chuyển "' + n.name + '" vào Thùng rác Drive');
+  }, 'danger');
+  document.body.append(m);
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.max(6, Math.min(x, innerWidth - r.width - 6)) + 'px';
+  m.style.top = Math.max(6, Math.min(y, innerHeight - r.height - 6)) + 'px';
+  setTimeout(() => {
+    const off = ev => { if (!m.contains(ev.target)) { closeTreeMenu(); document.removeEventListener('pointerdown', off, true); } };
+    document.addEventListener('pointerdown', off, true);
+  }, 0);
+}
+function bindTreeMenu(row, n) {
+  row.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); showTreeMenu(n, e.clientX, e.clientY); });
+  let t = null, sx = 0, sy = 0;
+  row.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') return;
+    sx = e.clientX; sy = e.clientY; clearTimeout(t);
+    t = setTimeout(() => { row.__longPressed = true; if (navigator.vibrate) try { navigator.vibrate(15); } catch (_) {} showTreeMenu(n, sx, sy); }, 520);
+  });
+  row.addEventListener('pointermove', e => { if (t && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) { clearTimeout(t); t = null; } });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(k => row.addEventListener(k, () => { clearTimeout(t); t = null; }));
+  row.addEventListener('click', e => { if (row.__longPressed) { row.__longPressed = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+}
 async function treeAction(action, payload, okMsg) {
   const res = await pdfApi(action, payload);
   if (!res || !res.ok) { toast((res && res.error) || 'Thao tác thất bại'); return null; }
@@ -11254,7 +11313,9 @@ async function renderTree() {
     if (n.doc_id) row.dataset.docId = n.doc_id;
     row.title = n.intro ? 'Trang giới thiệu chung — ai cũng ghi tên, ban, chức vụ của mình' : n.name;
     row.onclick = e => { e.stopPropagation(); if (!n.intro) SELECTED_TREE_ITEM = { id: n.id, name: n.name, type: 'file' }; if (n.doc_id) openCloudDoc(n.doc_id, n.name, n.size, n.modified); };
+    if (n.locked) { const lk = el('span', 'tf-lock', '🔒'); lk.title = 'Đang khoá (tạm dừng sửa)'; row.append(lk); }
     if (!n.intro) {
+      bindTreeMenu(row, n);
       row.draggable = true;
       row.addEventListener('dragstart', ev => { ev.dataTransfer.setData(TREE_DRAG_MIME, JSON.stringify({ id: n.id, name: n.name, type: 'file' })); ev.dataTransfer.effectAllowed = 'move'; });
     }
@@ -11458,6 +11519,7 @@ function cmtMeName(){ return (CURRENT_USER && (CURRENT_USER.fullname || CURRENT_
 function cmtNorm(t){ return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd'); }
 async function loadDocPeople(){
   DOC_PEOPLE = []; DOC_MY_ROLE = null; DOC_LEAD = false;
+  if (typeof setDocLocked === 'function' && DOC_LOCKED) setDocLocked(false);
   if (!PDF_STATE.docId || !CURRENT_USER) return;
   try {
     const r = await pdfApi('doc_people', { doc_id: PDF_STATE.docId });
@@ -11465,8 +11527,21 @@ async function loadDocPeople(){
       DOC_PEOPLE = Array.isArray(r.data) ? r.data : (r.data.people || []);
       DOC_MY_ROLE = r.data.my_role || null;
       DOC_LEAD = !!r.data.lead;
+      setDocLocked(!!r.data.locked);
     }
   } catch (_) {}
+}
+let DOC_LOCKED = false;
+function setDocLocked(v) {
+  DOC_LOCKED = !!v;
+  document.body.classList.toggle('doc-locked', DOC_LOCKED);
+  let tag = document.getElementById('lockTag');
+  if (DOC_LOCKED && !tag) {
+    tag = el('span', 'lock-tag', '🔒 Đang khoá — chỉ xem & bình luận'); tag.id = 'lockTag';
+    tag.title = 'Chủ file đã tạm dừng sửa. Vẫn xem và bình luận được.';
+    ($('#docTitle') || document.body).append(tag);
+  } else if (!DOC_LOCKED && tag) tag.remove();
+  if (DOC_LOCKED && !['hand', 'cursor', 'pick', 'search'].includes(S.tool) && typeof act === 'function') act('hand', 'tool', 'Kéo');
 }
 function cmtPeople(){
   const m = new Map();

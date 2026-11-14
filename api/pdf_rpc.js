@@ -577,7 +577,7 @@ module.exports = async function handler(req, res) {
         if (!people.some(p => p.username === currentUser.username)) people.push({ username: currentUser.username, fullname: currentUser.fullname || currentUser.username });
       }
       people.sort((x, y) => String(x.fullname).localeCompare(String(y.fullname), 'vi'));
-      return res.status(200).json(result({ people: people.slice(0, 500), my_role: roleOn(doc), lead: canManage(doc) }));
+      return res.status(200).json(result({ people: people.slice(0, 500), my_role: roleOn(doc), lead: canManage(doc), locked: await docLocked(doc.id) }));
     }
 
     // 1. AUTH STATUS
@@ -976,7 +976,9 @@ module.exports = async function handler(req, res) {
         }
         visible = nodes.filter(n => keep.has(n.id) && (n.type === 'folder' || n.readable));
       }
-      const out = visible.map(({ id, name, type, parent, size, modified, doc_id }) => ({ id, name, type, parent, size, modified, doc_id }));
+      const lockRows = await sql`SELECT key FROM bqlda_settings WHERE key LIKE 'lock:%'`;
+      const lockedDocs = new Set(lockRows.map(r => String(r.key).slice(5)));
+      const out = visible.map(({ id, name, type, parent, size, modified, doc_id }) => ({ id, name, type, parent, size, modified, doc_id, ...(doc_id && lockedDocs.has(doc_id) ? { locked: true } : {}) }));
       return res.status(200).json(result({ root: { id: root.id, name: root.name || '', path: root.path || [] }, my_folder: userFolderName(currentUser), nodes: introNode ? [introNode, ...out] : out }));
     }
 
@@ -1011,6 +1013,40 @@ module.exports = async function handler(req, res) {
       const r = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?' + qs, { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(15000) });
       if (!r.ok) { const j = await r.json().catch(() => ({})); return res.status(200).json(failure('Drive: ' + ((j.error && j.error.message) || r.status))); }
       return res.status(200).json(result({ id, to }));
+    }
+
+    // Nhân bản file trên Drive kho (cùng thư mục, tên "... (bản sao).pdf"); lần quét cây sau tự đăng ký tài liệu mới.
+    if (action === 'drive_copy') {
+      const id = String(payload.id || '');
+      if (!DRIVE_ID_RE.test(id)) return res.status(200).json(failure('Thiếu file cần nhân bản.'));
+      if (!(await writableFolder(sql, currentUser, id))) return res.status(200).json(failure('Bạn chỉ nhân bản được file trong thư mục của mình.'));
+      const token = await gdriveService.getAccessToken();
+      const g = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?fields=name,parents,mimeType&supportsAllDrives=true', { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(10000) });
+      const gj = await g.json().catch(() => ({}));
+      if (!g.ok || !gj.name) return res.status(200).json(failure('Không đọc được file trên Drive.'));
+      if (gj.mimeType === 'application/vnd.google-apps.folder') return res.status(200).json(failure('Chỉ nhân bản được file, không nhân bản thư mục.'));
+      const base = String(gj.name).replace(/\.pdf$/i, '');
+      const name = treeFolderName(base + ' (bản sao).pdf') || 'ban-sao.pdf';
+      const r = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '/copy?supportsAllDrives=true&fields=id,name', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, parents: gj.parents || [] }), signal: AbortSignal.timeout(60000)
+      });
+      const rj = await r.json().catch(() => ({}));
+      if (!r.ok || !rj.id) return res.status(200).json(failure('Drive: ' + ((rj.error && rj.error.message) || r.status)));
+      return res.status(200).json(result({ id: rj.id, name: rj.name || name }));
+    }
+
+    // Khoá tài liệu = tạm dừng sửa (không ai thêm/sửa/xoá ghi chú; vẫn xem & bình luận). Chỉ chủ file / Quản trị.
+    if (action === 'doc_lock') {
+      const doc = await loadDoc(String(payload.doc_id || ''));
+      if (!doc || !canRead(doc)) return res.status(403).json(failure('Bạn không có quyền mở tài liệu này.'));
+      if (!canManage(doc)) return res.status(403).json(failure('Chỉ chủ file hoặc Quản trị được khoá / mở khoá.'));
+      if (!sql) return res.status(200).json(failure('Chưa có cơ sở dữ liệu.'));
+      const key = 'lock:' + doc.id;
+      if (payload.value) await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES (${key}, ${JSON.stringify({ by: currentUser.username, name: currentUser.fullname || currentUser.username, at: Date.now() })}, ${Date.now()})
+        ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`;
+      else await sql`DELETE FROM bqlda_settings WHERE key = ${key}`;
+      return res.status(200).json(result({ doc_id: doc.id, locked: !!payload.value }));
     }
 
     if (action === 'drive_rename' || action === 'drive_trash') {
@@ -1227,6 +1263,7 @@ module.exports = async function handler(req, res) {
       if (!doc) return;
       const rank = roleRank(roleOn(doc));
       if (rank < ROLE_RANK['Người nhận xét']) return deny('Người xem không được thêm hoặc sửa ghi chú.');
+      if (await docLocked(doc.id)) return deny('File đang khoá (tạm dừng sửa). Nhờ chủ file mở khoá để sửa tiếp.');
       const parsed = parseAnnoItems(payload.items);
       if (parsed.error) return bad(parsed.error);
       const editAll = rank >= ROLE_RANK['Người sửa'];
@@ -1319,6 +1356,7 @@ module.exports = async function handler(req, res) {
       if (!doc) return;
       const rank = roleRank(roleOn(doc));
       if (rank < ROLE_RANK['Người nhận xét']) return deny('Người xem không được xoá ghi chú.');
+      if (await docLocked(doc.id)) return deny('File đang khoá (tạm dừng sửa). Nhờ chủ file mở khoá để sửa tiếp.');
       const ids = Array.isArray(payload.ids) ? [...new Set(payload.ids.map(String))] : [];
       if (!ids.length || ids.length > ANNO_BATCH_MAX || !ids.every(i => ID_RE.test(i))) return bad('ids không hợp lệ.');
       const editAll = rank >= ROLE_RANK['Người sửa'];
@@ -1698,6 +1736,13 @@ async function authorizeDocRead(req, docId) {
 }
 
 module.exports.authorizeDocRead = authorizeDocRead;
+// Tài liệu đang khoá (tạm dừng sửa)?
+async function docLocked(docId) {
+  const sql = await ensureDb();
+  if (!sql) return false;
+  const r = await sql`SELECT 1 AS x FROM bqlda_settings WHERE key = ${'lock:' + docId} LIMIT 1`;
+  return r.length > 0;
+}
 
 /* ---------- Ảnh xem trước dùng chung (bản vẽ nặng) ----------
    Người đầu tiên mở file vẽ xong thì gửi ảnh trang lên; người sau mở là thấy ngay trong lúc chờ nét vẽ.
