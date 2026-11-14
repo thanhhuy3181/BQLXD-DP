@@ -19,6 +19,10 @@
   body.m-embed .hint{top:24px;right:24px;font-size:22px;padding:12px 20px}
   html.m-embed,html.m-embed body{background:transparent!important;background-image:none!important}
   @media (pointer:coarse){body.m-embed .hint{display:none}}
+  .zoom-btns{position:fixed;top:8px;left:8px;z-index:30;display:flex;gap:6px}
+  .zoom-btns button{width:30px;height:30px;border-radius:8px;border:1.5px solid #0f3d3a;background:#fff;color:#0f3d3a;font:700 17px/1 'Be Vietnam Pro',sans-serif;cursor:pointer;box-shadow:2px 2px 0 #0f3d3a;padding:0}
+  .zoom-btns button:hover{background:#e0f2fe}
+  body.m-video ~ .zoom-btns{display:none}
   .gyro-btn{position:fixed;top:8px;right:8px;z-index:30;font:700 11px 'Be Vietnam Pro',sans-serif;color:#fff;background:#2563eb;border:0;border-radius:999px;padding:6px 11px;box-shadow:0 4px 10px -4px rgba(37,99,235,.6);cursor:pointer}
   body.m-embed .scene{top:59%}
   body.m-embed.m-tall .scene{top:63%}
@@ -73,7 +77,7 @@
 <body>
 <div class="cap"><b>Cảnh 6 · Ba lớp đã vẽ xong chữ PDF</b><span>Bản vẽ (giao thông, trắng xám) · Layer công trình theo khu A–F (màu) · Ghi chú: CBGS vẽ P bằng chuột, ĐTGS vẽ D bằng bút, GĐ vẽ F bằng ngón tay, cùng nhiều người ghi chú</span></div>
 
-<div class="hint">Rê chuột để nghiêng, xoay 3D · Ctrl + lăn chuột để phóng to</div>
+<div class="hint">Rê chuột để nghiêng, xoay 3D · nút + − để phóng to</div>
 <div id="title"><b><span class="pdfb">PDF</span> <span class="qlda">QLDA</span></b></div>
 <div id="endcard">
   <h1><span class="pdfb">PDF</span> <span class="qlda">QLDA</span></h1>
@@ -607,11 +611,6 @@
       ox += (px - cx) * (1 - f) / bodyScale; oy += (py - cy) * (1 - f) / bodyScale;
       zoom = nz; applyZoom();
     }
-    addEventListener('wheel', e => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      zoomAt(Math.exp(-e.deltaY * 0.0022), e.clientX, e.clientY);
-    }, { passive: false });
     let pinch = null;
     const two = t => ({ d: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY), x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
     addEventListener('touchstart', e => { if (e.touches.length === 2) pinch = two(e.touches); }, { passive: true });
@@ -625,6 +624,17 @@
     }, { passive: false });
     addEventListener('touchend', e => { if (e.touches.length < 2) pinch = null; });
     addEventListener('dblclick', () => { zoom = 1; ox = 0; oy = 0; applyZoom(); });
+    // Nút + / − / về như cũ ở góc trên bên trái (không lẫn với phóng to cả trang web)
+    const zb = document.createElement('div'); zb.className = 'zoom-btns';
+    [['+', 'Phóng to', () => zoomAt(1.25, innerWidth / 2, innerHeight / 2)],
+     ['−', 'Thu nhỏ', () => zoomAt(0.8, innerWidth / 2, innerHeight / 2)],
+     ['⟲', 'Về như cũ', () => { zoom = 1; ox = 0; oy = 0; applyZoom(); }]].forEach(([t, title, fn]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.title = title; b.setAttribute('aria-label', title);
+      b.addEventListener('click', e => { e.stopPropagation(); fn(); });
+      b.addEventListener('dblclick', e => e.stopPropagation());
+      zb.append(b);
+    });
+    document.documentElement.append(zb);
   }
 </script>
 </body>
