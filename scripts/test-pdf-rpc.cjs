@@ -72,7 +72,7 @@ global.fetch = async (url, opts = {}) => {
       const part = f.bytes.subarray(a, b + 1);
       return new Response(part, { status: r ? 206 : 200, headers: { 'content-length': String(part.length), ...(r ? { 'content-range': `bytes ${a}-${b}/${f.bytes.length}` } : {}) } });
     }
-    return json(200, { id: f.id, name: f.name, size: String(f.bytes.length), mimeType: 'application/pdf', parents: f.parents, trashed: !!f.trashed, appProperties: f.appProperties });
+    return json(200, { id: f.id, name: f.name, size: String(f.bytes.length), md5Checksum: 'md5' + f.bytes.length + '_' + f.id, mimeType: 'application/pdf', parents: f.parents, trashed: !!f.trashed, appProperties: f.appProperties });
   }
   throw new Error('fetch giả: URL không được phép ' + u);
 };
@@ -381,6 +381,10 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   const part = await getFile('binh', newDoc.id, 'bytes=0-1023');
   check('GET có Range -> 206, 1024 byte, Content-Range', part.status === 206 && part.body.length === 1024 && /^bytes 0-1023\//.test(part.headers['content-range']), { status: part.status, h: part.headers });
   check('GET không đăng nhập -> 401', (await getFile(null, newDoc.id)).status === 401);
+  const dl2 = await getFile('binh', newDoc.id);
+  check('lần tải sau lấy từ bộ nhớ tạm máy chủ, đúng nội dung', dl2.status === 200 && dl2.body.equals(bytes) && /tmp/.test(dl2.headers['server-timing'] || ''), { st: dl2.headers['server-timing'] });
+  const part2 = await getFile('binh', newDoc.id, 'bytes=10-19');
+  check('Range từ bộ nhớ tạm -> 206 đúng 10 byte', part2.status === 206 && part2.body.equals(bytes.subarray(10, 20)) && String(part2.headers['content-range']).startsWith('bytes 10-19/'), { s: part2.status, h: part2.headers });
   check('GET tài liệu không được chia sẻ -> 403', (await getFile('chi', newDoc.id)).status === 403);
   let assembled = [];
   let off = 0;

@@ -495,6 +495,9 @@ body.layer-pick .page,body.layer-pick .page .layer,body.layer-pick #panes.pan .s
 .cth-in{display:flex;gap:4px;align-items:flex-end;position:relative}
 .cth-in textarea{flex:1;min-height:30px;max-height:120px;resize:vertical;font:inherit;font-size:12px;padding:4px 6px;border:1.5px solid var(--fg);border-radius:5px;background:var(--surface);color:var(--fg)}
 .cth-in button{flex:none}
+.early-pv{position:relative;margin:auto;background:#fff;box-shadow:5px 5px 0 var(--hard);outline:1.5px solid var(--hard);flex:none}
+.early-pv img{width:100%;height:100%;display:block}
+.early-pv span{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:rgba(15,23,42,.82);color:#fff;font-size:12px;padding:4px 10px;border-radius:999px;white-space:nowrap}
 .mention-pop{position:fixed;background:var(--surface);border:1.5px solid var(--fg);border-radius:6px;box-shadow:2px 2px 0 var(--hard);max-height:220px;overflow:auto;z-index:2000}
 .mention-pop div{padding:5px 8px;font-size:12px;cursor:pointer;display:flex;gap:6px}
 .mention-pop div small{color:var(--muted)}
@@ -503,7 +506,14 @@ body.layer-pick .page,body.layer-pick .page .layer,body.layer-pick #panes.pan .s
 .cmt-badge{position:absolute;right:-9px;top:-9px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#2563eb;color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;z-index:6;cursor:pointer;box-shadow:0 0 0 1.5px #fff;pointer-events:auto}
 .cmt-badge.mine{background:#dc2626}
 .mention-n{background:#dc2626;color:#fff;border-radius:8px;padding:0 5px;font-size:10px;font-weight:800;margin-left:3px}
-body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-cmts .anno-popup{display:none!important}
+body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-cmts .cmt-bubble,body.hide-cmts .anno-popup{display:none!important}
+.cmt-bubble{position:absolute;left:calc(100% + 14px);top:-6px;transform-origin:0 0;width:max-content;max-width:260px;min-width:120px;background:#fffdf5;color:#1f2937;border:1.5px solid #1f2937;border-radius:8px 8px 8px 2px;box-shadow:2px 2px 0 rgba(15,23,42,.35);padding:5px 8px;font:500 12px/1.35 var(--sans,system-ui);z-index:7;pointer-events:auto;cursor:pointer;text-align:left;white-space:normal;word-break:break-word}
+.cmt-bubble::before{content:'';position:absolute;left:-8px;top:10px;border:7px solid transparent;border-right-color:#1f2937;border-left:0}
+.cmt-bubble .ln{margin:1px 0}
+.cmt-bubble .ln b{font-weight:800}
+.cmt-bubble .more{font-size:10.5px;color:#64748b;margin-bottom:2px}
+.cmt-bubble .mention{color:#2563eb;font-weight:700}
+.anno-item.selected .cmt-bubble,.cmt-bubble:hover{z-index:20;box-shadow:3px 3px 0 rgba(15,23,42,.45)}
 .clist{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
 .c{border:1.5px solid var(--fg);border-radius:6px;box-shadow:2px 2px 0 var(--hard);padding:8px 10px;min-width:240px;background:var(--surface);transition:border-color var(--fast),transform var(--fast)}
 .c:hover{border-color:var(--fg);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--hard)}
@@ -4932,7 +4942,7 @@ function act(id,kind,label){
   if(kind==='layerIso'){ cadIsolateSelected(); return; }
   if(kind==='layerHideSel'){ cadHideSelected(); return; }
   if(kind==='layerShowAll'){ const ps=getActivePaneState(); cadSetVisibility(ps, () => true); return; }
-  if(kind==='layerTabClose'){ S.layerTab=false; setLayerPick(false); S.tab=S.lastRegularTab||'Xem'; renderTabs(); renderTools(false); return; }
+  if(kind==='layerTabClose'){ S.layerTab=false; S.layerTabOff=true; setLayerPick(false); S.tab=S.lastRegularTab||'Xem'; renderTabs(); renderTools(false); return; }
   if(kind==='cmtAdd'){ cmtAddAction(); return; }
   if(kind==='cmtMention'){ cmtMentionAction(); return; }
   if(kind==='cmtToggle'){ cmtToggleHidden(); return; }
@@ -5475,7 +5485,7 @@ function renderTools(anim=true){
       return;
     }
   }
-  if(S.tab===LAYER_TAB && !S.layerTab) S.tab=S.lastRegularTab||'Xem';
+  if(S.tab===LAYER_TAB && !S.layerTab && (S.layerTabOff || !(getActivePaneState().cadLayers||[]).length)) S.tab=S.lastRegularTab||'Xem';
   for(const [name,items] of (S.tab===LAYER_TAB ? LAYER_RIB : RIB[S.tab])){
     box.append(buildRibbonGroup(name, items));
   }
@@ -5512,7 +5522,7 @@ function renderTabs(){
     };
     box.append(b);
   });
-  if(S.layerTab){
+  if(S.layerTab || (!S.layerTabOff && (getActivePaneState().cadLayers||[]).length)){
     const isAct = (S.tab===LAYER_TAB);
     const b=el('button','rtab ctx-tab'+(isAct?' on':''),LAYER_TAB);
     b.setAttribute('role','tab');
@@ -6377,6 +6387,8 @@ function syncPageAnnotations(paneIdx, pageNum, ly) {
     }
     renderActivePolyPreview();
   }
+  // Ghi chú vừa được dựng lại: gắn lại số bình luận & khung trò chuyện
+  if (typeof decorateCmtBadges === 'function') { clearTimeout(syncPageAnnotations.t); syncPageAnnotations.t = setTimeout(decorateCmtBadges, 60); }
 }
 
 function setupPaneScrollListener(ps, sc) {
@@ -8286,7 +8298,7 @@ async function loadCadLayers(pdfDoc, ps) {
     }
     ps.ocConfig = cfg;
     ps.cadLayers = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true }));
-    if (ps.cadLayers.length) setTimeout(() => toast('File có ' + ps.cadLayers.length + ' layer bản vẽ — bấm "Layer bản vẽ" (tab Xem) để bật/tắt'), 1200);
+    if (ps.cadLayers.length) { S.layerTabOff = false; setTimeout(() => { toast('File có ' + ps.cadLayers.length + ' layer bản vẽ — xem tab "Layer bản vẽ" trên ribbon'); if (typeof renderTabs === 'function') renderTabs(); }, 300); }
   } catch (err) { console.warn('loadCadLayers:', err.message); }
   if (typeof renderLayerPanel === 'function') renderLayerPanel();
 }
@@ -9495,7 +9507,7 @@ function showLoadOverlay(title, pct, detail) {
   if (!ov) {
     ov = el('div', 'load-ov', '<div class="load-card"><b class="lt"></b><div class="lbar"><i></i></div><div class="lrow"><span class="lp"></span><span class="ld"></span></div><button class="btn ghost sm lx">Huỷ</button></div>');
     ov.id = 'loadOverlay';
-    ov.querySelector('.lx').onclick = () => { OPEN_DOC_SEQ++; showLoadOverlay(null); const c = $('#sideThumbsCount'); if (c) c.textContent = (getActivePaneState()?.numPages || 0); document.querySelectorAll('#tree .tf-prog').forEach(t => t.remove()); };
+    ov.querySelector('.lx').onclick = () => { OPEN_DOC_SEQ++; showLoadOverlay(null); if (document.querySelector('.early-pv')) renderPanes(); const c = $('#sideThumbsCount'); if (c) c.textContent = (getActivePaneState()?.numPages || 0); document.querySelectorAll('#tree .tf-prog').forEach(t => t.remove()); };
     document.body.append(ov);
   }
   ov.querySelector('.lt').textContent = 'Đang mở "' + title + '"';
@@ -9569,6 +9581,31 @@ async function loadSharedPreviews(ps, docId) {
       const sk = wrap.querySelector('.page-loading-skeleton'); if (sk) sk.style.display = 'none';
     } catch (_) {}
   }
+}
+async function showEarlyPreview(docId, title, seq) {
+  const m = PV_VERSION.get(docId);
+  if (!m || docId === 'ban-la-ai') return false;
+  try {
+    const lr = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&previews=1', { headers: pdfAuthHeaders() });
+    const lj = await lr.json();
+    const info = lj && lj.ok && lj.data && lj.data.pages && lj.data.pages[1];
+    if (!info || info.m !== m || seq !== OPEN_DOC_SEQ) return false;
+    const ir = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&preview=1&m=' + encodeURIComponent(m), { headers: pdfAuthHeaders() });
+    if (!ir.ok || seq !== OPEN_DOC_SEQ) return false;
+    const url = URL.createObjectURL(await ir.blob());
+    const sc = document.querySelectorAll('.pane')[S.focus]?.querySelector('.scroll');
+    if (!sc || seq !== OPEN_DOC_SEQ || window.__earlyBlock === seq) return false; // file gốc đã về thì thôi
+    const w = info.w || 3000, h = info.h || 2000;
+    const k = Math.min((sc.clientWidth - 32) / w, (sc.clientHeight - 32) / h);
+    const box = document.createElement('div');
+    box.className = 'early-pv';
+    box.style.cssText = `width:${Math.round(w * k)}px;height:${Math.round(h * k)}px`;
+    const img = new Image(); img.src = url; img.alt = title || '';
+    const tag = document.createElement('span'); tag.textContent = 'Xem trước — đang tải bản vẽ gốc để ghi chú…';
+    box.append(img, tag);
+    sc.replaceChildren(box);
+    return true;
+  } catch (_) { return false; }
 }
 // Gọi sau khi một trang vẽ xong: trang nặng chưa có ảnh chung đúng phiên bản -> làm & gửi (một lần).
 async function maybeSharePreview(ps, pageNum, page, pi) {
@@ -9720,6 +9757,7 @@ async function openCloudDoc(docId, docTitle, knownSize, modified) {
     return;
   }
   const seq = ++OPEN_DOC_SEQ;
+  const earlyP = showEarlyPreview(docId, docTitle, seq);
   setOpenProgress(docId, 'đang tải…');
   showLoadOverlay(docTitle, null, 'Đang kết nối Google Drive...');
   const cacheKey = docId === 'ban-la-ai' ? null : pdfCacheKey(docId, knownSize, modified);
@@ -9763,8 +9801,11 @@ async function openCloudDoc(docId, docTitle, knownSize, modified) {
       pdfCachePut(cacheKey, docId, ab);
       showLoadOverlay(docTitle, 100, 'Đang dựng trang...');
       setOpenProgress(docId, 'đang mở…');
+      window.__earlyBlock = seq;
+      const hadEarly = await Promise.race([earlyP, Promise.resolve(false)]);
       await loadRealPdf(ab, docTitle || 'tai-lieu.pdf', false);
       PDF_STATE.docId = docId;
+      if (hadEarly && typeof fitPage === 'function') fitPage(); // giữ đúng khung nhìn như ảnh xem trước
       loadSharedPreviews(getActivePaneState(), docId);
       COLLAB_CURSOR = 0;
       if (typeof collabPollLoop === 'function') collabPollLoop();
@@ -11074,7 +11115,7 @@ function cmtFindMentions(text, people){
   return people.filter(p => (p.fullname && has('@' + p.fullname)) || has('@' + p.username));
 }
 function cmtFullName(u){ const p = cmtPeople().find(x => x.username === u); return p ? p.fullname : u; }
-function cmtColor(name){ let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return ['#2563eb','#059669','#d97706','#dc2626','#7c3aed','#0891b2','#be185d'][h % 7]; }
+function cmtColor(name){ let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const P = ['#2563eb','#059669','#d97706','#dc2626','#7c3aed','#0891b2','#be185d','#65a30d','#ea580c','#4f46e5']; return P[h % P.length]; }
 function cmtMentionsMe(r){ const me = cmtMe(); return !!r && Array.isArray(r.mentions) && r.mentions.includes(me) && r.user !== me; }
 function cmtMentionSeenKey(){ return 'pdf_mention_seen_' + (PDF_STATE.docId || 'local') + '_' + cmtMe(); }
 function cmtMentionSeenTs(){ try { return +localStorage.getItem(cmtMentionSeenKey()) || 0; } catch (_) { return 0; } }
@@ -11122,7 +11163,7 @@ function cmtSig(){
 function scheduleCmtRender(){ clearTimeout(CMT_RENDER_T); CMT_RENDER_T = setTimeout(() => { renderCommentPanel(false); decorateCmtBadges(); }, 120); }
 function decorateCmtBadges(){
   const me = cmtMe(), seenTs = cmtMentionSeenTs();
-  document.querySelectorAll('.cmt-badge').forEach(b => { const a = ANNO_MAP.get(b.dataset.for); if (!a || !(a.replies || []).length) b.remove(); });
+  document.querySelectorAll('.cmt-badge, .cmt-bubble').forEach(b => { const a = ANNO_MAP.get(b.dataset.for); if (!a || !(a.replies || []).length) b.remove(); });
   ANNO_MAP.forEach(a => {
     const n = (a.replies || []).length;
     if (!n) return;
@@ -11137,6 +11178,30 @@ function decorateCmtBadges(){
     }
     b.textContent = n;
     b.classList.toggle('mine', (a.replies || []).some(r => cmtMentionsMe(r) && (Number(r.ts) || 0) > seenTs));
+    // Khung "Tên: nội dung" cạnh hình (3 bình luận mới nhất, mỗi người một màu)
+    const reps = a.replies || [];
+    const sig = reps.map(r => (r.id || '') + (r.text || '').length).join('|') + '#' + (a.rotate || 0);
+    let bub = host.querySelector(':scope > .cmt-bubble');
+    if (!bub) {
+      bub = document.createElement('div'); bub.className = 'cmt-bubble'; bub.dataset.for = a.id;
+      bub.onpointerdown = ev => ev.stopPropagation();
+      bub.onclick = ev => { ev.stopPropagation(); openCmtThread(a.id); };
+      host.append(bub);
+    }
+    if (bub.dataset.sig !== sig) {
+      bub.dataset.sig = sig;
+      bub.replaceChildren();
+      const shown = reps.slice(-3);
+      if (reps.length > shown.length) { const more = document.createElement('div'); more.className = 'more'; more.textContent = '+' + (reps.length - shown.length) + ' bình luận trước…'; bub.append(more); }
+      shown.forEach(r => {
+        const line = document.createElement('div'); line.className = 'ln';
+        const nm = document.createElement('b'); nm.textContent = (r.author || r.user || 'Ẩn danh') + ': '; nm.style.color = cmtColor(r.user || r.author);
+        const tx = document.createElement('span'); cmtRichText(tx, r.text);
+        line.append(nm, tx); bub.append(line);
+      });
+      bub.title = 'Bấm để mở cuộc trao đổi và trả lời';
+    }
+    bub.style.transform = 'rotate(' + (-(a.rotate || 0)) + 'deg)';
     b.title = n + ' bình luận — bấm để xem và trả lời';
     b.style.transform = 'rotate(' + (-(a.rotate || 0)) + 'deg)';
   });
@@ -11323,7 +11388,7 @@ function renderCommentPanel(force){
       const av = document.createElement('span'); av.className = 'av'; av.style.background = cmtColor(r.user || r.author); av.textContent = ini(String(r.author || r.user || '?'));
       const bd = document.createElement('div'); bd.className = 'bd';
       const meta = document.createElement('div'); meta.className = 'meta';
-      const nm = document.createElement('b'); nm.textContent = r.author || r.user || 'Ẩn danh';
+      const nm = document.createElement('b'); nm.textContent = r.author || r.user || 'Ẩn danh'; nm.style.color = cmtColor(r.user || r.author);
       const tm = document.createElement('time'); tm.textContent = r.ts ? fmtCmtTime(r.ts) : (r.time || ''); tm.title = r.ts ? fmtCmtFull(r.ts) : '';
       meta.append(nm, tm);
       const mine = (r.user && r.user === me) || (!r.user && r.author === cmtMeName());

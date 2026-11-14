@@ -15,6 +15,27 @@ const gdriveService = require('./_gdrive_service');
 const { authorizeDocRead, previewList, previewMeta, previewSave } = require('./pdf_rpc');
 
 const RANGE_RE = /^bytes=(\d*)-(\d*)$/;
+const fsp = require('fs');
+const pathMod = require('path');
+const osMod = require('os');
+
+/* Bộ nhớ tạm của máy chủ (/tmp, miễn phí, mất khi máy chủ nghỉ): Google Drive trả file lớn rất chậm
+   (~13–20 giây mới có byte đầu với file 30 MB). Lần tải đầu vừa gửi cho người dùng vừa ghi vào /tmp;
+   những lần sau trên cùng máy chủ đang chạy thì đọc thẳng từ đĩa (gần như tức thì). Khoá theo
+   md5/thời điểm sửa của file trên Drive nên file bị thay là tự lấy bản mới. */
+const TMP_DIR = pathMod.join(osMod.tmpdir(), 'qlda-pdf-cache');
+const TMP_MAX_BYTES = 380 * 1024 * 1024;
+function tmpPathFor(driveId, ver) {
+  return pathMod.join(TMP_DIR, String(driveId).replace(/[^A-Za-z0-9_-]/g, '_') + '-' + String(ver).replace(/[^A-Za-z0-9_-]/g, '_') + '.pdf');
+}
+function tmpEvict(keepBytes) {
+  try {
+    const items = fsp.readdirSync(TMP_DIR).map(n => { const p = pathMod.join(TMP_DIR, n); const st = fsp.statSync(p); return { p, size: st.size, t: st.atimeMs || st.mtimeMs }; });
+    let total = items.reduce((a, b) => a + b.size, 0) + keepBytes;
+    items.sort((a, b) => a.t - b.t);
+    for (const it of items) { if (total <= TMP_MAX_BYTES) break; try { fsp.unlinkSync(it.p); total -= it.size; } catch (_) {} }
+  } catch (_) {}
+}
 const PV_M_RE = /^[A-Za-z0-9:.+\-_ ]{0,64}$/;
 
 /* Ảnh xem trước dùng chung của bản vẽ nặng:
@@ -106,10 +127,39 @@ module.exports = async function pdfFile(req, res) {
     let t1 = Date.now();
     const token = await gdriveService.getAccessToken();
     tm.push('token;dur=' + (Date.now() - t1)); t1 = Date.now();
+    // Phiên bản file trên Drive (nhanh, vài trăm ms) để dùng bản trong /tmp nếu có
+    let ver = '', size = 0;
+    try {
+      const mr = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(doc.drive_file_id) + '?fields=md5Checksum,modifiedTime,size&supportsAllDrives=true',
+        { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(8000) });
+      if (mr.ok) { const mj = await mr.json(); ver = mj.md5Checksum || mj.modifiedTime || ''; size = Number(mj.size) || 0; }
+    } catch (_) {}
+    tm.push('meta;dur=' + (Date.now() - t1)); t1 = Date.now();
+    const tmpFile = ver && size ? tmpPathFor(doc.drive_file_id, ver) : '';
+    if (tmpFile && fsp.existsSync(tmpFile) && fsp.statSync(tmpFile).size === size) {
+      let a = 0, b = size - 1, partial = false;
+      const rm = range ? RANGE_RE.exec(range) : null;
+      if (rm) {
+        if (rm[1] === '' && rm[2] !== '') { a = Math.max(0, size - Number(rm[2])); }
+        else { a = Number(rm[1] || 0); if (rm[2] !== '') b = Math.min(size - 1, Number(rm[2])); }
+        if (a > b || a >= size) { res.setHeader('Content-Range', 'bytes */' + size); return sendErr(416, 'Range vượt kích thước file'); }
+        partial = true;
+      }
+      tm.push('tmp;desc="bo nho tam may chu"');
+      res.setHeader('Server-Timing', tm.join(', '));
+      res.statusCode = partial ? 206 : 200;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Length', String(b - a + 1));
+      if (partial) res.setHeader('Content-Range', 'bytes ' + a + '-' + b + '/' + size);
+      res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(String(doc.title || 'tai-lieu.pdf'))}`);
+      if (req.method === 'HEAD') return res.end();
+      try { fsp.utimesSync(tmpFile, new Date(), fsp.statSync(tmpFile).mtime); } catch (_) {}
+      await pipeline(fsp.createReadStream(tmpFile, { start: a, end: b }), res);
+      return;
+    }
     const upstream = await fetch(
-      sp.get('via') === 'uc' // thử đường tải khác của Google để so tốc độ
-        ? 'https://drive.usercontent.google.com/download?id=' + encodeURIComponent(doc.drive_file_id) + '&export=download&confirm=t'
-        : 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(doc.drive_file_id) + '?alt=media&supportsAllDrives=true',
+      'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(doc.drive_file_id) + '?alt=media&supportsAllDrives=true',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer ' + token, ...(range ? { Range: range } : {}) },
@@ -134,6 +184,22 @@ module.exports = async function pdfFile(req, res) {
     if (req.method === 'HEAD' || !upstream.body) {
       controller.abort();
       return res.end();
+    }
+    // Tải cả file (không Range): vừa gửi vừa ghi vào /tmp cho lần sau
+    if (tmpFile && !range && upstream.status === 200 && size > 0 && size < TMP_MAX_BYTES) {
+      const { Transform } = require('stream');
+      let ws = null, ok = true;
+      try { fsp.mkdirSync(TMP_DIR, { recursive: true }); tmpEvict(size); ws = fsp.createWriteStream(tmpFile + '.part'); ws.on('error', () => { ok = false; }); } catch (_) { ws = null; }
+      const tee = new Transform({ transform(chunk, enc, cb) { if (ws && ok) ws.write(chunk); cb(null, chunk); } });
+      try {
+        await pipeline(Readable.fromWeb(upstream.body), tee, res);
+      } finally {
+        if (ws) {
+          await new Promise(r => ws.end(r));
+          try { if (ok && fsp.statSync(tmpFile + '.part').size === size) fsp.renameSync(tmpFile + '.part', tmpFile); else fsp.unlinkSync(tmpFile + '.part'); } catch (_) {}
+        }
+      }
+      return;
     }
     await pipeline(Readable.fromWeb(upstream.body), res);
   } catch (err) {
