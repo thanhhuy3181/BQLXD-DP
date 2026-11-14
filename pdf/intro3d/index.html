@@ -19,9 +19,9 @@
   body.m-embed .hint{top:24px;right:24px;font-size:22px;padding:12px 20px}
   html.m-embed,html.m-embed body{background:transparent!important;background-image:none!important}
   @media (pointer:coarse){body.m-embed .hint{display:none}}
-  .gyro-btn{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:30;font:700 40px 'Be Vietnam Pro',sans-serif;color:#fff;background:#2563eb;
-    border:0;border-radius:999px;padding:16px 40px;box-shadow:0 14px 30px -10px rgba(37,99,235,.6);cursor:pointer}
+  .gyro-btn{position:fixed;top:8px;right:8px;z-index:30;font:700 11px 'Be Vietnam Pro',sans-serif;color:#fff;background:#2563eb;border:0;border-radius:999px;padding:6px 11px;box-shadow:0 4px 10px -4px rgba(37,99,235,.6);cursor:pointer}
   body.m-embed .scene{top:59%}
+  body.m-embed.m-tall .scene{top:63%}
   #endcard{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;
     background:radial-gradient(rgba(227,236,233,.92) 40%,rgba(227,236,233,.6))}
   #endcard h1{margin:0;font-size:132px;letter-spacing:-.03em;color:#0f3d3a;line-height:1;opacity:0}
@@ -556,12 +556,12 @@
     const startTilt = () => addEventListener('deviceorientation', onTilt);
     if (typeof DeviceOrientationEvent.requestPermission === 'function') {
       // iPhone: phải chạm một lần để cho phép dùng cảm biến
-      const b = document.createElement('button'); b.className = 'gyro-btn'; b.textContent = 'Chạm để xoay 3D theo điện thoại';
+      const b = document.createElement('button'); b.className = 'gyro-btn'; b.textContent = 'Xoay 3D theo máy';
       b.addEventListener('click', async () => {
         try { if (await DeviceOrientationEvent.requestPermission() === 'granted') { startTilt(); b.remove(); } else b.textContent = 'Chưa được phép dùng cảm biến nghiêng'; }
         catch (_) { b.textContent = 'Không bật được cảm biến nghiêng'; }
       });
-      document.body.append(b);
+      document.documentElement.append(b);
     } else startTilt();
   }
   const T0 = performance.now();
@@ -589,7 +589,8 @@
   function fit() {
     let s = Math.min(innerWidth / 1920, innerHeight / 1080);
     // Khung đứng (điện thoại): phóng hình to hơn, cắt bớt hai bên trống
-    if (EMBED && innerHeight > innerWidth * 0.75) s = Math.min(innerHeight / 1080, innerWidth / 1920 * 1.75);
+    if (EMBED && innerHeight > innerWidth * 0.75) s = Math.min(innerHeight / 1380, innerWidth / 1920 * 1.5);
+    document.body.classList.toggle('m-tall', EMBED && innerHeight > innerWidth * 0.75);
     bodyScale = s;
     document.body.style.transform = `translate(${(innerWidth - 1920 * s) / 2}px, ${(innerHeight - 1080 * s) / 2}px) scale(${s})`;
   }
