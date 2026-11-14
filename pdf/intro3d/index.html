@@ -15,6 +15,8 @@
   .stack{position:absolute;inset:0;transform-style:preserve-3d;transform:scale3d(var(--sc),var(--sc),var(--sc)) rotateX(var(--rx)) rotateZ(var(--rz))}
   body.m-video .cap,body.m-video .hint,body.m-embed .cap{display:none}
   body.m-embed .hint{top:24px;right:24px;font-size:22px;padding:12px 20px}
+  html.m-embed,html.m-embed body{background:transparent!important;background-image:none!important}
+  @media (pointer:coarse){body.m-embed .hint{display:none}}
   body.m-embed .scene{top:59%}
   #endcard{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;
     background:radial-gradient(rgba(227,236,233,.92) 40%,rgba(227,236,233,.6))}
@@ -259,7 +261,7 @@
   const qs0 = new URLSearchParams(location.search);
   const STILL = qs0.has('still');
   const VIDEO = qs0.has('video'), EMBED = qs0.has('embed');   // ?video = quay video; ?embed = nhúng vào trang web
-  document.body.classList.toggle('m-video', VIDEO); document.body.classList.toggle('m-embed', EMBED);                 // ?still = hiện ngay trạng thái đã vẽ xong (để chụp ảnh)
+  document.body.classList.toggle('m-video', VIDEO); document.body.classList.toggle('m-embed', EMBED); document.documentElement.classList.toggle('m-embed', EMBED);                 // ?still = hiện ngay trạng thái đã vẽ xong (để chụp ảnh)
   const SP = STILL ? 0.0001 : 1;
   const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   const wait = ms => new Promise(r => setTimeout(r, ms * SP));

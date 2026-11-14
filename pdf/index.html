@@ -179,8 +179,9 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .app{height:100vh;max-height:100vh;display:flex;flex-direction:column;background:var(--surface);border:none;border-radius:0;overflow:hidden;box-shadow:none;position:relative}
 /* thanh tiêu đề */
 .top{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1.5px solid var(--fg);min-width:0}
-.brand{font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:8px;white-space:nowrap}
-.brand b{background:var(--fg);color:var(--surface);border-radius:3px;padding:3px 7px;font-size:11px;font-family:var(--mono)}
+.brand{font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.brand b{color:#2563eb;font-family:'Be Vietnam Pro',var(--font);font-size:17px;font-weight:800;letter-spacing:-.01em;line-height:1}
+.brand span{color:#ffd000;-webkit-text-stroke:1px #2563eb;paint-order:stroke fill;font-family:'Be Vietnam Pro',var(--font);font-size:17px;font-weight:800;letter-spacing:-.01em;line-height:1}
 .seg{display:flex;background:var(--surface);border:1.5px solid var(--fg);border-radius:6px;padding:2px;gap:2px}
 .seg a{padding:5px 11px;border-radius:3px;color:var(--muted);text-decoration:none;font-weight:500;white-space:nowrap;transition:background var(--fast),color var(--fast)}
 .seg a.on{background:var(--fg);color:var(--surface);box-shadow:none}
@@ -755,7 +756,7 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
   .side.shut{width:0;opacity:0;border:0;pointer-events:none}
   .cmt{position:absolute;inset:0 0 0 auto;z-index:50;box-shadow:-4px 0 16px rgba(0,0,0,.25);width:320px;max-width:85vw;background:var(--surface)}
   .cmt.closed{width:0;opacity:0;border:0;pointer-events:none}
-  .doc-title .saved,.avatars,.brand span,.user-badge span:not(.av){display:none}
+  .doc-title .saved,.avatars,.user-badge span:not(.av){display:none}
   .top{flex-wrap:wrap}
 }
 @media (max-width:480px){
@@ -763,8 +764,8 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
   .cmt.closed{height:0;width:100%;opacity:0;pointer-events:none}
 }
 /* ===== S1: Sân khấu 3D Chồng bản vẽ tách lớp ===== */
-.empty-intro3d{width:min(960px,92vw);aspect-ratio:16/9;margin:0 auto 6px;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px rgba(15,61,58,.15)}
-.empty-intro3d iframe{width:100%;height:100%;border:0;display:block}
+.empty-intro3d{width:min(960px,92vw);aspect-ratio:16/9;margin:0 auto 6px;background:transparent}
+.empty-intro3d iframe{width:100%;height:100%;border:0;display:block;background:transparent;color-scheme:normal}
 .empty-hero{perspective:1400px;min-height:360px;display:flex;align-items:center;justify-content:center;touch-action:pan-y;margin:auto;padding:24px 16px;max-width:100%;user-select:none}
 .empty-stack{--rx:56deg;--rz:-34deg;--gap:44px;position:relative;width:min(90vw,420px);aspect-ratio:1.414;transform-style:preserve-3d;transform:rotateX(var(--rx)) rotateZ(var(--rz));transition:transform .5s var(--out)}
 .empty-stage:hover .empty-stack,.empty-stack.open{--gap:88px}
@@ -809,7 +810,6 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
     <div class="brand"><b>PDF</b><span>QLDA</span></div>
 
     <div class="doc-title" id="docTitle" title="Tên tài liệu đang mở">
-      <span class="doc-tag" style="background:var(--accent);color:var(--accent-fg);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:800;letter-spacing:0.5px;flex:none">PDF</span>
       <strong id="docTitleText" style="font-size:12.5px;font-weight:700;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Chưa mở tài liệu</strong>
       <span class="saved" id="docSavedStatus"></span>
     </div>
@@ -6118,7 +6118,7 @@ function renderPanes() {
       empty.style.cssText = 'margin:auto;text-align:center;padding:24px 16px;max-width:1000px;background:transparent;border:none;box-shadow:none;display:flex;flex-direction:column;align-items:center;';
       empty.innerHTML = `
         <div class="empty-intro3d">
-          <iframe src="/pdf/intro3d/index.html?embed" title="PDF QLDA: bản vẽ, layer, ghi chú — nhiều người cùng trên một file PDF" loading="lazy" tabindex="-1"></iframe>
+          <iframe src="/pdf/intro3d/index.html?embed" title="PDF QLDA: bản vẽ, layer, ghi chú — nhiều người cùng trên một file PDF" loading="lazy" tabindex="-1" allowtransparency="true"></iframe>
         </div>
         <h3 style="margin:8px 0 4px;font-size:16px;font-weight:700">Khung ${i + 1}: Chưa mở tài liệu</h3>
         <p style="margin:0 0 18px;color:var(--muted);font-size:13px;line-height:1.5;max-width:44ch">Mở PDF tới 100 MB, ghi chú theo lớp, nhiều người cùng làm việc một lúc.</p>
