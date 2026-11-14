@@ -26,6 +26,8 @@ const UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024; // bội số của 256 KiB theo yêu
 const PRESENCE_TTL_SECONDS = 30;
 const ANNO_BATCH_MAX = 500;
 const ANNO_DATA_MAX_BYTES = 256 * 1024;
+// Phần bình luận trong một ghi chú: chỉ đổi qua anno_comment (máy chủ tự gộp, không ai đè mất bình luận của ai).
+const COMMENT_KEYS = ['replies', 'pinned', 'pinnedBy', 'starredBy', 'seenBy'];
 
 let sqlFactory = () => sqlFromEnv();
 
@@ -573,7 +575,7 @@ module.exports = async function handler(req, res) {
         if (!people.some(p => p.username === currentUser.username)) people.push({ username: currentUser.username, fullname: currentUser.fullname || currentUser.username });
       }
       people.sort((x, y) => String(x.fullname).localeCompare(String(y.fullname), 'vi'));
-      return res.status(200).json(result(people.slice(0, 500)));
+      return res.status(200).json(result({ people: people.slice(0, 500), my_role: roleOn(doc), lead: canManage(doc) }));
     }
 
     // 1. AUTH STATUS
@@ -1178,7 +1180,7 @@ module.exports = async function handler(req, res) {
 
     // ================= CỘNG TÁC: H (ghi chú từng dòng, hiện diện), G (xin quyền), F (file lớn) =================
     const COLLAB_ACTIONS = [
-      'anno_upsert', 'anno_delete', 'anno_changes', 'presence_ping', 'presence_leave',
+      'anno_upsert', 'anno_delete', 'anno_changes', 'anno_comment', 'presence_ping', 'presence_leave',
       'doc_request_access', 'doc_access_my', 'doc_access_requests', 'doc_access_decide',
       'upload_begin', 'upload_status', 'upload_finish', 'upload_cancel', 'drive_download_chunk'
     ];
@@ -1226,6 +1228,17 @@ module.exports = async function handler(req, res) {
       const parsed = parseAnnoItems(payload.items);
       if (parsed.error) return bad(parsed.error);
       const editAll = rank >= ROLE_RANK['Người sửa'];
+      {
+        const ids = parsed.items.map(i => i.id);
+        const exRows = await db`/*q:anno_cmt_keep*/ SELECT id, data FROM bqlda_pdf_anno_items
+          WHERE doc_id = ${doc.id} AND id IN (SELECT value FROM json_each(${JSON.stringify(ids)}))`;
+        const exMap = new Map(exRows.map(r => { let d = {}; try { d = parseJson(r.data) || {}; } catch (_) {} return [r.id, d]; }));
+        parsed.items.forEach(it => {
+          const ex = exMap.get(it.id);
+          if (!ex) return;
+          COMMENT_KEYS.forEach(k => { if (ex[k] !== undefined) it.data[k] = ex[k]; else delete it.data[k]; });
+        });
+      }
       const base = await reserveRevs(db, parsed.items.length);
       const rows = await db`/*q:anno_upsert*/ INSERT INTO bqlda_pdf_anno_items (doc_id, id, page, data, created_by, updated_by, updated_at, rev, deleted)
         SELECT ${doc.id}, json_extract(value, '$.id'), json_extract(value, '$.page'), json_extract(value, '$.data'), ${me}, ${me}, ${Date.now()}, ${base} + key + 1, 0
@@ -1238,6 +1251,64 @@ module.exports = async function handler(req, res) {
       const ok = new Set(applied.map(a => a.id));
       const rejected = parsed.items.filter(i => !ok.has(i.id)).map(i => i.id);
       return res.status(200).json(result({ applied, rejected }));
+    }
+
+    // H1b. Bình luận trên một ghi chú/hình: thêm, xoá, ghim, gắn sao, đã xem.
+    // Ai được chia sẻ "Xem & bình luận" trở lên đều bình luận được vào MỌI hình (không cần quyền sửa hình).
+    // Trưởng nhóm = chủ file hoặc Quản trị: ghim và xoá bình luận của bất kỳ ai. Sao/đã xem là riêng từng người (kể cả Chỉ xem).
+    if (action === 'anno_comment') {
+      const doc = await readableDoc(payload.doc_id);
+      if (!doc) return;
+      const role = roleOn(doc);
+      const rank = roleRank(role);
+      const lead = role === 'Chủ sở hữu';
+      const annoId = String(payload.anno_id || '');
+      if (!ID_RE.test(annoId)) return bad('anno_id không hợp lệ.');
+      const op = String(payload.op || '');
+      if (!['add', 'delete', 'pin', 'star', 'seen'].includes(op)) return bad('op không hợp lệ.');
+      if (op === 'add' && rank < ROLE_RANK['Người nhận xét']) return deny('Bạn đang có quyền Chỉ xem nên chưa bình luận được. Nhờ chủ file cấp quyền "Xem & bình luận".');
+      if (op === 'pin' && !lead && rank < ROLE_RANK['Người sửa']) return deny('Chỉ trưởng nhóm (chủ file, Quản trị) hoặc người có quyền Sửa được ghim bình luận.');
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const rows = await db`/*q:anno_cmt_get*/ SELECT data, rev, deleted FROM bqlda_pdf_anno_items WHERE doc_id = ${doc.id} AND id = ${annoId}`;
+        if (!rows.length || Number(rows[0].deleted)) return res.status(404).json(failure('Ghi chú này không còn (có thể đã bị xoá).'));
+        let data = {};
+        try { data = parseJson(rows[0].data) || {}; } catch (_) {}
+        const oldRev = Number(rows[0].rev);
+        const replies = Array.isArray(data.replies) ? data.replies.filter(r => r && typeof r === 'object') : [];
+        if (op === 'add') {
+          const text = String(payload.text || '').trim().slice(0, 4000);
+          if (!text) return bad('Nội dung bình luận trống.');
+          let rid = String(payload.reply_id || '');
+          if (!ID_RE.test(rid)) rid = 'r' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
+          const mentions = Array.isArray(payload.mentions)
+            ? [...new Set(payload.mentions.map(String))].filter(u => /^[A-Za-z0-9_.\-@]{1,128}$/.test(u)).slice(0, 30) : [];
+          if (replies.length >= 1000) return bad('Hình này đã quá nhiều bình luận.');
+          if (!replies.some(r => r.id === rid)) replies.push({ id: rid, author: currentUser.fullname || me, user: me, text, ts: Date.now(), mentions });
+          data.replies = replies;
+        } else if (op === 'delete') {
+          const idx = replies.findIndex(r => r.id === String(payload.reply_id || ''));
+          if (idx < 0) return res.status(200).json(result({ id: annoId, rev: oldRev, data }));
+          if (replies[idx].user !== me && !lead) return deny('Chỉ người viết hoặc trưởng nhóm (chủ file, Quản trị) được xoá bình luận này.');
+          replies.splice(idx, 1);
+          data.replies = replies;
+        } else if (op === 'pin') {
+          data.pinned = !!payload.value;
+          data.pinnedBy = data.pinned ? me : '';
+        } else {
+          const key = op === 'star' ? 'starredBy' : 'seenBy';
+          const set = new Set(Array.isArray(data[key]) ? data[key].map(String) : []);
+          if (payload.value) set.add(me); else set.delete(me);
+          data[key] = [...set];
+        }
+        const json = JSON.stringify(data);
+        if (Buffer.byteLength(json) > ANNO_DATA_MAX_BYTES) return bad('Ghi chú quá lớn, không thêm được bình luận.');
+        const base = await reserveRevs(db, 1);
+        const up = await db`/*q:anno_cmt_set*/ UPDATE bqlda_pdf_anno_items SET data = ${json}, rev = ${base + 1}, updated_at = ${Date.now()}
+          WHERE doc_id = ${doc.id} AND id = ${annoId} AND rev = ${oldRev} RETURNING id`;
+        if (up.length) return res.status(200).json(result({ id: annoId, rev: base + 1, data }));
+        // Có người vừa sửa cùng lúc: đọc lại và làm lại (không mất bình luận của ai).
+      }
+      return res.status(409).json(failure('Đang có nhiều người cùng sửa, vui lòng thử lại.'));
     }
 
     // H2. Xoá mềm (deleted=true, rev mới để người khác nhận qua anno_changes).

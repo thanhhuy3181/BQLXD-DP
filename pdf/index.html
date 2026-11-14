@@ -877,7 +877,7 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
     <h2>Chia sẻ tài liệu</h2>
     <div class="invite">
       <input class="field" id="inEmail" placeholder="Nhập tên hoặc email đồng nghiệp">
-      <select class="field" id="inRole"><option>Người sửa</option><option>Người nhận xét</option><option>Chỉ xem</option></select>
+      <select class="field" id="inRole" title="Quyền của người được chia sẻ"><option value="Người nhận xét" selected>Xem &amp; bình luận</option><option value="Người sửa">Sửa (vẽ, sửa mọi ghi chú)</option><option value="Chỉ xem">Chỉ xem</option></select>
       <button class="btn primary" id="btnInvite">Thêm</button>
     </div>
     <h5 id="reqHead" hidden>Yêu cầu đang chờ</h5>
@@ -5980,13 +5980,11 @@ function renderAnnoPopup(a, ly) {
     const submitReply = () => {
       const val = replyInp.value.trim();
       if (!val) return;
-      if (!Array.isArray(a.replies)) a.replies = [];
-      const who = CURRENT_USER?.fullname || CURRENT_USER?.username || a.author || 'Bạn';
-      a.replies.push({ id: 'r' + Date.now().toString(36), author: who, user: cmtMe(), text: val, time: fmtCmtTime(Date.now()), ts: Date.now(), mentions: [] });
+      if (!cmtCan('comment')) { toast('Bạn đang có quyền Chỉ xem nên chưa bình luận được'); return; }
+      const people = cmtPeople();
+      const mentions = [...new Set((val.match(/@[A-Za-z0-9_.\-@]+/g) || []).map(t => t.slice(1)).filter(u => people.some(p => p.username === u)))];
       replyInp.value = '';
-      renderAnnoPopup(a, ly);
-      triggerCloudSync();
-      toast('Đã thêm trả lời vào ghi chú');
+      cmtOp(a, 'add', { reply_id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: val, mentions }).then(ok => { if (ok) { renderAnnoPopup(a, ly); toast('Đã thêm trả lời vào ghi chú'); } else replyInp.value = val; });
     };
     replyBtn.onclick = ev => { ev.stopPropagation(); submitReply(); };
     replyInp.onkeydown = ev => {
@@ -10208,6 +10206,17 @@ function addCmt(who,color,text,isNew,pageNum=null,annoId=null,status='none',ts=n
    a.replies = [{ id, author, user, text, ts, mentions:[username] }]
    a.pinned (ghim chung, ai cũng thấy), a.starredBy = [username] (sao riêng từng người), a.seenBy = [username] */
 let DOC_PEOPLE = [];
+let DOC_MY_ROLE = null; // null = file trên máy (không giới hạn)
+let DOC_LEAD = false;
+const CMT_RANK = { 'Người xem': 1, 'Người nhận xét': 2, 'Người sửa': 3, 'Chủ sở hữu': 4 };
+function cmtCan(what){
+  if (!PDF_STATE.docId || !DOC_MY_ROLE) return true;
+  const r = CMT_RANK[DOC_MY_ROLE] || 1;
+  if (what === 'comment') return r >= 2;
+  if (what === 'pin') return DOC_LEAD || r >= 3;
+  if (what === 'moderate') return DOC_LEAD || r >= 4;
+  return true;
+}
 let CMT_SIG = '';
 let CMT_RENDER_T = 0;
 const CMT_DRAFT = new Map();
@@ -10217,9 +10226,16 @@ function cmtMe(){ return (CURRENT_USER && (CURRENT_USER.username || CURRENT_USER
 function cmtMeName(){ return (CURRENT_USER && (CURRENT_USER.fullname || CURRENT_USER.username)) || 'Bạn'; }
 function cmtNorm(t){ return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd'); }
 async function loadDocPeople(){
-  DOC_PEOPLE = [];
+  DOC_PEOPLE = []; DOC_MY_ROLE = null; DOC_LEAD = false;
   if (!PDF_STATE.docId || !CURRENT_USER) return;
-  try { const r = await pdfApi('doc_people', { doc_id: PDF_STATE.docId }); if (r && r.ok && Array.isArray(r.data)) DOC_PEOPLE = r.data; } catch (_) {}
+  try {
+    const r = await pdfApi('doc_people', { doc_id: PDF_STATE.docId });
+    if (r && r.ok && r.data) {
+      DOC_PEOPLE = Array.isArray(r.data) ? r.data : (r.data.people || []);
+      DOC_MY_ROLE = r.data.my_role || null;
+      DOC_LEAD = !!r.data.lead;
+    }
+  } catch (_) {}
 }
 function cmtPeople(){
   const m = new Map();
@@ -10322,17 +10338,57 @@ function cmtToggleHidden(){
 }
 try { if (localStorage.getItem('pdf_cmt_hidden') === '1') document.body.classList.add('hide-cmts'); } catch (_) {}
 function cmtSaveAnno(a){ a.isModified = true; ANNO_MAP.set(a.id, a); syncAllAnnotations(true); renderCommentPanel(true); }
+// Áp thao tác lên bản trên máy ngay (hiện liền), rồi gửi anno_comment; máy chủ trả bản đã gộp.
+function cmtApplyLocal(a, op, x){
+  const me = cmtMe();
+  if (op === 'add') { if (!Array.isArray(a.replies)) a.replies = []; if (!a.replies.some(r => r.id === x.reply_id)) a.replies.push({ id: x.reply_id, author: cmtMeName(), user: me, text: x.text, ts: Date.now(), time: fmtCmtTime(Date.now()), mentions: x.mentions || [] }); }
+  else if (op === 'delete') { a.replies = (a.replies || []).filter(r => r.id !== x.reply_id); }
+  else if (op === 'pin') { a.pinned = !!x.value; a.pinnedBy = a.pinned ? me : ''; }
+  else { const k = op === 'star' ? 'starredBy' : 'seenBy'; const st = new Set(a[k] || []); x.value ? st.add(me) : st.delete(me); a[k] = [...st]; }
+}
+function cmtSetQuiet(a){ window._suppressCollabHook = true; try { ANNO_MAP.set(a.id, a); } finally { window._suppressCollabHook = false; } }
+async function cmtOp(a, op, x = {}){
+  if (!a) return false;
+  const keep = JSON.parse(JSON.stringify({ replies: a.replies, pinned: a.pinned, pinnedBy: a.pinnedBy, starredBy: a.starredBy, seenBy: a.seenBy }));
+  cmtApplyLocal(a, op, x);
+  if (!PDF_STATE.docId || !CURRENT_USER) { cmtSaveAnno(a); return true; } // file trên máy: lưu tại chỗ
+  cmtSetQuiet(a);
+  syncAllAnnotations(true); renderCommentPanel(true);
+  const docId = PDF_STATE.docId;
+  // Hình vừa vẽ chưa lên máy chủ: gửi hình trước
+  try { collabScanChanges(); } catch (_) {}
+  const pend = COLLAB_PENDING_UPSERTS.get(a.id);
+  if (pend) { COLLAB_PENDING_UPSERTS.delete(a.id); const u = await pdfApi('anno_upsert', { doc_id: docId, items: [pend] }); if (!u || !u.ok) COLLAB_PENDING_UPSERTS.set(a.id, pend); }
+  setSaveStatus('busy', 'Đang lưu…');
+  const r = await pdfApi('anno_comment', Object.assign({ doc_id: docId, anno_id: a.id, op }, x));
+  if (r && r.ok && r.data && r.data.data) {
+    const cur = ANNO_MAP.get(a.id) || a;
+    COMMENT_FIELDS.forEach(k => { if (r.data.data[k] !== undefined) cur[k] = r.data.data[k]; else delete cur[k]; });
+    cur.rev = r.data.rev;
+    cmtSetQuiet(cur);
+    SAVE_LAST_OK = Date.now(); setSaveStatus('ok', '✓ ' + savedLabel());
+    syncAllAnnotations(true); renderCommentPanel(true);
+    return true;
+  }
+  Object.assign(a, keep); cmtSetQuiet(a); syncAllAnnotations(true); renderCommentPanel(true);
+  toast((r && r.error) || 'Chưa gửi được bình luận, kiểm tra mạng rồi thử lại');
+  setSaveStatus('err', 'Bình luận chưa lưu được', (r && r.error) || 'Mất kết nối');
+  return false;
+}
+const COMMENT_FIELDS = ['replies', 'pinned', 'pinnedBy', 'starredBy', 'seenBy'];
 function cmtSend(a, ta){
   const text = ta.value.trim();
   if (!text) return;
   const people = cmtPeople();
   const mentions = [...new Set((text.match(/@[A-Za-z0-9_.\-@]+/g) || []).map(t => t.slice(1)).filter(u => people.some(p => p.username === u)))];
-  if (!Array.isArray(a.replies)) a.replies = [];
-  a.replies.push({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), author: cmtMeName(), user: cmtMe(), text, ts: Date.now(), time: fmtCmtTime(Date.now()), mentions });
-  const set = new Set(a.seenBy || []); set.add(cmtMe()); a.seenBy = [...set];
+  if (!cmtCan('comment')) { toast('Bạn đang có quyền Chỉ xem nên chưa bình luận được. Nhờ chủ file cấp quyền "Xem & bình luận".'); return; }
+  const reply_id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   ta.value = ''; CMT_DRAFT.delete(a.id);
-  cmtSaveAnno(a);
-  toast(mentions.length ? 'Đã gửi bình luận và nhắc ' + mentions.map(cmtFullName).join(', ') : 'Đã gửi bình luận — mọi người mở file đều thấy');
+  cmtOp(a, 'add', { reply_id, text, mentions }).then(ok => {
+    if (!ok) { CMT_DRAFT.set(a.id, text); renderCommentPanel(true); return; }
+    toast(mentions.length ? 'Đã gửi bình luận và nhắc ' + mentions.map(cmtFullName).join(', ') : 'Đã gửi bình luận — mọi người mở file đều thấy');
+    if (!(a.seenBy || []).includes(cmtMe())) cmtOp(a, 'seen', { value: true });
+  });
 }
 function cmtBindMention(ta, wrap){
   let pop = null, idx = 0, items = [];
@@ -10411,9 +10467,9 @@ function renderCommentPanel(force){
     const mkBtn = (cls, icon, on, tip, fn) => { const b = document.createElement('button'); b.className = 'cth-ib ' + cls + (on ? ' on' : ''); b.innerHTML = ic(icon); b.title = tip; b.onclick = ev => { ev.stopPropagation(); fn(); }; return b; };
     const starred = (a.starredBy || []).includes(me), seen = (a.seenBy || []).includes(me);
     h.append(ttl, pg, sp,
-      mkBtn('cpin', 'pin', a.pinned, a.pinned ? 'Bỏ ghim (đang ghim lên đầu cho mọi người)' : 'Ghim lên đầu cho mọi người', () => { a.pinned = !a.pinned; a.pinnedBy = a.pinned ? me : ''; cmtSaveAnno(a); }),
-      mkBtn('star', 'star', starred, starred ? 'Bỏ sao' : 'Gắn sao: lưu tin quan trọng của riêng bạn', () => { const st = new Set(a.starredBy || []); starred ? st.delete(me) : st.add(me); a.starredBy = [...st]; cmtSaveAnno(a); }),
-      mkBtn('seen', 'check', seen, seen ? 'Đã xem — bấm để đánh dấu chưa xem' : 'Đánh dấu đã xem', () => { const st = new Set(a.seenBy || []); seen ? st.delete(me) : st.add(me); a.seenBy = [...st]; cmtSaveAnno(a); }));
+      mkBtn('cpin', 'pin', a.pinned, a.pinned ? 'Bỏ ghim (đang ghim lên đầu cho mọi người)' : (cmtCan('pin') ? 'Ghim lên đầu cho mọi người' : 'Chỉ trưởng nhóm (chủ file, Quản trị) hoặc người có quyền Sửa được ghim'), () => { if (!cmtCan('pin')) return toast('Chỉ trưởng nhóm (chủ file, Quản trị) hoặc người có quyền Sửa được ghim'); cmtOp(a, 'pin', { value: !a.pinned }); }),
+      mkBtn('star', 'star', starred, starred ? 'Bỏ sao' : 'Gắn sao: lưu tin quan trọng của riêng bạn', () => cmtOp(a, 'star', { value: !starred })),
+      mkBtn('seen', 'check', seen, seen ? 'Đã xem — bấm để đánh dấu chưa xem' : 'Đánh dấu đã xem', () => cmtOp(a, 'seen', { value: !seen })));
     card.append(h);
     if (a.text && String(a.text).trim()) { const mt = document.createElement('div'); mt.className = 'cth-main'; mt.textContent = a.text; card.append(mt); }
     reps.forEach((r, i) => {
@@ -10424,9 +10480,10 @@ function renderCommentPanel(force){
       const nm = document.createElement('b'); nm.textContent = r.author || r.user || 'Ẩn danh';
       const tm = document.createElement('time'); tm.textContent = r.ts ? fmtCmtTime(r.ts) : (r.time || ''); tm.title = r.ts ? fmtCmtFull(r.ts) : '';
       meta.append(nm, tm);
-      if ((r.user && r.user === me) || (!r.user && r.author === cmtMeName())) {
-        const del = document.createElement('button'); del.className = 'del'; del.textContent = 'Xoá'; del.title = 'Xoá bình luận của bạn';
-        del.onclick = ev => { ev.stopPropagation(); if (!confirm('Xoá bình luận này?')) return; a.replies.splice(i, 1); cmtSaveAnno(a); };
+      const mine = (r.user && r.user === me) || (!r.user && r.author === cmtMeName());
+      if (mine || cmtCan('moderate')) {
+        const del = document.createElement('button'); del.className = 'del'; del.textContent = 'Xoá'; del.title = mine ? 'Xoá bình luận của bạn' : 'Trưởng nhóm: xoá bình luận này';
+        del.onclick = ev => { ev.stopPropagation(); if (!confirm('Xoá bình luận này?')) return; if (r.id) cmtOp(a, 'delete', { reply_id: r.id }); else { a.replies.splice(i, 1); cmtSaveAnno(a); } };
         meta.append(del);
       }
       const tx = document.createElement('div'); tx.className = 'tx'; cmtRichText(tx, r.text);
@@ -10438,13 +10495,14 @@ function renderCommentPanel(force){
     ta.onclick = ev => ev.stopPropagation();
     const send = document.createElement('button'); send.className = 'btn primary sm'; send.textContent = 'Gửi';
     send.onclick = ev => { ev.stopPropagation(); cmtSend(a, ta); };
-    inw.append(ta, send); card.append(inw);
-    cmtBindMention(ta, inw);
+    inw.append(ta, send);
+    if (cmtCan('comment')) { card.append(inw); cmtBindMention(ta, inw); }
+    else { const ro = document.createElement('div'); ro.className = 'cmt-empty'; ro.style.padding = '2px 0'; ro.textContent = 'Bạn có quyền Chỉ xem: đọc được bình luận, gắn sao, chưa bình luận được.'; card.append(ro); }
     card.onclick = () => {
       if (!(S.sel.size === 1 && S.sel.has(a.id))) { S.sel.clear(); S.sel.add(a.id); syncAllAnnotations(true); }
       const dom = document.getElementById(a.id);
       if (dom) dom.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
-      if (!seen) { const st = new Set(a.seenBy || []); st.add(me); a.seenBy = [...st]; cmtSaveAnno(a); }
+      if (!seen) cmtOp(a, 'seen', { value: true });
     };
     return card;
   });
@@ -10489,15 +10547,16 @@ function renderPeopleFromPerms(perms, owner = 'ban'){
 
   // Chủ sở hữu
   const ownerRow = el('div', 'row', `<span class="av" style="background:#0b7a71">${ini(owner)}</span><span class="who"><b>${owner} (chủ sở hữu)</b><small>${owner.toLowerCase()}@congty.vn</small></span>`);
-  ownerRow.append(el('span', '', '<small style="color:var(--muted)">Chủ sở hữu</small>'));
+  ownerRow.append(el('span', '', '<small style="color:var(--muted)" title="Chủ file và Quản trị là trưởng nhóm: ghim, xoá mọi bình luận">Chủ sở hữu · trưởng nhóm</small>'));
   box.append(ownerRow);
 
   CURRENT_DOC_PERMISSIONS.forEach((p, idx) => {
     const uName = p.username || p.email || 'dong_nghiep';
     const row = el('div', 'row', `<span class="av" style="background:#7c3aed">${ini(uName)}</span><span class="who"><b>${p.fullname || uName}</b><small>${p.email || (uName + '@congty.vn')}</small></span>`);
     const s = el('select', 'field');
-    ['Người sửa', 'Người nhận xét', 'Chỉ xem', 'Gỡ quyền'].forEach(o => {
-      const op = el('option', '', o);
+    [['Người nhận xét', 'Xem & bình luận'], ['Người sửa', 'Sửa'], ['Chỉ xem', 'Chỉ xem'], ['Gỡ quyền', 'Gỡ quyền']].forEach(([o, label]) => {
+      const op = el('option', '');
+      op.value = o; op.textContent = label;
       if(o === p.role || (o === 'Chỉ xem' && p.role === 'Người xem')) op.selected = true;
       s.append(op);
     });
@@ -10510,7 +10569,7 @@ function renderPeopleFromPerms(perms, owner = 'ban'){
       }
       try {
         await pdfApi('doc_share', { doc_id: docId, permissions: CURRENT_DOC_PERMISSIONS });
-        toast('Đã cập nhật quyền: ' + uName + ' (' + s.value + ')');
+        toast('Đã cập nhật quyền: ' + uName + ' (' + (s.options[s.selectedIndex]?.textContent || s.value) + ')');
         renderPeopleFromPerms(CURRENT_DOC_PERMISSIONS, owner);
       } catch(err){
         toast('Lỗi cập nhật: ' + err.message);

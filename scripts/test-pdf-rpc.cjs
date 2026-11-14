@@ -415,10 +415,44 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   // 10. Danh sách người để gắn @tên trong bình luận
   console.log('10. doc_people');
   const pp = await call('chi', 'doc_people', { doc_id: 'd1' });
-  const ppNames = (pp.body.data || []).map(p => p.username);
+  const ppNames = ((pp.body.data && pp.body.data.people) || []).map(p => p.username);
+  check('doc_people trả kèm quyền của mình', pp.body.data && pp.body.data.my_role === 'Người xem' && pp.body.data.lead === false, pp.body.data && pp.body.data.my_role);
   check('người được chia sẻ lấy được danh sách người của tài liệu', pp.body.ok && ppNames.includes('an') && ppNames.includes('chi'), pp.body);
   check('danh sách không lộ người ngoài tài liệu', !ppNames.includes('em'), ppNames);
   check('người không được chia sẻ -> 403', (await call('em', 'doc_people', { doc_id: 'd1' })).status === 403);
+
+  // 11. Bình luận: ai có quyền "Xem & bình luận" đều bình luận được vào hình của người khác; không ai đè mất bình luận của ai
+  console.log('11. anno_comment');
+  await call('binh', 'anno_upsert', { doc_id: 'd1', items: [anno('h1', 1)] }); // hình của binh
+  let cr = await call('dung', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'Anh @binh xem lại cao độ', mentions: ['binh'], reply_id: 'rd1' });
+  check('Người bình luận bình luận được vào hình của người khác', cr.status === 200 && cr.body.data.data.replies.length === 1 && cr.body.data.data.replies[0].user === 'dung', cr.body);
+  cr = await call('chi', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'xin chào' });
+  check('Chỉ xem -> không bình luận được (403)', cr.status === 403, cr.body);
+  cr = await call('chi', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'star', value: true });
+  check('Chỉ xem vẫn gắn sao (riêng mình) được', cr.status === 200 && cr.body.data.data.starredBy.includes('chi'), cr.body);
+  await call('an', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'ok', reply_id: 'ra1' });
+  // binh sửa hình với bản cũ không có bình luận => bình luận vẫn còn
+  await call('binh', 'anno_upsert', { doc_id: 'd1', items: [anno('h1', 1, { moved: true, replies: [] })] });
+  let hrow = (await db.raw("SELECT data FROM bqlda_pdf_anno_items WHERE doc_id='d1' AND id='h1'"))[0];
+  const pj = v => (typeof v === "string" ? JSON.parse(v) : v);
+  let hd = pj(hrow.data);
+  check('sửa hình không làm mất bình luận đã có', hd.moved === true && hd.replies.length === 2 && hd.starredBy.includes('chi'), hd);
+  cr = await call('dung', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'delete', reply_id: 'ra1' });
+  check('không xoá được bình luận của người khác', cr.status === 403, cr.body);
+  cr = await call('dung', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'pin', value: true });
+  check('Người bình luận không ghim được (chỉ trưởng nhóm/Người sửa)', cr.status === 403, cr.body);
+  cr = await call('an', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'pin', value: true });
+  check('chủ file (trưởng nhóm) ghim được', cr.status === 200 && cr.body.data.data.pinned === true, cr.body);
+  cr = await call('an', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'delete', reply_id: 'rd1' });
+  check('trưởng nhóm xoá được bình luận của người khác', cr.status === 200 && cr.body.data.data.replies.length === 1, cr.body);
+  const both = await Promise.all([
+    call('dung', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'cùng lúc 1', reply_id: 'rc1' }),
+    call('binh', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'cùng lúc 2', reply_id: 'rc2' })
+  ]);
+  hd = pj((await db.raw("SELECT data FROM bqlda_pdf_anno_items WHERE doc_id='d1' AND id='h1'"))[0].data);
+  check('2 người bình luận cùng lúc: giữ đủ cả 2', both.every(x => x.status === 200) && ['rc1', 'rc2'].every(id => hd.replies.some(r => r.id === id)), hd.replies);
+  cr = await call('em', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'x' });
+  check('người không được chia sẻ -> 403', cr.status === 403, cr.body);
 
   console.log(results.join('\n'));
   console.log(`\nKết quả: ${pass} đạt, ${fail} lỗi`);
