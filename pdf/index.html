@@ -349,6 +349,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 body.layer-pick .page,body.layer-pick .page .layer,body.layer-pick #panes.pan .scroll{cursor:crosshair!important}
 .layer-quet{position:fixed;display:none;z-index:80;pointer-events:none;border:1.5px solid #2563eb;background:rgba(37,99,235,.12)}
 .layer-quet.cross{border-style:dashed;border-color:#16a34a;background:rgba(22,163,74,.12)}
+#penCursor{position:fixed;left:0;top:0;display:none;pointer-events:none;z-index:9000;box-shadow:0 0 0 1px rgba(255,255,255,.9),0 0 0 2px rgba(15,23,42,.55);will-change:transform}
+body.pen-cursor #panes .page,body.pen-cursor #panes .page .layer.draw{cursor:none!important}
 .pen-picker{display:flex;flex-direction:column;gap:6px}
 .pen-h{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .pen-kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
@@ -4759,17 +4761,18 @@ function buildPenPicker(obj) {
   const wRow = el('div', 'pen-w', '<label>Độ dày</label><input type="range" min="0.5" max="30" step="0.5"><b></b>');
   const rg = wRow.querySelector('input'), wv = wRow.querySelector('b');
   rg.value = cur.borderWidth || S.strokeWidth || 2; wv.textContent = rg.value + ' px';
-  rg.oninput = () => { wv.textContent = rg.value + ' px'; S.strokeWidth = +rg.value; if (obj) applyPropertiesToSelection({ borderWidth: +rg.value }, { live: true }); };
+  rg.oninput = () => { wv.textContent = rg.value + ' px'; S.strokeWidth = +rg.value; if (window.__penCursorRestyle) window.__penCursorRestyle(); if (obj) applyPropertiesToSelection({ borderWidth: +rg.value }, { live: true }); };
   rg.onchange = () => apply({ borderWidth: +rg.value }, { strokeWidth: +rg.value });
   const oRow = el('div', 'pen-w', '<label>Độ đậm</label><input type="range" min="10" max="100" step="5"><b></b>');
   const ro = oRow.querySelector('input'), ov = oRow.querySelector('b');
   ro.value = cur.opacity || 100; ov.textContent = ro.value + '%';
-  ro.oninput = () => { ov.textContent = ro.value + '%'; S.opacity = +ro.value; if (obj) applyPropertiesToSelection({ opacity: +ro.value }, { live: true }); };
+  ro.oninput = () => { ov.textContent = ro.value + '%'; S.opacity = +ro.value; if (window.__penCursorRestyle) window.__penCursorRestyle(); if (obj) applyPropertiesToSelection({ opacity: +ro.value }, { live: true }); };
   ro.onchange = () => apply({ opacity: +ro.value }, { opacity: +ro.value });
   box.append(el('div', 'pen-h', 'Loại bút'), kinds, el('div', 'pen-h', 'Màu'), sw, wRow, oRow);
   return box;
 }
 function refreshPenUi() {
+  if (window.__penCursorRestyle) window.__penCursorRestyle();
   if (typeof syncPropertiesPanel === 'function') syncPropertiesPanel();
   const dock = document.getElementById('penDock');
   const mobile = matchMedia('(max-width:760px)').matches;
@@ -4780,6 +4783,32 @@ function refreshPenUi() {
   } else if (dock) dock.remove();
 }
 try { const pp = JSON.parse(localStorage.getItem('pdf_pen_pref') || 'null'); if (pp && pp.penKind) S.penKind = pp.penKind; } catch (_) {}
+// Vòng tròn đầu bút: đi theo chuột khi đang cầm bút, đúng cỡ nét / màu / độ mờ / loại bút -> căn chỗ vẽ chính xác.
+(function penCursor() {
+  const dot = document.createElement('div');
+  dot.id = 'penCursor';
+  document.body.append(dot);
+  const style = () => {
+    const k = penKindOf(null);
+    const w = Math.max(3, Number(S.strokeWidth) || 2);
+    const col = S.strokeColor || '#dc2626';
+    dot.style.width = w + 'px';
+    dot.style.height = (k.cap === 'butt' ? Math.max(3, w * 0.45) : w) + 'px';
+    dot.style.borderRadius = k.cap === 'round' ? '50%' : '2px';
+    dot.style.background = col;
+    dot.style.opacity = Math.max(0.15, (Number(S.opacity) || 100) / 100);
+    dot.style.filter = k.filter ? 'url(#' + k.filter + ')' : '';
+    dot.style.mixBlendMode = k.blend || 'normal';
+  };
+  let shown = false;
+  document.addEventListener('pointermove', e => {
+    const onPage = S.tool === 'pen' && e.pointerType !== 'touch' && !S.space && e.target.closest && e.target.closest('#panes .page');
+    if (!onPage) { if (shown) { dot.style.display = 'none'; document.body.classList.remove('pen-cursor'); shown = false; } return; }
+    if (!shown) { style(); dot.style.display = 'block'; document.body.classList.add('pen-cursor'); shown = true; }
+    dot.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+  }, { passive: true });
+  window.__penCursorRestyle = () => { if (shown) style(); };
+})();
 
 function applyPropertiesToSelection(props, opts = {}){
   if(S.sel.size>0){
