@@ -4009,7 +4009,8 @@ function renderAnnoItem(a){
         <line x1="${s0x}" y1="${s0y}" x2="${k0x}" y2="${k0y}" stroke="${stroke}" stroke-width="${bw}"/>
         <line x1="${k0x}" y1="${k0y}" x2="${t0x}" y2="${t0y}" stroke="${stroke}" stroke-width="${bw}" ${mAttr}/></svg>`;
     }
-    const tx=el('div','',`<div style="font-weight:${a.fontBold?'700':'500'};font-size:${annoFontCss(a,11)};color:${a.textColor||'#0f172a'};font-family:${a.fontFamily||'inherit'};font-style:${a.fontItalic?'italic':'normal'};overflow:hidden;word-break:break-word;white-space:pre-wrap;width:100%;height:100%">${a.text||'Chú dẫn...'}</div>`);
+    // Ô chữ dùng chung với hình chữ nhật: theo Căn ngang / Căn dọc / gạch chân… (nội dung chèn bằng textContent, an toàn)
+    const tx=shapeTextEl(a.text?a:Object.assign({},a,{text:'Chú dẫn...'}),'#0f172a');
     elItem.append(tx);
   }else if(a.type==='ruler'){
     elItem.style.border='none';
@@ -4207,7 +4208,17 @@ function renderAnnoItem(a){
 }
 
 /* Đồng bộ toàn bộ Annotations lên đúng trang (.layer[data-i][data-page]) */
+// Lúc kéo (đỉnh, khung, hình): gom mọi lần di chuột trong một khung hình thành 1 lần dựng lại -> không trễ, không dồn.
+let SYNC_ANNO_RAF = 0;
 function syncAllAnnotations(skipCloud = false, skipProps = false){
+  if (skipCloud && skipProps) {
+    if (!SYNC_ANNO_RAF) SYNC_ANNO_RAF = requestAnimationFrame(() => { SYNC_ANNO_RAF = 0; syncAllAnnotationsNow(true, true); });
+    return;
+  }
+  if (SYNC_ANNO_RAF) { cancelAnimationFrame(SYNC_ANNO_RAF); SYNC_ANNO_RAF = 0; }
+  syncAllAnnotationsNow(skipCloud, skipProps);
+}
+function syncAllAnnotationsNow(skipCloud = false, skipProps = false){
   if (typeof scheduleCmtRender === 'function') scheduleCmtRender();
   if (!skipCloud) scheduleCollabScan();
   document.querySelectorAll('.layer').forEach(ly=>{
@@ -6244,7 +6255,7 @@ function mergeStrokeOps(fn, args) {
       for (;;) {
         let k = j;
         if (fn[k] === LW && lw !== undefined && args[k][0] === lw) k++;
-        if (fn[k] === CP && fn[k + 1] === ST && cnt < 4000) {
+        if (fn[k] === CP && fn[k + 1] === ST && cnt < 700) { // nhóm vừa phải: mỗi lượt vẽ ngắn, chuột vẫn mượt
           if (!merged) { ops = Array.from(ops); ar = Array.from(ar); mm = Array.from(mm || [Infinity, -Infinity, Infinity, -Infinity]); merged = true; }
           const a = args[k];
           for (const x of a[0]) ops.push(x);
