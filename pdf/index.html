@@ -589,9 +589,14 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
 .prop-btn-grp button.on{background:var(--fg);color:var(--surface);border-color:var(--fg)}
 
 /* Floating Properties Dialog */
-.prop-floating{position:fixed;top:100px;right:40px;width:320px;max-height:80vh;background:var(--surface);border:1.5px solid var(--fg);border-radius:8px;box-shadow:8px 8px 0 var(--hard);z-index:20;display:flex;flex-direction:column;overflow:hidden}
+.prop-floating{position:fixed;top:100px;right:40px;width:320px;max-height:80vh;background:var(--surface);border:1.5px solid var(--fg);border-radius:8px;box-shadow:8px 8px 0 var(--hard);z-index:52;display:flex;flex-direction:column;overflow:hidden;transition:max-height 180ms ease,width 180ms ease,box-shadow 180ms ease}
 .prop-floating[hidden]{display:none}
 .prop-floating-head{padding:6px 10px;background:var(--surface-2);border-bottom:1.5px solid var(--fg);display:flex;align-items:center;justify-content:space-between;cursor:move;user-select:none;font-weight:700;font-size:12px;font-family:var(--mono)}
+.prop-floating.minimized{max-height:36px!important;width:auto!important;min-width:180px!important;box-shadow:0 4px 12px rgba(0,0,0,0.25),3px 3px 0 var(--hard)!important;border-radius:8px!important;overflow:hidden!important}
+.prop-floating.minimized .prop-box{display:none!important}
+.prop-floating.minimized .prop-floating-head{border-bottom:0!important;padding:5px 10px!important;cursor:pointer!important}
+.prop-floating.minimized #btnDockProp{display:none!important}
+.app.immersive .prop-floating{z-index:52;box-shadow:0 16px 36px rgba(0,0,0,0.35),4px 4px 0 var(--hard)}
 
 /* Popovers & Context Menu */
 .popover{position:absolute;background:var(--surface);border:1.5px solid var(--hard);border-radius:8px;box-shadow:5px 5px 0 var(--hard);padding:10px;z-index:25;display:none;flex-direction:column;gap:8px;width:300px;min-width:300px;box-sizing:border-box;transform-origin:var(--origin, top center);opacity:0;transform:scale(.96);transition:transform 160ms var(--out),opacity 160ms var(--out)}
@@ -939,8 +944,9 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
   <!-- Cửa sổ nổi Thuộc tính (Floating Window) -->
   <div class="prop-floating" id="propFloating" hidden>
     <div class="prop-floating-head" id="propFloatingHead">
-      <span>THUỘC TÍNH (PROPERTIES)</span>
-      <div style="display:flex;gap:4px">
+      <span id="propFloatingTitle">THUỘC TÍNH (PROPERTIES)</span>
+      <div style="display:flex;gap:4px;align-items:center">
+        <button class="icon-btn" id="btnMinFloatProp" title="Thu nhỏ (—)" style="width:22px;height:22px;font-size:12px;font-weight:700;line-height:1">—</button>
         <button class="icon-btn" id="btnDockProp" title="Ghim lại vào cột phải" style="width:22px;height:22px">📌</button>
         <button class="icon-btn" id="btnCloseFloatProp" title="Đóng cửa sổ" style="width:22px;height:22px">✕</button>
       </div>
@@ -5235,7 +5241,15 @@ function act(id,kind,label){
     else if(id==='hl')toast('Kéo chuột trên trang để tô sáng dải màu lên văn bản');
     else if(id==='pen'){
       toast('Kéo vẽ tự do bằng chuột hoặc bút cảm ứng — chọn loại bút & màu ở bảng Thuộc tính');
-      if(!matchMedia('(max-width:760px)').matches){ $('#cmt')?.classList.remove('closed'); if(typeof switchRightTab==='function') switchRightTab('prop'); }
+      if($('#app').classList.contains('immersive')){
+        openFloatingPropForTool('pen');
+      }else if(!matchMedia('(max-width:760px)').matches){
+        $('#cmt')?.classList.remove('closed');
+        if(typeof switchRightTab==='function') switchRightTab('prop');
+      }
+    }
+    if($('#app').classList.contains('immersive') && ['pen', 'line', 'arrow', 'rect', 'oval', 'poly', 'cloud', 'text', 'callout', 'note'].includes(id)){
+      openFloatingPropForTool(id);
     }
     else if(id==='eraser')toast('Bấm hoặc rê chuột qua ghi chú để tẩy xoá');
     else if(id==='redact')toast('Kéo khung che xoá bảo mật trên vùng nhạy cảm');
@@ -9327,7 +9341,57 @@ $('#btnFloatProp').onclick=()=>{
   syncPropertiesPanel();
   toast('Đã tháo rời Bảng thuộc tính thành cửa sổ nổi');
 };
+function toggleMinFloatProp(forceState){
+  const win = $('#propFloating');
+  const btn = $('#btnMinFloatProp');
+  if(!win) return;
+  const isMin = (typeof forceState === 'boolean') ? forceState : !win.classList.contains('minimized');
+  win.classList.toggle('minimized', isMin);
+  if(btn){
+    btn.textContent = isMin ? '🗖' : '—';
+    btn.title = isMin ? 'Phóng to bảng thuộc tính (để chỉnh thông số)' : 'Thu nhỏ bảng thuộc tính';
+    btn.setAttribute('aria-label', btn.title);
+  }
+}
+
+function openFloatingPropForTool(toolId){
+  const win = $('#propFloating');
+  if(!win) return;
+  win.hidden = false;
+  toggleMinFloatProp(false); // To ra khi muốn chỉnh thông số
+  if(!win.style.top || parseInt(win.style.top) < 0 || parseInt(win.style.top) > window.innerHeight - 100){
+    win.style.top = '24px';
+    win.style.left = Math.max(16, window.innerWidth - 340) + 'px';
+  }
+  const titleEl = $('#propFloatingTitle');
+  if(titleEl){
+    titleEl.textContent = (toolId === 'pen') ? 'THUỘC TÍNH: BÚT VẼ' : ('THUỘC TÍNH: ' + (TOOLN[toolId] || toolId).toUpperCase());
+  }
+  syncPropertiesPanel();
+}
+
+$('#btnMinFloatProp')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleMinFloatProp();
+});
+
+$('#propFloatingHead')?.addEventListener('dblclick', (e) => {
+  if(e.target.closest('button')) return;
+  toggleMinFloatProp();
+});
+
+$('#propFloatingHead')?.addEventListener('click', (e) => {
+  if(e.target.closest('button')) return;
+  if($('#propFloating')?.classList.contains('minimized')){
+    toggleMinFloatProp(false);
+  }
+});
+
 $('#btnDockProp').onclick=()=>{
+  if($('#app').classList.contains('immersive')){
+    toast('Đang ở chế độ toàn màn hình, bảng thuộc tính luôn ở dạng cửa sổ nổi');
+    return;
+  }
   S.propDocked=true;
   $('#propFloating').hidden=true;
   switchRightTab('prop');
@@ -9363,6 +9427,8 @@ function syncPropertiesPanel(){
   targetBox.replaceChildren();
 
   if(S.sel.size===0 && S.tool==='pen'){
+    const titleEl=$('#propFloatingTitle');
+    if(titleEl) titleEl.textContent='THUỘC TÍNH: BÚT VẼ';
     const sec=el('div','prop-sec');
     sec.append(el('div','prop-sec-title','▼ Bút vẽ (nét tiếp theo)'));
     sec.append(buildPenPicker(null));
