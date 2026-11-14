@@ -2446,8 +2446,104 @@ async function readPdfAnnotationsOnLoad(pdfDoc, ps, paneIdx) {
   }
 }
 
+// Đa giác / đường liên tiếp / đường thẳng đang xoay: tính sẵn toạ độ thật sau khi xoay (bản sao, không sửa ghi chú gốc).
+function bakeAnnoRotation(a){
+  const rot = Number(a.rotate) || 0;
+  if (!rot) return a;
+  const b = JSON.parse(JSON.stringify(a));
+  const K = annoK(a);
+  const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+  const rad = rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+  const R = (px, py) => { const rx = px - cx, ry = py - cy; return [cx + rx * cs - ry * sn / K, cy + rx * sn * K + ry * cs]; };
+  const textAt = (a.text && isFreeTextShape(a)) ? freeTextPagePct(a) : null;
+  if (Array.isArray(a.points) && a.points.length >= 2 && (a.type === 'poly' || a.type === 'polyline')) {
+    b.points = a.points.map(([px, py]) => R(px, py));
+    b.rotate = 0;
+    recomputePointsBounds(b);
+  } else {
+    const p1 = R(a.x1 != null ? a.x1 : a.x, a.y1 != null ? a.y1 : (a.y + a.h / 2));
+    const p2 = R(a.x2 != null ? a.x2 : (a.x + a.w), a.y2 != null ? a.y2 : (a.y + a.h / 2));
+    Object.assign(b, { x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1], rotate: 0,
+      x: Math.min(p1[0], p2[0]), y: Math.min(p1[1], p2[1]), w: Math.max(0.01, Math.abs(p2[0] - p1[0])), h: Math.max(0.01, Math.abs(p2[1] - p1[1])) });
+  }
+  if (textAt) {
+    b.textPos = [(textAt[0] - b.x) / Math.max(0.01, b.w), (textAt[1] - b.y) / Math.max(0.01, b.h)];
+    b.textRotate = (Number(a.textRotate) || 0) + rot;
+  }
+  return b;
+}
+// Vẽ chữ của ghi chú vào luồng AP (toạ độ cục bộ 0..rw, 0..rh; gốc dưới-trái) — giữ đúng như trên màn hình:
+// nhiều dòng, xuống dòng tự động trong khung, căn ngang/dọc, đậm/nghiêng/gạch, chữ tự do có vị trí + góc xoay.
+function annoTextApOps(a, font, rw, rh, rgb){
+  const free = isFreeTextShape(a);
+  const fsz = Math.max(3, Number(a.fontSize) || (a.type === 'text' ? 13 : 11));
+  const lh = fsz * 1.25;
+  const wOf = t => { try { return font.widthOfTextAtSize(t, fsz); } catch (_) { return t.length * fsz * 0.5; } };
+  let lines = String(a.text).replace(/\r/g, '').split('\n');
+  const padX = free ? fsz * 0.35 : 6, padY = free ? fsz * 0.1 : 3;
+  if (!free) {
+    const maxW = Math.max(fsz, rw - padX * 2);
+    const out = [];
+    lines.forEach(line => {
+      if (!line) { out.push(''); return; }
+      let cur = '';
+      line.split(/(\s+)/).forEach(tok => {
+        if (!tok) return;
+        const test = cur + tok;
+        if (wOf(test) <= maxW || !cur.trim()) { cur = test; }
+        else { out.push(cur.trimEnd()); cur = tok.trimStart(); }
+        while (wOf(cur) > maxW && cur.length > 1) { // một từ quá dài: cắt theo ký tự
+          let n = cur.length - 1; while (n > 1 && wOf(cur.slice(0, n)) > maxW) n--;
+          out.push(cur.slice(0, n)); cur = cur.slice(n);
+        }
+      });
+      out.push(cur);
+    });
+    lines = out;
+  }
+  const al = a.textAlign || (free ? 'center' : 'left');
+  const widths = lines.map(wOf);
+  const blockW = Math.max(1, ...widths), blockH = lines.length * lh;
+  const f = n => n.toFixed(2);
+  const col = rgb.map(v => v.toFixed(3)).join(' ');
+  const ops = ['q', col + ' rg', col + ' RG'];
+  let left, top, innerW;
+  if (free) {
+    const [fx, fy] = freeTextPos(a);
+    const th = -(Number(a.textRotate) || 0) * Math.PI / 180, c = Math.cos(th), sn = Math.sin(th);
+    ops.push(f(c) + ' ' + f(sn) + ' ' + f(-sn) + ' ' + f(c) + ' ' + f(fx * rw) + ' ' + f((1 - fy) * rh) + ' cm');
+    left = -blockW / 2; top = blockH / 2; innerW = blockW;
+    // nền trắng sau chữ như trên màn hình
+    ops.push('q 1 1 1 rg ' + f(left - padX) + ' ' + f(-blockH / 2 - padY) + ' ' + f(blockW + padX * 2) + ' ' + f(blockH + padY * 2) + ' re f Q');
+  } else {
+    left = padX; innerW = rw - padX * 2;
+    const va = a.textVAlign || 'top';
+    top = va === 'middle' ? (rh + blockH) / 2 : va === 'bottom' ? padY + blockH : rh - padY;
+  }
+  const deco = [];
+  lines.forEach((t, i) => {
+    const w = widths[i];
+    const x = al === 'center' ? left + (innerW - w) / 2 : al === 'right' ? left + innerW - w : left;
+    const y = top - i * lh - fsz * 0.95;
+    if (t) {
+      ops.push('BT /F1 ' + f(fsz) + ' Tf' + (a.fontBold ? ' 2 Tr ' + f(fsz * 0.035) + ' w' : ' 0 Tr')
+        + ' ' + (a.fontItalic ? '1 0 0.21 1' : '1 0 0 1') + ' ' + f(x) + ' ' + f(y) + ' Tm '
+        + font.encodeText(t).toString() + ' Tj ET');
+      if (a.fontUnderline) deco.push([x, y - fsz * 0.12, w]);
+      if (a.fontStrike) deco.push([x, y + fsz * 0.3, w]);
+    }
+  });
+  if (deco.length) {
+    ops.push(f(Math.max(0.4, fsz * 0.06)) + ' w');
+    deco.forEach(([x, y, w]) => ops.push(f(x) + ' ' + f(y) + ' m ' + f(x + w) + ' ' + f(y) + ' l S'));
+  }
+  ops.push('Q');
+  return ops;
+}
 async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum, a, vnFont, ocgMap) {
   if (!pdfDoc || !targetPage || !a) return;
+  const rotDeg = Number(a.rotate) || 0;
+  if (rotDeg && ['poly', 'polyline', 'line', 'arrow', 'ruler'].includes(a.type)) a = bakeAnnoRotation(a);
   const ctx = pdfDoc.context;
   const { width: pW, height: pH } = targetPage.getSize();
 
@@ -2603,15 +2699,10 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
       apOps.push(fillRgb ? 'B' : 'S');
     }
 
-    if (a.text && vnFont && a.type !== 'redact') {
-      const fSize = Math.max(9, Math.min(18, a.fontSize || 11));
-      const encoded = vnFont.encodeText(String(a.text));
-      apOps.push('BT');
-      apOps.push(`/F1 ${fSize} Tf`);
-      apOps.push(`${textRgb[0].toFixed(3)} ${textRgb[1].toFixed(3)} ${textRgb[2].toFixed(3)} rg`);
-      apOps.push(`4 ${(Math.max(4, rh / 2 - fSize / 3)).toFixed(2)} Td`);
-      apOps.push(`${encoded.toString()} Tj`);
-      apOps.push('ET');
+    if (a.text && String(a.text).trim() && vnFont && a.type !== 'redact') {
+      const tRgb = a.textColor ? (hexToRgb01(a.textColor) || strokeRgb) : (['rect', 'oval', 'poly', 'polyline'].includes(a.type) ? strokeRgb : [0.06, 0.09, 0.16]);
+      apOps.push('[] 0 d');
+      apOps.push(...annoTextApOps(a, vnFont, rw, rh, tRgb));
     }
   }
   // Ký hiệu đầu mút của Đường thẳng/Mũi tên và đường dẫn của Callout phải nằm trong luồng AP
@@ -2636,6 +2727,20 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
     apOps.push(...lineEndingOps(a.lineEndEnding || 'OpenArrow', t0[0], t0[1], (t0[0] - k0[0]) / dl, (t0[1] - k0[1]) / dl, Math.max(7, bw * 4.5) * eScaleX, strokeRgb));
   }
   apOps.push('Q');
+
+  if (rotDeg && !['poly', 'polyline', 'line', 'arrow', 'ruler', 'hl', 'pen'].includes(a.type)) {
+    // CSS xoay theo chiều kim đồng hồ trên màn hình (y hướng xuống) = góc âm trong toạ độ PDF (y hướng lên).
+    const [ccx, ccy] = pctPtToPdfUser(ps, pageNum, a.x + a.w / 2, a.y + a.h / 2, pW, pH);
+    const th = -rotDeg * Math.PI / 180, c = Math.cos(th), sn = Math.sin(th);
+    const R = (x, y) => [ccx + (x - ccx) * c - (y - ccy) * sn, ccy + (x - ccx) * sn + (y - ccy) * c];
+    const cs4 = [R(llx, lly), R(urx, lly), R(urx, ury), R(llx, ury)];
+    const nllx = Math.min(...cs4.map(p => p[0])), nlly = Math.min(...cs4.map(p => p[1]));
+    const nurx = Math.max(...cs4.map(p => p[0])), nury = Math.max(...cs4.map(p => p[1]));
+    const [ox, oy] = R(llx, lly);
+    apOps.unshift('q', `${c.toFixed(5)} ${sn.toFixed(5)} ${(-sn).toFixed(5)} ${c.toFixed(5)} ${(ox - nllx).toFixed(2)} ${(oy - nlly).toFixed(2)} cm`);
+    apOps.push('Q');
+    llx = nllx; lly = nlly; urx = nurx; ury = nury;
+  }
 
   const fullW = Math.max(2, urx - llx), fullH = Math.max(2, ury - lly);
   const resDict = {};
@@ -2709,7 +2814,7 @@ async function addStandardAnnotationToPdfLibPage(pdfDoc, targetPage, ps, pageNum
       annotObj.IT = PDFLib.PDFName.of('FreeTextCallout');
       annotObj.CL = [leaderPdf.tip[0], leaderPdf.tip[1], leaderPdf.knee[0], leaderPdf.knee[1], leaderPdf.start[0], leaderPdf.start[1]];
       annotObj.LE = PDFLib.PDFName.of(a.lineEndEnding || 'OpenArrow');
-      annotObj.RD = [bx0, by0, urx - boxUrx, ury - boxUry];
+      if (!rotDeg) annotObj.RD = [bx0, by0, urx - boxUrx, ury - boxUry];
     } else if (isTypewriter) {
       annotObj.IT = PDFLib.PDFName.of('FreeTextTypeWriter');
     }
