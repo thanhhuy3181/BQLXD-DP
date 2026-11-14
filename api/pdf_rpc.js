@@ -968,6 +968,25 @@ module.exports = async function handler(req, res) {
     }
 
     // Đổi tên / chuyển vào Thùng rác một mục trên Drive kho (thành viên: chỉ trong thư mục của mình).
+    // Chuyển file/thư mục sang thư mục khác trên Drive kho (thành viên: chỉ trong thư mục của mình).
+    if (action === 'drive_move') {
+      const id = String(payload.id || ''), to = String(payload.to || '');
+      if (!DRIVE_ID_RE.test(id) || !DRIVE_ID_RE.test(to)) return res.status(200).json(failure('Thiếu mục hoặc thư mục đích.'));
+      if (id === to) return res.status(200).json(failure('Không thể chuyển vào chính nó.'));
+      if (!(await writableFolder(sql, currentUser, id))) return res.status(200).json(failure('Bạn không có quyền chuyển mục này.'));
+      if (!(await writableFolder(sql, currentUser, to))) return res.status(200).json(failure('Bạn không có quyền ghi vào thư mục đích.'));
+      if (await driveIsUnder(to, id)) return res.status(200).json(failure('Không thể chuyển thư mục vào bên trong chính nó.'));
+      const token = await gdriveService.getAccessToken();
+      const g = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?fields=parents&supportsAllDrives=true', { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(10000) });
+      const gj = await g.json().catch(() => ({}));
+      const old = (gj.parents || []).join(',');
+      const qs = new URLSearchParams({ addParents: to, supportsAllDrives: 'true', fields: 'id,parents' });
+      if (old) qs.set('removeParents', old);
+      const r = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?' + qs, { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(15000) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); return res.status(200).json(failure('Drive: ' + ((j.error && j.error.message) || r.status))); }
+      return res.status(200).json(result({ id, to }));
+    }
+
     if (action === 'drive_rename' || action === 'drive_trash') {
       const id = String(payload.id || '');
       const ok = await writableFolder(sql, currentUser, id);

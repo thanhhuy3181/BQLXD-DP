@@ -41,6 +41,11 @@
 .lrow .lp{font-size:20px;font-weight:800;color:var(--fg)}
 .load-card .lx{align-self:flex-end}
 .tf-prog{flex:none;font-size:10px;font-weight:700;background:var(--accent);color:var(--accent-fg);padding:1px 5px;border-radius:4px}
+.move-ov{align-items:center;bottom:0;top:0;background:rgba(15,23,42,.35)}
+.move-ov .load-card{max-height:70vh}
+.mv-list{display:flex;flex-direction:column;gap:2px;overflow:auto;max-height:52vh}
+.mv-row{display:flex;align-items:center;gap:6px;width:100%;font-size:13px;min-height:38px}
+.tree-file[draggable=true]{cursor:grab}
 .tree-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 8px}
 .thumb-card{border:1.5px solid var(--line);border-radius:6px;padding:6px;cursor:pointer;background:var(--surface);transition:all var(--fast);display:flex;flex-direction:column;gap:4px;box-shadow:2px 2px 0 rgba(0,0,0,.08)}
 .thumb-card{transition:transform .18s var(--out),box-shadow .18s var(--out)}
@@ -1176,7 +1181,7 @@ const P={
   thumbs:'M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z',cmt:'M4 5h16v11H9l-5 4z',
   full:'M4 9V4h5m6 0h5v5m0 6v5h-5m-6 0H4v-5',exit:'M9 4v5H4m11-5v5h5m0 6h-5v5m-6 0v-5H4',
   share:'M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 13a3 3 0 1 0 0-6M2 20c0-3 3-5 6-5m4 5c0-3 2-5 4-5s4 2 4 5',
-  up:'M12 16V4m-5 5 5-5 5 5M4 20h16',folder:'M3 6h6l2 2h10v11H3z',monitor:'M3 4h18v12H3zM8 20h8M12 16v4',filenew:'M6 3h8l4 4v14H6zm8 0v4h4M12 11v6m-3-3h6',folderadd:'M3 6h6l2 2h10v11H3zM12 11v6m-3-3h6',edit:'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',trash:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',refresh:'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',users:'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-6 7-6s7 2.5 7 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14c2.4.6 4 2.6 4 6',file:'M6 3h8l4 4v14H6zm8 0v4h4',
+  up:'M12 16V4m-5 5 5-5 5 5M4 20h16',folder:'M3 6h6l2 2h10v11H3z',monitor:'M3 4h18v12H3zM8 20h8M12 16v4',filenew:'M6 3h8l4 4v14H6zm8 0v4h4M12 11v6m-3-3h6',folderadd:'M3 6h6l2 2h10v11H3zM12 11v6m-3-3h6',foldermove:'M3 6h6l2 2h10v11H3zM8 13h7m-3-3 3 3-3 3',edit:'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',trash:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',refresh:'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',users:'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-6 7-6s7 2.5 7 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14c2.4.6 4 2.6 4 6',file:'M6 3h8l4 4v14H6zm8 0v4h4',
   chev:'M9 6l6 6-6 6',menu:'M4 6h16M4 12h16M4 18h16',add:'M12 5v14m-7-7h14',del:'M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13',
   merge:'M6 4v6l6 4 6-4V4m-6 10v6',split:'M12 4v6l-6 4v6m6-10 6 4v6',extract:'M6 3h8l4 4v14H6zm3 12h6m-3-3 3 3-3 3',
   sign:'M3 17c3-6 5-9 7-9s0 8 2 8 3-4 5-4 2 3 4 3M3 21h18',lock:'M6 11h12v9H6zm2 0V8a4 4 0 0 1 8 0v3',
@@ -9592,6 +9597,41 @@ async function createNewBlankPdf(){
 let SELECTED_TREE_FOLDER = '';      // tên thư mục đang chọn (hiển thị)
 let SELECTED_TREE_FOLDER_ID = '';   // ID thư mục Drive đang chọn (đích tải lên / tạo thư mục)
 let TREE_NODES = [];
+let TREE_ROOT = null;
+let SELECTED_TREE_ITEM = null; // { id, name, type } file/thư mục vừa bấm (để Di chuyển)
+async function moveTreeItem(item, toId, toName){
+  if (!item || !toId) return;
+  if (item.id === toId) return;
+  toast('Đang chuyển "' + item.name + '" vào "' + toName + '"...');
+  await treeAction('drive_move', { id: item.id, to: toId }, 'Đã chuyển "' + item.name + '" vào "' + toName + '"');
+}
+// Bảng chọn thư mục đích (dùng được trên điện thoại).
+function openMovePicker(){
+  const item = SELECTED_TREE_ITEM;
+  if (!item) return toast('Bấm chọn một file hoặc thư mục trong cây trước, rồi bấm Di chuyển');
+  const kids = new Map();
+  TREE_NODES.filter(n => n.type === 'folder').forEach(n => { const k = n.parent || ''; if (!kids.has(k)) kids.set(k, []); kids.get(k).push(n); });
+  // Không cho chọn chính thư mục đang chuyển hoặc thư mục con của nó.
+  const banned = new Set();
+  if (item.type === 'folder') { const walk = id => { banned.add(id); (kids.get(id) || []).forEach(c => walk(c.id)); }; walk(item.id); }
+  const ov = el('div', 'load-ov move-ov', '<div class="load-card"><b class="lt"></b><div class="mv-list"></div><button class="btn ghost sm lx">Huỷ</button></div>');
+  ov.querySelector('.lt').textContent = 'Chuyển "' + item.name + '" vào:';
+  const list = ov.querySelector('.mv-list');
+  const addRow = (id, name, depth) => {
+    const b = el('button', 'node mv-row', ic('folder') + '<span class="tn"></span>');
+    b.querySelector('.tn').textContent = name;
+    b.style.paddingLeft = (8 + depth * 16) + 'px';
+    b.onclick = async () => { ov.remove(); await moveTreeItem(item, id, name); };
+    list.append(b);
+  };
+  if (TREE_ROOT && isAdminUser()) addRow(TREE_ROOT.id, TREE_ROOT.name || 'Thư mục gốc', 0);
+  const walk = (pid, depth) => (kids.get(pid) || []).forEach(n => { if (banned.has(n.id)) return; addRow(n.id, n.name, depth); walk(n.id, depth + 1); });
+  walk('', TREE_ROOT && isAdminUser() ? 1 : 0);
+  if (!list.children.length) list.append(el('div', 'tree-empty', 'Không có thư mục nào khác'));
+  ov.querySelector('.lx').onclick = () => ov.remove();
+  document.body.append(ov);
+}
+const TREE_DRAG_MIME = 'application/x-qlda-node';
 const TREE_SHUT = (() => { try { return new Set(JSON.parse(localStorage.getItem('pdf_tree_shut') || '[]')); } catch (_) { return new Set(); } })();
 const saveTreeShut = () => { try { localStorage.setItem('pdf_tree_shut', JSON.stringify([...TREE_SHUT])); } catch (_) {} };
 
@@ -9624,6 +9664,7 @@ async function renderTree() {
       const name = prompt('Tên thư mục mới trong "' + selName() + '":');
       if (name && name.trim()) await treeAction('drive_mkdir', { name: name.trim(), parent_id: SELECTED_TREE_FOLDER_ID || '' }, 'Đã tạo thư mục "' + name.trim() + '"');
     }),
+    treeIconBtn('foldermove', 'Di chuyển file/thư mục đang chọn sang thư mục khác', () => openMovePicker()),
     treeIconBtn('edit', 'Đổi tên thư mục đang chọn', async () => {
       if (!SELECTED_TREE_FOLDER_ID) return toast('Chọn một thư mục trước');
       const name = prompt('Tên mới cho "' + SELECTED_TREE_FOLDER + '":', SELECTED_TREE_FOLDER);
@@ -9652,6 +9693,7 @@ async function renderTree() {
     else { const em = el('div', 'tree-empty', ''); em.textContent = (res && res.error) || 'Không đọc được thư mục'; list.append(em); }
   } catch (err) { console.warn('renderTree:', err); }
   TREE_NODES = (data && data.nodes) || [];
+  TREE_ROOT = (data && data.root) || null;
 
   const ps = getActivePaneState();
   const openDocId = PDF_STATE.docId || '';
@@ -9666,7 +9708,11 @@ async function renderTree() {
     row.querySelector('.tn').textContent = n.name;
     if (n.doc_id) row.dataset.docId = n.doc_id;
     row.title = n.intro ? 'Trang giới thiệu chung — ai cũng ghi tên, ban, chức vụ của mình' : n.name;
-    row.onclick = e => { e.stopPropagation(); if (n.doc_id) openCloudDoc(n.doc_id, n.name, n.size); };
+    row.onclick = e => { e.stopPropagation(); if (!n.intro) SELECTED_TREE_ITEM = { id: n.id, name: n.name, type: 'file' }; if (n.doc_id) openCloudDoc(n.doc_id, n.name, n.size); };
+    if (!n.intro) {
+      row.draggable = true;
+      row.addEventListener('dragstart', ev => { ev.dataTransfer.setData(TREE_DRAG_MIME, JSON.stringify({ id: n.id, name: n.name, type: 'file' })); ev.dataTransfer.effectAllowed = 'move'; });
+    }
     return row;
   };
   const folderRow = (n, depth) => {
@@ -9683,7 +9729,18 @@ async function renderTree() {
     (kidsOf.get(n.id) || []).forEach(c => inner.append(c.type === 'folder' ? folderRow(c, depth + 1) : fileRow(c, depth + 1)));
     if (!(kidsOf.get(n.id) || []).length) { const em = el('div', 'tree-empty', 'Trống'); em.style.paddingLeft = (22 + depth * 14) + 'px'; inner.append(em); }
     kids.append(inner);
+    head.draggable = true;
+    head.addEventListener('dragstart', ev => { ev.dataTransfer.setData(TREE_DRAG_MIME, JSON.stringify({ id: n.id, name: n.name, type: 'folder' })); ev.dataTransfer.effectAllowed = 'move'; });
+    head.addEventListener('dragover', ev => { if (![...ev.dataTransfer.types].includes(TREE_DRAG_MIME)) return; ev.preventDefault(); ev.stopPropagation(); wrap.classList.add('drop-hover'); });
+    head.addEventListener('dragleave', () => wrap.classList.remove('drop-hover'));
+    head.addEventListener('drop', async ev => {
+      if (![...ev.dataTransfer.types].includes(TREE_DRAG_MIME)) return;
+      ev.preventDefault(); ev.stopPropagation(); wrap.classList.remove('drop-hover');
+      let item = null; try { item = JSON.parse(ev.dataTransfer.getData(TREE_DRAG_MIME)); } catch (_) {}
+      if (item && item.id !== n.id) await moveTreeItem(item, n.id, n.name);
+    });
     head.onclick = () => {
+      SELECTED_TREE_ITEM = { id: n.id, name: n.name, type: 'folder' };
       SELECTED_TREE_FOLDER = n.name; SELECTED_TREE_FOLDER_ID = n.id;
       if (TREE_SHUT.has(n.id)) TREE_SHUT.delete(n.id); else TREE_SHUT.add(n.id);
       saveTreeShut();
