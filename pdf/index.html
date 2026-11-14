@@ -266,6 +266,10 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 
 /* Mobile Ribbon & Drawers (< 768px) */
 .drawer-close{display:none}
+.mobile-ctx{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.mobile-ctx .rgroup{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;padding:6px;max-width:100%}
+.mobile-ctx .rgroup-body{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.mobile-ctx .rgroup-title{font-size:10px;color:var(--muted);text-align:center;margin-top:4px}
 @media (max-width:767px){body:has(.cmt.open-drawer) .status,body:has(.cmt.open-drawer) .mobile-bar,body:has(.cmt.open-drawer) .popover,body:has(.cmt.open-drawer) .rgroup-pop,body:has(.side.open-drawer) .popover{display:none!important}.cmt.open-drawer{z-index:9200!important;height:100dvh!important;overflow-y:auto!important;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))!important}}
 @media (max-width:767px){.cmt.open-drawer .drawer-close{display:flex;position:fixed;top:calc(6px + env(safe-area-inset-top,0px));right:8px;z-index:70;align-items:center;gap:4px;height:36px;padding:0 12px;border:1.5px solid var(--fg);border-radius:8px;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:14px}}
 .zoom-step{display:inline-flex;align-items:center;gap:4px}
@@ -5220,10 +5224,13 @@ function openMobileSheet(){
         });
       });
     }else{
-      const b=el('button','tool sm',ic('gear')+'<span>Mở tab '+tName+'</span>');
-      b.style.height='34px';
-      b.onclick=()=>{S.tab=tName;renderTabs();renderTools();sh.classList.remove('show');};
-      grid.append(b);
+      // Tab theo ngữ cảnh (Định dạng / Văn bản / Sắp xếp): trên điện thoại không có thanh ribbon,
+      // nên hiện thẳng các nút/ô chỉnh của tab đó ngay trong bảng này.
+      const wrap=el('div','mobile-ctx','');
+      try{ buildContextualRibbon(tName).forEach(g=>wrap.append(g)); }catch(err){ console.warn('ctx sheet',err); }
+      if(!wrap.children.length){ const em=el('div','tree-empty','Chọn một ghi chú để chỉnh'); wrap.append(em); }
+      body.append(wrap);
+      return;
     }
     body.append(grid);
   });
