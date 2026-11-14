@@ -1732,6 +1732,7 @@ function addRecentColor(c){
 function syncZoomUi(z){
   const st = $('#stZoom'); if (st) st.textContent = z + '%';
   const inp = document.getElementById('ribZoomInp'); if (inp && document.activeElement !== inp) inp.value = z;
+  if (window.__penCursorRestyle) window.__penCursorRestyle();
 }
 function setZoom(z){
   const ps = getActivePaneState();
@@ -1763,6 +1764,7 @@ function setZoom(z){
   }
   updatePtabMeta(ps.paneIdx);
   syncZoomUi(nz);
+  syncAllAnnotations(true, true);
 }
 function toast(m, dur = 1900){
   const t = $('#toast');
@@ -3785,7 +3787,7 @@ const LINE_ENDING_TYPES = [
 
 function buildSvgMarkerDef(markerId, endingType, strokeColor, fillColor, isStart = false, scale = 1, bw = 2) {
   if (!endingType || endingType === 'None') return '';
-  const sc = Math.max(0.2, Math.min(5, scale || 1));
+  const sc = Math.max(0.2, Math.min(5, scale || 1)) * CUR_ANNO_ZS;
   const baseSize = 8 * sc;
   const fill = fillColor && fillColor !== 'transparent' ? fillColor : strokeColor;
 
@@ -3877,7 +3879,14 @@ function buildSvgMarkerDef(markerId, endingType, strokeColor, fillColor, isStart
   }
 }
 
+// Độ dày nét, mũi tên, nét đứt… tính theo pt trên giấy -> to nhỏ đúng tỷ lệ khi zoom (như chữ & bản vẽ).
+let CUR_ANNO_ZS = 1;
+function annoZs(a){ const ps = PANE_STATES[(a && a.pane != null) ? a.pane : S.focus] || getActivePaneState(); return Math.max(0.05, ((ps && ps.zoom) || 100) / 100 * 1.333); }
 function renderAnnoItem(a){
+  const prevZs = CUR_ANNO_ZS; CUR_ANNO_ZS = annoZs(a);
+  try { return renderAnnoItemInner(a); } finally { CUR_ANNO_ZS = prevZs; }
+}
+function renderAnnoItemInner(a){
   let elItem=document.getElementById(a.id);
   if(!elItem){
     elItem=document.createElement('div');
@@ -3907,7 +3916,7 @@ function renderAnnoItem(a){
   const fill=a.noFill?'transparent':(a.fill||'#e11d48');
   const fillRgba=a.noFill?'transparent':hexToRgba(fill, opNum);
   const stroke=a.stroke||'#e11d48';
-  const bw=a.borderWidth!=null?a.borderWidth:2;
+  const bw=(a.borderWidth!=null?a.borderWidth:2)*CUR_ANNO_ZS;
   // Layer visibility & lock (D12)
   const lObj = LAYER_STATE.layers.find(l => l.name === (a.layerName || 'Mặc định (0)'));
   if (lObj && !lObj.visible) {
@@ -3920,7 +3929,7 @@ function renderAnnoItem(a){
   elItem.style.pointerEvents = '';
 
   const bs=a.borderStyle==='cloud'||a.borderStyle==='cloud-lg'?'dashed':(a.borderStyle||'solid');
-  const dashAttr=getSvgDashArray(a.borderStyle, a.dashScale || 1);
+  const dashAttr=getSvgDashArray(a.borderStyle, (a.dashScale || 1) * CUR_ANNO_ZS);
 
   elItem.style.overflow='';
 
@@ -4819,7 +4828,7 @@ try { const pp = JSON.parse(localStorage.getItem('pdf_pen_pref') || 'null'); if 
   document.body.append(dot);
   const style = () => {
     const k = penKindOf(null);
-    const w = Math.max(3, Number(S.strokeWidth) || 2);
+    const w = Math.max(3, (Number(S.strokeWidth) || 2) * annoZs({ pane: S.focus }));
     const col = S.strokeColor || '#dc2626';
     dot.style.width = w + 'px';
     dot.style.height = (k.cap === 'butt' ? Math.max(3, w * 0.45) : w) + 'px';
@@ -7043,7 +7052,7 @@ function renderActivePolyPreview() {
   const op = ((S.opacity != null ? S.opacity : 80) / 100).toFixed(2);
   const stroke = S.strokeColor || '#e11d48';
   const fill = (ap.type === 'poly' && !S.noFill) ? (S.fillColor || stroke) : 'none';
-  const bw = S.strokeWidth != null ? S.strokeWidth : 2;
+  const bw = (S.strokeWidth != null ? S.strokeWidth : 2) * annoZs({ pane: S.focus });
   const bs = S.borderStyle || 'solid';
   const dashAttr = bs === 'dashed' ? '6,4' : (bs === 'dotted' ? '2,3' : 'none');
   const svgPointsAttr = drawPts.map(([px, py]) => `${px.toFixed(2)},${py.toFixed(2)}`).join(' ');
@@ -7392,7 +7401,7 @@ function bindLayerInteraction(ly,paneIdx){
       if(pk.blend) tempPenSvg.style.mixBlendMode=pk.blend;
       tempPenPoly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
       tempPenPoly.setAttribute('points',`${x},${y}`);
-      const pa=penStrokeAttrs(null,S.strokeColor,S.strokeWidth,(S.opacity/100).toFixed(2));
+      const pa=penStrokeAttrs(null,S.strokeColor,S.strokeWidth*annoZs({pane:S.focus}),(S.opacity/100).toFixed(2));
       Object.entries(pa).forEach(([k,v])=>{ if(v!=='') tempPenPoly.setAttribute(k,v); });
       tempPenPoly.setAttribute('fill','none');
       tempPenPoly.setAttribute('vector-effect','non-scaling-stroke');
@@ -12749,6 +12758,7 @@ function start(){
     updatePanePagesCssSize(ps, sc);
     if (targetPg) { const r2 = targetPg.getBoundingClientRect(); sc.scrollLeft += (r2.left + relX * ratio) - cx; sc.scrollTop += (r2.top + relY * ratio) - cy; }
     if (pIdx === S.focus || pIdx < 0) { S.zoom = newZoom; syncZoomUi(newZoom); }
+    syncAllAnnotations(true, true);
     updatePtabMeta(pIdx >= 0 ? pIdx : S.focus);
     scheduleHiDpiRerender(ps, sc, 140);
   };
@@ -12801,6 +12811,7 @@ function start(){
       S.zoom = newZoom;
       syncZoomUi(newZoom);
     }
+    syncAllAnnotations(true, true);
     updatePtabMeta(pIdx);
     scheduleHiDpiRerender(ps, sc, 70);
   }, { passive: false });
