@@ -346,7 +346,9 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .ptab-btn{flex:none;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:2px 8px;border:1px solid var(--fg);border-radius:4px;background:var(--surface-2);font-size:11px;font-weight:600;box-shadow:1px 1px 0 var(--hard)}
 .ptab-btn:hover{background:var(--accent-soft)}
 .pane.focus .ptab{box-shadow:inset 0 -3px 0 var(--hot)}
-body.layer-pick .page,body.layer-pick .page .layer{cursor:crosshair!important}
+body.layer-pick .page,body.layer-pick .page .layer,body.layer-pick #panes.pan .scroll{cursor:crosshair!important}
+.layer-quet{position:fixed;display:none;z-index:80;pointer-events:none;border:1.5px solid #2563eb;background:rgba(37,99,235,.12)}
+.layer-quet.cross{border-style:dashed;border-color:#16a34a;background:rgba(22,163,74,.12)}
 .pen-picker{display:flex;flex-direction:column;gap:6px}
 .pen-h{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .pen-kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
@@ -4799,6 +4801,7 @@ function act(id,kind,label){
       return;
     }
     if(ACTIVE_POLY && S.tool!==id)cancelActivePoly(true);
+    if(S.layerPick && id!=='hand' && typeof setLayerPick==='function') setLayerPick(false);
     S.tool=id;
     $('#stTool').textContent='Công cụ: '+(TOOLN[id]||label);
     renderTools(false);
@@ -8312,6 +8315,7 @@ function cadHideSelected() {
 }
 function setLayerPick(on) {
   S.layerPick = !!on;
+  if (!S.layerPick && S.tool !== 'hand' && typeof act === 'function') { S.layerPick = false; act('hand', 'tool', 'Kéo'); }
   document.body.classList.toggle('layer-pick', S.layerPick);
   const st = $('#stTool'); if (st) st.textContent = 'Công cụ: ' + (S.layerPick ? 'Chọn layer' : (TOOLN[S.tool] || S.tool));
 }
@@ -8325,7 +8329,9 @@ function toggleLayerPick() {
     S.layerTab = true;
     if (S.tab !== LAYER_TAB) { S.tab = LAYER_TAB; }
     openCadLayerPanel();
-    toast('Bấm vào một nét trên bản vẽ để chọn layer của nó. Giữ Shift/Ctrl để chọn thêm. Esc để thôi.');
+    toast('Bấm vào nét để chọn layer. Kéo khung để quét nhiều layer (trái→phải: nằm trọn; phải→trái: chạm khung). Giữ Space để kéo bản vẽ. Esc để thôi.');
+  } else {
+    toast('Đã tắt chọn layer — quay về công cụ Kéo');
   }
   renderTabs(); renderTools(false); renderLayerPanel();
 }
@@ -8391,44 +8397,117 @@ async function cadLayerAt(ps, pageNum, x, y, tol) {
   if (!bestOc) return null;
   return (ps.cadLayers || []).find(L => L.ids.includes(bestOc)) || null;
 }
-let LAYER_PICK_DOWN = null;
+// Bấm vào nét: chọn layer của nét đó. Kéo khung (giống AutoCAD):
+//  trái → phải = chọn layer có nét nằm TRỌN trong khung; phải → trái = chọn layer có nét CHẠM khung.
+// Giữ Shift/Ctrl để chọn thêm. Giữ Space hoặc chuột giữa để kéo bản vẽ.
+async function cadLayersInRect(ps, pageNum, R, crossing) {
+  const pi = ps.pageInfos[pageNum - 1];
+  const page = pi && pi.page;
+  if (!page) return [];
+  let fn, args;
+  const d = displayIntentOf(page);
+  if (d) { fn = d.__heavy.fn; args = d.__heavy.args; }
+  else { const ol = await page.getOperatorList(); fn = ol.fnArray; args = ol.argsArray; }
+  const O = pdfjsLib.OPS;
+  const CP = O.constructPath, TR = O.transform, SV = O.save, RS = O.restore;
+  const BMP = O.beginMarkedContentProps, BM = O.beginMarkedContent, EM = O.endMarkedContent;
+  const FB = O.paintFormXObjectBegin, FE = O.paintFormXObjectEnd;
+  let m = [1, 0, 0, 1, 0, 0]; const st = []; const oc = [];
+  const mul = (a, b) => [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]];
+  const ids = new Set();
+  for (let i = 0, n = fn.length; i < n; i++) {
+    const f = fn[i], a = args[i];
+    if (f === CP) {
+      let cur = null; for (let k = oc.length - 1; k >= 0; k--) if (oc[k]) { cur = oc[k]; break; }
+      if (!cur || ids.has(cur)) continue;
+      const mm = a[2];
+      if (!mm || !isFinite(mm[0])) continue;
+      const xs = [m[0] * mm[0] + m[2] * mm[2] + m[4], m[0] * mm[1] + m[2] * mm[2] + m[4], m[0] * mm[0] + m[2] * mm[3] + m[4], m[0] * mm[1] + m[2] * mm[3] + m[4]];
+      const ys = [m[1] * mm[0] + m[3] * mm[2] + m[5], m[1] * mm[1] + m[3] * mm[2] + m[5], m[1] * mm[0] + m[3] * mm[3] + m[5], m[1] * mm[1] + m[3] * mm[3] + m[5]];
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const hit = crossing
+        ? !(x1 < R[0] || x0 > R[2] || y1 < R[1] || y0 > R[3])
+        : (x0 >= R[0] && x1 <= R[2] && y0 >= R[1] && y1 <= R[3]);
+      if (hit) ids.add(cur);
+    } else if (f === TR) m = mul(m, a);
+    else if (f === SV) st.push(m);
+    else if (f === RS) { const p = st.pop(); if (p) m = p; }
+    else if (f === FB) { st.push(m); if (a && a[0]) m = mul(m, a[0]); }
+    else if (f === FE) { const p = st.pop(); if (p) m = p; }
+    else if (f === BMP) { const pr = a && a[1]; oc.push(a && a[0] === 'OC' && pr ? (pr.id || (pr.ids && pr.ids[0]) || null) : null); }
+    else if (f === BM) oc.push(null);
+    else if (f === EM) oc.pop();
+  }
+  return (ps.cadLayers || []).filter(L => L.ids.some(id => ids.has(id)));
+}
+function cadApplyPicked(ps, layers, add) {
+  if (!ps.cadSel) ps.cadSel = new Set();
+  if (!add) ps.cadSel.clear();
+  if (add && layers.length === 1 && ps.cadSel.has(layers[0].name)) ps.cadSel.delete(layers[0].name);
+  else layers.forEach(L => ps.cadSel.add(L.name));
+  ps.cadFlash = layers.length ? layers[0].name : null;
+  ps.cadFilter = '';
+  openCadLayerPanel();
+  renderLayerPanel();
+}
+let LAYER_PICK_DRAG = null;
+function pageAtPoint(x, y) {
+  return document.elementsFromPoint(x, y).map(h => h.closest && h.closest('.page')).find(Boolean) || null;
+}
 document.addEventListener('pointerdown', e => {
-  if (!S.layerPick) return;
-  const pg = e.target.closest && (e.target.closest('.page') || e.target.closest('.scroll'));
-  LAYER_PICK_DOWN = pg ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
-}, true);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.layerPick) { setLayerPick(false); renderTools(false); renderLayerPanel(); } });
-document.addEventListener('click', async e => {
-  if (!S.layerPick || !LAYER_PICK_DOWN) return;
-  const dn = LAYER_PICK_DOWN; LAYER_PICK_DOWN = null;
-  if (Math.hypot(e.clientX - dn.x, e.clientY - dn.y) > 5) return; // đang kéo bản vẽ
-  // Công cụ Kéo giữ chuột (pointer capture) nên e.target là khung cuộn: dò trang theo vị trí chuột.
-  const hits = document.elementsFromPoint(e.clientX, e.clientY);
-  if (hits.some(h => h.closest && h.closest('.anno-item'))) return;
-  const pg = hits.map(h => h.closest && h.closest('.page')).find(Boolean);
+  if (!S.layerPick || S.space || e.button !== 0) return; // Space / chuột giữa: vẫn kéo bản vẽ như thường
+  if (!(e.target.closest && e.target.closest('#panes .scroll'))) return;
+  if (e.target.closest('.anno-item, button, input, select, textarea')) return;
+  const pg = pageAtPoint(e.clientX, e.clientY);
   if (!pg) return;
   e.stopPropagation(); e.preventDefault();
+  const box = document.createElement('div');
+  box.className = 'layer-quet';
+  document.body.append(box);
+  LAYER_PICK_DRAG = { x: e.clientX, y: e.clientY, pg, box, add: e.shiftKey || e.ctrlKey || e.metaKey };
+}, true);
+window.addEventListener('pointermove', e => {
+  const d = LAYER_PICK_DRAG; if (!d) return;
+  const x0 = Math.min(d.x, e.clientX), y0 = Math.min(d.y, e.clientY);
+  const w = Math.abs(e.clientX - d.x), h = Math.abs(e.clientY - d.y);
+  if (w + h < 5) return;
+  d.moved = true;
+  d.box.style.cssText = `left:${x0}px;top:${y0}px;width:${w}px;height:${h}px;display:block`;
+  d.box.classList.toggle('cross', e.clientX < d.x);
+}, true);
+window.addEventListener('pointerup', async e => {
+  const d = LAYER_PICK_DRAG; if (!d) return;
+  LAYER_PICK_DRAG = null;
+  d.box.remove();
+  e.stopPropagation();
+  const pg = d.pg;
   const paneIdx = +pg.dataset.pane || 0, pageNum = +pg.dataset.page || 1;
   const ps = PANE_STATES[paneIdx];
   const pi = ps.pageInfos[pageNum - 1];
   if (!pi || !pi.page) return;
   const r = pg.getBoundingClientRect();
   const vp = pageViewport(pi.page, pi, 1);
-  const pt = vp.convertToPdfPoint((e.clientX - r.left) / r.width * vp.width, (e.clientY - r.top) / r.height * vp.height);
-  const tol = 6 * vp.width / r.width; // ~6 điểm ảnh trên màn hình
-  const st = $('#stTool'); if (st) st.textContent = 'Đang tìm layer…';
-  const L = await cadLayerAt(ps, pageNum, pt[0], pt[1], tol);
-  if (st) st.textContent = 'Công cụ: Chọn layer';
-  if (!L) { toast('Không có nét nào của layer bản vẽ ở chỗ này — bấm sát vào nét hơn hoặc phóng to.'); return; }
-  if (!ps.cadSel) ps.cadSel = new Set();
-  if (e.shiftKey || e.ctrlKey || e.metaKey) { if (ps.cadSel.has(L.name)) ps.cadSel.delete(L.name); else ps.cadSel.add(L.name); }
-  else { ps.cadSel.clear(); ps.cadSel.add(L.name); }
-  ps.cadFlash = L.name;
-  const fi = $('.cad-layers input.field'); if (fi && ps.cadFilter) { ps.cadFilter = ''; }
-  openCadLayerPanel();
-  renderLayerPanel();
-  toast('Layer: ' + L.name + (L.visible ? '' : ' (đang ẩn)') + (ps.cadSel.size > 1 ? ' · đã chọn ' + ps.cadSel.size + ' layer' : ''));
+  const toPdf = (cx, cy) => vp.convertToPdfPoint((cx - r.left) / r.width * vp.width, (cy - r.top) / r.height * vp.height);
+  const stEl = $('#stTool'); if (stEl) stEl.textContent = 'Đang tìm layer…';
+  let found = [];
+  if (!d.moved) {
+    const pt = toPdf(e.clientX, e.clientY);
+    const L = await cadLayerAt(ps, pageNum, pt[0], pt[1], 6 * vp.width / r.width);
+    if (L) found = [L];
+  } else {
+    const a = toPdf(d.x, d.y), b = toPdf(e.clientX, e.clientY);
+    const R = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])];
+    found = await cadLayersInRect(ps, pageNum, R, e.clientX < d.x);
+  }
+  if (stEl) stEl.textContent = 'Công cụ: Chọn layer';
+  if (!found.length) {
+    toast(d.moved ? (e.clientX < d.x ? 'Khung không chạm nét nào của layer bản vẽ.' : 'Không có nét nào nằm trọn trong khung. Kéo từ phải sang trái để chọn cả nét chạm khung.') : 'Không có nét nào ở chỗ này — bấm sát vào nét hơn, phóng to, hoặc kéo khung quét.');
+    return;
+  }
+  cadApplyPicked(ps, found, d.add);
+  toast(found.length === 1 ? 'Layer: ' + found[0].name + (found[0].visible ? '' : ' (đang ẩn)') : 'Đã quét được ' + found.length + ' layer' + (ps.cadSel.size !== found.length ? ' · tổng chọn ' + ps.cadSel.size : ''));
 }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.layerPick) { setLayerPick(false); renderTools(false); renderLayerPanel(); } });
 function openCadLayerPanel() {
   const cmt = $('#cmt');
   if (cmt) {
@@ -9466,7 +9545,91 @@ async function pdfCachePut(key, docId, bytes) {
     }
   } catch (_) {}
 }
+// Tối đa 4 file gần nhất được giữ sẵn (đã phân tích, kèm ảnh xem trước & ghi chú) để mở lại tức thì.
+const DOC_MEM = new Map();
+const DOC_MEM_MAX = 4;
+function stashPaneDoc(paneIdx) {
+  const ps = PANE_STATES[paneIdx];
+  if (!ps || !ps.docId || !ps.doc) return;
+  const sc = document.querySelectorAll('.pane')[paneIdx]?.querySelector('.scroll');
+  const previews = new Map();
+  if (sc) sc.querySelectorAll('.page').forEach(pg => {
+    const cs = [...pg.querySelectorAll('canvas.pdf-base, canvas.pdf-canvas')];
+    if (cs.length) previews.set(+pg.dataset.page, cs);
+  });
+  DOC_MEM.delete(ps.docId);
+  DOC_MEM.set(ps.docId, {
+    doc: ps.doc, bytes: ps.bytes, name: ps.name, numPages: ps.numPages, pageInfos: ps.pageInfos,
+    cadLayers: ps.cadLayers, ocConfig: ps.ocConfig, ocRev: ps.ocRev, cadSel: ps.cadSel, outline: ps.outline,
+    zoom: ps.zoom, currentPage: ps.currentPage, textCache: ps.textCache,
+    annos: [...ANNO_MAP.entries()].filter(([, v]) => v && v.pane === paneIdx),
+    cursor: COLLAB_CURSOR, scroll: sc ? [sc.scrollLeft, sc.scrollTop] : null, previews
+  });
+  while (DOC_MEM.size > DOC_MEM_MAX) {
+    const [k, v] = DOC_MEM.entries().next().value;
+    DOC_MEM.delete(k);
+    if (!PANE_STATES.some(p => p.doc === v.doc)) { try { v.doc.destroy(); } catch (_) {} }
+  }
+}
+function restorePaneDoc(docId, paneIdx) {
+  const m = DOC_MEM.get(docId);
+  if (!m) return false;
+  DOC_MEM.delete(docId);
+  const ps = PANE_STATES[paneIdx];
+  Object.assign(ps, {
+    doc: m.doc, bytes: m.bytes, name: m.name, numPages: m.numPages, pageInfos: m.pageInfos,
+    cadLayers: m.cadLayers, ocConfig: m.ocConfig, ocRev: m.ocRev, cadSel: m.cadSel, outline: m.outline,
+    zoom: m.zoom, currentPage: m.currentPage, textCache: m.textCache || new Map(), isPdfReal: true, docId
+  });
+  ps.renderedPages = new Map();
+  window._suppressCollabHook = true;
+  try {
+    Array.from(ANNO_MAP.entries()).forEach(([k, v]) => { if (v && v.pane === paneIdx) ANNO_MAP.delete(k); });
+    m.annos.forEach(([k, v]) => ANNO_MAP.set(k, v));
+  } finally { window._suppressCollabHook = false; }
+  S.sel.clear();
+  COLLAB_CURSOR = m.cursor || 0;
+  if (paneIdx === S.focus) {
+    PDF_STATE.name = m.name; PDF_STATE.filename = m.name;
+    const titleStrong = document.getElementById('docTitleText') || document.querySelector('#docTitle strong');
+    if (titleStrong) titleStrong.textContent = m.name;
+    document.title = m.name + ' - PDF QLDA';
+    S.zoom = ps.zoom; syncZoomUi(ps.zoom);
+  }
+  renderPanes();
+  const sc = document.querySelectorAll('.pane')[paneIdx]?.querySelector('.scroll');
+  if (sc) {
+    m.previews.forEach((cs, p) => {
+      const w = sc.querySelector(`.page[data-page="${p}"] .canvas-wrap`);
+      if (!w) return;
+      // Ảnh nền + phần nét đã vẽ (cùng zoom & vị trí cuộn cũ); nét chi tiết vẽ lại chạy ngầm rồi thay vào.
+      cs.forEach(c => w.append(c));
+      const b = w.querySelector('canvas.pdf-base'); if (b) w.prepend(b);
+      const sk = w.querySelector('.page-loading-skeleton'); if (sk) sk.style.display = 'none';
+    });
+    if (m.scroll) { sc.scrollLeft = m.scroll[0]; sc.scrollTop = m.scroll[1]; }
+  }
+  try { updatePageNav(); } catch (_) {}
+  try { renderSideThumbs(); } catch (_) {}
+  try { renderLayerPanel(); } catch (_) {}
+  try { if (typeof renderOutlinePanel === 'function') renderOutlinePanel(); } catch (_) {}
+  return true;
+}
 async function openCloudDoc(docId, docTitle, knownSize, modified) {
+  const focusPs = getActivePaneState();
+  if (focusPs.docId === docId && focusPs.doc) { toast('Đang mở sẵn: ' + docTitle); return; }
+  // Lưu nốt ghi chú đang chờ của file hiện tại trước khi chuyển (không gửi nhầm sang file khác)
+  try { if (typeof collabScanChanges === 'function') collabScanChanges(); if (typeof collabHasPending === 'function' && collabHasPending()) await collabPollLoop(); } catch (_) {}
+  stashPaneDoc(S.focus);
+  if (DOC_MEM.has(docId)) {
+    ++OPEN_DOC_SEQ;
+    showLoadOverlay(null); setOpenProgress(docId, '');
+    restorePaneDoc(docId, S.focus);
+    if (typeof collabPollLoop === 'function') collabPollLoop();
+    renderTree();
+    toast('Đã mở lại tức thì: ' + docTitle);
+    return;
+  }
   const seq = ++OPEN_DOC_SEQ;
   setOpenProgress(docId, 'đang tải…');
   showLoadOverlay(docTitle, null, 'Đang kết nối Google Drive...');
