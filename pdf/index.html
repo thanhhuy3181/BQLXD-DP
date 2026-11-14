@@ -340,7 +340,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .ptab-btn:hover{background:var(--accent-soft)}
 .pane.focus .ptab{box-shadow:inset 0 -3px 0 var(--hot)}
 .scroll{flex:1;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;align-items:safe center;gap:14px}
-.page{position:relative;width:calc(var(--zoom,100)*1%);max-width:none;flex:none;background:#fff;box-shadow:5px 5px 0 var(--hard);outline:1.5px solid var(--hard);touch-action:pan-x pan-y;user-select:none}
+.page{position:relative;container-type:inline-size;width:calc(var(--zoom,100)*1%);max-width:none;flex:none;background:#fff;box-shadow:5px 5px 0 var(--hard);outline:1.5px solid var(--hard);touch-action:pan-x pan-y;user-select:none}
 .layer{position:absolute;inset:0;overflow:hidden}
 .layer.draw{cursor:crosshair;touch-action:none}
 
@@ -3476,7 +3476,7 @@ function renderAnnoItem(a){
         <line x1="${s0x}" y1="${s0y}" x2="${k0x}" y2="${k0y}" stroke="${stroke}" stroke-width="${bw}"/>
         <line x1="${k0x}" y1="${k0y}" x2="${t0x}" y2="${t0y}" stroke="${stroke}" stroke-width="${bw}" ${mAttr}/></svg>`;
     }
-    const tx=el('div','',`<div style="font-weight:${a.fontBold?'700':'500'};font-size:${a.fontSize||11}px;color:${a.textColor||'#0f172a'};font-family:${a.fontFamily||'inherit'};font-style:${a.fontItalic?'italic':'normal'};overflow:hidden;word-break:break-word;white-space:pre-wrap;width:100%;height:100%">${a.text||'Chú dẫn...'}</div>`);
+    const tx=el('div','',`<div style="font-weight:${a.fontBold?'700':'500'};font-size:${annoFontCss(a,11)};color:${a.textColor||'#0f172a'};font-family:${a.fontFamily||'inherit'};font-style:${a.fontItalic?'italic':'normal'};overflow:hidden;word-break:break-word;white-space:pre-wrap;width:100%;height:100%">${a.text||'Chú dẫn...'}</div>`);
     elItem.append(tx);
   }else if(a.type==='ruler'){
     elItem.style.border='none';
@@ -3511,7 +3511,7 @@ function renderAnnoItem(a){
       stp.style.backgroundColor=fillRgba;
       stp.style.opacity='1';
       stp.style.borderColor=stroke;
-      stp.style.fontSize=(a.fontSize||13)+'px';
+      stp.style.fontSize=annoFontCss(a,13);
       elItem.append(stp);
     }
   }else if(a.type==='text'){
@@ -3521,7 +3521,7 @@ function renderAnnoItem(a){
       const pageAspectT=pgSzT.heightPt/(pgSzT.widthPt||1);
       const safeT=String(a.text||'Văn bản...').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       elItem.innerHTML+=generateCloudSvg(a.w,a.h,stroke,a.fill||stroke,a.noFill,a.opacity!=null?a.opacity:80,bw,pageAspectT)+
-        `<div style="position:absolute;inset:0;padding:10% 8%;box-sizing:border-box;z-index:2;overflow:hidden;white-space:pre-wrap;word-break:break-word;text-align:${a.textAlign||'left'};color:${a.textColor||'#000'};font-family:${a.fontFamily||'inherit'};font-weight:${a.fontBold?'700':'500'};font-style:${a.fontItalic?'italic':'normal'};font-size:${a.fontSize||13}px">${safeT}</div>`;
+        `<div style="position:absolute;inset:0;padding:10% 8%;box-sizing:border-box;z-index:2;overflow:hidden;white-space:pre-wrap;word-break:break-word;text-align:${a.textAlign||'left'};color:${a.textColor||'#000'};font-family:${a.fontFamily||'inherit'};font-weight:${a.fontBold?'700':'500'};font-style:${a.fontItalic?'italic':'normal'};font-size:${annoFontCss(a,13)}">${safeT}</div>`;
       return elItem;
     }
     elItem.style.border=a.noBorder?'none':`${bw}px ${bs} ${stroke}`;
@@ -3534,7 +3534,7 @@ function renderAnnoItem(a){
     elItem.style.fontStyle=a.fontItalic?'italic':'normal';
     elItem.style.textDecoration=a.fontUnderline?'underline':(a.fontStrike?'line-through':'none');
     elItem.style.textAlign=a.textAlign||'left';
-    elItem.style.fontSize=(a.fontSize||13)+'px';
+    elItem.style.fontSize=annoFontCss(a,13);
     elItem.style.overflow='hidden';
     elItem.style.wordBreak='break-word';
     elItem.style.whiteSpace='pre-wrap';
@@ -3713,7 +3713,7 @@ function startInlineTextEdit(a){
   const curVal = (a.text === 'Nhập ghi chú...' || a.text === 'Văn bản...') ? '' : (a.text || '');
   ta.value = curVal;
   ta.placeholder = 'Nhập ghi chú...';
-  ta.style.fontSize = (a.fontSize || 13) + 'px';
+  ta.style.fontSize = annoFontPx(a, 13) + 'px';
   ta.style.fontWeight = a.fontBold ? '700' : '500';
   ta.style.zIndex = '50';
   ta.style.pointerEvents = 'auto';
@@ -5898,6 +5898,22 @@ function pan(sc){
   sc.addEventListener('pointercancel',end);
 }
 
+// Cỡ chữ lưu theo pt trên giấy (như PDF-XChange); hiển thị theo tỉ lệ bề rộng trang => tự to/nhỏ khi zoom.
+function annoFontCss(a, def){
+  const pt = Number(a.fontSize) || def || 12;
+  let wPt = 612;
+  try { wPt = getPagePdfSizePt(a.pane ?? S.focus, a.page ?? 1).widthPt || 612; } catch (_) {}
+  return 'calc(' + (pt * 100 / wPt).toFixed(4) + 'cqw)';
+}
+function annoFontPx(a, def){
+  const pt = Number(a.fontSize) || def || 12;
+  try {
+    const pg = document.querySelector('.pane:nth-child(' + ((a.pane ?? S.focus) + 1) + ') .page[data-page="' + (a.page ?? 1) + '"]') || document.querySelector('.page[data-page="' + (a.page ?? 1) + '"]');
+    const wPt = getPagePdfSizePt(a.pane ?? S.focus, a.page ?? 1).widthPt || 612;
+    if (pg && pg.clientWidth) return Math.max(6, pt * pg.clientWidth / wPt);
+  } catch (_) {}
+  return pt;
+}
 function shapeTextEl(a, defColor){
   const wrap = document.createElement('div');
   wrap.className = 'shape-text';
@@ -5912,7 +5928,7 @@ function shapeTextEl(a, defColor){
     + ';font-weight:' + (a.fontBold ? '700' : '500')
     + ';font-style:' + (a.fontItalic ? 'italic' : 'normal')
     + ';text-decoration:' + deco
-    + ';font-size:' + (a.fontSize || 11) + 'px';
+    + ';font-size:' + annoFontCss(a, 11);
   t.textContent = String(a.text || '');
   wrap.append(t);
   return wrap;
