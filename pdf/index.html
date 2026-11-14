@@ -1563,8 +1563,18 @@ async function ensureCollabDoc(){
 }
 
 // Cộng tác trực tiếp qua API thật (/api/pdf_rpc: anno_upsert, anno_delete, anno_changes mỗi 1.5s)
+// Dấu vân tay nội dung đã gửi/nhận của từng ghi chú: sửa tại chỗ (gõ chữ, kéo, đổi thuộc tính) => khác dấu => tự gửi.
+const COLLAB_FP = new Map();
+function annoFp(a){ try { const o = Object.assign({}, a); delete o.rev; return JSON.stringify(o); } catch(_) { return ''; } }
+let COLLAB_SCAN_T = 0;
+function collabScanChanges(){
+  if (!PDF_STATE.docId) return;
+  ANNO_MAP.forEach((a, id) => { if (a && COLLAB_FP.get(id) !== annoFp(a)) pushCollabUpsert(a); });
+}
+function scheduleCollabScan(){ clearTimeout(COLLAB_SCAN_T); COLLAB_SCAN_T = setTimeout(collabScanChanges, 250); }
 function pushCollabUpsert(a){
   if(!a || !a.id) return;
+  COLLAB_FP.set(a.id, annoFp(a));
   const p = a.page != null ? a.page : (a.pageIndex != null ? a.pageIndex + 1 : (PDF_STATE?.currentPage || 1));
   const rawCopy = JSON.parse(JSON.stringify(a));
   COLLAB_PENDING_UPSERTS.set(a.id, {
@@ -1591,6 +1601,8 @@ ANNO_MAP.set = function(id, val){
   if(val && typeof val === 'object' && val.createdAt === undefined) val.createdAt = Date.now();
   if(val && typeof window.pushCollabUpsert === 'function' && !window._suppressCollabHook){
     window.pushCollabUpsert(val);
+  } else if (val && typeof val === 'object') {
+    COLLAB_FP.set(id, annoFp(val)); // nhận từ người khác / nạp từ file: coi như đã đồng bộ
   }
   return _origAnnoSet(id, val);
 };
@@ -1600,6 +1612,7 @@ ANNO_MAP.delete = function(id){
   if(typeof window.pushCollabDelete === 'function' && !window._suppressCollabHook){
     window.pushCollabDelete(id);
   }
+  COLLAB_FP.delete(id);
   return _origAnnoDelete(id);
 };
 
@@ -1613,6 +1626,7 @@ async function collabPollLoop(){
   const docId = PDF_STATE.docId;
   const curPage = PDF_STATE.currentPage || 1;
 
+  collabScanChanges();
   // 1. Gửi các ghi chú đã thêm hoặc sửa (anno_upsert)
   if(COLLAB_PENDING_UPSERTS.size > 0){
     const items = Array.from(COLLAB_PENDING_UPSERTS.values());
@@ -3679,6 +3693,7 @@ function renderAnnoItem(a){
 
 /* Đồng bộ toàn bộ Annotations lên đúng trang (.layer[data-i][data-page]) */
 function syncAllAnnotations(skipCloud = false, skipProps = false){
+  if (!skipCloud) scheduleCollabScan();
   document.querySelectorAll('.layer').forEach(ly=>{
     const paneIdx=parseInt(ly.dataset.i,10);
     const pageNum=parseInt(ly.dataset.page,10)||1;
@@ -3738,13 +3753,13 @@ function startInlineTextEdit(a){
     done = true;
     const finalVal = keepEmpty ? ta.value : ta.value.trim();
     if(finalVal.length > 0){
-      if(finalVal !== (a.text || '')){
+      if(finalVal !== curVal){
         pushUndoState(preSnap);
         a.text = finalVal;
         a.isModified = true;
       }
     } else {
-      if(!a.text || a.text === 'Nhập ghi chú...' || a.text === 'Văn bản...'){
+      if(!curVal){
         if (!keepEmpty) {
           pushUndoState(preSnap);
           ANNO_MAP.delete(a.id);
@@ -3774,6 +3789,8 @@ function startInlineTextEdit(a){
     }
   };
   ta.onblur = () => commit(true);
+  // Lưu chữ ngay khi gõ: nếu khung sửa bị đóng do màn hình vẽ lại (zoom, có thay đổi từ người khác) thì không mất chữ.
+  ta.oninput = () => { a.text = ta.value; a.isModified = true; if (typeof scheduleCollabScan === 'function') scheduleCollabScan(); };
   dom.appendChild(ta);
   setTimeout(() => {
     ta.focus();
