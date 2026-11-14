@@ -1670,8 +1670,12 @@ async function collabPollLoop(){
       }
 
       // Xử lý các thay đổi từ đối tác/cộng tác viên khác
+      // Đang gõ chữ trong một ghi chú: không ghi đè ghi chú đó, và hoãn vẽ lại tới khi gõ xong (tránh mất ô gõ).
+      const edEl = document.querySelector('.anno-inline-editor');
+      const editingId = edEl ? (edEl.closest('.anno-item')?.dataset.id || edEl.closest('.anno-item')?.id || '') : '';
       if(Array.isArray(res.data.items)){
         res.data.items.forEach(item => {
+          if(editingId && item.id === editingId) return;
           if(item.deleted){
             if(ANNO_MAP.has(item.id)){
               window._suppressCollabHook = true;
@@ -1682,6 +1686,8 @@ async function collabPollLoop(){
             }
           } else if(item.data){
             const existing = ANNO_MAP.get(item.id);
+            // Tiếng vọng của chính thay đổi mình vừa gửi: chỉ ghi số phiên bản, không vẽ lại.
+            if(existing && COLLAB_FP.get(item.id) === annoFp(Object.assign({}, item.data, { id: item.id }))){ existing.rev = item.rev; return; }
             if(!existing || existing.rev !== item.rev){
               window._suppressCollabHook = true;
               ANNO_MAP.set(item.id, Object.assign({}, item.data, { id: item.id, rev: item.rev }));
@@ -1693,7 +1699,8 @@ async function collabPollLoop(){
       }
 
       if(hasChanges){
-        syncAllAnnotations(true, false);
+        if(document.querySelector('.anno-inline-editor')) window.__collabRenderPending = true;
+        else syncAllAnnotations(true, false);
       }
 
       // 4. Cập nhật thanh Người dùng đang cùng mở (presence) từ API
@@ -3777,6 +3784,7 @@ function startInlineTextEdit(a){
       }
     }
     ta.remove();
+    window.__collabRenderPending = false;
     syncAllAnnotations();
   };
   ta.onpointerdown = ev => ev.stopPropagation();
