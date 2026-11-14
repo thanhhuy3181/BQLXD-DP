@@ -3431,8 +3431,7 @@ function renderAnnoItem(a){
       const pageAspect = pgSz.heightPt / (pgSz.widthPt || 1);
       elItem.innerHTML+=generateCloudSvg(a.w,a.h,stroke,a.fill||stroke,a.noFill,a.opacity!=null?a.opacity:80,bw,pageAspect);
       if(a.text){
-        const tx=el('div','',`<span style="position:relative;z-index:2;font-weight:${a.fontBold?'700':'500'};font-size:${a.fontSize||11}px;background:rgba(255,255,255,.85);padding:1px 5px;border-radius:3px">${a.text}</span>`);
-        elItem.append(tx);
+        elItem.append(shapeTextEl(a, a.textColor || '#0f172a'));
       }
       return elItem;
     }
@@ -3445,8 +3444,7 @@ function renderAnnoItem(a){
       : `<rect x="0" y="0" width="100%" height="100%" rx="${rx}" fill="${fillRgba}" stroke="${stroke}" stroke-width="${bw}" stroke-dasharray="${dashAttr}" vector-effect="non-scaling-stroke"/>`;
     elItem.innerHTML += `<svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:${a.noFill?'none':'auto'}" viewBox="0 0 100 100" preserveAspectRatio="none">${svgShape}</svg>`;
     if(a.text){
-      const tx=el('div','',`<small style="position:relative;z-index:2;font-weight:${a.fontBold?'700':'400'};font-size:${a.fontSize||11}px;padding:2px 4px;background:rgba(255,255,255,.85);color:${stroke};border-radius:2px;display:inline-block;word-break:break-word">${a.text}</small>`);
-      elItem.append(tx);
+      elItem.append(shapeTextEl(a, stroke));
     }
   }else if(a.type==='cloud'){
     elItem.style.border='none';
@@ -3456,8 +3454,7 @@ function renderAnnoItem(a){
     const pageAspect = pgSz.heightPt / (pgSz.widthPt || 1);
     elItem.innerHTML+=generateCloudSvg(a.w,a.h,stroke,a.fill||stroke,a.noFill,a.opacity!=null?a.opacity:80,bw,pageAspect);
     if(a.text){
-      const tx=el('div','',`<span style="position:relative;z-index:2;font-weight:${a.fontBold?'700':'500'};font-size:${a.fontSize||11}px;background:rgba(255,255,255,.85);padding:1px 5px;border-radius:3px">${a.text}</span>`);
-      elItem.append(tx);
+      elItem.append(shapeTextEl(a, a.textColor || '#0f172a'));
     }
   }else if(a.type==='callout'){
     elItem.style.border=`${bw}px ${bs} ${stroke}`;
@@ -5901,6 +5898,25 @@ function pan(sc){
   sc.addEventListener('pointercancel',end);
 }
 
+function shapeTextEl(a, defColor){
+  const wrap = document.createElement('div');
+  wrap.className = 'shape-text';
+  const al = a.textAlign || 'left';
+  wrap.style.cssText = 'position:absolute;inset:0;z-index:2;padding:3px 6px;box-sizing:border-box;overflow:hidden;pointer-events:none;display:flex;flex-direction:column;justify-content:flex-start';
+  const t = document.createElement('div');
+  const deco = [a.fontUnderline ? 'underline' : '', a.fontStrike ? 'line-through' : ''].filter(Boolean).join(' ') || 'none';
+  t.style.cssText = 'white-space:pre-wrap;word-break:break-word;line-height:1.25;width:100%'
+    + ';text-align:' + (al === 'justify' ? 'justify' : al)
+    + ';color:' + (a.textColor || defColor || '#0f172a')
+    + ';font-family:' + (a.fontFamily || 'inherit')
+    + ';font-weight:' + (a.fontBold ? '700' : '500')
+    + ';font-style:' + (a.fontItalic ? 'italic' : 'normal')
+    + ';text-decoration:' + deco
+    + ';font-size:' + (a.fontSize || 11) + 'px';
+  t.textContent = String(a.text || '');
+  wrap.append(t);
+  return wrap;
+}
 function pct(ly,e){
   const b=ly.getBoundingClientRect();
   return [
