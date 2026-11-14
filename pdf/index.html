@@ -133,6 +133,13 @@ body.guest .ribbon, body.guest .tree, body.guest .cmt, body.guest #pdfPanes { op
 .guest-intro{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:#e3f0ed;background:var(--bg,#e3f0ed)}
 body.guest #veilAuth{z-index:9100}
 .guest-intro[hidden]{display:none}
+.guest-bg{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:0;background:transparent;color-scheme:normal}
+.guest-card{position:relative;z-index:1}
+.guest-min-btn{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:8px;border:1.5px solid var(--hard);background:var(--surface);color:var(--fg);font:700 16px/1 var(--font);cursor:pointer;box-shadow:2px 2px 0 var(--hard);display:grid;place-items:center;padding:0}
+.guest-restore{position:fixed;right:18px;bottom:18px;z-index:9200;display:none;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;border:1.5px solid var(--hard);background:var(--accent);color:var(--accent-fg);font:700 14px var(--font);cursor:pointer;box-shadow:3px 3px 0 var(--hard)}
+.guest-intro.min .guest-card{display:none}
+.guest-intro.min ~ .guest-restore,body.guest-min .guest-restore{display:flex}
+body.guest-min #veilAuth{display:none!important}
 .icon-btn[hidden],.tag[hidden]{display:none!important}
 .btn[hidden],#stoPicker[hidden]{display:none!important}
 .pk-item{display:block;width:100%;text-align:left;background:none;border:0;padding:7px 12px;font:inherit;font-size:12px;cursor:pointer;color:var(--fg)}
@@ -12669,9 +12676,26 @@ function setGuestMode(on){
     g = document.createElement('div');
     g.id = 'guestIntro';
     g.className = 'guest-intro';
-    g.innerHTML = '<div class="guest-card"><div class="tag">PDF QLDA</div><h2>Đăng nhập để bắt đầu</h2><p>Mở, ghi chú và cùng sửa tài liệu PDF với đội của bạn. Chưa có tài liệu nào được hiển thị khi chưa đăng nhập.</p><button class="btn primary" id="guestLoginBtn">Đăng nhập</button></div>';
+    g.innerHTML = '<iframe class="guest-bg" src="/pdf/intro3d/index.html?embed" title="PDF QLDA: bản vẽ, layer, ghi chú" tabindex="-1" allowtransparency="true" allow="accelerometer; gyroscope"></iframe>'
+      + '<div class="guest-card"><button type="button" class="guest-min-btn" id="guestMinBtn" title="Thu nhỏ để xem hình nền 3D" aria-label="Thu nhỏ">—</button><div class="tag">PDF QLDA</div><h2>Đăng nhập để bắt đầu</h2><p>Mở, ghi chú và cùng sửa tài liệu PDF với đội của bạn. Chưa có tài liệu nào được hiển thị khi chưa đăng nhập.</p><button class="btn primary" id="guestLoginBtn">Đăng nhập</button></div>';
     const host = document.body; // gắn vào body để không bị khung #app (có thể có transform) làm lệch vị trí
     host.appendChild(g);
+    // Nút mở lại ở góc dưới bên phải khi đã thu nhỏ
+    const rb = document.createElement('button');
+    rb.type = 'button'; rb.className = 'guest-restore'; rb.id = 'guestRestore';
+    rb.innerHTML = '<span aria-hidden="true">⤢</span> Đăng nhập';
+    rb.title = 'Mở lại khung đăng nhập';
+    host.appendChild(rb);
+    rb.onclick = () => guestMinimize(false);
+    document.getElementById('guestMinBtn').onclick = () => guestMinimize(true);
+    // Hộp đăng nhập cũng có nút thu nhỏ (chỉ khi đang ở trang giới thiệu)
+    const dlg = document.querySelector('#veilAuth .dlg');
+    if (dlg && !dlg.querySelector('.guest-min-btn')) {
+      const mb = document.createElement('button');
+      mb.type = 'button'; mb.className = 'guest-min-btn'; mb.title = 'Thu nhỏ để xem hình nền 3D'; mb.setAttribute('aria-label', 'Thu nhỏ'); mb.textContent = '—';
+      mb.onclick = () => guestMinimize(true);
+      dlg.style.position = 'relative'; dlg.appendChild(mb);
+    }
     document.getElementById('guestLoginBtn').onclick = () => {
       // Mở hộp đăng nhập ngay trên trang giới thiệu (hộp đăng nhập nằm trên lớp giới thiệu).
       const b = document.getElementById('userBadge');
@@ -12679,6 +12703,14 @@ function setGuestMode(on){
     };
   }
   if (g) g.hidden = !on;
+  if (!on) guestMinimize(false);
+  document.querySelectorAll('#veilAuth .guest-min-btn').forEach(b => { b.style.display = on ? '' : 'none'; });
+}
+// Thu nhỏ khung đăng nhập để xem trọn hoạt cảnh 3D; nút "Đăng nhập" ở góc dưới bên phải để mở lại
+function guestMinimize(on) {
+  const g = document.getElementById('guestIntro');
+  if (g) g.classList.toggle('min', !!on);
+  document.body.classList.toggle('guest-min', !!on);
 }
 function updateUserBadgeAndRole(){
   setGuestMode(!CURRENT_USER);
