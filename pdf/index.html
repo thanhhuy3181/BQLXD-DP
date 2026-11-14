@@ -4083,7 +4083,8 @@ function bindSelectionDrag(box,ly,initBoxX,initBoxY){
         snap.set(id,{
           x:a.x,y:a.y,w:a.w,h:a.h,rot:a.rotate||0,
           x1:a.x1,y1:a.y1,x2:a.x2,y2:a.y2,
-          points:Array.isArray(a.points)?a.points.map(p=>[...p]):null
+          points:Array.isArray(a.points)?a.points.map(p=>[...p]):null,
+          leaderAbs:a.type==='callout'?calloutLeaderAbs(a):null
         });
       }
     });
@@ -4134,6 +4135,8 @@ function bindSelectionDrag(box,ly,initBoxX,initBoxY){
             ny=old.y+(old.h-nh);
           }
           a.x=nx; a.y=ny; a.w=nw; a.h=nh;
+          // Chú dẫn: mũi tên dính vào đối tượng => gối + đầu mũi tên đứng yên, chỉ khung chữ đổi.
+          if(old.leaderAbs) calloutLeaderFromAbs(a, old.leaderAbs);
           if(old.x1!=null && old.w>0.01 && old.h>0.01){
             a.x1=nx+((old.x1-old.x)/old.w)*nw;
             a.y1=ny+((old.y1-old.y)/old.h)*nh;
@@ -5997,6 +6000,17 @@ function calloutLeaderLocal(a) {
   let s;
   if (k[0] < 0) s = [0, 0.5]; else if (k[0] > 1) s = [1, 0.5]; else if (k[1] > 1) s = [0.5, 1]; else s = [0.5, 0];
   return { start: s, knee: k, tip: t };
+}
+// Toạ độ trên trang (đã xoay) của gối + mũi tên => dùng để giữ nguyên chỗ khi co giãn khung chữ.
+function calloutLeaderAbs(a) {
+  const rad = (a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+  const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+  return calloutLeader(a).map(f => { const rx = a.x + f[0] * a.w - cx, ry = a.y + f[1] * a.h - cy; return [cx + rx * cs - ry * sn, cy + rx * sn + ry * cs]; });
+}
+function calloutLeaderFromAbs(a, abs) {
+  const rad = -(a.rotate || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+  const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+  a.leader = abs.map(([X, Y]) => { const lx = cx + (X - cx) * cs - (Y - cy) * sn, ly = cy + (X - cx) * sn + (Y - cy) * cs; return [Number(((lx - a.x) / Math.max(0.01, a.w)).toFixed(4)), Number(((ly - a.y) / Math.max(0.01, a.h)).toFixed(4))]; });
 }
 function calloutLeaderPct(a) {
   const g = calloutLeaderLocal(a);
