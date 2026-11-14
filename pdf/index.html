@@ -6825,6 +6825,8 @@ function bindLayerInteraction(ly,paneIdx){
 
   // Menu Chuột phải (Context Menu) trên Layer
   ly.addEventListener('contextmenu',e=>{
+    if(e.target.closest && e.target.closest('textarea,input,[contenteditable="true"],.anno-inline-editor')) return;
+    if(document.querySelector('.anno-inline-editor') && matchMedia('(pointer:coarse)').matches){ e.preventDefault(); return; }
     e.preventDefault();
     e.stopPropagation();
     openContextMenu(e,ly,paneIdx);
@@ -10559,9 +10561,11 @@ function start(){
       }else{
         T.lpStart=[t.clientX,t.clientY];
         const target=e.target;
-        T.lp=setTimeout(()=>{
+        const onShape=!!(target.closest&&target.closest('.anno-item,.sel-edge,.sel-hdl,.sel-rot-hdl,.ctrl-pt'));
+        const typing=!!(target.closest&&target.closest('textarea,input,[contenteditable="true"],.anno-inline-editor')) || !!document.querySelector('.anno-inline-editor');
+        if((onShape||ACTIVE_POLY) && !typing) T.lp=setTimeout(()=>{
           const ly=target.closest&&target.closest('.layer');
-          if(ly&&!T.qz&&!T.pinch){
+          if(ly&&!T.qz&&!T.pinch&&!document.querySelector('.anno-inline-editor')){
             const fakeEv={clientX:T.lpStart[0],clientY:T.lpStart[1],target,preventDefault:()=>{},stopPropagation:()=>{}};
             if(ACTIVE_POLY)openPolyDraftContextMenu(fakeEv);
             else openContextMenu(fakeEv,ly,parseInt(ly.dataset.i,10)||0);
