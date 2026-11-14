@@ -500,6 +500,27 @@ body.layer-pick .page,body.layer-pick .page .layer,body.layer-pick #panes.pan .s
 .cth-in{display:flex;gap:4px;align-items:flex-end;position:relative}
 .cth-in textarea{flex:1;min-height:30px;max-height:120px;resize:vertical;font:inherit;font-size:12px;padding:4px 6px;border:1.5px solid var(--fg);border-radius:5px;background:var(--surface);color:var(--fg)}
 .cth-in button{flex:none}
+.tool.has-dd{position:relative}
+.tool-dd{position:absolute;right:1px;bottom:1px;font-size:10px;line-height:1;padding:3px 3px;border-radius:4px;background:color-mix(in srgb,var(--accent) 18%,transparent);cursor:pointer}
+.tool-dd:hover{background:var(--accent);color:#fff}
+.stamp-dlg{width:min(640px,100%)}
+.stamp-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px}
+.stamp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.stamp-card{position:relative;display:grid;place-items:center;min-height:62px;padding:6px;border:1.5px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+.stamp-card img{max-width:100%;max-height:56px;display:block}
+.stamp-card.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 40%,transparent)}
+.stamp-card:hover{border-color:var(--accent)}
+.stamp-add{color:var(--accent);font-weight:700;border-style:dashed;background:var(--surface)}
+.stamp-del{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;font-size:13px;line-height:20px;text-align:center}
+.stamp-tabs{display:flex;gap:6px;margin-bottom:8px}
+.stamp-tabs button{flex:1;padding:7px;border:1.5px solid var(--line);border-radius:6px;background:var(--surface);cursor:pointer;font-weight:700;color:var(--fg)}
+.stamp-tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.stamp-form{display:flex;flex-direction:column;gap:8px}
+.stamp-row{display:flex;align-items:center;gap:8px;font-size:12px;flex-wrap:wrap}
+.stamp-row > span:first-child{min-width:86px;color:var(--muted)}
+.stamp-row input.field{flex:1}
+.stamp-prev{margin-top:10px;min-height:110px;display:grid;place-items:center;border-radius:8px;border:1.5px dashed var(--line);background:repeating-conic-gradient(#e5e7eb 0 25%,#fff 0 50%) 0 0/16px 16px;padding:10px}
+.stamp-prev img{max-width:100%;max-height:200px}
 .early-pv{position:relative;margin:auto;background:#fff;box-shadow:5px 5px 0 var(--hard);outline:1.5px solid var(--hard);flex:none}
 .early-pv img{width:100%;height:100%;display:block}
 .early-pv span{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:rgba(15,23,42,.82);color:#fff;font-size:12px;padding:4px 10px;border-radius:999px;white-space:nowrap}
@@ -514,6 +535,14 @@ body.layer-pick .page,body.layer-pick .page .layer,body.layer-pick #panes.pan .s
 body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-cmts .cmt-bubble,body.hide-cmts .anno-popup{display:none!important}
 .cmt-bubble{position:absolute;left:calc(100% + 14px);top:-6px;transform-origin:0 0;width:max-content;max-width:260px;min-width:120px;background:#fffdf5;color:#1f2937;border:1.5px solid #1f2937;border-radius:8px 8px 8px 2px;box-shadow:2px 2px 0 rgba(15,23,42,.35);padding:5px 8px;font:500 12px/1.35 var(--sans,system-ui);z-index:7;pointer-events:auto;cursor:pointer;text-align:left;white-space:normal;word-break:break-word}
 .cmt-bubble::before{content:'';position:absolute;left:-8px;top:10px;border:7px solid transparent;border-right-color:#1f2937;border-left:0}
+.cmt-bubble{resize:both;overflow:auto;padding-right:18px}
+.cmt-bubble .cb-ico{display:none}
+.cmt-bubble .cb-min{position:absolute;top:1px;right:2px;width:16px;height:16px;border:0;border-radius:4px;background:transparent;color:#64748b;font-size:14px;line-height:14px;cursor:pointer;padding:0}
+.cmt-bubble .cb-min:hover{background:#e2e8f0;color:#0f172a}
+.cmt-bubble.min{resize:none;min-width:0;width:auto!important;height:auto!important;padding:3px 7px;border-radius:12px 12px 12px 3px;overflow:visible}
+.cmt-bubble.min > :not(.cb-ico){display:none}
+.cmt-bubble.min .cb-ico{display:inline-flex;align-items:center;gap:4px;color:#1d4ed8;font-size:12px}
+.cmt-bubble.min .cb-ico b{color:#0f172a}
 .cmt-bubble .ln{margin:1px 0}
 .cmt-bubble .ln b{font-weight:800}
 .cmt-bubble .more{font-size:10.5px;color:#64748b;margin-bottom:2px}
@@ -950,6 +979,10 @@ body.hide-cmts .anno-item[data-type="note"],body.hide-cmts .cmt-badge,body.hide-
   </div></div>
 
   <!-- Hộp thoại Tuỳ biến ribbon -->
+  <div class="veil" id="veilStamp"><div class="dlg stamp-dlg" role="dialog" aria-label="Con dấu">
+    <div class="row" style="align-items:center;margin-bottom:6px"><h2 style="margin:0;flex:1">Con dấu</h2><button class="btn ghost sm" data-close>Đóng</button></div>
+    <div id="stampBody"></div>
+  </div></div>
   <div class="veil" id="veilCus"><div class="dlg" role="dialog" aria-label="Tuỳ biến ribbon">
     <h2 id="cusTitle">Tuỳ biến tab</h2>
     <p class="hint">Tích nút của tab khác để thêm vào tab này. Lựa chọn lưu riêng cho tài khoản của bạn, không ảnh hưởng người khác.</p>
@@ -1372,6 +1405,7 @@ const RIB={
     ['Công cụ',[['hand','Kéo','tool','lg'],['cursor','Chọn chữ','tool','sm'],['pick','Chọn ghi chú','tool','sm'],['search','Tìm','search','sm'],['undo','Hoàn tác','undo','sm'],['redo','Làm lại','redo','sm']]],
     ['Xem',[['zout','Thu nhỏ','zout','sm'],['zin','Phóng to','zin','sm'],['fit','Vừa trang','fit','sm'],['fitw','Vừa ngang','fitw','sm'],['rot','Xoay +90°','rotView','sm'],['zoomBox','Zoom %','zoomBox','widget']]],
     ['Ghi chú nhanh',[['line','Đường thẳng','tool','sm'],['arrow','Mũi tên','tool','sm'],['callout','Callout','tool','sm'],['rect','Chữ nhật','tool','sm'],['poly','Đa giác','tool','sm'],['eraser','Xoá (tẩy)','tool','sm'],['pen','Bút vẽ','tool','lg']]],
+    ['Con dấu',[['stamp','Con dấu','tool','lg']]],
     ['Màu sắc & Nét',[['colorBtn','Màu viền & Nền','colorWidget','widget']]],
     ['Chia sẻ',[['share','Chia sẻ','openShare','lg']]]
   ],
@@ -1433,6 +1467,219 @@ const RIB={
 
 const CTX_RIB_TABS = ['Định dạng', 'Văn bản', 'Sắp xếp'];
 // Tab "Layer" hiện ra khi bấm Chọn layer: thao tác riêng với layer bản vẽ CAD.
+/* ===== Con dấu =====
+   Dấu thi công có sẵn (gọn, viền đôi, dòng phụ: người đóng · ngày giờ) + dấu riêng (chữ hoặc ảnh chụp đã xoá nền).
+   Khi đóng dấu, dấu được vẽ thành ảnh PNG nền trong suốt -> hiển thị & xuất PDF giống hệt nhau. */
+const STAMP_BUILTIN = [
+  ['nt', 'ĐÃ NGHIỆM THU', '#15803d'], ['dat', 'ĐẠT', '#15803d'], ['duyet', 'ĐÃ DUYỆT', '#15803d'], ['hc', 'HOÀN CÔNG', '#15803d'], ['dasua', 'ĐÃ SỬA', '#15803d'],
+  ['kdat', 'KHÔNG ĐẠT', '#b91c1c'], ['tuchoi', 'TỪ CHỐI', '#b91c1c'], ['huy', 'HUỶ BỎ', '#b91c1c'], ['ktc', 'KHÔNG THI CÔNG', '#b91c1c'],
+  ['chosua', 'CHỜ SỬA CHỮA', '#c2410c'], ['sualai', 'SỬA LẠI', '#c2410c'], ['luuy', 'LƯU Ý', '#c2410c'], ['choduyet', 'CHỜ DUYỆT', '#c2410c'],
+  ['dakt', 'ĐÃ KIỂM TRA', '#1d4ed8'], ['daxem', 'ĐÃ XEM', '#1d4ed8'], ['bvtc', 'BẢN VẼ THI CÔNG', '#1d4ed8'], ['ph', 'PHÁT HÀNH', '#1d4ed8'],
+  ['nhap', 'BẢN NHÁP', '#475569'], ['thamkhao', 'CHỈ ĐỂ THAM KHẢO', '#475569']
+].map(([id, name, color]) => ({ id: 'b_' + id, name, color, kind: 'text', sub: true, builtin: true }));
+let STAMP_MINE = [];
+try { STAMP_MINE = JSON.parse(localStorage.getItem('pdf_stamps_mine') || '[]') || []; } catch (_) { STAMP_MINE = []; }
+let STAMP_LOADED = false;
+async function stampLoadMine() {
+  if (STAMP_LOADED || !CURRENT_USER) return;
+  try { const r = await pdfApi('stamps_get'); if (r && r.ok) { STAMP_MINE = r.data.stamps || []; STAMP_LOADED = true; try { localStorage.setItem('pdf_stamps_mine', JSON.stringify(STAMP_MINE)); } catch (_) {} } } catch (_) {}
+}
+async function stampSaveMine() {
+  try { localStorage.setItem('pdf_stamps_mine', JSON.stringify(STAMP_MINE)); } catch (_) {}
+  if (!CURRENT_USER) return true;
+  const r = await pdfApi('stamps_save', { stamps: STAMP_MINE });
+  if (!r || !r.ok) { toast('Chưa lưu được kho con dấu lên máy chủ: ' + ((r && r.error) || 'lỗi mạng')); return false; }
+  return true;
+}
+function stampAll() { return STAMP_BUILTIN.concat(STAMP_MINE); }
+function stampCurrent() { return stampAll().find(x => x.id === S.stampSel) || STAMP_BUILTIN[0]; }
+function stampWho() { return (CURRENT_USER && (CURRENT_USER.fullname || CURRENT_USER.username)) || 'Bạn'; }
+function stampDateStr(d) { d = d || new Date(); const p = n => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+// Vẽ dấu chữ thành canvas (2x cho nét sắc). Gọn: chữ đậm 1 dòng + dòng phụ nhỏ, viền đôi bo góc.
+function stampTextCanvas(def, who, when) {
+  const sc = 2, font = '"Be Vietnam Pro", Arial, sans-serif';
+  const title = String(def.name || '').toUpperCase();
+  const sub = def.sub ? (who + ' · ' + when) : '';
+  const m = document.createElement('canvas').getContext('2d');
+  m.font = `800 ${26 * sc}px ${font}`; const tw = m.measureText(title).width;
+  m.font = `600 ${10.5 * sc}px ${font}`; const sw = sub ? m.measureText(sub).width : 0;
+  const pad = 14 * sc, W = Math.ceil(Math.max(tw, sw) + pad * 2), H = Math.ceil((sub ? 58 : 44) * sc);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const col = def.color || '#b91c1c';
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  g.globalAlpha = 0.93;
+  g.fillStyle = 'rgba(255,255,255,0.55)'; rr(2 * sc, 2 * sc, W - 4 * sc, H - 4 * sc, 8 * sc); g.fill();
+  g.strokeStyle = col; g.lineWidth = 3 * sc; rr(2 * sc, 2 * sc, W - 4 * sc, H - 4 * sc, 8 * sc); g.stroke();
+  g.lineWidth = 1 * sc; rr(6 * sc, 6 * sc, W - 12 * sc, H - 12 * sc, 5 * sc); g.stroke();
+  g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `800 ${26 * sc}px ${font}`; g.fillText(title, W / 2, (sub ? 24 : 22) * sc);
+  if (sub) { g.font = `600 ${10.5 * sc}px ${font}`; g.fillText(sub, W / 2, 44 * sc); }
+  return c;
+}
+function stampPreviewSrc(def) {
+  if (def.kind === 'image') return def.src;
+  return stampTextCanvas(def, stampWho(), stampDateStr()).toDataURL('image/png');
+}
+function stampOpenGallery() {
+  stampLoadMine().then(() => { if ($('#veilStamp')?.classList.contains('show')) stampRenderGallery(); });
+  stampRenderGallery();
+  open('#veilStamp');
+}
+function stampPick(def) {
+  S.stampSel = def.id;
+  try { localStorage.setItem('pdf_stamp_sel', def.id); } catch (_) {}
+  closeAll();
+  act('stamp', 'tool', 'Con dấu');
+  toast('Bấm lên bản vẽ để đóng dấu "' + def.name + '"');
+}
+try { S.stampSel = localStorage.getItem('pdf_stamp_sel') || ''; } catch (_) {}
+function stampRenderGallery() {
+  const body = $('#stampBody'); if (!body) return;
+  body.replaceChildren();
+  const mkCard = (def, canDel) => {
+    const b = el('button', 'stamp-card' + (S.stampSel === def.id ? ' on' : ''), '');
+    b.type = 'button'; b.title = def.name;
+    const img = new Image(); img.src = stampPreviewSrc(def); img.alt = def.name;
+    b.append(img);
+    b.onclick = () => stampPick(def);
+    if (canDel) {
+      const x = el('span', 'stamp-del', '×'); x.title = 'Xoá con dấu này';
+      x.onclick = async ev => { ev.stopPropagation(); if (!confirm('Xoá con dấu "' + def.name + '"?')) return; STAMP_MINE = STAMP_MINE.filter(s2 => s2.id !== def.id); await stampSaveMine(); stampRenderGallery(); };
+      b.append(x);
+    }
+    return b;
+  };
+  body.append(el('div', 'stamp-h', 'Dấu thi công'));
+  const g1 = el('div', 'stamp-grid', ''); STAMP_BUILTIN.forEach(d => g1.append(mkCard(d, false))); body.append(g1);
+  body.append(el('div', 'stamp-h', 'Dấu của tôi'));
+  const g2 = el('div', 'stamp-grid', '');
+  STAMP_MINE.forEach(d => g2.append(mkCard(d, true)));
+  const add = el('button', 'stamp-card stamp-add', '+ Thêm con dấu'); add.type = 'button';
+  add.onclick = () => stampRenderEditor();
+  g2.append(add); body.append(g2);
+  body.append(el('p', 'hint', 'Dòng phụ ghi tên người đóng dấu và ngày giờ lúc đóng. Dấu của tôi lưu theo tài khoản, dùng được trên mọi máy.'));
+}
+// Thêm dấu: chữ hoặc ảnh chụp (xoá nền, đổi màu mực, tự cắt sát)
+function stampRenderEditor() {
+  const body = $('#stampBody'); if (!body) return;
+  body.replaceChildren();
+  const st = { kind: 'text', name: 'HOÀN CÔNG', color: '#b91c1c', sub: true, img: null, thr: 190, tint: true };
+  const tabs = el('div', 'stamp-tabs', '<button type="button" data-k="text">Chữ</button><button type="button" data-k="image">Ảnh chụp con dấu</button>');
+  const form = el('div', 'stamp-form', '');
+  const prev = el('div', 'stamp-prev', '');
+  const acts = el('div', 'row', '<button type="button" class="btn ghost" data-a="back">‹ Quay lại</button><span style="flex:1"></span><button type="button" class="btn primary" data-a="save">Lưu con dấu</button>');
+  acts.style.marginTop = '10px';
+  body.append(tabs, form, prev, acts);
+  let lastImg = null; // { src, w, h }
+  const processImage = () => {
+    if (!st.img) { prev.replaceChildren(el('span', 'hint', 'Chọn hoặc chụp ảnh con dấu (nền giấy trắng càng tốt).')); lastImg = null; return; }
+    const im = st.img, MAX = 520;
+    const k0 = Math.min(1, 1600 / Math.max(im.width, im.height));
+    const c = document.createElement('canvas'); c.width = Math.round(im.width * k0); c.height = Math.round(im.height * k0);
+    const g = c.getContext('2d'); g.drawImage(im, 0, 0, c.width, c.height);
+    const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+    const hex = st.color.slice(1), R = parseInt(hex.slice(0, 2), 16), G = parseInt(hex.slice(2, 4), 16), B = parseInt(hex.slice(4, 6), 16);
+    let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    const thr = st.thr, soft = 28;
+    for (let y = 0, i = 0; y < c.height; y++) for (let x = 0; x < c.width; x++, i += 4) {
+      // Mực con dấu thường đậm/màu; nền giấy sáng và ít màu -> trong suốt
+      const r = p[i], gg = p[i + 1], b = p[i + 2];
+      const lum = 0.299 * r + 0.587 * gg + 0.114 * b;
+      const sat = Math.max(r, gg, b) - Math.min(r, gg, b);
+      let a = (thr - lum + soft) / (soft * 2);
+      if (sat > 60) a = Math.max(a, Math.min(1, (sat - 60) / 60)); // mực đỏ/xanh đậm màu
+      a = Math.max(0, Math.min(1, a));
+      if (st.tint) { p[i] = R; p[i + 1] = G; p[i + 2] = B; }
+      p[i + 3] = Math.round(a * 255);
+      if (a > 0.25) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    g.putImageData(d, 0, 0);
+    if (x1 < 0) { prev.replaceChildren(el('span', 'hint', 'Không tách được nét dấu — kéo thanh "Ngưỡng nền" sang phải.')); lastImg = null; return; }
+    const cw = x1 - x0 + 1, ch = y1 - y0 + 1, k = Math.min(1, MAX / Math.max(cw, ch));
+    const o = document.createElement('canvas'); o.width = Math.max(1, Math.round(cw * k)); o.height = Math.max(1, Math.round(ch * k));
+    o.getContext('2d').drawImage(c, x0, y0, cw, ch, 0, 0, o.width, o.height);
+    let src = o.toDataURL('image/png');
+    if (src.length > 290000) { const o2 = document.createElement('canvas'); const k2 = Math.sqrt(280000 / src.length); o2.width = Math.round(o.width * k2); o2.height = Math.round(o.height * k2); o2.getContext('2d').drawImage(o, 0, 0, o2.width, o2.height); src = o2.toDataURL('image/png'); lastImg = { src, w: o2.width, h: o2.height }; }
+    else lastImg = { src, w: o.width, h: o.height };
+    const img = new Image(); img.src = lastImg.src; prev.replaceChildren(img);
+  };
+  const draw = () => {
+    tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === st.kind));
+    form.replaceChildren();
+    const nameRow = el('label', 'stamp-row', '<span>Tên dấu</span><input class="field" maxlength="40">');
+    const ni = nameRow.querySelector('input'); ni.value = st.name; ni.oninput = () => { st.name = ni.value; if (st.kind === 'text') drawPrev(); };
+    const colRow = el('div', 'stamp-row', '<span>Màu mực</span>');
+    ['#b91c1c', '#15803d', '#1d4ed8', '#c2410c', '#7c3aed', '#0f172a'].forEach(cc => { const b = el('button', 'pen-sw' + (st.color === cc ? ' on' : ''), ''); b.type = 'button'; b.style.background = cc; b.style.width = '24px'; b.onclick = () => { st.color = cc; draw(); }; colRow.append(b); });
+    form.append(nameRow, colRow);
+    if (st.kind === 'text') {
+      const subRow = el('label', 'stamp-row', '<span>Dòng phụ</span><input type="checkbox"> <small>tên người đóng · ngày giờ</small>');
+      const cb = subRow.querySelector('input'); cb.checked = st.sub; cb.onchange = () => { st.sub = cb.checked; drawPrev(); };
+      form.append(subRow);
+    } else {
+      const fileRow = el('div', 'stamp-row', '<span>Ảnh</span><input type="file" accept="image/*">');
+      const fi = fileRow.querySelector('input');
+      fi.onchange = () => { const f = fi.files && fi.files[0]; if (!f) return; const url = URL.createObjectURL(f); const im = new Image(); im.onload = () => { st.img = im; processImage(); }; im.src = url; };
+      const thrRow = el('label', 'stamp-row', '<span>Ngưỡng nền</span><input type="range" min="120" max="250" step="2"><b></b>');
+      const tr = thrRow.querySelector('input'), tb = thrRow.querySelector('b'); tr.value = st.thr; tb.textContent = st.thr;
+      tr.oninput = () => { st.thr = +tr.value; tb.textContent = tr.value; processImage(); };
+      const tintRow = el('label', 'stamp-row', '<span>Đổi màu mực</span><input type="checkbox"> <small>tô cả dấu theo màu đã chọn (sạch hơn)</small>');
+      const tc = tintRow.querySelector('input'); tc.checked = st.tint; tc.onchange = () => { st.tint = tc.checked; processImage(); };
+      form.append(fileRow, thrRow, tintRow);
+    }
+    drawPrev();
+  };
+  const drawPrev = () => {
+    if (st.kind === 'text') { const img = new Image(); img.src = stampTextCanvas({ name: st.name || ' ', color: st.color, sub: st.sub }, stampWho(), stampDateStr()).toDataURL('image/png'); prev.replaceChildren(img); }
+    else processImage();
+  };
+  tabs.onclick = e => { const b = e.target.closest('button'); if (!b) return; st.kind = b.dataset.k; if (st.kind === 'image' && st.name === 'HOÀN CÔNG') st.name = 'Dấu công ty'; draw(); };
+  acts.querySelector('[data-a="back"]').onclick = () => stampRenderGallery();
+  acts.querySelector('[data-a="save"]').onclick = async () => {
+    const name = (st.name || '').trim();
+    if (!name) { toast('Nhập tên con dấu'); return; }
+    const id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    let item;
+    if (st.kind === 'text') item = { id, name, kind: 'text', color: st.color, sub: st.sub };
+    else { if (!lastImg) { toast('Chưa có ảnh con dấu'); return; } item = { id, name, kind: 'image', color: st.color, src: lastImg.src, w: lastImg.w, h: lastImg.h }; }
+    STAMP_MINE = STAMP_MINE.concat([item]);
+    const ok = await stampSaveMine();
+    if (!ok) { STAMP_MINE = STAMP_MINE.filter(x => x.id !== id); return; }
+    toast('Đã thêm con dấu "' + name + '"');
+    stampPick(item);
+  };
+  draw();
+}
+// Đóng dấu tại điểm (x, y) % trên trang
+function stampPlace(ly, paneIdx, pageNum, x, y) {
+  const def = stampCurrent();
+  let src, pxW, pxH;
+  if (def.kind === 'image') { src = def.src; pxW = def.w || 300; pxH = def.h || 150; }
+  else { const c = stampTextCanvas(def, stampWho(), stampDateStr()); src = c.toDataURL('image/png'); pxW = c.width; pxH = c.height; }
+  // Cỡ gọn theo giấy: dấu chữ rộng ~42 mm, dấu ảnh ~32 mm (kéo góc để đổi cỡ)
+  let wPct, hPct;
+  try {
+    const sz = getPagePdfSizePt(paneIdx, pageNum);
+    const pageWmm = sz.widthPt * 25.4 / 72, pageHmm = sz.heightPt * 25.4 / 72;
+    const wmm = def.kind === 'image' ? 32 : Math.min(60, 42 * (pxW / pxH) / 3.4);
+    wPct = wmm / pageWmm * 100; hPct = (wmm * pxH / pxW) / pageHmm * 100;
+  } catch (_) { wPct = 10; hPct = 10 * pxH / pxW * (ly.clientWidth / ly.clientHeight); }
+  // Không nhỏ quá trên màn hình (ít nhất ~70 px)
+  const minPct = 70 / Math.max(1, ly.clientWidth) * 100;
+  if (wPct < minPct) { hPct *= minPct / wPct; wPct = minPct; }
+  pushUndoState();
+  const id = 'anno_stp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  const ok = /NGHIỆM THU|ĐẠT|DUYỆT|HOÀN CÔNG|ĐÃ SỬA/.test(def.name) && !/KHÔNG/.test(def.name);
+  const bad = /KHÔNG|TỪ CHỐI|HUỶ/.test(def.name);
+  const aObj = { id, pane: paneIdx, page: pageNum, type: 'image', stampId: def.id, src,
+    x: Math.max(0, Math.min(100 - wPct, x - wPct / 2)), y: Math.max(0, Math.min(100 - hPct, y - hPct / 2)), w: wPct, h: hPct,
+    stroke: def.color || '#b91c1c', fill: 'transparent', noFill: true, opacity: 100, borderWidth: 0, borderStyle: 'solid', rotate: 0,
+    text: def.name, author: stampWho(), subject: 'Con dấu: ' + def.name, status: ok ? 'accepted' : bad ? 'rejected' : 'none',
+    locked: false, printable: true, layerName: S.currentLayer || 'Mặc định (0)', replies: [], popupOpen: false };
+  ANNO_MAP.set(id, aObj);
+  S.sel.clear(); S.sel.add(id);
+  syncAllAnnotations();
+}
 const LAYER_TAB = 'Layer bản vẽ';
 const LAYER_RIB = [
   ['Chọn', [['lpick', 'Chọn layer trên bản vẽ', 'layerPick', 'lg'], ['lclear', 'Bỏ chọn', 'layerClear', 'sm'], ['cadlayer', 'Bảng layer', 'cadLayers', 'sm']]],
@@ -5075,6 +5322,13 @@ function toolBtn(item){
   const szClass=size==='lg'?'lg':size==='mini'?'mini':'sm';
   const b=el('button',`tool ${szClass}`,ic(id)+'<span>'+label+'</span>');
   b.title=label;
+  if(id==='stamp'&&kind==='tool'){
+    b.classList.add('has-dd');
+    const dd=el('span','tool-dd','▾'); dd.title='Chọn con dấu / thêm con dấu';
+    dd.onclick=ev=>{ev.stopPropagation();ev.preventDefault();stampOpenGallery();};
+    b.append(dd);
+    b.title='Con dấu: '+stampCurrent().name+' (▾ để chọn dấu khác)';
+  }
   if((kind==='tool'&&S.tool===id)||(kind==='crop'&&S.tool==='crop')||(kind===('p'+S.panes))||(kind==='layerPick'&&S.layerPick))b.classList.add('on');
   b.onclick=()=>{act(id,kind,label);$('#rgroupPop')?.classList.remove('show');};
   return b;
@@ -5896,7 +6150,7 @@ async function ensurePagePreview(ps, page, pi, wrap, key) {
     const vp = pageViewport(page, pi, sc);
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(vp.width)); c.height = Math.max(1, Math.round(vp.height));
-    prepareFastRender(page, vp, c.width, c.height);
+    prepareFastRender(page, vp, c.width, c.height, ps);
     await page.render({
       canvasContext: c.getContext('2d'), viewport: vp,
       annotationMode: (window.pdfjsLib && window.pdfjsLib.AnnotationMode) ? window.pdfjsLib.AnnotationMode.ENABLE : 1,
@@ -6006,16 +6260,51 @@ function displayIntentOf(page) {
   return null;
 }
 // Gọi ngay trước page.render: chuẩn bị danh sách lệnh vẽ cho đúng vùng canvas này.
-function prepareFastRender(page, vp, w, h) {
+// Bỏ hẳn các khối nét thuộc layer đang TẮT (pdf.js vẫn chạy hết lệnh của layer ẩn, chỉ không tô) -> tắt càng nhiều càng nhanh.
+function dropHiddenOc(fn, args, oc) {
+  const O = pdfjsLib.OPS, BMP = O.beginMarkedContentProps, BM = O.beginMarkedContent, EM = O.endMarkedContent, CP = O.constructPath;
+  // Trong khối layer ẩn chỉ bỏ lệnh VẼ (nét, tô, chữ, ảnh); giữ lệnh trạng thái (phông, màu, biến đổi, cắt…) để phần hiện vẫn đúng.
+  const PAINT = new Set([O.stroke, O.closeStroke, O.fill, O.eoFill, O.fillStroke, O.eoFillStroke, O.closeFillStroke, O.closeEOFillStroke].filter(x => x != null));
+  const DROP = new Set([...PAINT, O.showText, O.showSpacedText, O.nextLineShowText, O.nextLineSetSpacingShowText, O.paintImageXObject, O.paintInlineImageXObject, O.paintImageMaskXObject, O.paintSolidColorImageMask, O.paintImageXObjectRepeat, O.paintImageMaskXObjectRepeat, O.paintImageMaskXObjectGroup, O.paintInlineImageXObjectGroup, O.shadingFill].filter(x => x != null));
+  const vis = new Map();
+  const isVis = pr => {
+    if (!pr) return true;
+    const key = pr.id || (pr.ids && pr.ids.join(','));
+    if (vis.has(key)) return vis.get(key);
+    let v = true; try { v = oc.isVisible(pr); } catch (_) { v = true; }
+    vis.set(key, v); return v;
+  };
+  const nf = [], na = [];
+  const stack = []; let hidden = 0;
+  for (let i = 0, n = fn.length; i < n; i++) {
+    const f = fn[i], a = args[i];
+    if (f === BMP || f === BM) { const h = f === BMP && a && a[0] === 'OC' && !isVis(a[1]); stack.push(h); if (h) hidden++; }
+    else if (f === EM) { if (stack.pop()) hidden--; }
+    else if (hidden > 0) {
+      if (f === CP && PAINT.has(fn[i + 1])) { i++; continue; }
+      if (DROP.has(f)) continue;
+    }
+    nf.push(f); na.push(a);
+  }
+  return { fn: nf, args: na };
+}
+function prepareFastRender(page, vp, w, h, ps) {
   const d = displayIntentOf(page);
   if (!d || !d.displayReadyCapability) return;
-  let list = d.__merged;
+  let base = d.__heavy, list = d.__merged;
+  if (ps && ps.ocConfig && (ps.ocRev || 0) > 0) {
+    if (!d.__ocCache || d.__ocCache.rev !== ps.ocRev || d.__ocCache.cfg !== ps.ocConfig) {
+      const t = dropHiddenOc(d.__heavy.fn, d.__heavy.args, ps.ocConfig);
+      d.__ocCache = { rev: ps.ocRev, cfg: ps.ocConfig, base: t, merged: mergeStrokeOps(t.fn, t.args) };
+    }
+    base = d.__ocCache.base; list = d.__ocCache.merged;
+  }
   try {
     const p0 = vp.convertToPdfPoint(0, 0), p1 = vp.convertToPdfPoint(w, h);
     const R = [Math.min(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.max(p0[0], p1[0]), Math.max(p0[1], p1[1])];
     const v = page.view || [0, 0, 1e9, 1e9];
     const frac = ((R[2] - R[0]) * (R[3] - R[1])) / Math.max(1, (v[2] - v[0]) * (v[3] - v[1]));
-    if (frac < 0.6) list = cullOpsToRect(d.__heavy.fn, d.__heavy.args, R);
+    if (frac < 0.6) list = cullOpsToRect(base.fn, base.args, R);
   } catch (err) { console.warn('cull:', err); }
   if (!list) return;
   // Đối tượng mới: lượt vẽ đang chạy vẫn giữ danh sách cũ của nó.
@@ -6093,8 +6382,8 @@ async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
     const maxCssDim = Math.floor(MAX_CANVAS_DIM / dpr);
     const visW = Math.min(maxCssDim, Math.max(1, visRight - visLeft));
     const visH = Math.min(maxCssDim, Math.max(1, visBottom - visTop));
-    const padX = Math.min(256, Math.max(0, Math.floor((maxCssDim - visW) / 2)));
-    const padY = Math.min(256, Math.max(0, Math.floor((maxCssDim - visH) / 2)));
+    const padX = Math.min(700, Math.max(0, Math.floor((maxCssDim - visW) / 2)));
+    const padY = Math.min(700, Math.max(0, Math.floor((maxCssDim - visH) / 2)));
 
     clipX = Math.max(0, Math.min(Math.max(0, pageCssW - visW), Math.floor(visLeft - padX)));
     clipY = Math.max(0, Math.min(Math.max(0, pageCssH - visH), Math.floor(visTop - padY)));
@@ -6129,7 +6418,7 @@ async function renderPageInPane(ps, pageNum, pageEl, forceRerender = false) {
     }
 
     const ctx = nextCanvas.getContext('2d');
-    prepareFastRender(page, vp, nextCanvas.width, nextCanvas.height);
+    prepareFastRender(page, vp, nextCanvas.width, nextCanvas.height, ps);
     const renderTask = page.render({
       canvasContext: ctx,
       viewport: vp,
@@ -7149,7 +7438,8 @@ function bindLayerInteraction(ly,paneIdx){
       syncAllAnnotations();
       setTimeout(() => openCmtThread(id), 50);
     }else if(S.tool==='stamp'){
-      pushUndoState();
+      stampPlace(ly, paneIdx, pageNum, x, y);
+      return;
       const id='anno_stp_'+Date.now()+'_'+Math.floor(Math.random()*1000);
       const lyW=ly.clientWidth||1000, lyH=ly.clientHeight||800;
       const sw=Math.max(8, Math.min(14, (170 / lyW) * 100));
@@ -8312,15 +8602,20 @@ function setCadLayersVisible(ps, layers, visible) {
   if (!ps || !ps.ocConfig) return;
   layers.forEach(L => { L.visible = visible; L.ids.forEach(id => { try { ps.ocConfig.setVisibility(id, visible); } catch (_) {} }); });
   ps.ocRev = (ps.ocRev || 0) + 1;
-  renderPanes();
+  cadRedraw(ps);
   renderLayerPanel();
 }
 function cadSetVisibility(ps, pred) {
   if (!ps || !ps.ocConfig) return;
   (ps.cadLayers || []).forEach(L => { const v = !!pred(L); L.visible = v; L.ids.forEach(id => { try { ps.ocConfig.setVisibility(id, v); } catch (_) {} }); });
   ps.ocRev = (ps.ocRev || 0) + 1;
-  renderPanes();
+  cadRedraw(ps);
   renderLayerPanel();
+}
+function cadRedraw(ps) {
+  const sc = document.querySelectorAll('.pane')[ps.paneIdx]?.querySelector('.scroll');
+  if (!sc) { renderPanes(); return; }
+  renderVisiblePagesInPane(ps, sc);
 }
 function cadIsolateSelected() {
   const ps = getActivePaneState();
@@ -11204,6 +11499,10 @@ function cmtSig(){
     cmtThreads().map(a => [a.id, a.page, a.text, a.status, a.pinned, (a.starredBy || []).includes(me), (a.seenBy || []).includes(me), (a.replies || []).map(r => [r.id || r.ts, r.text])])]);
 }
 function scheduleCmtRender(){ clearTimeout(CMT_RENDER_T); CMT_RENDER_T = setTimeout(() => { renderCommentPanel(false); decorateCmtBadges(); }, 120); }
+// Khung bình luận trên bản vẽ: thu nhỏ (chỉ còn biểu tượng + số) và cỡ kéo tay — nhớ theo máy.
+let CMT_BUB_MIN = new Set(), CMT_BUB_SIZE = {};
+try { CMT_BUB_MIN = new Set(JSON.parse(localStorage.getItem('pdf_cmt_min') || '[]')); CMT_BUB_SIZE = JSON.parse(localStorage.getItem('pdf_cmt_size') || '{}') || {}; } catch (_) {}
+function cmtBubSave() { try { localStorage.setItem('pdf_cmt_min', JSON.stringify([...CMT_BUB_MIN].slice(-500))); localStorage.setItem('pdf_cmt_size', JSON.stringify(CMT_BUB_SIZE)); } catch (_) {} }
 function decorateCmtBadges(){
   const me = cmtMe(), seenTs = cmtMentionSeenTs();
   document.querySelectorAll('.cmt-badge, .cmt-bubble').forEach(b => { const a = ANNO_MAP.get(b.dataset.for); if (!a || !(a.replies || []).length) b.remove(); });
@@ -11228,12 +11527,32 @@ function decorateCmtBadges(){
     if (!bub) {
       bub = document.createElement('div'); bub.className = 'cmt-bubble'; bub.dataset.for = a.id;
       bub.onpointerdown = ev => ev.stopPropagation();
-      bub.onclick = ev => { ev.stopPropagation(); openCmtThread(a.id); };
+      bub.onclick = ev => {
+        ev.stopPropagation();
+        if (bub.classList.contains('min')) { CMT_BUB_MIN.delete(a.id); cmtBubSave(); bub.classList.remove('min'); return; }
+        if (bub.__resized) { bub.__resized = false; return; } // vừa kéo đổi cỡ, không mở luồng
+        openCmtThread(a.id);
+      };
+      // Kéo góc dưới phải để đổi cỡ (resize: both) -> nhớ cỡ
+      bub.onpointerup = () => {
+        if (bub.classList.contains('min')) return;
+        const w = bub.offsetWidth, h = bub.offsetHeight, o = CMT_BUB_SIZE[a.id];
+        if (bub.style.width && (!o || Math.abs(o[0] - w) > 2 || Math.abs(o[1] - h) > 2)) { CMT_BUB_SIZE[a.id] = [w, h]; cmtBubSave(); bub.__resized = true; }
+      };
       host.append(bub);
     }
+    bub.classList.toggle('min', CMT_BUB_MIN.has(a.id));
+    const sz = CMT_BUB_SIZE[a.id];
+    if (sz && !bub.classList.contains('min')) { bub.style.width = sz[0] + 'px'; bub.style.height = sz[1] + 'px'; }
+    else if (!sz) { bub.style.width = ''; bub.style.height = ''; }
     if (bub.dataset.sig !== sig) {
       bub.dataset.sig = sig;
       bub.replaceChildren();
+      const ico = document.createElement('span'); ico.className = 'cb-ico';
+      ico.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg><b>' + reps.length + '</b>';
+      const mn = document.createElement('button'); mn.type = 'button'; mn.className = 'cb-min'; mn.textContent = '‹'; mn.title = 'Thu nhỏ (chỉ hiện số bình luận)';
+      mn.onclick = ev => { ev.stopPropagation(); CMT_BUB_MIN.add(a.id); cmtBubSave(); bub.classList.add('min'); bub.style.width = ''; bub.style.height = ''; };
+      bub.append(ico, mn);
       const shown = reps.slice(-3);
       if (reps.length > shown.length) { const more = document.createElement('div'); more.className = 'more'; more.textContent = '+' + (reps.length - shown.length) + ' bình luận trước…'; bub.append(more); }
       shown.forEach(r => {

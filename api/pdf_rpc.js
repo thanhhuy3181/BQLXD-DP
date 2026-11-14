@@ -1602,6 +1602,43 @@ module.exports = async function handler(req, res) {
     }
 
     // 10. PREFERENCES (RIBBON & PICK)
+    // Con dấu tự thêm (chữ hoặc ảnh đã xoá nền) — lưu theo tài khoản, dùng trên mọi máy.
+    if (action === 'stamps_get' || action === 'stamps_save') {
+      const key = 'stamps:' + currentUser.username;
+      if (action === 'stamps_get') {
+        let list = [];
+        if (sql) { const rows = await sql`SELECT value FROM bqlda_settings WHERE key = ${key} LIMIT 1`; if (rows[0]) { try { list = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value; } catch (_) { list = []; } } }
+        else list = memPrefs.get(key) || [];
+        return res.status(200).json(result({ stamps: Array.isArray(list) ? list : [] }));
+      }
+      const raw = Array.isArray(payload.stamps) ? payload.stamps : null;
+      if (!raw) return res.status(400).json(failure('Thiếu danh sách con dấu.'));
+      if (raw.length > 30) return res.status(400).json(failure('Tối đa 30 con dấu riêng.'));
+      const clean = [];
+      for (const st of raw) {
+        if (!st || typeof st !== 'object') continue;
+        const id = String(st.id || '').slice(0, 40);
+        const name = String(st.name || '').trim().slice(0, 60);
+        if (!/^[A-Za-z0-9_-]{1,40}$/.test(id) || !name) return res.status(400).json(failure('Con dấu không hợp lệ.'));
+        const kind = st.kind === 'image' ? 'image' : 'text';
+        const color = /^#[0-9a-fA-F]{6}$/.test(String(st.color || '')) ? st.color : '#b91c1c';
+        const item = { id, name, kind, color, sub: !!st.sub };
+        if (kind === 'image') {
+          const src = String(st.src || '');
+          if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(src) || src.length > 300000) return res.status(400).json(failure('Ảnh con dấu phải là PNG và nhỏ hơn ~220 KB.'));
+          item.src = src;
+          item.w = Math.max(1, Math.min(4000, Number(st.w) || 1)); item.h = Math.max(1, Math.min(4000, Number(st.h) || 1));
+        }
+        clean.push(item);
+      }
+      const json = JSON.stringify(clean);
+      if (json.length > 2500000) return res.status(400).json(failure('Kho con dấu quá lớn, hãy xoá bớt dấu ảnh.'));
+      if (sql) await sql`INSERT INTO bqlda_settings (key, value, updated_at) VALUES (${key}, ${json}, ${Date.now()})
+        ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`;
+      else memPrefs.set(key, clean);
+      return res.status(200).json(result({ stamps: clean }));
+    }
+
     if (action === 'prefs_get') {
       const u = currentUser.username;
       if (sql) {

@@ -469,6 +469,20 @@ const anno = (id, page, extra = {}) => ({ id, page, data: { type: 'rect', x: pag
   cr = await call('em', 'anno_comment', { doc_id: 'd1', anno_id: 'h1', op: 'add', text: 'x' });
   check('người không được chia sẻ -> 403', cr.status === 403, cr.body);
 
+  /* 13. Kho con dấu riêng */
+  {
+    let r = await call('an', 'stamps_get');
+    check('kho con dấu: ban đầu rỗng', r.status === 200 && Array.isArray(r.body.data.stamps) && r.body.data.stamps.length === 0, r.body);
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    r = await call('an', 'stamps_save', { stamps: [{ id: 'm1', name: 'HOÀN CÔNG', kind: 'text', color: '#b91c1c', sub: true }, { id: 'm2', name: 'Dấu công ty', kind: 'image', src: png, w: 1, h: 1 }] });
+    check('lưu 2 con dấu (chữ + ảnh PNG)', r.status === 200 && r.body.data.stamps.length === 2, r.body);
+    r = await call('an', 'stamps_get');
+    check('đọc lại đúng 2 con dấu, ảnh giữ nguyên', r.body.data.stamps.length === 2 && r.body.data.stamps[1].src === png, r.body);
+    r = await call('binh', 'stamps_get');
+    check('kho con dấu riêng từng người', r.body.data.stamps.length === 0, r.body);
+    r = await call('an', 'stamps_save', { stamps: [{ id: 'x', name: 'X', kind: 'image', src: 'data:text/html;base64,PHNjcmlwdD4=' }] });
+    check('ảnh không phải PNG -> 400', r.status === 400, r.body);
+  }
   /* 12. Ảnh xem trước dùng chung */
   {
     const { Readable } = require('stream');
