@@ -366,6 +366,11 @@ body.layer-pick .page,body.layer-pick .page .layer,body.layer-pick #panes.pan .s
 #penDock{position:fixed;left:8px;right:8px;bottom:calc(64px + env(safe-area-inset-bottom));z-index:60;background:var(--panel,var(--bg));border:1.5px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-height:42vh;overflow:auto}
 #penDock .pen-kinds{grid-template-columns:repeat(8,minmax(56px,1fr));overflow-x:auto}
 #penDock .pen-colors{grid-template-columns:repeat(17,minmax(26px,1fr));overflow-x:auto}
+.cad-layers{margin-top:10px;border:1.5px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface)}
+.cad-head{display:flex;align-items:center;gap:6px;width:100%;background:none;border:0;padding:2px 0;cursor:pointer;color:var(--fg);font-size:11.5px;text-align:left}
+.cad-head small{margin-left:auto;color:var(--muted);font-weight:400}
+.cad-arr{display:inline-block;transition:transform .15s;font-size:10px}
+.cad-layers.open .cad-arr{transform:rotate(90deg)}
 .cad-row{display:flex;align-items:center;gap:6px;padding:3px 4px;font-size:11px;border-radius:4px;user-select:none}
 .cad-row .cad-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .cad-row:hover{background:color-mix(in srgb,var(--accent) 10%,transparent)}
@@ -2092,6 +2097,7 @@ async function loadRealPdf(fileOrBytes, fileName, shouldUpload = false, targetPa
     }
 
     renderPanes();
+    if (PV_EARLY_DOC && ps.pvDocId === PV_EARLY_DOC) { const d0 = PV_EARLY_DOC; PV_EARLY_DOC = null; loadSharedPreviews(ps, d0); }
     if (paneIdx === S.focus) renderSideThumbs();
     toast(`Đã nạp file PDF thật vào Khung ${paneIdx + 1}: ${fileName} (${pdfDoc.numPages} trang)`);
     renderTree();
@@ -8461,6 +8467,7 @@ function cadApplyPicked(ps, layers, add) {
   else layers.forEach(L => ps.cadSel.add(L.name));
   ps.cadFlash = layers.length ? layers[0].name : null;
   ps.cadFilter = '';
+  cadGroupOpen(true);
   openCadLayerPanel();
   renderLayerPanel();
 }
@@ -8531,16 +8538,22 @@ function openCadLayerPanel() {
   switchRightTab('layer');
   const ps = getActivePaneState();
   if (!ps || !(ps.cadLayers || []).length) toast('File này không có layer bản vẽ (CAD)');
+  else if (!cadGroupOpen()) { cadGroupOpen(true); renderLayerPanel(); }
+  setTimeout(() => document.querySelector('.cad-layers')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
 }
 function renderCadLayerSection(box) {
   const ps = getActivePaneState();
   const layers = (ps && ps.cadLayers) || [];
   if (!layers.length) return;
   const sec = el('div', 'cad-layers', '');
-  sec.style.cssText = 'margin-bottom:10px;padding-bottom:8px;border-bottom:1.5px dashed var(--line)';
+  const open = cadGroupOpen();
+  sec.classList.toggle('open', open);
   const on = layers.filter(L => L.visible).length;
-  const head = el('div', '', '<b style="font-size:11.5px">Layer bản vẽ (CAD)</b> <small style="color:var(--muted)"></small>');
+  const head = el('button', 'cad-head', '<span class="cad-arr">▸</span><b>Layer bản vẽ (CAD)</b><small></small>');
+  head.type = 'button';
+  head.title = open ? 'Thu gọn nhóm layer bản vẽ' : 'Mở nhóm layer bản vẽ';
   head.querySelector('small').textContent = on + '/' + layers.length + ' đang hiện';
+  head.onclick = () => { cadGroupOpen(!cadGroupOpen()); renderLayerPanel(); };
   const tools = el('div', '', '');
   tools.style.cssText = 'display:flex;gap:4px;margin:6px 0';
   const find = document.createElement('input');
@@ -8621,7 +8634,8 @@ function renderCadLayerSection(box) {
   bAll.onclick = () => setCadLayersVisible(ps, visibleNow(), true);
   bNone.onclick = () => setCadLayersVisible(ps, visibleNow(), false);
   draw();
-  sec.append(head, tools, acts, list);
+  sec.append(head);
+  if (open) sec.append(tools, acts, list);
   box.append(sec);
   // Dòng vừa được chọn từ bản vẽ: cuộn tới và nháy sáng
   if (ps.cadFlash) {
@@ -8630,11 +8644,21 @@ function renderCadLayerSection(box) {
     if (r) { r.classList.add('flash'); requestAnimationFrame(() => r.scrollIntoView({ block: 'center', behavior: 'smooth' })); }
   }
 }
+// Layer ghi chú (của mình) trước, nhóm "Layer bản vẽ (CAD)" gập/mở đặt sau cùng.
 function renderLayerPanel() {
+  renderLayerPanelBase();
+  const box = $('#layerList');
+  if (box) renderCadLayerSection(box);
+}
+function cadGroupOpen(v) {
+  if (v === undefined) { try { return localStorage.getItem('pdf_cad_open') === '1'; } catch (_) { return false; } }
+  try { localStorage.setItem('pdf_cad_open', v ? '1' : '0'); } catch (_) {}
+  return v;
+}
+function renderLayerPanelBase() {
   const box = $('#layerList');
   if (!box) return;
   box.replaceChildren();
-  renderCadLayerSection(box);
 
   const totalLayers = LAYER_STATE.layers.length;
   if ($('#layerN')) $('#layerN').textContent = `(${totalLayers})`;
@@ -9548,31 +9572,30 @@ async function loadSharedPreviews(ps, docId) {
   const m = PV_VERSION.get(docId);
   ps.pvPages = null;
   if (!m || docId === 'ban-la-ai') return;
-  ps.pvListPromise = (async () => {
-    try {
-      const r = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&previews=1', { headers: pdfAuthHeaders() });
-      const j = await r.json();
-      return (j && j.ok && j.data && j.data.pages) || {};
-    } catch (_) { return {}; }
-  })();
-  const pages = await ps.pvListPromise;
-  if (ps.docId !== docId) return;
+  const pre = PV_PREFETCH.get(docId) || prefetchPreviews(docId);
+  PV_PREFETCH.delete(docId);
+  ps.pvListPromise = pre.then(x => x.pages || {});
+  const got = await pre;
+  const pages = got.pages || {};
+  if ((ps.pvDocId || ps.docId) !== docId) return;
   ps.pvPages = pages;
   for (const [p, info] of Object.entries(pages)) {
     if (!info || info.m !== m) continue;
     const pageNum = +p;
     try {
-      const r = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&preview=' + pageNum + '&m=' + encodeURIComponent(m), { headers: pdfAuthHeaders() });
-      if (!r.ok) continue;
-      const bmp = await createImageBitmap(await r.blob());
-      if (ps.docId !== docId) return;
+      let bmp = pageNum === 1 && got.p1 ? got.p1.bmp : null;
+      if (!bmp) {
+        const r = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&preview=' + pageNum + '&m=' + encodeURIComponent(m), { headers: pdfAuthHeaders() });
+        if (!r.ok) continue;
+        bmp = await createImageBitmap(await r.blob());
+      }
+      if ((ps.pvDocId || ps.docId) !== docId) return;
       const sc = document.querySelectorAll('.pane')[ps.paneIdx]?.querySelector('.scroll');
       const wrap = sc && sc.querySelector(`.page[data-page="${pageNum}"] .canvas-wrap`);
       if (!wrap) continue;
       const c = document.createElement('canvas');
       c.width = bmp.width; c.height = bmp.height;
       c.getContext('2d').drawImage(bmp, 0, 0);
-      if (bmp.close) bmp.close();
       c.className = 'pdf-base'; c.dataset.k = pvBaseKey(ps, pageNum); c.dataset.shared = '1';
       c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;';
       const old = wrap.querySelector('canvas.pdf-base');
@@ -9582,17 +9605,36 @@ async function loadSharedPreviews(ps, docId) {
     } catch (_) {}
   }
 }
+let PV_EARLY_DOC = null; // file đang mở: gắn ảnh xem trước ngay khi khung trang có
+const PV_PREFETCH = new Map(); // docId -> Promise<{ pages, p1: { blob, bmp } | null }>
+function prefetchPreviews(docId) {
+  const m = PV_VERSION.get(docId);
+  if (!m || docId === 'ban-la-ai') return Promise.resolve({ pages: {}, p1: null });
+  const pr = (async () => {
+    try {
+      const lr = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&previews=1', { headers: pdfAuthHeaders() });
+      const lj = await lr.json();
+      const pages = (lj && lj.ok && lj.data && lj.data.pages) || {};
+      const info = pages[1];
+      if (!info || info.m !== m) return { pages, p1: null };
+      const ir = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&preview=1&m=' + encodeURIComponent(m), { headers: pdfAuthHeaders() });
+      if (!ir.ok) return { pages, p1: null };
+      const blob = await ir.blob();
+      let bmp = null; try { bmp = await createImageBitmap(blob); } catch (_) {}
+      return { pages, p1: { blob, bmp, info } };
+    } catch (_) { return { pages: {}, p1: null }; }
+  })();
+  PV_PREFETCH.set(docId, pr);
+  return pr;
+}
 async function showEarlyPreview(docId, title, seq) {
   const m = PV_VERSION.get(docId);
   if (!m || docId === 'ban-la-ai') return false;
   try {
-    const lr = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&previews=1', { headers: pdfAuthHeaders() });
-    const lj = await lr.json();
-    const info = lj && lj.ok && lj.data && lj.data.pages && lj.data.pages[1];
-    if (!info || info.m !== m || seq !== OPEN_DOC_SEQ) return false;
-    const ir = await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId) + '&preview=1&m=' + encodeURIComponent(m), { headers: pdfAuthHeaders() });
-    if (!ir.ok || seq !== OPEN_DOC_SEQ) return false;
-    const url = URL.createObjectURL(await ir.blob());
+    const got = await prefetchPreviews(docId);
+    const info = got.p1 && got.p1.info;
+    if (!info || seq !== OPEN_DOC_SEQ) return false;
+    const url = URL.createObjectURL(got.p1.blob);
     const sc = document.querySelectorAll('.pane')[S.focus]?.querySelector('.scroll');
     if (!sc || seq !== OPEN_DOC_SEQ || window.__earlyBlock === seq) return false; // file gốc đã về thì thôi
     const w = info.w || 3000, h = info.h || 2000;
@@ -9619,7 +9661,7 @@ async function maybeSharePreview(ps, pageNum, page, pi) {
     const pages = ps.pvPages || (ps.pvListPromise ? await ps.pvListPromise : {});
     if (pages[pageNum] && pages[pageNum].m === m) return;
     await new Promise(r => setTimeout(r, 1500)); // nhường lượt vẽ chính
-    if (ps.docId !== docId) return;
+    if ((ps.pvDocId || ps.docId) !== docId) return;
     const vp1 = pageViewport(page, pi, 1);
     const k = PV_UPLOAD_MAX / Math.max(vp1.width, vp1.height);
     const vp = pageViewport(page, pi, k);
@@ -9767,9 +9809,9 @@ async function openCloudDoc(docId, docTitle, knownSize, modified) {
       showLoadOverlay(docTitle, 100, 'Mở từ bản đã lưu trên máy...');
       setOpenProgress(docId, 'đang mở…');
       window.__earlyBlock = seq; // file có sẵn trên máy: không để ảnh xem trước đè lên
+      getActivePaneState().pvDocId = docId; PV_EARLY_DOC = docId;
       await loadRealPdf(cached, docTitle || 'tai-lieu.pdf', false);
       PDF_STATE.docId = docId;
-      loadSharedPreviews(getActivePaneState(), docId);
       COLLAB_CURSOR = 0;
       if (typeof collabPollLoop === 'function') collabPollLoop();
       showLoadOverlay(null);
@@ -9804,10 +9846,10 @@ async function openCloudDoc(docId, docTitle, knownSize, modified) {
       setOpenProgress(docId, 'đang mở…');
       window.__earlyBlock = seq;
       const hadEarly = await Promise.race([earlyP, Promise.resolve(false)]);
+      getActivePaneState().pvDocId = docId; PV_EARLY_DOC = docId;
       await loadRealPdf(ab, docTitle || 'tai-lieu.pdf', false);
       PDF_STATE.docId = docId;
       if (hadEarly && typeof fitPage === 'function') fitPage(); // giữ đúng khung nhìn như ảnh xem trước
-      loadSharedPreviews(getActivePaneState(), docId);
       COLLAB_CURSOR = 0;
       if (typeof collabPollLoop === 'function') collabPollLoop();
       if (docId === 'ban-la-ai' && typeof fitPage === 'function') setTimeout(fitPage, 200);
