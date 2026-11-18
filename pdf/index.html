@@ -1993,11 +1993,11 @@ const DEVICE_ID = (() => {
     return d;
   } catch (_) { return ''; }
 })();
+// Phiên đăng nhập riêng của trang PDF (không đụng phiên của trang chính QLDA).
+const PDF_TOK_KEY = 'pdf_session_token';
+function pdfToken() { try { return localStorage.getItem(PDF_TOK_KEY) || ''; } catch (_) { return ''; } }
 async function pdfApi(action, payload = {}) {
-  const token = localStorage.getItem('bqlda_session_token') ||
-                localStorage.getItem('bqlda_web_session') ||
-                localStorage.getItem('awm_session') ||
-                sessionStorage.getItem('awm_session') || '';
+  const token = pdfToken();
   try {
     const res = await fetch(API_BASE, {
       method: 'POST',
@@ -10073,7 +10073,7 @@ const PV_VERSION = new Map();      // docId -> phiên bản file (thời điểm
 const PV_SENT = new Set();         // docId:trang đã gửi trong phiên này
 const PV_UPLOAD_MAX = 3000;
 function pdfAuthHeaders() {
-  const tok = localStorage.getItem('bqlda_session_token') || localStorage.getItem('bqlda_web_session') || localStorage.getItem('awm_session') || sessionStorage.getItem('awm_session') || '';
+  const tok = pdfToken();
   return tok ? { Authorization: 'Bearer ' + tok } : {};
 }
 function pvBaseKey(ps, pageNum) {
@@ -10334,7 +10334,7 @@ async function openCloudDoc(docId, docTitle, knownSize, modified) {
   } catch (_) {}
   try {
     // Tải dạng stream qua /api/pdf_file (không bị giới hạn 25 MB như drive_download cũ).
-    const tok = localStorage.getItem('bqlda_session_token') || localStorage.getItem('bqlda_web_session') || localStorage.getItem('awm_session') || sessionStorage.getItem('awm_session') || '';
+    const tok = pdfToken();
     const fr = docId === 'ban-la-ai' ? await fetch('/pdf/ban-la-ai.pdf') : await fetch('/api/pdf_file?doc=' + encodeURIComponent(docId), { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
     if (fr.ok) {
       const total = Number(fr.headers.get('content-length')) || Number(knownSize) || 0;
@@ -13548,11 +13548,8 @@ function start(){
   if (btnLogout) {
     btnLogout.onclick = async () => {
       await pdfApi('logout_user');
-      localStorage.removeItem('bqlda_session_token');
+      localStorage.removeItem(PDF_TOK_KEY);
       try { window.caches && caches.delete('pdf-files-v1'); } catch (_) {}
-      localStorage.removeItem('bqlda_web_session');
-      localStorage.removeItem('awm_session');
-      sessionStorage.removeItem('awm_session');
       CURRENT_USER = null;
       guestReset();
       updateUserBadgeAndRole();
@@ -13569,8 +13566,7 @@ function start(){
     if(res && res.ok && res.data){
       CURRENT_USER = res.data;
       if(res.session_token) {
-        localStorage.setItem('bqlda_session_token', res.session_token);
-        localStorage.setItem('bqlda_web_session', res.session_token);
+        localStorage.setItem(PDF_TOK_KEY, res.session_token);
       }
       updateUserBadgeAndRole();
       closeAll();
@@ -13606,8 +13602,7 @@ function start(){
           if (res && res.ok && res.data) {
             CURRENT_USER = res.data;
             if (res.session_token) {
-              localStorage.setItem('bqlda_session_token', res.session_token);
-              localStorage.setItem('bqlda_web_session', res.session_token);
+              localStorage.setItem(PDF_TOK_KEY, res.session_token);
             }
             updateUserBadgeAndRole();
             closeAll();
@@ -13644,7 +13639,7 @@ function start(){
   setTimeout(initGoogleAuthInPdf, 500);
 
   (async () => {
-    const hasTok = !!(localStorage.getItem('bqlda_session_token') || localStorage.getItem('bqlda_web_session') || localStorage.getItem('awm_session'));
+    const hasTok = !!pdfToken();
     let res = null;
     for (let i = 0; i < 5; i++) {
       res = await pdfApi('auth_status');
@@ -13798,7 +13793,7 @@ const qDocId = new URLSearchParams(location.search).get('doc') || new URLSearchP
 if (qDocId) {
   (async () => {
     try {
-      const tok = localStorage.getItem('bqlda_session_token') || '';
+      const tok = pdfToken();
       const res = await fetch('/api/pdf_file?doc=' + encodeURIComponent(qDocId), { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
       if (res.ok) {
         PDF_STATE.docId = qDocId;
